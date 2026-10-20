@@ -1,0 +1,16 @@
+{
+  "id": "./",
+  "name": "공구노트 - 공동구매 관리",
+  "short_name": "공구노트",
+  "description": "아이폰에서 쓰는 공동구매 주문·미송·입금 정산 프로그램",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f7f7fb",
+  "theme_color": "#6256d9",
+  "lang": "ko",
+  "icons": [
+    {"src":"icon-192.png","sizes":"192x192","type":"image/png","purpose":"any maskable"},
+    {"src":"icon-512.png","sizes":"512x512","type":"image/png","purpose":"any maskable"}
+  ]
+}

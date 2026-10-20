@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#6756d6">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="공구노트">
+<meta name="apple-mobile-web-app-title" content="미니예나">
 <link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <link rel="manifest" href="./manifest.webmanifest">
 <style>
@@ -86,10 +86,10 @@
 .address-tools .grow{flex:1}
 @media(max-width:400px){.address-tools{align-items:stretch}.address-tools .btn{flex:1}.postcode-search{padding:8px}}
 </style>
-<title>공구노트 · 가격·배송비 수정</title>
+<title>미니예나 · 공동구매</title>
 </head>
 <body>
-<div id="app"><div class="loading">공구노트를 여는 중이에요…</div></div>
+<div id="app"><div class="loading">미니예나를 여는 중이에요…</div></div>
 <div id="toasts"></div>
 <script>
 // Supabase 연결 후 이 두 값만 바꾸세요. 둘 다 공개용 값이며 비밀번호가 아닙니다.
@@ -101,7 +101,7 @@ window.GONGGU_CONFIG = {
 
 </script>
 <script>
-/* 공구노트 v11: iPhone 입력 자동확대 방지 및 관리자 화면 개선 · v9 기능 유지 */
+/* 미니예나 v11: iPhone 입력 자동확대 방지 및 관리자 화면 개선 · v9 기능 유지 */
 (()=>{'use strict';
 const $=(s,r=document)=>r.querySelector(s),esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),money=n=>n==null?'가격 미정':Number(n).toLocaleString('ko-KR')+'원',uuid=()=>crypto?.randomUUID?crypto.randomUUID():'demo-'+Date.now()+'-'+Math.random().toString(16).slice(2),now=()=>new Date().toISOString(),clone=x=>JSON.parse(JSON.stringify(x));
 const conf=window.GONGGU_CONFIG||{},url=String(conf.supabaseUrl||'').replace(/\/$/,''),key=String(conf.publishableKey||''),connected=/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(url)&&key.length>20;
@@ -163,7 +163,7 @@ function productBuyerGroups(){const m=new Map();for(const q of state.quotes.filt
 const demoNotice=()=>!connected?'<div class="noticebar"><b>⚠️ 현재 체험 모드</b>견적 요청과 주문 확정은 이 아이폰 안에서만 저장돼요. 여러 사람이 실제로 주문하려면 <b>Supabase 연결이 먼저 필요</b>해요. 체험 중 만든 주문은 공유되지 않습니다.</div>':'';
 const img=(p,cls='product-cover')=>p?.image_url?`<img class="${cls}" src="${esc(p.image_url)}" alt="${esc(p.name)} 대표사진" loading="lazy">`:`<div class="producticon">🧸</div>`;
 async function showRequestImages(){if(!connected||!state.admin)return;const nodes=[...document.querySelectorAll('[data-request-photo]')];if(!nodes.length)return;const token=await getToken();for(const el of nodes){const path=el.dataset.requestPhoto;if(!path)continue;if(requestImageCache.has(path)){const saved=await requestImageCache.get(path);if(el.isConnected&&saved)el.src=saved;continue}const task=(async()=>{try{const resp=await fetch(url+'/storage/v1/object/authenticated/'+PHOTO_PRIVATE+'/'+path.split('/').map(encodeURIComponent).join('/'),{headers:{apikey:key,Authorization:'Bearer '+token}});if(!resp.ok)throw Error('사진 조회 실패');return URL.createObjectURL(await resp.blob())}catch(e){console.error('신청 사진 표시 오류',e);return null}})();requestImageCache.set(path,task);const value=await task;if(el.isConnected&&value)el.src=value;}}
-function header(){return `<header class="hero"><div class="headrow"><div><div class="eyebrow">남대문 공동구매 · 견적제</div><div class="logo">공구노트 ${state.page==='admin'?'관리자':state.page==='track'?'내 견적':'쇼핑'}</div></div><button class="heroaction" data-page="${state.page==='admin'?'shop':'admin'}">${state.page==='admin'?'주문자 화면':'관리자'}</button></div><p>가게별 상품 선택 → 견적 요청 → 가격 확인 → 최종 주문</p><div class="v3top"><button class="btn sm secondary" data-page="shop">상품 구경</button><button class="btn sm secondary" data-action="suggest-product">+ 상품 등록 신청</button><button class="btn sm secondary" data-action="my-quotes">내 견적 확인</button></div></header>`}
+function header(){return `<header class="hero"><div class="headrow"><div><div class="eyebrow">남대문 공동구매 · 견적제</div><div class="logo">미니예나 ${state.page==='admin'?'관리자':state.page==='track'?'내 견적':'쇼핑'}</div></div><button class="heroaction" data-page="${state.page==='admin'?'shop':'admin'}">${state.page==='admin'?'주문자 화면':'관리자'}</button></div><p>가게별 상품 선택 → 견적 요청 → 가격 확인 → 최종 주문</p><div class="v3top"><button class="btn sm secondary" data-page="shop">상품 구경</button><button class="btn sm secondary" data-action="suggest-product">+ 상품 등록 신청</button><button class="btn sm secondary" data-action="my-quotes">내 견적 확인</button></div></header>`}
 function render(){app.innerHTML=`<main class="shell">${header()}${demoNotice()}${state.page==='admin'?renderAdmin():state.page==='track'?renderTrack():renderShop()}</main>${renderModal()}`;if(state.admin)queueMicrotask(()=>showRequestImages().catch(console.error));}
 const steps=idx=>`<div class="quote-step">${['① 상품 담기','② 견적 요청','③ 가격 확인','④ 최종 주문'].map((x,i)=>`<span class="${i===idx?'current':''}">${x}</span>${i<3?'<i></i>':''}`).join('')}</div>`;
 function renderShop(){let stores=state.stores.filter(s=>s.active&&state.products.some(p=>p.store_id===s.id&&p.published&&(!state.search||p.name.includes(state.search)||s.name.includes(state.search))));return `<section class="content">${steps(0)}<div class="sectiontitle"><div><h2>가게별 상품 고르기</h2><p class="sub">가격을 몰라도 견적 요청할 수 있어요. 상품이 없으면 등록 신청부터 해주세요.</p></div><div class="row wrap"><button class="btn secondary sm" data-action="suggest-product">+ 상품 신청</button><button class="btn secondary sm" data-action="open-cart">장바구니 ${cartCount()}</button></div></div><input id="search" type="search" placeholder="가게·옷 이름 검색" value="${esc(state.search)}" aria-label="검색"><div class="shoplist">${stores.map(s=>`<div class="storetitle">🏬 ${esc(s.name)}</div><div class="productgrid">${state.products.filter(p=>p.published&&p.store_id===s.id&&(!state.search||p.name.includes(state.search)||s.name.includes(state.search))).map(p=>`<div class="productcard">${img(p)}<div class="producttitle">${esc(p.name)}</div><div class="tiny">${Object.keys(p.options||{}).map(esc).join(' · ')}</div><div class="tiny">사이즈는 컬러 선택 후 표시</div><div class="grow"></div><button class="btn block" data-action="pick-product" data-id="${esc(p.id)}">옵션 선택</button></div>`).join('')}</div>`).join('')||'<div class="empty">등록된 상품이 없어요.</div>'}</div></section>${state.cart.length?`<div class="dock"><div class="main"><strong>장바구니 ${cartCount()}개</strong><div class="tiny">상품을 모아 한 번에 견적 요청</div></div><button class="btn" data-action="open-cart">견적 요청하기 →</button></div>`:''}`}
@@ -272,7 +272,7 @@ async function adminPublish(id){const q=state.quotes.find(q=>q.id===id);if(!q||!
 async function adminFulfillment(id,s){if(!connected){demo.items.find(x=>x.id===id).fulfillment=s;saveDemo();return}await api('/rest/v1/gq_quote_items?id=eq.'+id,{method:'PATCH',admin:true,body:{fulfillment:s}})}
 async function adminPayment(id,paid,refunded){if(refunded>paid)throw Error('환불 완료액은 받은 금액보다 클 수 없어요');if(!connected){Object.assign(demo.quotes.find(x=>x.id===id),{amount_paid:paid,amount_refunded:refunded});saveDemo();return}await api('/rest/v1/gq_quotes?id=eq.'+id,{method:'PATCH',admin:true,body:{amount_paid:paid,amount_refunded:refunded}})}
 const copy=async text=>{try{await navigator.clipboard.writeText(text)}catch{const a=document.createElement('textarea');a.value=text;document.body.append(a);a.select();document.execCommand('copy');a.remove()}notif('복사했어요')};
-const csv=()=>{const rows=[['견적번호','주문자','아기 이름(태명)','가게','상품명','컬러','사이즈','수량','단가','주문 배송비','최종 결제금액','상태','미송/품절','받은금액','환불완료','요청일']];for(const q of state.quotes)for(const i of q.items)rows.push([q.id,q.buyer_name,q.baby_name||'',i.store_name,i.product_name,i.color,i.size,i.quantity,i.unit_price??'',hasShipping(q)?q.shipping_fee:'',readyQuote(q)?totalDue(q):'',statusLabel[q.status],fulfillmentLabel[i.fulfillment],q.amount_paid,q.amount_refunded,q.created_at]);const text='\ufeff'+rows.map(a=>a.map(x=>'"'+String(x??'').replace(/"/g,'""')+'"').join(',')).join('\r\n');const blob=new Blob([text],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='공구노트_견적및주문_'+new Date().toISOString().slice(0,10)+'.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
+const csv=()=>{const rows=[['견적번호','주문자','아기 이름(태명)','가게','상품명','컬러','사이즈','수량','단가','주문 배송비','최종 결제금액','상태','미송/품절','받은금액','환불완료','요청일']];for(const q of state.quotes)for(const i of q.items)rows.push([q.id,q.buyer_name,q.baby_name||'',i.store_name,i.product_name,i.color,i.size,i.quantity,i.unit_price??'',hasShipping(q)?q.shipping_fee:'',readyQuote(q)?totalDue(q):'',statusLabel[q.status],fulfillmentLabel[i.fulfillment],q.amount_paid,q.amount_refunded,q.created_at]);const text='\ufeff'+rows.map(a=>a.map(x=>'"'+String(x??'').replace(/"/g,'""')+'"').join(',')).join('\r\n');const blob=new Blob([text],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='미니예나_견적및주문_'+new Date().toISOString().slice(0,10)+'.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
 const findTrack=id=>state.receipts.find(x=>x.id===id);
 function quoteText(q){return `${buyerLabel(q)} · ${statusLabel[q.status]}\n`+q.items.map(i=>`${i.store_name} / ${i.product_name} / ${i.color} / ${i.size} ×${i.quantity} / ${i.unit_price==null?'미정':money(i.unit_price*i.quantity)}`).join('\n')+`\n상품 합계: ${unknown(q)?'계산 중':money(previewOrderSum(q))}\n배송비: ${shippingLabel(q)}\n최종 결제금액: ${readyQuote(q)?money(totalDue(q)):'견적 확인 중'}`}
 // 카카오/다음 우편번호 서비스는 외부 서비스이며 API 키를 요구하지 않습니다.

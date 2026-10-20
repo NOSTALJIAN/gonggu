@@ -27,6 +27,53 @@
 /* v8 delivery form */
 .delivery-fields{padding:13px;border:1px solid #e7e5f5;border-radius:14px;background:#faf9ff;margin:8px 0 16px}
 .delivery-fields .label{margin-top:10px}
+
+/* v10 · iPhone 관리자 화면 최적화
+   iOS Safari는 16px 미만 입력칸에 초점을 맞출 때 자동 확대될 수 있어
+   숫자/선택 입력을 16px 이상으로 고정합니다. */
+@media (max-width: 700px) {
+  input, select, textarea {font-size:16px !important;}
+  input[type=number], input[type=text], input[type=tel], input[type=email], textarea {max-width:100%; min-width:0;}
+  .shell, .content, .card {min-width:0;}
+  .tabs {max-width:100%; overscroll-behavior-x:contain; -webkit-overflow-scrolling:touch;}
+  .card, .info, .noticefail, .smallnote {overflow-wrap:anywhere;}
+}
+@media (max-width: 519px) {
+  .content {padding:16px 12px;}
+  .card {padding:14px;}
+  .sectiontitle {flex-wrap:wrap; align-items:flex-start;}
+  .ordercard .row.between {flex-wrap:wrap; gap:8px;}
+  .ordercard .row.between > * {min-width:0;}
+  .ordercard .orderitem > .row.between {align-items:flex-start;}
+  .ordercard .orderitem > .row.between > .grow {flex:1 1 100%; overflow-wrap:anywhere;}
+  .ordercard .orderitem > .row.between > .money {margin-left:auto;}
+  .ordercard .orderitem > .row.wrap {display:grid; grid-template-columns:minmax(0,1fr); gap:8px;}
+  .ordercard .controlinline {display:grid; grid-template-columns:minmax(0,1fr) auto; width:100%; gap:8px;}
+  .ordercard .controlinline input {width:100%; max-width:none; min-width:0; min-height:44px;}
+  .ordercard .controlinline .btn {min-height:44px;}
+  .ordercard .statusselect {width:100%; max-width:none; min-height:44px;}
+  .ordercard .shipping-form {display:grid; grid-template-columns:minmax(0,1fr); gap:7px; align-items:stretch; margin-top:16px;}
+  .ordercard .shipping-form > label {width:100%; min-width:0; flex:none !important; margin:0;}
+  .ordercard .shipping-form .btn {width:100%; min-height:44px;}
+  .ordercard .shipping-form input {width:100%; margin-top:5px;}
+  .ordercard form.two {grid-template-columns:minmax(0,1fr); gap:9px;}
+  .ordercard form.two > button {grid-column:1 !important; min-height:44px; width:100%;}
+  .ordercard .row.wrap > button.btn {flex:1 1 calc(50% - 9px); white-space:normal; min-width:0;}
+  .ordercard .row.wrap > button.btn.danger {flex:1 1 100%;}
+  .ordercard .sumline {align-items:flex-start;}
+  .ordercard .sumline > :first-child {min-width:0; overflow-wrap:anywhere;}
+  .ordercard .sumline > :last-child {text-align:right; min-width:0; overflow-wrap:anywhere;}
+  .tile {min-width:0; padding:10px;}
+  .tile strong {overflow-wrap:anywhere; font-size:clamp(14px,3.8vw,19px);}
+  .ordercard h3 {overflow-wrap:anywhere;}
+}
+@media (max-width: 349px) {
+  .three {gap:5px;}
+  .tile {padding:8px;}
+  .ordercard .controlinline {grid-template-columns:minmax(0,1fr);}
+  .ordercard .controlinline .btn {width:100%;}
+  .ordercard .row.wrap > button.btn {flex:1 1 100%;}
+}
 </style>
 <title>공구노트 · 가격·배송비 수정</title>
 </head>
@@ -43,7 +90,7 @@ window.GONGGU_CONFIG = {
 
 </script>
 <script>
-/* 공구노트 v9: 확정 후 관리자 가격·배송비 수정, 변경 기록 및 고객 안내 */
+/* 공구노트 v10: iPhone 입력 자동확대 방지 및 관리자 화면 개선 · v9 기능 유지 */
 (()=>{'use strict';
 const $=(s,r=document)=>r.querySelector(s),esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),money=n=>n==null?'가격 미정':Number(n).toLocaleString('ko-KR')+'원',uuid=()=>crypto?.randomUUID?crypto.randomUUID():'demo-'+Date.now()+'-'+Math.random().toString(16).slice(2),now=()=>new Date().toISOString(),clone=x=>JSON.parse(JSON.stringify(x));
 const conf=window.GONGGU_CONFIG||{},url=String(conf.supabaseUrl||'').replace(/\/$/,''),key=String(conf.publishableKey||''),connected=/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(url)&&key.length>20;

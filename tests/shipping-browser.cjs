@@ -51,16 +51,16 @@ const trackURL=()=>base+'/?page=track&id='+childId+'&token='+fixtureToken;
    await page.locator('.bundle-summary-card').waitFor();
   };
 
-  // Own normalized invoice matches a hyphenated order; preserve raw event time/detail.
+  // Own normalized invoice matches a hyphenated order; display short KST time and real detail.
   await gotoBuyer();
   await page.locator('.shipment-history summary').waitFor();
   assert.match(await page.locator('.shipment-progress a').getAttribute('href'),/InvNo=12345678$/);
   await page.locator('.shipment-history summary').click();
-  assert.equal(await page.locator('.shipment-history tbody tr').count(),10);
+  assert.equal(await page.locator('.shipment-history .shipment-timeline-item').count(),10);
   assert.match(await page.locator('.shipment-history summary').innerText(),/10건/);
   const history=await page.locator('.shipment-history').innerText();
   assert.match(history,/테스트 API 위치 1/);assert.match(history,/집하/);
-  assert.match(history,/테스트 상세 1/);assert.match(history,/2026-10-15T19:38:21\+09:00/);
+  assert.match(history,/테스트 상세 1/);assert.match(await page.locator('.shipment-progress').innerText(),/10\.21 12:00/);assert.match(history,/10\.15 19:38/);assert.doesNotMatch(history,/2026-10-15T19:38:21/);
   assert.match(await page.locator('body').innerText(),/입금 확인: 7,000원/);
   assert(calls.filter(x=>x.name===buyerRPC).every(x=>x.body.p_quote_id===childId&&x.body.p_lookup_token===fixtureToken&&!x.authorization));
   assert.equal(calls.filter(x=>x.name===adminRPC).length,0);
@@ -71,7 +71,7 @@ const trackURL=()=>base+'/?page=track&id='+childId+'&token='+fixtureToken;
   await page.locator('.bundle-flow .shipment-history summary').waitFor();
   assert.equal(await page.locator('.bundle-summary-card').count(),1);
   assert.equal(await page.locator('.ordercard').count(),0);
-  assert.equal(await page.locator('.bundle-flow .shipment-history tbody tr').count(),10);
+  assert.equal(await page.locator('.bundle-flow .shipment-history .shipment-timeline-item').count(),10);
   assert.doesNotMatch(await page.locator('.bundle-flow').innerText(),/서로 다른 송장번호/);
   await page.locator('[data-filter="flow_shipped"]').click();
   assert.equal(await page.locator('.bundle-summary-card').count(),1);
@@ -85,7 +85,7 @@ const trackURL=()=>base+'/?page=track&id='+childId+'&token='+fixtureToken;
   adminPayload={'1234-5678':rowWithoutInvoice};
   await gotoAdmin();
   await page.locator('.bundle-flow .shipment-history summary').waitFor();
-  assert.equal(await page.locator('.bundle-flow .shipment-history tbody tr').count(),10);
+  assert.equal(await page.locator('.bundle-flow .shipment-history .shipment-timeline-item').count(),10);
 
   // Logout then client-side buyer navigation retains JS order cache: it still must not leak.
   await page.locator('[data-tab="settings"]').click();

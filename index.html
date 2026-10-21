@@ -606,6 +606,13 @@ button.brand-home:focus-visible{outline:2px solid #111;outline-offset:5px}
 .shell:has(.dock) .back-to-top{bottom:calc(149px + env(safe-area-inset-bottom))}
 body:has(.overlay) .back-to-top{opacity:0;visibility:hidden;pointer-events:none}
 @media(prefers-reduced-motion:reduce){.back-to-top{transition:none}}
+
+/* Independent, administrator-controlled homepage hero photo. */
+.hero-photo-settings{margin-bottom:16px}
+.hero-settings-preview{width:100%;min-height:150px;max-height:330px;aspect-ratio:16/10;overflow:hidden;background:#f5f5f5;border:1px solid #e5e5e5;display:flex;align-items:center;justify-content:center;margin:13px 0 15px}
+.hero-settings-preview img{width:100%;height:100%;object-fit:cover;object-position:center;display:block}
+.hero-settings-placeholder{text-align:center;color:#777;font-size:12px;line-height:1.8;padding:18px}
+.hero-photo-settings input[type=file]{border-radius:2px;background:#fff;border:1px solid #ddd}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -648,7 +655,7 @@ window.GONGGU_CONFIG = {
 (()=>{'use strict';
 const $=(s,r=document)=>r.querySelector(s),esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),money=n=>n==null?'가격 미정':Number(n).toLocaleString('ko-KR')+'원',uuid=()=>crypto?.randomUUID?crypto.randomUUID():'demo-'+Date.now()+'-'+Math.random().toString(16).slice(2),now=()=>new Date().toISOString(),clone=x=>JSON.parse(JSON.stringify(x));
 const conf=window.GONGGU_CONFIG||{},url=String(conf.supabaseUrl||'').replace(/\/$/,''),key=String(conf.publishableKey||''),connected=/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(url)&&key.length>20;
-const PHOTO_PRIVATE='gq-request-photos',PHOTO_PUBLIC='gq-product-photos',requestImageCache=new Map();
+const PHOTO_PRIVATE='gq-request-photos',PHOTO_PUBLIC='gq-product-photos',HERO_PHOTO_PATH='homepage/main-banner.jpg',requestImageCache=new Map();
 const DEMO='gonggu-quote-v3-demo',CART='gonggu-quote-v3-cart',SESS='gonggu-quote-v3-session',TRACK='gonggu-quote-v3-tracks',CUSTOMER='gonggu-quote-v7-customer-key';
 const read=(k,f)=>{try{return JSON.parse(localStorage.getItem(k))??f}catch{return f}};
 const customerKey=(()=>{try{let v=localStorage.getItem(CUSTOMER);if(!v||!/^[0-9a-f-]{36}$/i.test(v)){v=crypto.randomUUID();localStorage.setItem(CUSTOMER,v)}return v}catch{return crypto.randomUUID()}})();
@@ -657,7 +664,7 @@ const demo=read(DEMO,initDemo());
 const saveDemo=()=>localStorage.setItem(DEMO,JSON.stringify(demo));
 let session=read(SESS,null),busy=false,refreshing=null;
 const p=new URLSearchParams(location.search);
-const state={page:['admin','track'].includes(p.get('page'))?p.get('page'):'shop',tab:'quotes',stores:[],products:[],requests:[],quotes:[],cart:read(CART,[]),modal:null,search:'',trackId:p.get('id')||'',trackToken:p.get('token')||'',tracking:null,receipts:read(TRACK,[]),notice:'',filter:'all',admin:false};
+const state={page:['admin','track'].includes(p.get('page'))?p.get('page'):'shop',tab:'quotes',stores:[],products:[],requests:[],quotes:[],cart:read(CART,[]),modal:null,search:'',trackId:p.get('id')||'',trackToken:p.get('token')||'',tracking:null,receipts:read(TRACK,[]),notice:'',filter:'all',admin:false,heroPhotoUrl:null};
 const app=$('#app');
 const fmtDate=x=>x?new Date(x).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):'';
 const previewOrderSum=o=>(o.items||[]).filter(i=>i.fulfillment!=='sold_out').reduce((s,i)=>s+(i.unit_price??0)*i.quantity,0);
@@ -845,6 +852,45 @@ async function loadCatalog(admin=false){if(!connected){state.stores=clone(demo.s
  const q=admin?'':'?active=eq.true',qp=admin?'':'?published=eq.true';const [st,pr]=await Promise.all([api('/rest/v1/gq_stores'+q,{admin}),api('/rest/v1/gq_products'+qp,{admin})]);state.stores=st;state.products=pr;}
 async function loadAdmin(){if(!connected){state.admin=true;state.stores=clone(demo.stores);state.products=clone(demo.products);state.requests=clone(demo.requests||[]);syncDemo();render();return}if(!session){state.admin=false;render();return}try{const auth=await rpc('gq_is_admin',{},true);if(!auth)throw Error('관리자 권한이 없습니다');state.admin=true;await loadCatalog(true);const [qq,ii,rr]=await Promise.all([api('/rest/v1/gq_quotes?select=*&order=created_at.desc',{admin:true}),api('/rest/v1/gq_quote_items?select=*&order=created_at.asc',{admin:true}),api('/rest/v1/gq_product_requests?select=*&order=created_at.desc',{admin:true})]);state.quotes=qq.map(q=>({...q,items:ii.filter(i=>i.quote_id===q.id)}));state.requests=rr;render();await loadAdminShipping();render()}catch(e){state.admin=false;render();throw e}}
 async function loadPublic(){await loadCatalog(false);render()}
+async function loadHeroPhoto(){
+ if(!connected)return;
+ const picture=new Image();
+ const checkUrl=publicPhotoUrl(HERO_PHOTO_PATH)+'?v='+Date.now();
+ await new Promise(resolve=>{
+  picture.onload=()=>{state.heroPhotoUrl=checkUrl;resolve()};
+  picture.onerror=()=>{state.heroPhotoUrl=null;resolve()};
+  picture.src=checkUrl;
+ });
+ if(state.page==='shop'||state.page==='admin')render();
+}
+async function saveHeroPhoto(file){
+ if(!state.admin||!connected||!session)throw Error('관리자 로그인 후 사진을 변경해 주세요.');
+ if(!file?.size)throw Error('메인 사진을 선택해 주세요.');
+ const jpeg=await toJpeg(file);
+ const token=await getToken();
+ if(!token)throw Error('관리자 로그인이 필요해요.');
+ const response=await fetch(url+'/storage/v1/object/'+PHOTO_PUBLIC+'/'+HERO_PHOTO_PATH,{
+  method:'POST',
+  headers:{apikey:key,Authorization:'Bearer '+token,'Content-Type':'image/jpeg','x-upsert':'true','cache-control':'0'},
+  body:jpeg
+ });
+ if(!response.ok){
+  let detail='사진 저장 실패';try{const data=await response.json();detail=data.message||data.error||detail}catch{}
+  throw Error(detail+' · 관리자 사진 저장 권한을 확인해 주세요.');
+ }
+ await loadHeroPhoto();
+}
+async function resetHeroPhoto(){
+ if(!state.admin||!connected||!session)throw Error('관리자 로그인이 필요해요.');
+ const token=await getToken();
+ const response=await fetch(url+'/storage/v1/object/'+PHOTO_PUBLIC+'/'+HERO_PHOTO_PATH,{method:'DELETE',headers:{apikey:key,Authorization:'Bearer '+token}});
+ if(!response.ok&&response.status!==404){
+  let detail='사진 초기화 실패';try{const data=await response.json();detail=data.message||data.error||detail}catch{}
+  throw Error(detail+' · 관리자 저장소 권한을 확인해 주세요.');
+ }
+ state.heroPhotoUrl=null;
+ render();
+}
 function syncDemo(){state.quotes=clone(demo.quotes.map(q=>({...q,items:demo.items.filter(i=>i.quote_id===q.id)})).sort((a,b)=>b.created_at.localeCompare(a.created_at)))}
 const selectedProd=id=>state.products.find(p=>p.id===id);
 const storeName=id=>state.stores.find(s=>s.id===id)?.name||'삭제된 가게';
@@ -936,8 +982,9 @@ function renderShop(){
  // No inferred categories, prices, stock levels or rankings: only active, published items.
  const products=state.stores.filter(s=>s.active).flatMap(s=>state.products.filter(p=>p.published&&p.store_id===s.id&&(!state.search||p.name.includes(state.search)||s.name.includes(state.search))).map(p=>({p,store:s})));
  const featured=state.stores.filter(s=>s.active).flatMap(s=>state.products.filter(p=>p.published&&p.store_id===s.id)).find(p=>p.image_url);
+ const banner=state.heroPhotoUrl||featured?.image_url||'';
  return `<section class="content shop-content">
- <div class="shop-editorial"><div class="shop-editorial-visual ${featured?'has-photo':''}">${featured?`<img src="${esc(featured.image_url)}" alt="미니예나 등록 상품" loading="eager">`:'<div class="shop-editorial-art" aria-hidden="true"></div>'}</div>
+ <div class="shop-editorial"><div class="shop-editorial-visual ${banner?'has-photo':''}">${banner?`<img src="${esc(banner)}" alt="미니예나 메인 사진" loading="eager">`:'<div class="shop-editorial-art" aria-hidden="true"></div>'}</div>
  <div class="shop-editorial-copy"><span class="shop-editorial-label">남대문 아동복 · 초저가 공동구매</span><h1>남대문 아동복<br>초저가 쇼핑</h1><p>남아·여아 아동복을 부담 없이 골라보세요.<br>가격은 견적 요청 후 안내해 드려요.</p><a class="shop-editorial-link" href="#catalog">상품 둘러보기 ↗</a></div></div>
  <div class="shop-benefits"><span><strong>남대문 아동복</strong>남아 · 여아 모두</span><span><strong>초저가 공동구매</strong>부담 없이 고르는 옷</span><span><strong>견적 확인 후 주문</strong>가격 안내 후 확정</span></div>
  <p class="shop-kicker">남대문 아동복 · 초저가 셀렉션</p>
@@ -1112,7 +1159,7 @@ function renderProductStats(){const groups=productBuyerGroups();return `<div cla
 function vendorGroups(){const g=new Map();for(const q of state.quotes.filter(q=>q.status==='confirmed'))for(const i of q.items){if(i.fulfillment==='sold_out')continue;const key=JSON.stringify([i.store_name,i.product_name,i.color,i.size]);let x=g.get(key);if(!x){x={store:i.store_name,product:i.product_name,color:i.color,size:i.size,qty:0,people:new Set()};g.set(key,x)}x.qty+=i.quantity;x.people.add(buyerLabel(q))}return [...g.values()].sort((a,b)=>a.store.localeCompare(b.store,'ko')||a.product.localeCompare(b.product,'ko'))}
 function vendorText(){return vendorGroups().map(x=>`${x.store} / ${x.product} / ${x.color} / ${x.size} ×${x.qty}`).join('\n')||'확정된 발주 내역이 없어요'}
 function renderVendorSummary(){const groups=vendorGroups(),stores=[...new Set(groups.map(g=>g.store))];return `<div class="sectiontitle"><div><h2>가게별 확정 발주</h2><div class="sub">최종 주문만 합산 · 품절 제외 · 상품 준비 중 포함</div></div><button class="btn sm secondary" data-action="copy-vendors">전체 복사</button></div>${stores.map(name=>{const a=groups.filter(g=>g.store===name);return `<div class="card"><h3>🏬 ${esc(name)}</h3>${a.map(x=>`<div class="line"><div class="row between"><div><b>${esc(x.product)}</b><div class="tiny">${esc(x.color)} / ${esc(x.size)} · ${esc([...x.people].join(', '))}</div></div><strong>${x.qty}개</strong></div></div>`).join('')}<div class="sumline total"><span>이 가게 발주 수량</span><strong>${a.reduce((s,i)=>s+i.qty,0)}개</strong></div></div>`}).join('')||'<div class="empty">아직 확정된 주문이 없어요.</div>'}`}
-function renderAdminSettings(){return `<div class="card"><h3>고객에게 보낼 주소</h3><p class="smallnote">상품 고르고 견적 요청을 보낼 수 있는 링크예요.</p><div class="info nooverflow">${esc(publicLink())}</div><button class="btn block" data-action="copy-shop-link">주문 링크 복사</button><div class="separator"></div><button class="btn block secondary" data-action="export-csv">주문 내역 CSV 저장</button>${connected?'<button class="btn block neutral" style="margin-top:9px" data-action="logout">관리자 로그아웃</button>':''}<p class="smallnote">가격·주문별 배송비·품절·상품 준비·입금 상태는 관리자 전용입니다. 아직 견적만 요청한 상품은 확정 주문 수량에 포함되지 않아요.</p></div>`}
+function renderAdminSettings(){return `<div class="card hero-photo-settings"><h3>메인 사진 관리</h3><p class="smallnote">쇼핑몰 첫 화면의 큰 사진을 직접 변경할 수 있어요. 상품 대표사진과는 별개예요.</p><div class="hero-settings-preview">${state.heroPhotoUrl?`<img src="${esc(state.heroPhotoUrl)}" alt="현재 메인 사진">`:'<div class="hero-settings-placeholder">별도 메인 사진이 없어요.<br>현재는 등록된 상품 사진이 자동으로 표시돼요.</div>'}</div><form id="hero-photo-form"><label class="label">새 메인 사진 선택<input type="file" name="hero_photo" id="hero-photo-input" accept="image/*" required></label><p class="smallnote">세로형 사진을 추천해요. 원본이 커도 자동으로 크기를 줄여 저장해요.</p><button class="btn block" type="submit">메인 사진 변경하기</button></form>${state.heroPhotoUrl?'<button class="btn block secondary" style="margin-top:9px" type="button" data-action="reset-hero-photo">기존 자동 사진으로 되돌리기</button>':''}</div><div class="card"><h3>고객에게 보낼 주소</h3><p class="smallnote">상품 고르고 견적 요청을 보낼 수 있는 링크예요.</p><div class="info nooverflow">${esc(publicLink())}</div><button class="btn block" data-action="copy-shop-link">주문 링크 복사</button><div class="separator"></div><button class="btn block secondary" data-action="export-csv">주문 내역 CSV 저장</button>${connected?'<button class="btn block neutral" style="margin-top:9px" data-action="logout">관리자 로그아웃</button>':''}<p class="smallnote">가격·주문별 배송비·품절·상품 준비·입금 상태는 관리자 전용입니다. 아직 견적만 요청한 상품은 확정 주문 수량에 포함되지 않아요.</p></div>`}
 function modal(){const m=state.modal;if(!m)return '';const wrap=(title,body)=>`<div class="overlay" id="overlay"><div class="sheet" role="dialog" aria-modal="true"><div class="sheethead"><h2>${title}</h2><button class="close" data-action="close">×</button></div>${body}</div></div>`;
 if(m.type==='edit-delivery'){
  const q=state.tracking;if(!q||q.status==='cancelled')return '';
@@ -1419,8 +1466,12 @@ if(a==='edit-delivery'){
  }
  if(window.prompt('실수 방지를 위해 ‘삭제’를 입력해 주세요.')!=='삭제')return;
  await deleteQuoteByAdmin(id);await loadAdmin();notif('주문을 영구 삭제했어요');
-}else if(a==='close'){state.modal=null;render()}else if(a==='pick-product'){modalOpen('pick',id)}else if(a==='open-cart'){modalOpen('cart')}else if(a==='cart-remove'){state.cart.splice(Number(b.dataset.i),1);saveCart();modalOpen('cart')}else if(a==='suggest-product'){modalOpen('suggest')}else if(a==='approve-request'){modalOpen('approve',id)}else if(a==='reject-request'){if(!window.confirm('이 상품 신청을 반려할까요?'))return;await rejectSuggestion(id);await loadAdmin();notif('신청을 반려했어요')}else if(a==='add-store'||a==='edit-store'){modalOpen('store',a==='edit-store'?id:null)}else if(a==='add-product'||a==='edit-product'){modalOpen('product',a==='edit-product'?id:null)}else if(a==='my-quotes'){modalOpen('myquotes')}else if(a==='open-saved'){const r=findTrack(id);if(r)await openTracking(r.id,r.token)}else if(a==='refresh'){await loadAdmin();notif('새로고침 완료')}else if(a==='copy-shop-link'){await copy(publicLink())}else if(a==='copy-request-notice'){await copy(requestAnnouncement(state.requests.find(r=>r.id===id)))}else if(a==='copy-product-notice'){await copy(productAnnouncement(state.products.find(p=>p.id===id)))}else if(a==='copy-quote-notice'){await copy(quoteAnnouncement(state.quotes.find(q=>q.id===id)))}else if(a==='copy-track'){await copy(trackLink(state.trackId,state.trackToken))}else if(a==='load-track'){await reloadTracking();notif('최신 상태를 불러왔어요')}else if(a==='copy-quote'){await copy(quoteText(state.quotes.find(q=>q.id===id)))}else if(a==='copy-customer-link'){const q=state.quotes.find(q=>q.id===id);await copy(trackLink(q.id,q.lookup_token))}else if(a==='publish-quote'){if(!window.confirm('가격 확인을 마쳤나요? 고객에게 견적을 보여줍니다.'))return;await adminPublish(id);await loadAdmin();notif('견적을 공개했어요')}else if(a==='confirm-quote'){if(!window.confirm('이 견적으로 최종 주문을 확정할까요?'))return;await confirmFinalQuote();notif('최종 주문이 확정됐어요!')}else if(a==='export-csv'){csv()}else if(a==='copy-vendors'){await copy(vendorText())}else if(a==='logout'){session=null;localStorage.removeItem(SESS);state.admin=false;render()} }catch(ex){notif(errorText(ex))}}
-async function submit(e){const f=e.target;if(!['pick','request','store-form','product-form','login','suggest-form','approve-form','bundle-form','edit-delivery-form'].includes(f.id)&&!f.dataset.price&&!f.dataset.payment&&!f.dataset.shipping&&!f.dataset.ship&&!f.dataset.bundleShip)return;e.preventDefault();if(busy)return;busy=true;const data=new FormData(f);try{if(f.dataset.bundleShip){
+}else if(a==='reset-hero-photo'){if(!window.confirm('기존 메인 사진을 지우고 자동 상품 사진으로 되돌릴까요?'))return;await resetHeroPhoto();notif('기존 상품 사진으로 되돌렸어요')}else if(a==='close'){state.modal=null;render()}else if(a==='pick-product'){modalOpen('pick',id)}else if(a==='open-cart'){modalOpen('cart')}else if(a==='cart-remove'){state.cart.splice(Number(b.dataset.i),1);saveCart();modalOpen('cart')}else if(a==='suggest-product'){modalOpen('suggest')}else if(a==='approve-request'){modalOpen('approve',id)}else if(a==='reject-request'){if(!window.confirm('이 상품 신청을 반려할까요?'))return;await rejectSuggestion(id);await loadAdmin();notif('신청을 반려했어요')}else if(a==='add-store'||a==='edit-store'){modalOpen('store',a==='edit-store'?id:null)}else if(a==='add-product'||a==='edit-product'){modalOpen('product',a==='edit-product'?id:null)}else if(a==='my-quotes'){modalOpen('myquotes')}else if(a==='open-saved'){const r=findTrack(id);if(r)await openTracking(r.id,r.token)}else if(a==='refresh'){await loadAdmin();notif('새로고침 완료')}else if(a==='copy-shop-link'){await copy(publicLink())}else if(a==='copy-request-notice'){await copy(requestAnnouncement(state.requests.find(r=>r.id===id)))}else if(a==='copy-product-notice'){await copy(productAnnouncement(state.products.find(p=>p.id===id)))}else if(a==='copy-quote-notice'){await copy(quoteAnnouncement(state.quotes.find(q=>q.id===id)))}else if(a==='copy-track'){await copy(trackLink(state.trackId,state.trackToken))}else if(a==='load-track'){await reloadTracking();notif('최신 상태를 불러왔어요')}else if(a==='copy-quote'){await copy(quoteText(state.quotes.find(q=>q.id===id)))}else if(a==='copy-customer-link'){const q=state.quotes.find(q=>q.id===id);await copy(trackLink(q.id,q.lookup_token))}else if(a==='publish-quote'){if(!window.confirm('가격 확인을 마쳤나요? 고객에게 견적을 보여줍니다.'))return;await adminPublish(id);await loadAdmin();notif('견적을 공개했어요')}else if(a==='confirm-quote'){if(!window.confirm('이 견적으로 최종 주문을 확정할까요?'))return;await confirmFinalQuote();notif('최종 주문이 확정됐어요!')}else if(a==='export-csv'){csv()}else if(a==='copy-vendors'){await copy(vendorText())}else if(a==='logout'){session=null;localStorage.removeItem(SESS);state.admin=false;render()} }catch(ex){notif(errorText(ex))}}
+async function submit(e){const f=e.target;if(!['hero-photo-form','pick','request','store-form','product-form','login','suggest-form','approve-form','bundle-form','edit-delivery-form'].includes(f.id)&&!f.dataset.price&&!f.dataset.payment&&!f.dataset.shipping&&!f.dataset.ship&&!f.dataset.bundleShip)return;e.preventDefault();if(busy)return;busy=true;const data=new FormData(f);try{if(f.id==='hero-photo-form'){
+ const file=data.get('hero_photo');
+ await saveHeroPhoto(file);
+ notif('메인 사진을 변경했어요. 쇼핑몰 첫 화면에서 확인해 주세요.');
+ }else if(f.dataset.bundleShip){
  const carrier=String(data.get('carrier')||'').trim(),tracking=String(data.get('tracking')||'').trim();
  if(carrier.length<1||carrier.length>60||!/^[-0-9A-Za-z ]{4,80}$/.test(tracking))throw Error('택배사와 송장번호를 확인해 주세요.');
  if(!window.confirm(`${carrier} / ${tracking}\n묶음 주문 전체에 같은 송장번호를 등록할까요?`))return;
@@ -1469,6 +1520,7 @@ app.addEventListener('submit',submit);app.addEventListener('change',change);app.
 window.addEventListener('scroll',updateScrollTop,{passive:true});
 window.addEventListener('popstate',()=>{const pp=new URLSearchParams(location.search);state.page=pp.get('page')||'shop';state.trackId=pp.get('id')||'';state.trackToken=pp.get('token')||'';state.modal=null;render();if(state.page==='track')reloadTracking().catch(e=>notif(errorText(e)));if(state.page==='admin')loadAdmin().catch(e=>notif(errorText(e)))});
 (async()=>{try{if(state.page==='admin')await loadAdmin();else if(state.page==='track'){await loadCatalog();await reloadTracking()}else await loadPublic()}catch(e){render();notif(errorText(e))}})();
+loadHeroPhoto().catch(e=>console.warn('메인 사진 조회 실패:',e));
 })();
 
 </script>

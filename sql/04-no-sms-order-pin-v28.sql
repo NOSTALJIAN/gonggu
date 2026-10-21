@@ -61,7 +61,7 @@ declare
  identity_hash text;
  attempts public.gq_pin_attempts_v28%rowtype;
  found jsonb:='[]'::jsonb;
- current_time timestamptz:=clock_timestamp();
+ v_now_at timestamptz:=clock_timestamp();
 begin
  if length(buyer) not between 1 and 40 or phone !~ '^01[0-9]{8,9}$'
   or p_lookup_pin is null or p_lookup_pin !~ '^[0-9]{6}$' then
@@ -70,7 +70,7 @@ begin
  identity_hash:=encode(extensions.digest('miniYena:pin:v28:'||phone,'sha256'),'hex');
  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(identity_hash,26881));
  select * into attempts from public.gq_pin_attempts_v28 where phone_hash=identity_hash for update;
- if attempts.locked_until>current_time then
+ if attempts.locked_until>v_now_at then
   raise exception '조회 시도가 많아요. 30분 후 다시 시도하거나 주문조회 링크를 이용해 주세요.' using errcode='42501';
  end if;
  select coalesce(jsonb_agg(jsonb_build_object(
@@ -91,14 +91,14 @@ begin
   delete from public.gq_pin_attempts_v28 where phone_hash=identity_hash;
  else
   insert into public.gq_pin_attempts_v28(phone_hash,failures,last_attempt_at,locked_until)
-  values(identity_hash,1,current_time,null)
+  values(identity_hash,1,v_now_at,null)
   on conflict(phone_hash) do update
-  set failures=case when public.gq_pin_attempts_v28.last_attempt_at<current_time-interval '30 minutes'
+  set failures=case when public.gq_pin_attempts_v28.last_attempt_at<v_now_at-interval '30 minutes'
     then 1 else least(public.gq_pin_attempts_v28.failures+1,1000) end,
-      last_attempt_at=current_time,
+      last_attempt_at=v_now_at,
       locked_until=case
-       when public.gq_pin_attempts_v28.last_attempt_at<current_time-interval '30 minutes' then null
-       when public.gq_pin_attempts_v28.failures>=4 then current_time+interval '30 minutes'
+       when public.gq_pin_attempts_v28.last_attempt_at<v_now_at-interval '30 minutes' then null
+       when public.gq_pin_attempts_v28.failures>=4 then v_now_at+interval '30 minutes'
        else null end;
  end if;
  return found;

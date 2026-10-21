@@ -753,6 +753,30 @@ body:has(.overlay) .back-to-top{opacity:0;visibility:hidden;pointer-events:none}
 .admin-private-product-values{display:flex;gap:8px 16px;flex-wrap:wrap;margin-top:7px}
 .admin-private-product-values span{font-size:11px;color:#777}
 .admin-private-product-values b{color:#262626;font-weight:830;margin-left:4px}
+
+/* Product and store management can be viewed separately on narrow phones. */
+.admin-catalog-panel{min-width:0}
+.admin-catalog-switch{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin:4px 0 21px}
+.admin-catalog-switch-btn{min-width:0;display:flex;align-items:center;justify-content:center;gap:7px;min-height:45px;border:1px solid #d9d9d9;border-radius:7px;background:#fff;color:#333;font-size:13px;font-weight:760;cursor:pointer}
+.admin-catalog-switch-btn.active{background:#171717;color:#fff;border-color:#171717}
+.admin-catalog-switch-btn span{font-size:11px;font-weight:650;opacity:.68}
+.admin-catalog-section-title{margin-top:2px}
+.admin-store-fold{border:1px solid #e3e3e3;border-radius:9px;padding:0 13px;background:#fff}
+.admin-store-fold summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:9px;padding:16px 2px;font-size:13px;font-weight:780;cursor:pointer}
+.admin-store-fold summary::-webkit-details-marker{display:none}
+.admin-store-fold summary:before{content:'▸';color:#444;font-size:16px;margin-right:3px}
+.admin-store-fold[open] summary:before{content:'▾'}
+.admin-store-fold-hint{font-weight:520;color:#888;font-size:11px;margin-left:auto}
+.admin-store-fold-inner{padding-top:13px;border-top:1px solid #eee}
+.admin-store-list-card{border-radius:9px}
+.admin-product-filter-list{display:flex;flex-wrap:wrap;gap:7px;margin:13px 0 10px}
+.admin-product-filter{border:1px solid #ddd;border-radius:20px;padding:10px 12px;background:#fff;color:#444;font-size:12px;font-weight:720;line-height:1.1;min-height:36px;cursor:pointer;white-space:nowrap}
+.admin-product-filter span{font-size:10px;opacity:.68;margin-left:4px}
+.admin-product-filter.active{background:#171717;border-color:#171717;color:#fff}
+.admin-product-filter-result{font-size:12px;color:#555;margin:2px 0 13px}
+.admin-product-filter-result span{font-size:11px;display:block;color:#888;margin-top:5px}
+.admin-catalog-switch-btn:focus-visible,.admin-product-filter:focus-visible,.admin-store-fold summary:focus-visible{outline:2px solid #333;outline-offset:3px}
+@media(max-width:390px){.admin-catalog-switch-btn{font-size:12px}.admin-product-filter{font-size:11px;padding:9px 10px;min-height:35px}.admin-store-fold{padding:0 11px}}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -804,7 +828,7 @@ const demo=read(DEMO,initDemo());
 const saveDemo=()=>localStorage.setItem(DEMO,JSON.stringify(demo));
 let session=read(SESS,null),busy=false,refreshing=null;
 const p=new URLSearchParams(location.search);
-const state={page:['admin','track'].includes(p.get('page'))?p.get('page'):'shop',tab:'quotes',stores:[],products:[],requests:[],quotes:[],cart:read(CART,[]),modal:null,search:'',trackId:p.get('id')||'',trackToken:p.get('token')||'',tracking:null,receipts:read(TRACK,[]),notice:'',filter:'all',admin:false,heroPhotoUrl:null,heroStoreId:null,dateGroupsOpen:{},productPrivate:{},productPrivateReady:false,adminPinIds:new Set(),phoneLookupReady:null,pinLookupNotice:''};
+const state={page:['admin','track'].includes(p.get('page'))?p.get('page'):'shop',tab:'quotes',stores:[],products:[],requests:[],quotes:[],cart:read(CART,[]),modal:null,search:'',trackId:p.get('id')||'',trackToken:p.get('token')||'',tracking:null,receipts:read(TRACK,[]),notice:'',filter:'all',admin:false,heroPhotoUrl:null,heroStoreId:null,dateGroupsOpen:{},adminCatalogView:'products',adminCatalogFilter:'all',productPrivate:{},productPrivateReady:false,adminPinIds:new Set(),phoneLookupReady:null,pinLookupNotice:''};
 const app=$('#app');
 const fmtDate=x=>x?new Date(x).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):'';
 const previewOrderSum=o=>(o.items||[]).filter(i=>i.fulfillment!=='sold_out').reduce((s,i)=>s+(i.unit_price??0)*i.quantity,0);
@@ -1283,23 +1307,53 @@ function renderAdminRequests(){
  </div>`).join('')}`;
 }
 function renderAdminProducts(){
- const visible=state.products.filter(p=>p.published&&state.stores.some(st=>st.id===p.store_id&&st.active)).length;
- const sold=state.products.filter(p=>p.is_sold_out).length;
- return `<div class="sectiontitle"><div><h2>남대문 거래처</h2><div class="sub">가게를 먼저 등록해요.</div></div><button class="btn sm" data-action="add-store">+ 가게</button></div>
- ${state.stores.map(st=>`<div class="card"><div class="row between"><b>🏬 ${esc(st.name)}</b><button class="btn sm secondary" data-action="edit-store" data-id="${esc(st.id)}">수정</button></div><div class="tiny">${state.products.filter(p=>p.store_id===st.id).length}개 상품 · ${st.active?'사용 중':'가게 숨김'}</div></div>`).join('')||'<div class="empty">가게부터 등록해 주세요.</div>'}
- <div class="sectiontitle" style="margin-top:22px"><div><h2>가게별 상품</h2><div class="sub">상품 수정 없이 품절과 전시 여부를 바로 변경해요.</div></div><button class="btn sm" data-action="add-product" ${!state.stores.length?'disabled':''}>+ 상품</button></div>
- <div class="product-manage-summary">전체 ${state.products.length}개 · 전시 중 ${visible}개 · 품절 ${sold}개</div>
- ${state.products.map(p=>{
- const storeActive=state.stores.some(st=>st.id===p.store_id&&st.active);
- const visibleToCustomer=p.published&&storeActive;
- return `<div class="card admin-product-card"><div class="row between"><div class="row"><span>${p.image_url?img(p,'product-thumb'):'🧸'}</span><div><div class="tiny">${esc(storeName(p.store_id))}</div><b>${esc(p.name)}</b></div></div><button class="btn sm secondary" data-action="edit-product" data-id="${esc(p.id)}">상품 수정</button></div>
- <div class="form-options">${Object.entries(p.options||{}).map(([c,ss])=>`<div><b>${esc(c)}</b> : ${ss.map(esc).join(', ')}</div>`).join('')}</div>
- ${privateProductSummary(p.id)}
- <div class="row wrap product-manage-status"><span class="chip ${visibleToCustomer?'green':'orange'}">${visibleToCustomer?'고객 전시 중':p.published?'가게 숨김으로 미노출':'전시 숨김'}</span><span class="chip ${p.is_sold_out?'red':'green'}">${p.is_sold_out?'품절':'판매 가능'}</span></div>
- <div class="product-manage-controls"><button type="button" class="btn sm ${p.is_sold_out?'secondary':'outline'}" data-action="toggle-product-soldout" data-id="${esc(p.id)}">${p.is_sold_out?'품절 해제':'품절 표시'}</button><button type="button" class="btn sm ${p.published?'secondary':'outline'}" data-action="toggle-product-display" data-id="${esc(p.id)}">${p.published?'전시 숨기기':'전시하기'}</button></div>
- ${p.published&&!storeActive?'<div class="smallnote">가게가 숨김 상태라 상품을 공개해도 고객에게는 보이지 않아요.</div>':''}
- ${visibleToCustomer&&!p.is_sold_out?`<div class="row wrap" style="margin-top:10px"><button class="btn sm secondary" data-action="copy-product-notice" data-id="${esc(p.id)}">📣 상품 안내문 복사</button></div>`:''}
- </div>`}).join('')||'<div class="empty">상품을 등록해 주세요.</div>'}`;
+ const all=state.products;
+ const isVisible=p=>Boolean(p.published&&state.stores.some(st=>st.id===p.store_id&&st.active));
+ const visibleCount=all.filter(isVisible).length, hiddenCount=all.length-visibleCount;
+ const soldCount=all.filter(p=>p.is_sold_out).length;
+ const filters=[
+  {key:'all',label:'전체',count:all.length},
+  {key:'shown',label:'전시 중',count:visibleCount},
+  {key:'hidden',label:'미전시',count:hiddenCount},
+  {key:'soldout',label:'품절',count:soldCount},
+  {key:'available',label:'판매 가능',count:all.length-soldCount}
+ ];
+ const activeFilter=filters.some(f=>f.key===state.adminCatalogFilter)?state.adminCatalogFilter:'all';
+ const shown=all.filter(p=>activeFilter==='all'||(activeFilter==='shown'&&isVisible(p))||(activeFilter==='hidden'&&!isVisible(p))||(activeFilter==='soldout'&&p.is_sold_out)||(activeFilter==='available'&&!p.is_sold_out));
+ const storesView=state.adminCatalogView==='stores';
+ return `<section class="admin-catalog-panel" id="admin-catalog">
+  <div class="admin-catalog-switch" role="group" aria-label="관리자 상품 및 거래처 화면 전환">
+   <button type="button" class="admin-catalog-switch-btn ${!storesView?'active':''}" data-action="catalog-view" data-view="products" aria-pressed="${!storesView}">상품 관리 <span>${all.length}</span></button>
+   <button type="button" class="admin-catalog-switch-btn ${storesView?'active':''}" data-action="catalog-view" data-view="stores" aria-pressed="${storesView}">거래처 관리 <span>${state.stores.length}</span></button>
+  </div>
+  ${storesView?`
+   <div class="sectiontitle admin-catalog-section-title"><div><h2>남대문 거래처</h2><div class="sub">상품과 분리해서 거래처를 관리해요.</div></div><button class="btn sm" data-action="add-store">+ 가게</button></div>
+   <details class="admin-store-fold" open>
+    <summary>등록된 거래처 ${state.stores.length}곳 <span class="admin-store-fold-hint">접기 · 펼치기</span></summary>
+    <div class="admin-store-fold-inner">
+     ${state.stores.map(st=>`<div class="card admin-store-list-card"><div class="row between"><b>🏬 ${esc(st.name)}</b><button class="btn sm secondary" data-action="edit-store" data-id="${esc(st.id)}">수정</button></div><div class="tiny">${all.filter(p=>p.store_id===st.id).length}개 상품 · ${st.active?'사용 중':'가게 숨김'}</div></div>`).join('')||'<div class="empty">아직 등록된 거래처가 없어요. + 가게에서 추가해 주세요.</div>'}
+    </div>
+   </details>
+  `:`
+   <div class="sectiontitle admin-catalog-section-title"><div><h2>가게별 상품</h2><div class="sub">상품 수정 없이 품절과 전시 여부를 바꿀 수 있어요.</div></div><button class="btn sm" data-action="add-product" ${!state.stores.length?'disabled':''}>+ 상품</button></div>
+   <div class="product-manage-summary">전체 ${all.length}개 · 전시 중 ${visibleCount}개 · 미전시 ${hiddenCount}개 · 품절 ${soldCount}개</div>
+   <div class="admin-product-filter-list" role="group" aria-label="상품 전시 및 품절 상태 필터">
+    ${filters.map(filter=>`<button type="button" class="admin-product-filter ${activeFilter===filter.key?'active':''}" data-action="catalog-filter" data-filter-state="${filter.key}" aria-pressed="${activeFilter===filter.key}">${filter.label} <span>${filter.count}</span></button>`).join('')}
+   </div>
+   <div class="admin-product-filter-result" aria-live="polite">${filters.find(f=>f.key===activeFilter).label} · ${shown.length}개 상품${activeFilter==='hidden'?'<span>거래처가 숨겨져 미노출되는 상품도 포함돼요.</span>':''}</div>
+   ${shown.map(p=>{
+    const storeActive=state.stores.some(st=>st.id===p.store_id&&st.active);
+    const visibleToCustomer=p.published&&storeActive;
+    return `<div class="card admin-product-card"><div class="row between"><div class="row"><span>${p.image_url?img(p,'product-thumb'):'🧸'}</span><div><div class="tiny">${esc(storeName(p.store_id))}</div><b>${esc(p.name)}</b></div></div><button class="btn sm secondary" data-action="edit-product" data-id="${esc(p.id)}">상품 수정</button></div>
+    <div class="form-options">${Object.entries(p.options||{}).map(([c,ss])=>`<div><b>${esc(c)}</b> : ${ss.map(esc).join(', ')}</div>`).join('')}</div>
+    ${privateProductSummary(p.id)}
+    <div class="row wrap product-manage-status"><span class="chip ${visibleToCustomer?'green':'orange'}">${visibleToCustomer?'고객 전시 중':p.published?'가게 숨김으로 미노출':'전시 숨김'}</span><span class="chip ${p.is_sold_out?'red':'green'}">${p.is_sold_out?'품절':'판매 가능'}</span></div>
+    <div class="product-manage-controls"><button type="button" class="btn sm ${p.is_sold_out?'secondary':'outline'}" data-action="toggle-product-soldout" data-id="${esc(p.id)}">${p.is_sold_out?'품절 해제':'품절 표시'}</button><button type="button" class="btn sm ${p.published?'secondary':'outline'}" data-action="toggle-product-display" data-id="${esc(p.id)}">${p.published?'전시 숨기기':'전시하기'}</button></div>
+    ${p.published&&!storeActive?'<div class="smallnote">가게가 숨김 상태라 상품을 공개해도 고객에게는 보이지 않아요.</div>':''}
+    ${visibleToCustomer&&!p.is_sold_out?`<div class="row wrap" style="margin-top:10px"><button class="btn sm secondary" data-action="copy-product-notice" data-id="${esc(p.id)}">📣 상품 안내문 복사</button></div>`:''}
+    </div>`}).join('')||'<div class="empty">이 필터에 해당하는 상품이 없어요.</div>'}
+  `}
+ </section>`;
 }
 // 상태 변경은 관리자 RPC에서 주문 단계·수령방식·상품 입고 여부까지 검증합니다.
 function adminWorkflow(q){
@@ -1973,6 +2027,23 @@ if(a==='generate-order-pin'){
 }
 if(a==='copy-admin-pin-message'){
  await copy(adminPINMessage());return;
+}
+if(a==='catalog-view'||a==='catalog-filter'){
+ if(!state.admin||state.page!=='admin'||state.tab!=='products')throw Error('관리자 상품 관리에서 사용할 수 있어요.');
+ if(a==='catalog-view'){
+  const view=b.dataset.view;
+  if(!['products','stores'].includes(view))throw Error('알 수 없는 관리 메뉴예요.');
+  state.adminCatalogView=view;
+ }else{
+  const filter=b.dataset.filterState;
+  if(!['all','shown','hidden','soldout','available'].includes(filter))throw Error('알 수 없는 상품 필터예요.');
+  state.adminCatalogView='products';
+  state.adminCatalogFilter=filter;
+ }
+ render();
+ const section=app.querySelector('#admin-catalog');
+ if(section)window.scrollTo({top:Math.max(0,window.scrollY+section.getBoundingClientRect().top-12),behavior:'auto'});
+ return;
 }
 if(a==='toggle-product-soldout'||a==='toggle-product-display'){
  const kind=a==='toggle-product-soldout'?'soldout':'display';

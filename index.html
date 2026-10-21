@@ -1420,8 +1420,15 @@ function phoneLookupMessage(){
 }
 async function checkPhoneLookupReady(){
  if(!connected){state.phoneLookupReady=false;return}
- try{state.phoneLookupReady=(await rpc('gq_phone_lookup_ready_v27',{}))===true}
- catch(error){state.phoneLookupReady=false;console.warn('인증형 주문조회 준비 중',error)}
+ try{
+  // The database lookup alone is not enough: customers need real SMS delivery.
+  // Supabase Auth exposes the enabled phone provider in its public settings.
+  const settingsResponse=await fetch(url+'/auth/v1/settings',{headers:{apikey:key},signal:AbortSignal.timeout(8000)});
+  if(!settingsResponse.ok)throw Error('휴대폰 인증 설정을 확인하지 못했어요.');
+  const authSettings=await settingsResponse.json();
+  const providerReady=authSettings?.external?.phone===true;
+  state.phoneLookupReady=providerReady&&(await rpc('gq_phone_lookup_ready_v27',{}))===true;
+ }catch(error){state.phoneLookupReady=false;console.warn('휴대폰 인증 조회 기능 준비 중',error)}
  if(state.modal?.type==='myquotes')render();
 }
 async function phoneAuthRequest(path,payload,token=''){

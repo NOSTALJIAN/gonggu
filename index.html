@@ -181,6 +181,11 @@
 .bundle-delete button{margin-top:3px}
 @media(max-width:375px){.bundle-ledger-row .controlinline{grid-template-columns:minmax(0,1fr)}.bundle-price-item .controlinline .btn{width:100%}}
 
+
+/* v24: 묶음배송의 송장 및 진행단계는 카드 상단 한곳에서 관리 */
+.bundle-flow .btn{margin-top:9px;width:100%}
+.bundle-items .bundle-item-side:empty{display:none}
+.bundle-flow .workflow-stage{max-width:100%;white-space:normal;text-align:right}
 </style>
 <title>미니예나 · 묶음배송 한 카드</title>
 <!-- OneSignal Web SDK v16. App ID는 공개용 식별자이며 발송용 REST API 키는 절대 이 파일에 저장하지 마세요. -->
@@ -421,23 +426,50 @@ function bundledQuoteGroups(visible){
   .sort((a,b)=>Math.max(...b.map(q=>Date.parse(q.created_at)||0))-Math.max(...a.map(q=>Date.parse(q.created_at)||0)));
 }
 function bundleWorkControls(group){
- const good=group.every(q=>q.status==='confirmed');
- if(!good)return '';
- const method=group[0].delivery_method;
- const sameMethod=group.every(q=>q.delivery_method===method);
+ const root=group.find(q=>q.id===bundleRootId(q))||group[0];
+ const method=root.delivery_method;
+ const sameMethod=group.every(q=>q.delivery_method===method||!q.delivery_method);
  const stages=group.map(workflowStage);
- const notStarted=group.some(q=>workflowStage(q)==='new');
- let action='';
- if(notStarted&&group.every(q=>['new','preparing'].includes(workflowStage(q)))){
-  action=`<button class="btn" data-action="bundle-stage" data-id="${group[0].id}" data-stage="preparing">묶음 상품 준비 시작</button>`;
- }else if(stages.every(st=>st==='preparing')&&sameMethod&&(method==='courier'?group.every(q=>saleItems(q).length>0):group.every(allReceived))){
-  if(method==='pickup')action=`<button class="btn" data-action="bundle-stage" data-id="${group[0].id}" data-stage="pickup_ready">묶음 픽업 대기 처리</button>`;
-  if(method==='courier')action=`<form data-bundle-ship="${group[0].id}" class="workflow-ship"><label class="label">택배사<input name="carrier" required maxlength="60" placeholder="예: CJ대한통운"></label><label class="label">송장번호<input name="tracking" required maxlength="80" placeholder="송장번호를 입력하세요"></label><button type="submit" class="btn">묶음 송장 등록 · 배송 중</button></form>`;
- }else if(sameMethod&&((method==='pickup'&&stages.every(st=>st==='pickup_ready'))||(method==='courier'&&stages.every(st=>st==='shipped')))){
-  action=`<button class="btn" data-action="bundle-stage" data-id="${group[0].id}" data-stage="completed">묶음 ${method==='pickup'?'픽업':'배송'} 완료</button>`;
+ const ready=group.every(q=>q.status==='confirmed');
+ if(!ready)return '<div class="smallnote">묶음 안에 아직 확정되지 않은 주문이 있어요.</div>';
+ const activeShipment=group.filter(q=>['shipped','completed'].includes(workflowStage(q))&&q.tracking_number&&q.tracking_carrier);
+ const shipments=[...new Set(activeShipment.map(q=>`${String(q.tracking_carrier).trim()}|${String(q.tracking_number).trim()}`))];
+ const shipped=group.some(q=>workflowStage(q)==='shipped');
+ const incomplete=group.some(q=>!['shipped','completed'].includes(workflowStage(q)));
+ const allCompleted=stages.every(st=>st==='completed');
+ const allPreparing=stages.every(st=>['new','preparing'].includes(st));
+ const uniform=(new Set(stages)).size===1;
+ let action=''; let note='';
+ if(!sameMethod){
+  note='묶음 주문의 수령방식이 서로 달라요. 주문별 수령방식을 확인한 후 변경해 주세요.';
+ }else if(method==='courier' && shipments.length>1){
+  note='⚠️ 묶음 주문에 서로 다른 송장번호가 등록돼 있어 자동으로 합치지 않았어요. 주문별 송장을 확인해 주세요.';
+ }else if(method==='courier' && shipments.length===1 && incomplete){
+  const {tracking_carrier:carrier,tracking_number:tracking}=activeShipment[0];
+  note=`기존 송장 ${esc(String(carrier))} · ${esc(String(tracking))}이 일부 주문에만 들어 있어요. 묶음 배송 중으로 맞춰 주세요.`;
+  action=`<button class="btn" data-action="bundle-sync-shipment" data-id="${root.id}">묶음배송 전체에 송장·배송 중 적용</button>`;
+ }else if(allPreparing){
+  if(stages.some(st=>st==='new')){
+   action=`<button class="btn" data-action="bundle-stage" data-id="${root.id}" data-stage="preparing">묶음 상품 준비 시작</button>`;
+  }else if(method==='courier' && group.some(q=>saleItems(q).length>0)){
+   action=`<form data-bundle-ship="${root.id}" class="workflow-ship"><label class="label">택배사<input name="carrier" required maxlength="60" value="롯데택배" placeholder="롯데택배"></label><label class="label">송장번호<input name="tracking" required maxlength="80" placeholder="송장번호를 입력하세요"></label><button type="submit" class="btn">묶음 송장 등록 · 배송 중</button></form>`;
+  }else if(method==='pickup' && group.every(allReceived)){
+   action=`<button class="btn" data-action="bundle-stage" data-id="${root.id}" data-stage="pickup_ready">묶음 픽업 대기 처리</button>`;
+  }else{note='상품별 입고·품절 상태를 확인해 주세요.'}
+ }else if(method==='courier' && !incomplete && shipped && shipments.length===1){
+  action=`<button class="btn" data-action="bundle-stage" data-id="${root.id}" data-stage="completed">묶음 배송 완료 처리</button>`;
+ }else if(method==='pickup' && stages.every(st=>st==='pickup_ready')){
+  action=`<button class="btn" data-action="bundle-stage" data-id="${root.id}" data-stage="completed">묶음 픽업 완료 처리</button>`;
+ }else if(!allCompleted){
+  note='진행단계가 서로 달라요. 묶음 진행 상태를 확인해 주세요.';
  }
- const stageNames=[...new Set(group.map(workflowLabel))].join(' · ');
- return `<div class="bundle-flow"><div class="row between wrap"><b>📦 묶음 진행관리</b><span class="workflow-stage">${esc(stageNames)}</span></div>${action||'<div class="smallnote">품목별 입고·품절과 주문별 정산 상태를 확인해 주세요. 필요한 경우 아래 주문별 상세에서 조정할 수 있어요.</div>'}</div>`;
+ const label=allCompleted?(method==='courier'?'배송 완료':method==='pickup'?'픽업 완료':'완료'):
+   method==='courier'&&shipments.length===1&&incomplete?'송장·상태 동기화 필요':
+   uniform?workflowLabel(group[0]):
+   method==='courier'&&shipments.length===1?'배송 중':
+   '주문별 상태 확인 필요';
+ const shipmentDisplay=method==='courier'&&shipments.length===1?`<div class="tiny" style="margin:7px 0">📦 송장: ${esc(activeShipment[0].tracking_carrier)} · ${esc(activeShipment[0].tracking_number)}${isLotteShipment(activeShipment[0])?' · 롯데 자동조회':''}</div>`:'';
+ return `<div class="bundle-flow"><div class="row between wrap"><b>📦 묶음 진행관리</b><span class="workflow-stage">${esc(label)}</span></div>${shipmentDisplay}${note?`<div class="smallnote" style="margin:9px 0">${note}</div>`:''}${action||(!note?'<div class="smallnote">묶음 배송상태를 한 번에 관리해요.</div>':'')}</div>`;
 }
 // 한 묶음 안에서는 과거 주문 카드를 다시 그리지 않습니다.
 // 품목 상태는 위의 한 목록에서 처리하고, 가격/입금 등 개별 회계 정보만 접어서 표시합니다.
@@ -473,7 +505,7 @@ function renderBundleCard(group){
  return `<div class="card bundle-summary-card"><div class="row between wrap"><div><h3>${esc(root.buyer_name)} <span class="chip purple">아기: ${esc(root.baby_name||'미입력')}</span></h3><div class="tiny">${esc(root.contact||'연락처 없음')} · ${group.length}건 묶음</div></div><span class="bundle-title-tag">📦 묶음배송</span></div>
  <div class="bundle-info"><b>${esc(deliveryLabel(root))}</b> · 주문 ${group.length}건 / 상품 ${qty}개<div class="tiny">${root.delivery_method==='courier'?esc(addressLabel(root)):'배송비는 묶음 대표 주문 기준 한 번만 적용돼요.'}</div></div>
  ${issue?'<div class="noticefail">변경 또는 취소 요청이 있어요. 아래 주문별 상세를 열어 확인해 주세요.</div>':''}
- <div class="bundle-items">${group.flatMap(q=>q.items.map(i=>`<div class="bundle-item"><div class="bundle-item-main"><b>${esc(i.store_name)} · ${esc(i.product_name)}</b><div class="tiny">${esc(i.color)} / ${esc(i.size)} · ${i.quantity}개${q===root?'':' · 추가 주문'}</div></div><div class="bundle-item-side"><strong>${i.unit_price==null?'가격 미정':money(i.unit_price*i.quantity)}</strong>${q.status==='confirmed'?`${itemFulfillmentControl(q,i)}`:`<small>${esc(statusLabel[q.status]||q.status)}</small>`}</div></div>`)).join('')}</div>
+ <div class="bundle-items">${group.flatMap(q=>q.items.map(i=>`<div class="bundle-item"><div class="bundle-item-main"><b>${esc(i.store_name)} · ${esc(i.product_name)}</b><div class="tiny">${esc(i.color)} / ${esc(i.size)} · ${i.quantity}개${q===root?'':' · 추가 주문'}</div></div><div class="bundle-item-side"><strong>${i.unit_price==null?'가격 미정':money(i.unit_price*i.quantity)}</strong>${q.status==='confirmed'?(i.fulfillment==='sold_out'?'<span class="workflow-stage">품절</span>':group.every(x=>['new','preparing'].includes(workflowStage(x)))?itemFulfillmentControl(q,i):''):`<small>${esc(statusLabel[q.status]||q.status)}</small>`}</div></div>`)).join('')}</div>
  <div class="sumline"><span>총 상품금액</span><strong>${group.some(unknown)?'일부 가격 미정':money(group.reduce((n,q)=>n+previewOrderSum(q),0))}</strong></div><div class="sumline"><span>배송비 합계 (한 번)</span><strong>${money(group.reduce((n,q)=>n+appliedShipping(q),0))}</strong></div><div class="sumline total"><span>묶음 결제금액</span><strong>${costKnown?money(due):'견적 작성 중'}</strong></div>
  <div class="smallnote">입금 합계 ${money(paid)} · 환불 완료 ${money(refunded)} · 잔여 결제액 ${money(Math.max(0,due-paid+refunded))}</div>
  ${refundCheck?`<div class="noticefail">주문별로 추가 확인할 환불액 합계 ${money(refundCheck)}. 실제 환불 후 주문별 정산에 기록해 주세요.</div>`:''}
@@ -605,19 +637,30 @@ async function adminBundleStage(id,stage,carrier='',tracking=''){
  const q=state.quotes.find(x=>x.id===id);
  if(!q)throw Error('묶음배송 주문을 찾을 수 없어요.');
  const rootId=bundleRootId(q);
- const targets=state.quotes.filter(x=>bundleRootId(x)===rootId && x.status!=='cancelled');
+ const targets=state.quotes.filter(x=>bundleRootId(x)===rootId&&x.status!=='cancelled');
  if(targets.length<2||targets.some(x=>x.status!=='confirmed'))throw Error('확정된 묶음배송 주문만 일괄 변경할 수 있어요.');
- const method=targets[0].delivery_method;
- const same=targets.every(x=>x.delivery_method===method);
- const stages=targets.map(workflowStage);
- if(stage==='preparing'&&!targets.every(x=>['new','preparing'].includes(workflowStage(x))))throw Error('이미 출고 중인 주문이 있어요. 주문별 상세에서 처리해 주세요.');
- if(stage==='pickup_ready'&&(!same||method!=='pickup'||!stages.every(st=>st==='preparing')||!targets.every(allReceived)))throw Error('모든 묶음 상품이 입고되고 직접수령이어야 해요.');
- if(stage==='shipped'&&(!same||method!=='courier'||!stages.every(st=>st==='preparing')||!targets.every(q=>saleItems(q).length>0)||!carrier.trim()||!tracking.trim()))throw Error('모든 묶음 상품이 입고되고 택배수령이어야 송장을 등록할 수 있어요.');
- if(stage==='completed'&&(!same||!((method==='pickup'&&stages.every(st=>st==='pickup_ready'))||(method==='courier'&&stages.every(st=>st==='shipped')))))throw Error('묶음 주문 전체가 픽업 대기 또는 배송 중이어야 완료할 수 있어요.');
- const actions=stage==='preparing'?targets.filter(x=>workflowStage(x)==='new'):targets;
- let done=0;
- try{for(const item of actions){await adminWorkflowStage(item.id,stage,carrier,tracking);done++;}}
- catch(e){await loadAdmin();throw Error('묶음 주문 '+done+'/'+actions.length+'건까지만 변경됐어요. 새로고침 후 주문별 상태를 확인해 주세요. '+errorText(e));}
+ if(connected){
+  return rpc('gq_set_bundle_stage_v24',{
+   p_quote_id:rootId,p_stage:stage,p_carrier:carrier||null,p_tracking_number:tracking||null
+  },true);
+ }
+ // 오프라인 체험 모드 역시 두 주문의 진행 단계를 함께 변경합니다.
+ const root=targets.find(x=>x.id===rootId)||targets[0];
+ for(const x of targets){
+  const row=demo.quotes.find(y=>y.id===x.id);
+  if(!row)continue;
+  const before=workflowStage(x);
+  if(!row.delivery_method&&root.delivery_method)row.delivery_method=root.delivery_method;
+  if(stage==='shipped'){
+   if(!['new','preparing','shipped'].includes(before))throw Error('이미 완료된 주문이 있어요.');
+   if(before==='shipped'&&row.tracking_number!==tracking)throw Error('서로 다른 송장번호가 있어요.');
+   row.tracking_carrier=carrier;row.tracking_number=tracking;
+   demo.items.filter(i=>i.quote_id===x.id&&['ordered','delayed'].includes(i.fulfillment)).forEach(i=>i.fulfillment='received');
+  }
+  if(stage==='completed')demo.items.filter(i=>i.quote_id===x.id&&i.fulfillment==='received').forEach(i=>i.fulfillment='delivered');
+  row.workflow_stage=stage;row.workflow_updated_at=now();
+ }
+ saveDemo();return true;
 }
 function workflowNotice(q){
  if(!q||q.status!=='confirmed')throw Error('확정 주문을 선택해 주세요.');
@@ -714,6 +757,17 @@ function manualKoreanAddress(button){
 }
 async function click(e){const pg=e.target.closest('[data-page]');if(pg){goto(pg.dataset.page);return}const b=e.target.closest('[data-action]');if(!b)return;const a=b.dataset.action,id=b.dataset.id;try{
 if(a==='enable-admin-push'){await miniEnablePush();notif('푸시 알림 허용 완료! OneSignal에서 테스트 알림을 보내 보세요.');return;}
+if(a==='bundle-sync-shipment'){
+ const q=state.quotes.find(x=>x.id===id);
+ if(!q)throw Error('묶음 주문을 찾지 못했어요.');
+ const grp=state.quotes.filter(x=>bundleRootId(x)===bundleRootId(q)&&x.status==='confirmed');
+ const shipments=grp.filter(x=>['shipped','completed'].includes(workflowStage(x))&&x.tracking_carrier&&x.tracking_number);
+ const pairs=[...new Set(shipments.map(x=>`${String(x.tracking_carrier).trim()}|${String(x.tracking_number).trim()}`))];
+ if(pairs.length!==1)throw Error('대표 송장번호가 하나가 아니에요. 먼저 주문별 송장을 확인해 주세요.');
+ const carrier=String(shipments[0].tracking_carrier).trim(),tracking=String(shipments[0].tracking_number).trim();
+ if(!window.confirm(`이미 발송한 묶음 주문이 맞나요?\n${carrier} / ${tracking}\n묶인 모든 주문에 송장번호와 배송 중 상태를 한꺼번에 적용할까요?`))return;
+ await adminBundleStage(id,'shipped',carrier,tracking);await loadAdmin();notif('묶음 주문의 송장번호와 배송상태를 일치시켰어요.');return;
+}
 if(a==='bundle-stage'){
  const stage=b.dataset.stage;
  if(!window.confirm(stage==='completed'?'묶음 주문의 모든 상품 전달을 확인했나요?':stage==='pickup_ready'?'묶음 상품 모두 입고되어 픽업 대기로 전환할까요?':'묶음 주문의 상품 준비를 시작할까요?'))return;

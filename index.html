@@ -680,7 +680,7 @@ window.GONGGU_CONFIG = {
 (()=>{'use strict';
 const $=(s,r=document)=>r.querySelector(s),esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),money=n=>n==null?'가격 미정':Number(n).toLocaleString('ko-KR')+'원',uuid=()=>crypto?.randomUUID?crypto.randomUUID():'demo-'+Date.now()+'-'+Math.random().toString(16).slice(2),now=()=>new Date().toISOString(),clone=x=>JSON.parse(JSON.stringify(x));
 const conf=window.GONGGU_CONFIG||{},url=String(conf.supabaseUrl||'').replace(/\/$/,''),key=String(conf.publishableKey||''),connected=/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(url)&&key.length>20;
-const PHOTO_PRIVATE='gq-request-photos',PHOTO_PUBLIC='gq-product-photos',HERO_PHOTO_PATH='homepage/main-banner.jpg',requestImageCache=new Map();
+const PHOTO_PRIVATE='gq-request-photos',PHOTO_PUBLIC='gq-product-photos',HERO_META_PREFIX='__MINIYENA_HERO_V1__:',requestImageCache=new Map();
 const DEMO='gonggu-quote-v3-demo',CART='gonggu-quote-v3-cart',SESS='gonggu-quote-v3-session',TRACK='gonggu-quote-v3-tracks',CUSTOMER='gonggu-quote-v7-customer-key';
 const read=(k,f)=>{try{return JSON.parse(localStorage.getItem(k))??f}catch{return f}};
 const customerKey=(()=>{try{let v=localStorage.getItem(CUSTOMER);if(!v||!/^[0-9a-f-]{36}$/i.test(v)){v=crypto.randomUUID();localStorage.setItem(CUSTOMER,v)}return v}catch{return crypto.randomUUID()}})();
@@ -689,7 +689,7 @@ const demo=read(DEMO,initDemo());
 const saveDemo=()=>localStorage.setItem(DEMO,JSON.stringify(demo));
 let session=read(SESS,null),busy=false,refreshing=null;
 const p=new URLSearchParams(location.search);
-const state={page:['admin','track'].includes(p.get('page'))?p.get('page'):'shop',tab:'quotes',stores:[],products:[],requests:[],quotes:[],cart:read(CART,[]),modal:null,search:'',trackId:p.get('id')||'',trackToken:p.get('token')||'',tracking:null,receipts:read(TRACK,[]),notice:'',filter:'all',admin:false,heroPhotoUrl:null,dateGroupsOpen:{}};
+const state={page:['admin','track'].includes(p.get('page'))?p.get('page'):'shop',tab:'quotes',stores:[],products:[],requests:[],quotes:[],cart:read(CART,[]),modal:null,search:'',trackId:p.get('id')||'',trackToken:p.get('token')||'',tracking:null,receipts:read(TRACK,[]),notice:'',filter:'all',admin:false,heroPhotoUrl:null,heroStoreId:null,dateGroupsOpen:{}};
 const app=$('#app');
 const fmtDate=x=>x?new Date(x).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):'';
 const previewOrderSum=o=>(o.items||[]).filter(i=>i.fulfillment!=='sold_out').reduce((s,i)=>s+(i.unit_price??0)*i.quantity,0);
@@ -905,47 +905,46 @@ async function loadAdminShipping(){
  for(const q of quotes)applyShippingDetails(q,byInvoice.get(normalizedInvoice(q.tracking_number)));
 }
 
-async function loadCatalog(admin=false){if(!connected){state.stores=clone(demo.stores.filter(x=>admin||x.active));state.products=clone(demo.products.filter(x=>admin||x.published));return}
- const q=admin?'':'?active=eq.true',qp=admin?'':'?published=eq.true';const [st,pr]=await Promise.all([api('/rest/v1/gq_stores'+q,{admin}),api('/rest/v1/gq_products'+qp,{admin})]);state.stores=st;state.products=pr;}
+function applyHeroSettings(stores){
+ // Keep the public banner-setting record out of real vendor and product lists.
+ const configs=stores.filter(x=>String(x.name||'').startsWith(HERO_META_PREFIX));
+ const setting=configs[0]||null;
+ const photoPath=setting?String(setting.name).slice(HERO_META_PREFIX.length):'';
+ state.heroStoreId=setting?.id||null;
+ state.heroPhotoUrl=/^covers\/[A-Za-z0-9-]{8,80}\.jpg$/.test(photoPath)?publicPhotoUrl(photoPath):null;
+ return stores.filter(x=>!String(x.name||'').startsWith(HERO_META_PREFIX));
+}
+async function loadCatalog(admin=false){
+ if(!connected){state.stores=applyHeroSettings(clone(demo.stores.filter(x=>admin||x.active)));state.products=clone(demo.products.filter(x=>admin||x.published));return}
+ const q=admin?'':'?active=eq.true',qp=admin?'':'?published=eq.true';
+ const [st,pr]=await Promise.all([api('/rest/v1/gq_stores'+q,{admin}),api('/rest/v1/gq_products'+qp,{admin})]);
+ state.stores=applyHeroSettings(st);
+ state.products=pr;
+}
 async function loadAdmin(){if(!connected){state.admin=true;state.stores=clone(demo.stores);state.products=clone(demo.products);state.requests=clone(demo.requests||[]);syncDemo();render();return}if(!session){state.admin=false;render();return}try{const auth=await rpc('gq_is_admin',{},true);if(!auth)throw Error('관리자 권한이 없습니다');state.admin=true;await loadCatalog(true);const [qq,ii,rr]=await Promise.all([api('/rest/v1/gq_quotes?select=*&order=created_at.desc',{admin:true}),api('/rest/v1/gq_quote_items?select=*&order=created_at.asc',{admin:true}),api('/rest/v1/gq_product_requests?select=*&order=created_at.desc',{admin:true})]);state.quotes=qq.map(q=>({...q,items:ii.filter(i=>i.quote_id===q.id)}));state.requests=rr;render();await loadAdminShipping();render()}catch(e){state.admin=false;render();throw e}}
 async function loadPublic(){await loadCatalog(false);render()}
-async function loadHeroPhoto(){
- if(!connected)return;
- const picture=new Image();
- const checkUrl=publicPhotoUrl(HERO_PHOTO_PATH)+'?v='+Date.now();
- await new Promise(resolve=>{
-  picture.onload=()=>{state.heroPhotoUrl=checkUrl;resolve()};
-  picture.onerror=()=>{state.heroPhotoUrl=null;resolve()};
-  picture.src=checkUrl;
- });
- if(state.page==='shop'||state.page==='admin')render();
-}
 async function saveHeroPhoto(file){
  if(!state.admin||!connected||!session)throw Error('관리자 로그인 후 사진을 변경해 주세요.');
  if(!file?.size)throw Error('메인 사진을 선택해 주세요.');
- const jpeg=await toJpeg(file);
- const token=await getToken();
- if(!token)throw Error('관리자 로그인이 필요해요.');
- const response=await fetch(url+'/storage/v1/object/'+PHOTO_PUBLIC+'/'+HERO_PHOTO_PATH,{
-  method:'POST',
-  headers:{apikey:key,Authorization:'Bearer '+token,'Content-Type':'image/jpeg','x-upsert':'true','cache-control':'0'},
-  body:jpeg
- });
- if(!response.ok){
-  let detail='사진 저장 실패';try{const data=await response.json();detail=data.message||data.error||detail}catch{}
-  throw Error(detail+' · 관리자 사진 저장 권한을 확인해 주세요.');
+ // Reuse normal covers/ insertion instead of an unauthorized homepage/ upsert.
+ const photoPath=await uploadPhoto(file,PHOTO_PUBLIC,true);
+ const settings={name:HERO_META_PREFIX+photoPath,active:true};
+ try {
+  const suffix=state.heroStoreId?'?id=eq.'+encodeURIComponent(state.heroStoreId):'';
+  await api('/rest/v1/gq_stores'+suffix,{method:state.heroStoreId?'PATCH':'POST',body:settings,admin:true});
+ }catch(error){
+  throw Error('사진은 업로드됐지만 메인 사진 설정을 저장하지 못했어요: '+(error.message||error));
  }
- await loadHeroPhoto();
+ await loadCatalog(true);
+ if(!state.heroPhotoUrl)throw Error('설정을 저장했지만 새 메인 사진이 확인되지 않아요.');
+ render();
 }
 async function resetHeroPhoto(){
  if(!state.admin||!connected||!session)throw Error('관리자 로그인이 필요해요.');
- const token=await getToken();
- const response=await fetch(url+'/storage/v1/object/'+PHOTO_PUBLIC+'/'+HERO_PHOTO_PATH,{method:'DELETE',headers:{apikey:key,Authorization:'Bearer '+token}});
- if(!response.ok&&response.status!==404){
-  let detail='사진 초기화 실패';try{const data=await response.json();detail=data.message||data.error||detail}catch{}
-  throw Error(detail+' · 관리자 저장소 권한을 확인해 주세요.');
- }
- state.heroPhotoUrl=null;
+ if(!state.heroStoreId)throw Error('변경한 메인 사진이 없어요.');
+ await api('/rest/v1/gq_stores?id=eq.'+encodeURIComponent(state.heroStoreId),
+  {method:'PATCH',body:{name:HERO_META_PREFIX+'off',active:true},admin:true});
+ await loadCatalog(true);
  render();
 }
 function syncDemo(){state.quotes=clone(demo.quotes.map(q=>({...q,items:demo.items.filter(i=>i.quote_id===q.id)})).sort((a,b)=>b.created_at.localeCompare(a.created_at)))}
@@ -1624,7 +1623,7 @@ app.addEventListener('submit',submit);app.addEventListener('change',change);app.
 window.addEventListener('scroll',updateScrollTop,{passive:true});
 window.addEventListener('popstate',()=>{const pp=new URLSearchParams(location.search);state.page=pp.get('page')||'shop';state.trackId=pp.get('id')||'';state.trackToken=pp.get('token')||'';state.modal=null;render();if(state.page==='track')reloadTracking().catch(e=>notif(errorText(e)));if(state.page==='admin')loadAdmin().catch(e=>notif(errorText(e)))});
 (async()=>{try{if(state.page==='admin')await loadAdmin();else if(state.page==='track'){await loadCatalog();await reloadTracking()}else await loadPublic()}catch(e){render();notif(errorText(e))}})();
-loadHeroPhoto().catch(e=>console.warn('메인 사진 조회 실패:',e));
+// Banner metadata is loaded with public catalog results.
 })();
 
 </script>

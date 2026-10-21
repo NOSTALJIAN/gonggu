@@ -613,6 +613,31 @@ body:has(.overlay) .back-to-top{opacity:0;visibility:hidden;pointer-events:none}
 .hero-settings-preview img{width:100%;height:100%;object-fit:cover;object-position:center;display:block}
 .hero-settings-placeholder{text-align:center;color:#777;font-size:12px;line-height:1.8;padding:18px}
 .hero-photo-settings input[type=file]{border-radius:2px;background:#fff;border:1px solid #ddd}
+
+/* Collapsible date sections for admin order management. */
+.admin-date-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:17px 0 12px}
+.admin-date-toolbar>div:first-child{display:flex;flex-direction:column;gap:2px}
+.admin-date-toolbar strong{font-size:15px;color:#101010;letter-spacing:-.035em}
+.admin-date-toolbar span{font-size:11px;color:#777}
+.admin-date-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.date-all-btn{background:#fff;border:1px solid #dedede;border-radius:4px;padding:8px 9px;color:#444;font-size:10px;font-weight:730;white-space:nowrap}
+.date-all-btn:active{background:#f1f1f1}
+.admin-date-group{border:1px solid #e1e1e1;background:#fff;margin:0 0 9px;overflow:hidden}
+.admin-date-group[open]{border-color:#d5d5d5}
+.admin-date-heading{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:69px;padding:13px 15px;cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent}
+.admin-date-heading::-webkit-details-marker{display:none}
+.admin-date-heading::marker{content:''}
+.admin-date-left{display:flex;flex-direction:column;gap:4px;min-width:0}
+.admin-date-left strong{font-size:14px;color:#151515;font-weight:820;line-height:1.3;letter-spacing:-.03em}
+.admin-date-left span{font-size:11px;color:#747474}
+.admin-date-chevron{height:9px;width:9px;flex:0 0 auto;margin-right:4px;border-right:2px solid #333;border-bottom:2px solid #333;transform:rotate(45deg);transition:transform .17s ease}
+.admin-date-group[open]>.admin-date-heading .admin-date-chevron{transform:rotate(225deg)}
+.admin-date-group[open]>.admin-date-heading{border-bottom:1px solid #ededed;background:#fafafa}
+.admin-date-orders{padding:13px 11px 4px;background:#fdfdfd}
+.admin-date-orders>.card{margin:0 0 13px}
+.admin-date-hint{color:#888;font-size:10px;line-height:1.55;margin:11px 1px 24px}
+@media(max-width:390px){.admin-date-toolbar{gap:4px}.admin-date-toolbar strong{font-size:13px}.date-all-btn{padding:7px;font-size:10px}.admin-date-heading{padding:12px}}
+@media(prefers-reduced-motion:reduce){.admin-date-chevron{transition:none}}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -664,7 +689,7 @@ const demo=read(DEMO,initDemo());
 const saveDemo=()=>localStorage.setItem(DEMO,JSON.stringify(demo));
 let session=read(SESS,null),busy=false,refreshing=null;
 const p=new URLSearchParams(location.search);
-const state={page:['admin','track'].includes(p.get('page'))?p.get('page'):'shop',tab:'quotes',stores:[],products:[],requests:[],quotes:[],cart:read(CART,[]),modal:null,search:'',trackId:p.get('id')||'',trackToken:p.get('token')||'',tracking:null,receipts:read(TRACK,[]),notice:'',filter:'all',admin:false,heroPhotoUrl:null};
+const state={page:['admin','track'].includes(p.get('page'))?p.get('page'):'shop',tab:'quotes',stores:[],products:[],requests:[],quotes:[],cart:read(CART,[]),modal:null,search:'',trackId:p.get('id')||'',trackToken:p.get('token')||'',tracking:null,receipts:read(TRACK,[]),notice:'',filter:'all',admin:false,heroPhotoUrl:null,dateGroupsOpen:{}};
 const app=$('#app');
 const fmtDate=x=>x?new Date(x).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):'';
 const previewOrderSum=o=>(o.items||[]).filter(i=>i.fulfillment!=='sold_out').reduce((s,i)=>s+(i.unit_price??0)*i.quantity,0);
@@ -1153,7 +1178,45 @@ ${q.bundle_parent_id&&!state.quotes.some(x=>x.id===q.bundle_parent_id&&x.status!
 ${q.delivery_change_requested_at?`<div class="noticefail" style="margin-top:10px"><b>📦 구매자 수령방식 변경 요청</b><div class="smallnote">${fmtDate(q.delivery_change_requested_at)} · 변경 요청: ${q.requested_delivery_method==='pickup'?'직접수령':'택배수령'}</div>${q.requested_delivery_method==='courier'?`<div class="smallnote">${esc(q.requested_recipient_name||'')} · ${esc([q.requested_postal_code,q.requested_address_line1,q.requested_address_line2].filter(Boolean).join(' '))}</div>`:''}<div class="row wrap" style="margin-top:8px"><button class="btn sm" data-action="approve-delivery" data-id="${q.id}">변경 승인</button><button class="btn sm neutral" data-action="reject-delivery" data-id="${q.id}">반려</button></div><div class="smallnote">배송비를 한 번만 받는 묶음배송이라면 배송지와 결제 차액을 확인해 주세요.</div></div>`:''}
 ${q.cancel_requested_at&&q.status!=='cancelled'?`<div class="noticefail" style="margin-top:10px"><b>⚠️ 구매자 취소 요청</b><div class="tiny">${fmtDate(q.cancel_requested_at)} · 사유: ${esc(q.cancel_reason||'사유 미입력')}</div><div class="row wrap" style="margin-top:8px"><button class="btn sm danger" data-action="accept-cancel" data-id="${q.id}">취소 승인</button><button class="btn sm neutral" data-action="reject-cancel" data-id="${q.id}">취소 요청 반려</button></div></div>`:q.cancel_rejected_at&&q.status!=='cancelled'?'<div class="tiny" style="margin-top:7px">이전 취소 요청 반려됨</div>':''}
 ${q.items.map(i=>`<div class="orderitem"><div class="row between"><div class="grow"><b>${esc(i.store_name)} · ${esc(i.product_name)}</b><div class="tiny">${esc(i.color)} / ${esc(i.size)} · ${i.quantity}개</div></div><span class="money">${i.unit_price==null?'가격 미정':money(i.unit_price*i.quantity)}</span></div><div class="row wrap" style="margin-top:8px"><form class="controlinline" data-price="${i.id}"><input type="number" min="0" max="100000000" placeholder="개당 가격" value="${i.unit_price??''}" name="price" aria-label="개당 가격" ${q.status==='cancelled'?'disabled':''}><button type="submit" class="btn sm secondary" ${q.status==='cancelled'?'disabled':''}>가격 저장</button></form>${q.status==='confirmed'?`<div style="min-width:0;flex:1">${workflowStage(q)==='new'?`<span class="workflow-stage">${itemStatusLabel(q,i)}</span>`:itemFulfillmentControl(q,i)}${workflowStage(q)==='new'?'<div class="workflow-item-help">먼저 상품 준비 시작을 눌러 주세요.</div>':''}</div>`:''}</div></div>`).join('')}${adminWorkflow(q)}${q.delivery_method==='pickup'?'<div class="info">직접수령: 배송비 0원 (자동 적용)</div>':`<form data-shipping="${q.id}" class="row wrap shipping-form"><label class="label" style="min-width:0;flex:1">이 주문의 배송비 (원, 무료면 0)<input name="shipping" type="number" min="0" max="1000000" step="1" required placeholder="배송비 입력 / 무료는 0" value="${hasShipping(q)?q.shipping_fee:''}" ${q.status==='cancelled'||isBundle(q)?'disabled':''}></label><button type="submit" class="btn sm secondary" ${q.status==='cancelled'||isBundle(q)?'disabled':''}>배송비 저장</button></form>`}<div class="sumline"><span>총 ${q.items.reduce((n,i)=>n+i.quantity,0)}개 · 상품금액</span><strong>${unknown(q)?'가격 미정 '+unknown(q)+'개':money(previewOrderSum(q))}</strong></div><div class="sumline"><span>배송비</span><strong>${shippingLabel(q)}</strong></div><div class="sumline total"><span>고객 결제금액</span><strong>${readyQuote(q)?money(totalDue(q)):'견적 작성 중'}</strong></div>${q.status==='requested'?`<button class="btn block" data-action="publish-quote" data-id="${q.id}" ${!readyQuote(q)?'disabled':''}>${unknown(q)?'상품 가격을 먼저 입력해 주세요':!hasShipping(q)?'배송비를 먼저 입력해 주세요':'견적 안내 완료 처리'}</button>`:''}${q.status==='quoted'?'<div class="info">고객이 확인 후 ‘최종 주문’ 버튼을 눌러야 확정돼요.</div>':''}${q.status==='confirmed'?`<div class="noticefail" style="margin-top:10px"><b>확정 주문 금액 수정 가능 (관리자)</b><div>금액을 수정하면 구매자에게 변경 내역이 표시돼요. 고객에게 직접 안내하고, 기존 입금액과 차액·환불 여부를 확인하세요.</div>${q.amount_changed_at?`<div class="tiny" style="margin-top:5px">최근 금액 변경: ${fmtDate(q.amount_changed_at)}</div>`:''}</div>`:''}${['confirmed','cancelled'].includes(q.status)?`<form data-payment="${q.id}" class="two"><div><label class="label">입금받은 총액<input name="paid" type="number" min="0" value="${q.amount_paid||0}"></label></div><div><label class="label">환불해 준 총액<input name="refunded" type="number" min="0" value="${q.amount_refunded||0}"></label></div><button type="submit" class="btn secondary" style="grid-column:span 2">입금·환불 기록 저장</button></form><div class="smallnote">현재까지 실제 받은 금액과 이미 돌려준 금액의 누적 합계예요. 입금을 안 받았다면 0원으로 두세요.</div><div class="tiny">현재 미입금액: ${readyQuote(q)?money(balanceDue(q)):'배송비 미설정 — 총액 확인 필요'}</div>${q.status==='confirmed'&&refundDue(q)>0?`<div class="noticefail">실제 환불이 추가로 필요한 금액: <b>${money(refundDue(q))}</b> · 환불 송금 후 누적 환불액을 입력하세요.</div>`:''}${isBundle(q)&&q.status==='confirmed'?'<div class="noticefail">이미 확정된 주문을 묶으면 결제금액이 줄어들 수 있어요. 고객에게 차액을 안내하고 필요하면 환불 금액을 기록해 주세요.</div>':''}`:''}<div class="row wrap" style="margin-top:10px"><button class="btn sm neutral" data-action="copy-quote" data-id="${q.id}">견적 내용 복사</button><button class="btn sm neutral" data-action="copy-customer-link" data-id="${q.id}">고객 확인 링크 복사</button>${q.status==='quoted'?`<button class="btn sm secondary" data-action="copy-quote-notice" data-id="${q.id}">💌 견적 안내문 복사</button>`:''}${q.status!=='cancelled'&&q.delivery_method!=='pickup'?`<button class="btn sm ${isBundle(q)?'outline':'secondary'}" data-action="bundle-order" data-id="${q.id}">${isBundle(q)?'묶음배송 변경·해제':'묶음배송 설정'}</button>`:''}<button class="btn sm danger" data-action="delete-order" data-id="${q.id}" aria-label="${esc(q.buyer_name)} 주문 영구 삭제">영구 삭제</button></div></div>`;}
-function renderAdminQuotes(){let qq=state.quotes.filter(q=>state.filter==='all'||(state.filter==='cancel_requested'?!!q.cancel_requested_at&&q.status!=='cancelled':state.filter.startsWith('flow_')?q.status==='confirmed'&&workflowStage(q)===state.filter.slice(5):q.status===state.filter));return `<div class="row between"><h2>견적 및 확정 주문</h2><button class="btn sm secondary" data-action="refresh">새로고침</button></div><div class="controls" style="margin-bottom:10px">${['all','cancel_requested','requested','quoted','confirmed','flow_new','flow_preparing','flow_pickup_ready','flow_shipped','flow_completed','flow_soldout_closed','cancelled'].map(s=>`<button class="tab ${state.filter===s?'active':''}" data-filter="${s}">${s==='all'?'전체':s==='cancel_requested'?'취소 요청':s.startsWith('flow_')?workflowLabels[s.slice(5)]:statusLabel[s]}</button>`).join('')}</div>${bundledQuoteGroups(qq).map(group=>group.length>1?renderBundleCard(group):renderAdminQuoteCard(group[0])).join('')||'<div class="empty">해당 상태의 견적이 없어요.</div>'}`}
+
+function receivedDayKey(value){
+ const date=new Date(value);
+ if(!Number.isFinite(date.getTime()))return 'unknown';
+ const pieces=new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Seoul',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(date);
+ const valueFor=part=>pieces.find(p=>p.type===part)?.value||'00';
+ return valueFor('year')+'-'+valueFor('month')+'-'+valueFor('day');
+}
+function receivedDayLabel(day){
+ if(day==='unknown')return '날짜 미확인';
+ const date=new Date(day+'T12:00:00+09:00');
+ return new Intl.DateTimeFormat('ko-KR',{timeZone:'Asia/Seoul',year:'numeric',month:'long',day:'numeric',weekday:'short'}).format(date);
+}
+function groupedQuotesByDay(visible){
+ const ids=new Set(visible.map(q=>q.id));
+ const dayGroups=new Map();
+ // Keep bundles together. A multi-date bundle belongs under its latest matching received date.
+ for(const group of bundledQuoteGroups(visible)){
+  const matching=group.filter(q=>ids.has(q.id));
+  const received=(matching.length?matching:group).reduce((latest,q)=>!latest||(Date.parse(q.created_at)||0)>(Date.parse(latest.created_at)||0)?q:latest,null);
+  const day=receivedDayKey(received?.created_at);
+  if(!dayGroups.has(day))dayGroups.set(day,[]);
+  dayGroups.get(day).push(group);
+ }
+ return [...dayGroups.entries()].sort((a,b)=>a[0]==='unknown'?1:b[0]==='unknown'?-1:b[0].localeCompare(a[0]));
+}
+function renderAdminQuotes(){
+ const qq=state.quotes.filter(q=>state.filter==='all'||(state.filter==='cancel_requested'?!!q.cancel_requested_at&&q.status!=='cancelled':state.filter.startsWith('flow_')?q.status==='confirmed'&&workflowStage(q)===state.filter.slice(5):q.status===state.filter));
+ const days=groupedQuotesByDay(qq);
+ return `<div class="row between"><h2>견적 및 확정 주문</h2><button class="btn sm secondary" data-action="refresh">새로고침</button></div>
+ <div class="controls" style="margin-bottom:10px">${['all','cancel_requested','requested','quoted','confirmed','flow_new','flow_preparing','flow_pickup_ready','flow_shipped','flow_completed','flow_soldout_closed','cancelled'].map(s=>`<button class="tab ${state.filter===s?'active':''}" data-filter="${s}">${s==='all'?'전체':s==='cancel_requested'?'취소 요청':s.startsWith('flow_')?workflowLabels[s.slice(5)]:statusLabel[s]}</button>`).join('')}</div>
+ ${days.length?`<div class="admin-date-toolbar"><div><strong>날짜별 주문</strong><span>${qq.length}건 · ${days.length}일</span></div><div class="admin-date-actions"><button type="button" class="date-all-btn" data-action="date-open-all">전체 펼치기</button><button type="button" class="date-all-btn" data-action="date-close-all">전체 접기</button></div></div>${days.map(([day,groups],i)=>{
+  const all=groups.flat();
+  const confirmed=all.filter(q=>q.status==='confirmed').length;
+  const attention=all.filter(q=>(q.cancel_requested_at&&q.status!=='cancelled')||q.delivery_change_requested_at).length;
+  const open=state.dateGroupsOpen[day]===undefined?i===0:state.dateGroupsOpen[day];
+  return `<details class="admin-date-group" data-order-date="${day}" ${open?'open':''}><summary class="admin-date-heading"><div class="admin-date-left"><strong>${receivedDayLabel(day)}</strong><span>${all.length}건${confirmed?' · 확정 '+confirmed+'건':''}${attention?' · 확인 필요 '+attention+'건':''}</span></div><span class="admin-date-chevron" aria-hidden="true"></span></summary><div class="admin-date-orders">${groups.map(group=>group.length>1?renderBundleCard(group):renderAdminQuoteCard(group[0])).join('')}</div></details>`;
+ }).join('')}<p class="admin-date-hint">묶음배송은 접수 날짜가 달라도 가장 최근 접수 날짜에 함께 표시돼요.</p>`:'<div class="empty">해당 상태의 견적이 없어요.</div>'}`;
+}
 function renderBuyerStats(){const groups=customerGroups();const confirmed=groups.reduce((s,g)=>s+g.spent,0);return `<div class="sectiontitle"><div><h2>구매자별 구매 내역</h2><div class="sub">아기 이름까지 구분 · 확정 주문에 대해서만 구매금액 합산</div></div><button class="btn sm secondary" data-action="refresh">새로고침</button></div><div class="three" style="margin-bottom:13px"><div class="tile"><small>구분된 구매자</small><strong>${groups.length}명</strong></div><div class="tile"><small>확정 주문</small><strong>${groups.reduce((s,g)=>s+g.confirmed,0)}건</strong></div><div class="tile"><small>확정 주문금액</small><strong style="font-size:14px">${money(confirmed)}</strong></div></div><div class="identity-warning">동명이인 방지를 위해 주문자 이름 + 아기 이름 + 연락처(입력한 경우) 또는 같은 기기의 식별번호로 구분해요. 회원 계정이 없어 다른 기기에서 연락처도 입력하지 않으면 같은 사람인지 자동으로 확인할 수 없어요. 아기 이름이 없는 옛 주문은 개별로 표시돼요.</div><input id="stat-search" type="search" placeholder="주문자·아기 이름·연락처 검색"><div class="statlist">${groups.map(g=>`<div class="statcard" data-stats-entry><div class="row between"><div><b>${esc(g.name)} <span class="chip purple">${esc(g.baby||'아기 이름 미입력')}</span></b><div class="tiny">${esc(g.contact||'연락처 미입력')} · 확정 ${g.confirmed}건 / 견적 중 ${g.pending}건 / 취소 ${g.cancelled}건</div></div><strong>${money(g.spent)}</strong></div><div class="substats" style="margin-top:9px"><span>확정 수량 ${g.units}개</span><span>환불 차감 수령액 ${money(g.netPaid)}</span><span>전체 요청 ${g.orders.length}건</span></div><details><summary class="stats-summary"><span>견적·주문 건별 보기</span><span class="tiny">펼치기 ▾</span></summary>${g.orders.map(q=>`<div class="stat-detail"><div class="row between"><b>${esc(statusLabel[q.status])} · ${fmtDate(q.created_at)}</b><span>${q.status==='confirmed'?money(totalDue(q)):'총액 집계 제외'}</span></div><div class="tiny">${q.items.map(i=>esc(i.product_name)+' '+esc(i.color)+'/'+esc(i.size)+' ×'+i.quantity).join(' · ')} · ${deliveryLabel(q)}${isBundle(q)?' · 묶음배송':''}</div></div>`).join('')}</details></div>`).join('')||'<div class="empty">아직 견적 요청이 없어요.</div>'}</div>`}
 function renderProductStats(){const groups=productBuyerGroups();return `<div class="sectiontitle"><div><h2>상품별 누가 주문했나요?</h2><div class="sub">가게·상품·컬러·사이즈별 주문자, 확정 수량과 견적 대기 수량 별도</div></div><button class="btn sm secondary" data-action="refresh">새로고침</button></div><div class="identity-warning">발주해야 할 수량은 ‘확정’ 수량만 확인해 주세요. 품절·취소는 제외하고 상품 준비 중인 수량도 포함돼요.</div><input id="stat-search" type="search" placeholder="가게·상품·컬러·주문자·아기 이름 검색"><div class="statlist">${groups.map(g=>`<div class="statcard" data-stats-entry><div class="smallnote">🏬 ${esc(g.store)}</div><h3 style="margin:3px 0 3px;font-size:15px">${esc(g.product)}</h3><div class="tiny">${esc(g.color)} / ${esc(g.size)}</div><div class="substats" style="margin-top:9px"><span>확정 ${g.confirmedQty}개</span><span>견적 중 ${g.pendingQty}개</span><span>확정 주문자 ${new Set(g.confirmed.map(x=>buyerIdentity(x.q))).size}명</span></div><details ${g.confirmed.length?'open':''}><summary class="stats-summary">확정 주문자 ${g.confirmed.length}건</summary>${g.confirmed.map(({q,qty,subtotal})=>`<div class="stat-detail"><div class="row between"><b>${esc(buyerLabel(q))}</b><strong>${qty}개</strong></div><div class="tiny">${fmtDate(q.created_at)} · ${subtotal==null?'금액 미정':money(subtotal)} ${q.cancel_requested_at?'· 취소 요청 중':''}</div></div>`).join('')||'<div class="tiny">확정 주문이 없어요.</div>'}</details>${g.pending.length?`<details><summary class="stats-summary">견적 요청·안내 중 ${g.pending.length}건 (미확정)</summary>${g.pending.map(({q,qty})=>`<div class="stat-detail"><div class="row between"><span>${esc(buyerLabel(q))} · ${esc(statusLabel[q.status])}</span><b>${qty}개</b></div></div>`).join('')}</details>`:''}</div>`).join('')||'<div class="empty">아직 상품 주문 데이터가 없어요.</div>'}</div>`}
 function vendorGroups(){const g=new Map();for(const q of state.quotes.filter(q=>q.status==='confirmed'))for(const i of q.items){if(i.fulfillment==='sold_out')continue;const key=JSON.stringify([i.store_name,i.product_name,i.color,i.size]);let x=g.get(key);if(!x){x={store:i.store_name,product:i.product_name,color:i.color,size:i.size,qty:0,people:new Set()};g.set(key,x)}x.qty+=i.quantity;x.people.add(buyerLabel(q))}return [...g.values()].sort((a,b)=>a.store.localeCompare(b.store,'ko')||a.product.localeCompare(b.product,'ko'))}
@@ -1389,6 +1452,11 @@ function manualKoreanAddress(button){
  zip.focus();notif('우편번호와 기본주소를 직접 입력할 수 있어요');
 }
 async function click(e){const pg=e.target.closest('[data-page]');if(pg){goto(pg.dataset.page);if(pg.classList.contains('brand-home'))window.scrollTo({top:0,behavior:'auto'});return}const b=e.target.closest('[data-action]');if(!b)return;const a=b.dataset.action,id=b.dataset.id;try{
+if(a==='date-open-all'||a==='date-close-all'){
+ const open=a==='date-open-all';
+ app.querySelectorAll('.admin-date-group').forEach(el=>{el.open=open;state.dateGroupsOpen[el.dataset.orderDate]=open});
+ return;
+}
 if(a==='scroll-top'){window.scrollTo({top:0,behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});return;}
 if(a==='enable-admin-push'){await miniEnablePush();notif('푸시 알림 허용 완료! OneSignal에서 테스트 알림을 보내 보세요.');return;}
 if(a==='bundle-sync-shipment'){
@@ -1515,7 +1583,7 @@ async function change(e){const x=e.target;if(x.id==='deliveryMethodEdit'){
  await adminFulfillment(x.dataset.fulfillment,x.value);await loadAdmin();notif('상품 상태를 변경했어요.');
 }catch(ex){notif(errorText(ex));x.value=state.quotes.find(y=>y.items.some(i=>i.id===x.dataset.fulfillment))?.items.find(i=>i.id===x.dataset.fulfillment)?.fulfillment==='delayed'?'ordered':(state.quotes.find(y=>y.items.some(i=>i.id===x.dataset.fulfillment))?.items.find(i=>i.id===x.dataset.fulfillment)?.fulfillment||'ordered')}finally{busy=false}}}
 function input(e){if(e.target.id==='stat-search'){const query=e.target.value.trim().toLowerCase();for(const node of app.querySelectorAll('[data-stats-entry]'))node.classList.toggle('hidden',!!query&&!node.textContent.toLowerCase().includes(query));return;}if(e.target.id==='search'){state.search=e.target.value;const pos=e.target.selectionStart;render();const el=$('#search');if(el){el.focus();el.setSelectionRange(pos,pos)}}}
-app.addEventListener('click',e=>{const tab=e.target.closest('[data-tab]'),filter=e.target.closest('[data-filter]');if(tab){state.tab=tab.dataset.tab;render();return}if(filter){state.filter=filter.dataset.filter;render();return}click(e)});
+app.addEventListener('click',e=>{const summary=e.target.closest('.admin-date-group > summary');if(summary){const group=summary.parentElement;state.dateGroupsOpen[group.dataset.orderDate]=!group.open;return}const tab=e.target.closest('[data-tab]'),filter=e.target.closest('[data-filter]');if(tab){state.tab=tab.dataset.tab;render();return}if(filter){state.filter=filter.dataset.filter;render();return}click(e)});
 app.addEventListener('submit',submit);app.addEventListener('change',change);app.addEventListener('input',input);
 window.addEventListener('scroll',updateScrollTop,{passive:true});
 window.addEventListener('popstate',()=>{const pp=new URLSearchParams(location.search);state.page=pp.get('page')||'shop';state.trackId=pp.get('id')||'';state.trackToken=pp.get('token')||'';state.modal=null;render();if(state.page==='track')reloadTracking().catch(e=>notif(errorText(e)));if(state.page==='admin')loadAdmin().catch(e=>notif(errorText(e)))});

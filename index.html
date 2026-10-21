@@ -766,12 +766,18 @@ const carrierDeliveryComplete=q=>{
  const statuses=[data.status,data.status_code,...(Array.isArray(data.events)?data.events.flatMap(e=>[e?.label,e?.status,e?.state]):[])];
  return statuses.some(s=>typeof s==='string'&&/^(?:배달\s*완료|배송\s*완료|delivery[ _-]?complete(?:d)?|delivered)$/i.test(s.trim()));
 };
+const carrierShipmentStarted=q=>{
+ if(!q||!validShipmentSnapshot(q))return false;
+ const data=q.shipment_tracking;
+ const statuses=[data.status,data.status_code,...(Array.isArray(data.events)?data.events.flatMap(e=>[e?.label,e?.status,e?.state]):[])];
+ return statuses.some(s=>typeof s==='string'&&/^(?:집하\s*완료|배송\s*출발|배송\s*중|배달\s*출발|배달\s*중|in[ _-]?transit|out[ _-]?for[ _-]?delivery|배달\s*완료|배송\s*완료|delivered)$/i.test(s.trim()));
+};
 const buyerDeliveryCompleted=q=>!!q&&q.status==='confirmed'&&(
  workflowStage(q)==='completed'||(q.delivery_method==='courier'&&carrierDeliveryComplete(q))
 );
 const buyerShipmentStarted=q=>!!q&&q.status==='confirmed'&&(
  (q.delivery_method==='courier'&&['shipped','completed'].includes(workflowStage(q)))||
- (q.delivery_method==='courier'&&carrierDeliveryComplete(q))||
+ (q.delivery_method==='courier'&&carrierShipmentStarted(q))||
  (q.delivery_method==='pickup'&&workflowStage(q)==='completed')
 );
 const canChangeDelivery=q=>!!q&&q.status!=='cancelled'&&!buyerShipmentStarted(q);
@@ -1514,7 +1520,8 @@ if(a==='manual-address'){manualKoreanAddress(b);return;}
 if(a==='close-address-search'){const pane=b.closest('[data-postcode-panel]');if(pane){pane.classList.add('hidden');const mount=pane.querySelector('[data-postcode-mount]');if(mount)mount.innerHTML='';}return;}
 
 if(a==='edit-delivery'){
- if(!state.tracking||state.tracking.status==='cancelled')throw Error('수정할 수 없는 견적이에요');modalOpen('edit-delivery');
+ if(!canChangeDelivery(state.tracking))throw Error('배송이 출발했거나 수령이 완료되어 수령방식·주소를 변경할 수 없어요.');
+ modalOpen('edit-delivery');
 }else if(a==='approve-delivery'||a==='reject-delivery'){
  const q=state.quotes.find(x=>x.id===id);if(!q?.delivery_change_requested_at)throw Error('수령방식 변경 요청이 없어요');
  const approve=a==='approve-delivery';let fee=null;

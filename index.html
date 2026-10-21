@@ -774,6 +774,13 @@ body:has(.overlay) .back-to-top{opacity:0;visibility:hidden;pointer-events:none}
 .admin-product-filter span{font-size:10px;opacity:.68;margin-left:4px}
 .admin-product-filter.active{background:#171717;border-color:#171717;color:#fff}
 .admin-product-filter-result{font-size:12px;color:#555;margin:2px 0 13px}
+.admin-product-search-box{margin:12px 0 13px;padding:12px 13px;background:#fafafa;border:1px solid #e5e5e5;border-radius:9px}
+.admin-product-search-label{display:block;font-size:12px;font-weight:800;margin:0 0 7px}
+.admin-product-search-row{display:flex;align-items:center;gap:8px}
+.admin-product-search-row input{flex:1;min-width:0;width:100%;font-size:14px;padding:11px 12px;border:1px solid #d5d5d5;border-radius:6px;background:#fff}
+.admin-product-search-row input:focus{outline:2px solid #111;outline-offset:1px}
+.admin-product-search-row .btn{flex:0 0 auto}
+.admin-product-search-box .smallnote{font-size:10px;line-height:1.55;margin-top:8px;color:#777}
 .admin-product-filter-result span{font-size:11px;display:block;color:#888;margin-top:5px}
 .admin-catalog-switch-btn:focus-visible,.admin-product-filter:focus-visible,.admin-store-fold summary:focus-visible{outline:2px solid #333;outline-offset:3px}
 @media(max-width:390px){.admin-catalog-switch-btn{font-size:12px}.admin-product-filter{font-size:11px;padding:9px 10px;min-height:35px}.admin-store-fold{padding:0 11px}}
@@ -830,7 +837,7 @@ const demo=read(DEMO,initDemo());
 const saveDemo=()=>localStorage.setItem(DEMO,JSON.stringify(demo));
 let session=read(SESS,null),busy=false,refreshing=null;
 const p=new URLSearchParams(location.search);
-const state={page:['admin','track'].includes(p.get('page'))?p.get('page'):'shop',tab:'quotes',stores:[],products:[],requests:[],quotes:[],cart:read(CART,[]),modal:null,search:'',trackId:p.get('id')||'',trackToken:p.get('token')||'',tracking:null,receipts:read(TRACK,[]),notice:'',filter:'all',admin:false,heroPhotoUrl:null,heroStoreId:null,dateGroupsOpen:{},adminCatalogView:'products',adminCatalogFilter:'all',productPrivate:{},productPrivateReady:false,adminPinIds:new Set(),phoneLookupReady:null,pinLookupNotice:''};
+const state={page:['admin','track'].includes(p.get('page'))?p.get('page'):'shop',tab:'quotes',stores:[],products:[],requests:[],quotes:[],cart:read(CART,[]),modal:null,search:'',trackId:p.get('id')||'',trackToken:p.get('token')||'',tracking:null,receipts:read(TRACK,[]),notice:'',filter:'all',admin:false,heroPhotoUrl:null,heroStoreId:null,dateGroupsOpen:{},adminCatalogView:'products',adminCatalogFilter:'all',adminProductSearch:'',productPrivate:{},productPrivateReady:false,adminPinIds:new Set(),phoneLookupReady:null,pinLookupNotice:''};
 const app=$('#app');
 const fmtDate=x=>x?new Date(x).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):'';
 const previewOrderSum=o=>(o.items||[]).filter(i=>i.fulfillment!=='sold_out').reduce((s,i)=>s+(i.unit_price??0)*i.quantity,0);
@@ -1308,6 +1315,30 @@ function renderAdminRequests(){
  ${r.status==='approved'&&state.products.some(p=>p.id===r.approved_product_id&&p.published&&!p.is_sold_out&&state.stores.some(st=>st.id===p.store_id&&st.active))?`<div class="row wrap" style="margin-top:12px"><button class="btn sm secondary" data-action="copy-request-notice" data-id="${esc(r.id)}">💜 상품 등록 안내문 복사</button></div>`:''}
  </div>`).join('')}`;
 }
+
+/* Search is administrator-local and never queried through the customer API. */
+function adminProductSearchText(p){
+ const options=Object.entries(p.options||{}).flatMap(([color,sizes])=>[color,...(Array.isArray(sizes)?sizes:[])]);
+ return [p.name,storeName(p.store_id),...options,state.productPrivate?.[p.id]?.supplier_name||''].join(' ').toLocaleLowerCase('ko-KR');
+}
+function updateAdminProductSearch(){
+ const query=String(state.adminProductSearch||'').trim().toLocaleLowerCase('ko-KR');
+ let visible=0;
+ app.querySelectorAll('[data-admin-product-card]').forEach(card=>{
+  const match=!query||String(card.dataset.productSearch||'').includes(query);
+  card.classList.toggle('hidden',!match);
+  if(match)visible++;
+ });
+ const count=app.querySelector('#admin-product-result-count');
+ if(count)count.textContent=String(visible);
+ const noResults=app.querySelector('#admin-product-search-empty');
+ if(noResults){
+  noResults.classList.toggle('hidden',visible>0);
+  noResults.textContent=query?'검색 결과가 없어요. 검색어나 상품 상태 필터를 변경해 주세요.':'이 필터에 해당하는 상품이 없어요.';
+ }
+ const clear=app.querySelector('[data-action="clear-product-search"]');
+ if(clear)clear.classList.toggle('hidden',!query);
+}
 function renderAdminProducts(){
  const all=state.products;
  const isVisible=p=>Boolean(p.published&&state.stores.some(st=>st.id===p.store_id&&st.active));
@@ -1322,6 +1353,8 @@ function renderAdminProducts(){
  ];
  const activeFilter=filters.some(f=>f.key===state.adminCatalogFilter)?state.adminCatalogFilter:'all';
  const shown=all.filter(p=>activeFilter==='all'||(activeFilter==='shown'&&isVisible(p))||(activeFilter==='hidden'&&!isVisible(p))||(activeFilter==='soldout'&&p.is_sold_out)||(activeFilter==='available'&&!p.is_sold_out));
+ const searchQuery=String(state.adminProductSearch||'').trim().toLocaleLowerCase('ko-KR');
+ const matchingCount=shown.filter(p=>!searchQuery||adminProductSearchText(p).includes(searchQuery)).length;
  const storesView=state.adminCatalogView==='stores';
  return `<section class="admin-catalog-panel" id="admin-catalog">
   <div class="admin-catalog-switch" role="group" aria-label="관리자 상품 및 거래처 화면 전환">
@@ -1339,21 +1372,30 @@ function renderAdminProducts(){
   `:`
    <div class="sectiontitle admin-catalog-section-title"><div><h2>가게별 상품</h2><div class="sub">상품 수정 없이 품절과 전시 여부를 바꿀 수 있어요.</div></div><button class="btn sm" data-action="add-product" ${!state.stores.length?'disabled':''}>+ 상품</button></div>
    <div class="product-manage-summary">전체 ${all.length}개 · 전시 중 ${visibleCount}개 · 미전시 ${hiddenCount}개 · 품절 ${soldCount}개</div>
+   <div class="admin-product-search-box">
+    <label for="admin-product-search" class="admin-product-search-label">상품 검색</label>
+    <div class="admin-product-search-row">
+     <input id="admin-product-search" type="search" autocomplete="off" value="${esc(state.adminProductSearch||'')}" placeholder="상품명 또는 가게명 검색" aria-label="등록 상품 검색">
+     <button type="button" class="btn sm secondary ${searchQuery?'':'hidden'}" data-action="clear-product-search">지우기</button>
+    </div>
+    <div class="smallnote">상품명 · 거래처명 · 색상 · 사이즈로 검색할 수 있어요. 기존 품절·전시 필터와 함께 적용돼요.</div>
+   </div>
    <div class="admin-product-filter-list" role="group" aria-label="상품 전시 및 품절 상태 필터">
     ${filters.map(filter=>`<button type="button" class="admin-product-filter ${activeFilter===filter.key?'active':''}" data-action="catalog-filter" data-filter-state="${filter.key}" aria-pressed="${activeFilter===filter.key}">${filter.label} <span>${filter.count}</span></button>`).join('')}
    </div>
-   <div class="admin-product-filter-result" aria-live="polite">${filters.find(f=>f.key===activeFilter).label} · ${shown.length}개 상품${activeFilter==='hidden'?'<span>거래처가 숨겨져 미노출되는 상품도 포함돼요.</span>':''}</div>
+   <div class="admin-product-filter-result" aria-live="polite">${filters.find(f=>f.key===activeFilter).label} · <strong id="admin-product-result-count">${matchingCount}</strong>개 상품${activeFilter==='hidden'?'<span>거래처가 숨겨져 미노출되는 상품도 포함돼요.</span>':''}</div>
    ${shown.map(p=>{
     const storeActive=state.stores.some(st=>st.id===p.store_id&&st.active);
     const visibleToCustomer=p.published&&storeActive;
-    return `<div class="card admin-product-card"><div class="row between"><div class="row"><span>${p.image_url?img(p,'product-thumb'):'🧸'}</span><div><div class="tiny">${esc(storeName(p.store_id))}</div><b>${esc(p.name)}</b></div></div><button class="btn sm secondary" data-action="edit-product" data-id="${esc(p.id)}">상품 수정</button></div>
+    return `<div class="card admin-product-card" data-admin-product-card data-product-search="${esc(adminProductSearchText(p))}" ${searchQuery&&!adminProductSearchText(p).includes(searchQuery)?'hidden':''}><div class="row between"><div class="row"><span>${p.image_url?img(p,'product-thumb'):'🧸'}</span><div><div class="tiny">${esc(storeName(p.store_id))}</div><b>${esc(p.name)}</b></div></div><button class="btn sm secondary" data-action="edit-product" data-id="${esc(p.id)}">상품 수정</button></div>
     <div class="form-options">${Object.entries(p.options||{}).map(([c,ss])=>`<div><b>${esc(c)}</b> : ${ss.map(esc).join(', ')}</div>`).join('')}</div>
     ${privateProductSummary(p.id)}
     <div class="row wrap product-manage-status"><span class="chip ${visibleToCustomer?'green':'orange'}">${visibleToCustomer?'고객 전시 중':p.published?'가게 숨김으로 미노출':'전시 숨김'}</span><span class="chip ${p.is_sold_out?'red':'green'}">${p.is_sold_out?'품절':'판매 가능'}</span></div>
     <div class="product-manage-controls"><button type="button" class="btn sm ${p.is_sold_out?'secondary':'outline'}" data-action="toggle-product-soldout" data-id="${esc(p.id)}">${p.is_sold_out?'품절 해제':'품절 표시'}</button><button type="button" class="btn sm ${p.published?'secondary':'outline'}" data-action="toggle-product-display" data-id="${esc(p.id)}">${p.published?'전시 숨기기':'전시하기'}</button></div>
     ${p.published&&!storeActive?'<div class="smallnote">가게가 숨김 상태라 상품을 공개해도 고객에게는 보이지 않아요.</div>':''}
     ${visibleToCustomer&&!p.is_sold_out?`<div class="row wrap" style="margin-top:10px"><button class="btn sm secondary" data-action="copy-product-notice" data-id="${esc(p.id)}">📣 상품 안내문 복사</button></div>`:''}
-    </div>`}).join('')||'<div class="empty">이 필터에 해당하는 상품이 없어요.</div>'}
+    </div>`}).join('')}
+    <div id="admin-product-search-empty" class="empty ${matchingCount?'hidden':''}">${searchQuery?'검색 결과가 없어요. 검색어나 상품 상태 필터를 변경해 주세요.':'이 필터에 해당하는 상품이 없어요.'}</div>
   `}
  </section>`;
 }
@@ -2030,9 +2072,16 @@ if(a==='generate-order-pin'){
 if(a==='copy-admin-pin-message'){
  await copy(adminPINMessage());return;
 }
+if(a==='clear-product-search'){
+ if(!state.admin||state.page!=='admin'||state.tab!=='products')return;
+ state.adminProductSearch='';
+ const input=app.querySelector('#admin-product-search');
+ if(input){input.value='';updateAdminProductSearch();input.focus()}
+ return;
+}
 if(a==='admin-summary'){
  const target=b.dataset.summary;
- if(target==='products'){state.tab='products';state.adminCatalogView='products';state.adminCatalogFilter='all';}
+ if(target==='products'){state.tab='products';state.adminCatalogView='products';state.adminCatalogFilter='all';state.adminProductSearch='';}
  else if(target==='requested'||target==='confirmed'){
   state.tab='quotes';state.filter=target;
   // Reveal matching orders even when date sections were collapsed previously.
@@ -2221,7 +2270,7 @@ async function change(e){const x=e.target;if(x.id==='deliveryMethodEdit'){
  }
  await adminFulfillment(x.dataset.fulfillment,x.value);await loadAdmin();notif('상품 상태를 변경했어요.');
 }catch(ex){notif(errorText(ex));x.value=state.quotes.find(y=>y.items.some(i=>i.id===x.dataset.fulfillment))?.items.find(i=>i.id===x.dataset.fulfillment)?.fulfillment==='delayed'?'ordered':(state.quotes.find(y=>y.items.some(i=>i.id===x.dataset.fulfillment))?.items.find(i=>i.id===x.dataset.fulfillment)?.fulfillment||'ordered')}finally{busy=false}}}
-function input(e){if(e.target.id==='stat-search'){const query=e.target.value.trim().toLowerCase();for(const node of app.querySelectorAll('[data-stats-entry]'))node.classList.toggle('hidden',!!query&&!node.textContent.toLowerCase().includes(query));return;}if(e.target.id==='search'){state.search=e.target.value;const pos=e.target.selectionStart;render();const el=$('#search');if(el){el.focus();el.setSelectionRange(pos,pos)}}}
+function input(e){if(e.target.id==='admin-product-search'){state.adminProductSearch=e.target.value;updateAdminProductSearch();return;}if(e.target.id==='stat-search'){const query=e.target.value.trim().toLowerCase();for(const node of app.querySelectorAll('[data-stats-entry]'))node.classList.toggle('hidden',!!query&&!node.textContent.toLowerCase().includes(query));return;}if(e.target.id==='search'){state.search=e.target.value;const pos=e.target.selectionStart;render();const el=$('#search');if(el){el.focus();el.setSelectionRange(pos,pos)}}}
 app.addEventListener('click',e=>{const summary=e.target.closest('.admin-date-group > summary');if(summary){const group=summary.parentElement;state.dateGroupsOpen[group.dataset.orderDate]=!group.open;return}const tab=e.target.closest('[data-tab]'),filter=e.target.closest('[data-filter]');if(tab){state.tab=tab.dataset.tab;render();return}if(filter){state.filter=filter.dataset.filter;render();return}click(e)});
 app.addEventListener('submit',submit);app.addEventListener('change',change);app.addEventListener('input',input);
 window.addEventListener('scroll',updateScrollTop,{passive:true});

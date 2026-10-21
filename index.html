@@ -729,6 +729,10 @@ body:has(.overlay) .back-to-top{opacity:0;visibility:hidden;pointer-events:none}
 .admin-product-card{margin-bottom:11px}
 .product-manage-status{margin-top:11px;align-items:center}
 .product-manage-controls{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0 2px}
+.admin-product-top-actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:6px;flex:0 0 auto}
+.admin-product-delete{border:1px solid #f0b9c4!important;color:#ad2e44!important;background:#fffafb!important}
+.admin-product-delete:hover{background:#fff0f2!important}
+@media(max-width:360px){.admin-product-top-actions{gap:4px}.admin-product-top-actions .btn{padding:7px 8px;font-size:10px}}
 .product-manage-controls .btn{min-height:39px;white-space:nowrap;font-size:12px}
 .request-summary-line{margin:5px 0 14px}
 .request-status-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:14px 0 9px}
@@ -1465,7 +1469,7 @@ function renderAdminProducts(){
    ${shown.map(p=>{
     const storeActive=state.stores.some(st=>st.id===p.store_id&&st.active);
     const visibleToCustomer=p.published&&storeActive;
-    return `<div class="card admin-product-card" data-admin-product-card data-product-search="${esc(adminProductSearchText(p))}" ${searchQuery&&!adminProductSearchText(p).includes(searchQuery)?'hidden':''}><div class="row between"><div class="row"><span>${p.image_url?img(p,'product-thumb'):'🧸'}</span><div><div class="tiny">${esc(storeName(p.store_id))}</div><b>${esc(p.name)}</b></div></div><button class="btn sm secondary" data-action="edit-product" data-id="${esc(p.id)}">상품 수정</button></div>
+    return `<div class="card admin-product-card" data-admin-product-card data-product-search="${esc(adminProductSearchText(p))}" ${searchQuery&&!adminProductSearchText(p).includes(searchQuery)?'hidden':''}><div class="row between"><div class="row"><span>${p.image_url?img(p,'product-thumb'):'🧸'}</span><div><div class="tiny">${esc(storeName(p.store_id))}</div><b>${esc(p.name)}</b></div></div><div class="admin-product-top-actions"><button class="btn sm secondary" data-action="edit-product" data-id="${esc(p.id)}">상품 수정</button><button type="button" class="btn sm admin-product-delete" data-action="delete-product" data-id="${esc(p.id)}" aria-label="${esc(p.name)} 상품 삭제">삭제</button></div></div>
     <div class="form-options">${Object.entries(p.options||{}).map(([c,ss])=>`<div><b>${esc(c)}</b> : ${ss.map(esc).join(', ')}</div>`).join('')}</div>
     ${privateProductSummary(p.id)}
     <div class="row wrap product-manage-status"><span class="chip ${visibleToCustomer?'green':'orange'}">${visibleToCustomer?'고객 전시 중':p.published?'가게 숨김으로 미노출':'전시 숨김'}</span><span class="chip ${p.is_sold_out?'red':'green'}">${p.is_sold_out?'품절':'판매 가능'}</span></div>
@@ -1876,6 +1880,35 @@ async function putProduct(o,id){
  if(!Array.isArray(rows)||rows.length!==1||!rows[0]?.id)throw Error('상품 등록 결과를 확인하지 못했어요. 새로고침 후 확인해 주세요.');
  return rows[0].id;
 }
+async function deleteAdminProduct(id){
+ if(!state.admin)throw Error('관리자만 상품을 삭제할 수 있어요.');
+ const product=selectedProd(id);
+ if(!product)throw Error('삭제할 상품을 찾지 못했어요. 상품 목록을 새로고침해 주세요.');
+ const linked=state.quotes.filter(q=>(q.items||[]).some(i=>i.product_id===id));
+ const notice=linked.length
+  ?`\n\n기존 주문 ${linked.length}건에 연결된 상품이에요. 주문의 상품명·수량·금액은 남지만, 삭제 후 상품 연결은 해제돼요.`
+  :'\n\n이 작업은 되돌릴 수 없어요.';
+ if(!window.confirm(`‘${product.name}’ 상품을 영구 삭제할까요?\n고객 상품 목록에서도 사라집니다.${notice}`))return false;
+ if(!connected){
+  const idx=demo.products.findIndex(p=>p.id===id);
+  if(idx<0)throw Error('삭제할 상품을 찾지 못했어요.');
+  demo.products.splice(idx,1);
+  for(const item of demo.items||[])if(item.product_id===id)item.product_id=null;
+  for(const r of demo.requests||[])if(r.approved_product_id===id)r.approved_product_id=null;
+  saveDemo();
+ }else{
+  const deleted=await api('/rest/v1/gq_products?id=eq.'+encodeURIComponent(id),{method:'DELETE',admin:true});
+  if(!Array.isArray(deleted)||deleted.length!==1||deleted[0].id!==id)
+   throw Error('상품 삭제 결과를 확인하지 못했어요. 새로고침 후 다시 확인해 주세요.');
+ }
+ // Shopping carts are browser-local. Remove this product from the admin's local
+ // cart; other customers' stale carts remain safely blocked at checkout.
+ const before=state.cart.length;
+ state.cart=state.cart.filter(c=>c.product_id!==id);
+ if(state.cart.length!==before)saveCart();
+ await loadAdmin();
+ return true;
+}
 async function quickProductState(id,kind){
  if(!state.admin)throw Error('관리자 로그인 후 상품 상태를 변경해 주세요.');
  const p=selectedProd(id);
@@ -2203,6 +2236,11 @@ if(a==='catalog-view'||a==='catalog-filter'){
  render();
  const section=app.querySelector('#admin-catalog');
  if(section)window.scrollTo({top:Math.max(0,window.scrollY+section.getBoundingClientRect().top-12),behavior:'auto'});
+ return;
+}
+if(a==='delete-product'){
+ const success=await deleteAdminProduct(id);
+ if(success)notif('상품을 삭제했어요. 기존 주문 내역은 보존돼요.');
  return;
 }
 if(a==='toggle-product-soldout'||a==='toggle-product-display'){

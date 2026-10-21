@@ -476,8 +476,21 @@ input:focus,select:focus,textarea:focus{border-color:#111;box-shadow:0 0 0 1px #
  .shoplist .shop-catalog-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:35px 18px}
 }
 
+
+/* Show the actual customer promise immediately, while keeping MINIYENA monochrome. */
+.brand-value-strip{display:flex;align-items:center;justify-content:space-between;gap:12px;background:#111;color:#fff;padding:11px 20px;margin:0 -20px;font-size:12px;letter-spacing:-.015em}
+.brand-value-strip strong{color:#fff;font-size:12px;font-weight:850;letter-spacing:-.025em}
+.brand-value-strip span{color:#ddd;font-size:10px;white-space:nowrap}
+.shop-editorial-label{display:inline-flex;align-items:center;width:max-content;max-width:100%;padding:7px 10px;border:1px solid #ffffffa8;color:#fff;font-size:10px;font-weight:850;letter-spacing:-.015em;background:#0005}
+.shop-editorial-copy{gap:15px}
+.shop-editorial h1{line-height:1.24;letter-spacing:-.07em;text-shadow:0 1px 3px #0003}
+.shop-editorial p{font-size:12px;color:#f4f4f4;max-width:310px}
+.shop-benefits strong{font-size:11px}
+@media(max-width:519px){.brand-value-strip{margin:0 -15px;padding:11px 15px}.shop-editorial h1{font-size:clamp(30px,8.6vw,42px)}}
+@media(max-width:355px){.brand-value-strip strong{font-size:11px}.brand-value-strip span{font-size:9px}.shop-editorial-label{font-size:9px}.shop-editorial h1{font-size:30px}}
 </style>
-<title>MINIYENA — Contemporary Kidswear</title>
+<title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
+<meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
 <!-- OneSignal Web SDK v16. App ID는 공개용 식별자이며 발송용 REST API 키는 절대 이 파일에 저장하지 마세요. -->
 <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
 <script>
@@ -743,7 +756,8 @@ function header(){
  ${state.page==='shop'?'<a href="#catalog">전체상품</a>':'<button data-page="shop" type="button">전체상품</button>'}
  <button type="button" data-action="my-quotes">주문조회</button>
  <button type="button" data-action="suggest-product">상품신청</button>
- <span class="header-note">${admin?'관리자 화면':'남아 · 여아 아동복'}</span></nav>
+ <span class="header-note">${admin?'관리자 화면':'남대문 아동복'}</span></nav>
+ ${state.page==='shop'?'<div class="brand-value-strip"><strong>남대문 아동복 초저가</strong><span>남아 · 여아 모두</span></div>':''}
  </header>`;
 }
 function shopBottomNav(){
@@ -794,14 +808,14 @@ function renderShop(){
  const featured=state.stores.filter(s=>s.active).flatMap(s=>state.products.filter(p=>p.published&&p.store_id===s.id)).find(p=>p.image_url);
  return `<section class="content shop-content">
  <div class="shop-editorial"><div class="shop-editorial-visual ${featured?'has-photo':''}">${featured?`<img src="${esc(featured.image_url)}" alt="미니예나 등록 상품" loading="eager">`:'<div class="shop-editorial-art" aria-hidden="true"></div>'}</div>
- <div class="shop-editorial-copy"><span class="shop-editorial-label">미니예나 · 아동복 셀렉트숍</span><h1>매일 입고 싶은<br>우리 아이 옷</h1><p>아이들의 매일을 위한, 간결하고 편안한 옷.<br>남아와 여아 모두를 위한 컬렉션.</p><a class="shop-editorial-link" href="#catalog">상품 둘러보기 ↗</a></div></div>
- <div class="shop-benefits"><span><strong>남아 · 여아 모두</strong>우리 아이를 위한 옷</span><span><strong>컬러 · 사이즈 선택</strong>다양한 상품 옵션</span><span><strong>견적 확인 후 주문</strong>가격 안내 후 확정</span></div>
- <p class="shop-kicker">미니예나 컬렉션</p>
- <div class="shop-section-head" id="catalog"><div><h2>전체 상품</h2><small>MINIYENA의 모든 등록 상품</small></div><span class="sub">상품 둘러보기</span></div>
+ <div class="shop-editorial-copy"><span class="shop-editorial-label">남대문 아동복 · 초저가 공동구매</span><h1>남대문 아동복<br>초저가 쇼핑</h1><p>남아·여아 아동복을 부담 없이 골라보세요.<br>가격은 견적 요청 후 안내해 드려요.</p><a class="shop-editorial-link" href="#catalog">상품 둘러보기 ↗</a></div></div>
+ <div class="shop-benefits"><span><strong>남대문 아동복</strong>남아 · 여아 모두</span><span><strong>초저가 공동구매</strong>부담 없이 고르는 옷</span><span><strong>견적 확인 후 주문</strong>가격 안내 후 확정</span></div>
+ <p class="shop-kicker">남대문 아동복 · 초저가 셀렉션</p>
+ <div class="shop-section-head" id="catalog"><div><h2>전체 상품</h2><small>남대문 아동복을 초저가로 만나보세요</small></div><span class="sub">상품 둘러보기</span></div>
  <div class="shop-actions"><button type="button" data-action="suggest-product">+ 상품 등록 신청</button><button type="button" data-action="my-quotes">내 견적 · 주문조회 ↗</button></div>
  <div class="shop-search-wrap"><input id="search" type="search" placeholder="상품명 또는 가게 이름 검색" value="${esc(state.search)}" aria-label="상품 검색"></div>
- <div class="shoplist">${products.length?`<div class="shop-catalog-count">전체 상품 ${products.length}개</div><div class="shop-catalog-grid">${products.map(({p,store})=>`<article class="shop-catalog-card"><button class="shop-catalog-photo shop-photo-button" type="button" data-action="pick-product" data-id="${esc(p.id)}" aria-label="${esc(p.name)} 옵션 선택">${img(p)}</button><div class="shop-catalog-store">${esc(store.name)}</div><div class="producttitle">${esc(p.name)}</div><div class="shop-catalog-colors">${Object.keys(p.options||{}).map(esc).join(' · ')||'색상 옵션 확인'}</div><div class="shop-catalog-quote">견적 후 가격 안내</div><button class="btn block shop-catalog-select" type="button" data-action="pick-product" data-id="${esc(p.id)}">옵션 선택 ↗</button></article>`).join('')}</div>`:'<div class="empty">등록된 상품이 없어요.</div>'}</div>
- <div class="shop-footer-note"><b>MINIYENA</b>상품을 골라 견적을 요청하면 확인 후 가격을 안내해 드려요.</div>
+ <div class="shoplist">${products.length?`<div class="shop-catalog-count">남대문 아동복 · 전체 상품 ${products.length}개</div><div class="shop-catalog-grid">${products.map(({p,store})=>`<article class="shop-catalog-card"><button class="shop-catalog-photo shop-photo-button" type="button" data-action="pick-product" data-id="${esc(p.id)}" aria-label="${esc(p.name)} 옵션 선택">${img(p)}</button><div class="shop-catalog-store">${esc(store.name)}</div><div class="producttitle">${esc(p.name)}</div><div class="shop-catalog-colors">${Object.keys(p.options||{}).map(esc).join(' · ')||'색상 옵션 확인'}</div><div class="shop-catalog-quote">견적 후 가격 안내</div><button class="btn block shop-catalog-select" type="button" data-action="pick-product" data-id="${esc(p.id)}">옵션 선택 ↗</button></article>`).join('')}</div>`:'<div class="empty">등록된 상품이 없어요.</div>'}</div>
+ <div class="shop-footer-note"><b>MINIYENA</b>남대문 아동복 초저가 공동구매.<br>상품을 골라 견적을 요청하면 확인 후 가격을 안내해 드려요.</div>
  </section>
  ${state.cart.length?`<div class="dock"><div class="main"><strong>장바구니 ${cartCount()}개</strong><div class="tiny">상품을 모아 한 번에 견적 요청</div></div><button class="btn" data-action="open-cart">견적 요청하기 →</button></div>`:''}`;
 }

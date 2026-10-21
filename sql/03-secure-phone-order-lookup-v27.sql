@@ -4,6 +4,13 @@
 --   2. SMS provider (Twilio etc.) configured and tested with Korean +82 numbers.
 --   3. Run this entire migration in your Supabase SQL editor.
 --   4. DO NOT grant anonymous access to the private order lookup function.
+--   5. Review existing gq_quotes RLS policies for the authenticated role
+--      BEFORE allowing customer phone sign-in. The phone OTP flow creates
+--      authenticated customers, not administrators. Broad authenticated
+--      SELECT/UPDATE policies can expose existing order/private customer data.
+--   Inspect with:
+--   select * from pg_policies where schemaname='public'
+--     and tablename in ('gq_quotes','gq_quote_items');
 --
 -- Orders lacking a saved mobile number cannot be recovered by phone:
 -- send the existing private order link from admin instead.
@@ -26,6 +33,14 @@ begin
   if to_regclass('auth.users') is null then
     raise exception 'Supabase Auth users table not found';
   end if;
+  if not exists (
+    select 1 from pg_class c join pg_namespace n on c.relnamespace=n.oid
+    where n.nspname='public' and c.relname='gq_quotes' and c.relrowsecurity
+  ) then
+    raise exception 'Public gq_quotes must have RLS enabled before customer SMS Auth';
+  end if;
+  -- Anonymous and authenticated roles must not be given blanket access to
+  -- orders. Audit existing customer and admin policies before running this.
 end
 $preflight$;
 
@@ -91,7 +106,7 @@ begin
 
   return query
   select q.id::text, q.lookup_token::text, q.buyer_name::text,
-         q.baby_name::text, q.created_at
+         q.baby_name::text, q.created_at::timestamptz
   from public.gq_quotes q
   where
     (case

@@ -729,6 +729,13 @@ body:has(.overlay) .back-to-top{opacity:0;visibility:hidden;pointer-events:none}
 .product-manage-controls{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0 2px}
 .product-manage-controls .btn{min-height:39px;white-space:nowrap;font-size:12px}
 .request-summary-line{margin:5px 0 14px}
+.request-status-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:14px 0 9px}
+.request-status-tab{appearance:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-width:0;min-height:60px;padding:10px 6px;border:1px solid #dedede;background:#fff;color:#555;border-radius:8px;font-size:12px;font-weight:760;cursor:pointer}
+.request-status-tab.active{background:#171717;border-color:#171717;color:white}
+.request-status-tab span{font-size:15px;font-weight:850;font-variant-numeric:tabular-nums}
+.request-status-tab:focus-visible{outline:2px solid #222;outline-offset:2px}
+.request-status-count{font-size:11px;color:#777;margin:10px 0 12px}
+@media(max-width:390px){.request-status-tabs{gap:5px}.request-status-tab{font-size:11px;padding:9px 3px}}
 .request-rejection-summary{border:1px solid #efd9dc;background:#fff8f9;border-radius:8px;padding:10px 12px;font-size:11px;margin-top:12px;line-height:1.6}
 .request-rejection-summary b{display:block;color:#9d3448}
 .request-rejection-summary div{margin-top:5px;color:#666;white-space:pre-wrap}
@@ -837,7 +844,7 @@ const demo=read(DEMO,initDemo());
 const saveDemo=()=>localStorage.setItem(DEMO,JSON.stringify(demo));
 let session=read(SESS,null),busy=false,refreshing=null;
 const p=new URLSearchParams(location.search);
-const state={page:['admin','track'].includes(p.get('page'))?p.get('page'):'shop',tab:'quotes',stores:[],products:[],requests:[],quotes:[],cart:read(CART,[]),modal:null,search:'',trackId:p.get('id')||'',trackToken:p.get('token')||'',tracking:null,receipts:read(TRACK,[]),notice:'',filter:'all',admin:false,heroPhotoUrl:null,heroStoreId:null,dateGroupsOpen:{},adminCatalogView:'products',adminCatalogFilter:'all',adminProductSearch:'',productPrivate:{},productPrivateReady:false,adminPinIds:new Set(),phoneLookupReady:null,pinLookupNotice:''};
+const state={page:['admin','track'].includes(p.get('page'))?p.get('page'):'shop',tab:'quotes',stores:[],products:[],requests:[],quotes:[],cart:read(CART,[]),modal:null,search:'',trackId:p.get('id')||'',trackToken:p.get('token')||'',tracking:null,receipts:read(TRACK,[]),notice:'',filter:'all',admin:false,heroPhotoUrl:null,heroStoreId:null,dateGroupsOpen:{},requestStatusFilter:'pending',adminCatalogView:'products',adminCatalogFilter:'all',adminProductSearch:'',productPrivate:{},productPrivateReady:false,adminPinIds:new Set(),phoneLookupReady:null,pinLookupNotice:''};
 const app=$('#app');
 const fmtDate=x=>x?new Date(x).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):'';
 const previewOrderSum=o=>(o.items||[]).filter(i=>i.fulfillment!=='sold_out').reduce((s,i)=>s+(i.unit_price??0)*i.quantity,0);
@@ -1304,10 +1311,19 @@ const nQuote=state.quotes.filter(q=>q.status==='requested').length,nConfirm=stat
 return `<section class="content"><div class="page-intro admin-page-intro"><div class="admin-intro-row"><div class="admin-intro-copy"><span class="page-intro-kicker">미니예나 · 관리자</span><h1>관리자 화면</h1><p>견적 · 주문 · 상품 · 배송 관리</p></div><button class="admin-settings-shortcut ${state.tab==='settings'?'active':''}" type="button" data-tab="settings" aria-label="관리자 설정 열기" ${state.tab==='settings'?'aria-current="page"':''}><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h9m4 0h3M4 17h3m4 0h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg><span>설정</span></button></div></div><div class="three"><button type="button" class="tile admin-summary-link" data-action="admin-summary" data-summary="requested" aria-label="견적 요청 ${nQuote}건 보기"><small>견적 요청</small><strong>${nQuote}</strong>${state.quotes.some(q=>q.cancel_requested_at&&q.status!=='cancelled')?`<div class="tiny attention" style="margin-top:6px">취소 요청 ${state.quotes.filter(q=>q.cancel_requested_at&&q.status!=='cancelled').length}건</div>`:''}</button><button type="button" class="tile admin-summary-link" data-action="admin-summary" data-summary="confirmed" aria-label="확정 주문 ${nConfirm}건 보기"><small>확정 주문</small><strong>${nConfirm}</strong></button><button type="button" class="tile admin-summary-link" data-action="admin-summary" data-summary="products" aria-label="등록 상품 ${state.products.length}개 보기"><small>등록 상품</small><strong>${state.products.length}</strong></button></div><section class="admin-procurement" aria-label="발주 일정"><div class="admin-procurement-title"><b>주 2회 남대문 공동발주</b><span>월 · 목 | 오후 7시 마감 · 밤 9시 발주</span></div><div class="admin-procurement-grid"><div><small>다음 최종 주문·입금 마감</small><strong data-next-cutoff>계산 중</strong><span>남은 시간 <b data-cutoff-countdown>계산 중</b></span></div><div><small>다음 남대문 발주</small><strong data-next-order>계산 중</strong><span>남은 시간 <b data-order-countdown>계산 중</b></span></div></div><p>마감 기준으로 주문 확정·입금 확인 건을 모아 발주합니다. 실제 발주 대상과 거래처별 수량은 확인 후 직접 발주해 주세요.</p></section><div class="tabs" style="padding:14px 0"><button class="tab ${state.tab==='quotes'?'active':''}" data-tab="quotes">견적·주문</button><button class="tab ${state.tab==='requests'?'active':''}" data-tab="requests">상품 등록 신청 ${state.requests.filter(x=>x.status==='pending').length}</button><button class="tab ${state.tab==='products'?'active':''}" data-tab="products">가게·상품 등록</button><button class="tab ${state.tab==='buyers'?'active':''}" data-tab="buyers">구매자별 집계</button><button class="tab ${state.tab==='items'?'active':''}" data-tab="items">상품별 주문자</button><button class="tab ${state.tab==='vendors'?'active':''}" data-tab="vendors">가게별 발주</button></div>${state.tab==='quotes'?renderAdminQuotes():state.tab==='requests'?renderAdminRequests():state.tab==='products'?renderAdminProducts():state.tab==='buyers'?renderBuyerStats():state.tab==='items'?renderProductStats():state.tab==='vendors'?renderVendorSummary():renderAdminSettings()}</section>`}
 function renderAdminRequests(){
  const requests=state.requests||[];
- const pending=requests.filter(r=>r.status==='pending').length;
- return `<div class="sectiontitle"><div><h2>고객 상품 등록 신청</h2><div class="sub">등록 여부를 검토하고, 반려할 경우 사유를 선택해 기록할 수 있어요.</div></div><button class="btn secondary sm" data-action="refresh">새로고침</button></div>
- <div class="tiny request-summary-line">검토 대기 ${pending}건 · 등록 완료 ${requests.filter(r=>r.status==='approved').length}건 · 반려 ${requests.filter(r=>r.status==='rejected').length}건</div>
- ${!requests.length?'<div class="empty">아직 등록 신청이 없어요.</div>':requests.map(r=>`<div class="card request-card"><div class="row between"><div><span class="chip ${r.status==='pending'?'orange':r.status==='approved'?'green':'red'}">${r.status==='pending'?'검토 대기':r.status==='approved'?'상품 등록 완료':'반려'}</span><div class="tiny">${fmtDate(r.created_at)}</div></div><div class="tiny">${esc(r.customer_name||'신청자 미기재')}</div></div>
+ const statuses=[
+  {key:'pending',label:'검토 대기',empty:'검토할 상품 신청이 없어요.'},
+  {key:'approved',label:'등록 완료',empty:'등록 완료된 상품 신청이 없어요.'},
+  {key:'rejected',label:'반려',empty:'반려된 상품 신청이 없어요.'}
+ ];
+ const selected=statuses.some(s=>s.key===state.requestStatusFilter)?state.requestStatusFilter:'pending';
+ const filtered=requests.filter(r=>r.status===selected);
+ return `<div class="sectiontitle"><div><h2>고객 상품 등록 신청</h2><div class="sub">아직 처리되지 않은 상품 신청부터 확인해요. 등록 완료·반려는 별도 탭에서 볼 수 있어요.</div></div><button class="btn secondary sm" data-action="refresh">새로고침</button></div>
+ <div class="request-status-tabs" role="group" aria-label="상품 등록 신청 처리 상태">
+  ${statuses.map(st=>`<button type="button" class="request-status-tab ${selected===st.key?'active':''}" data-action="request-status-filter" data-request-status="${st.key}" aria-pressed="${selected===st.key}">${st.label} <span>${requests.filter(r=>r.status===st.key).length}</span></button>`).join('')}
+ </div>
+ <div class="request-status-count" aria-live="polite">${statuses.find(st=>st.key===selected).label} · ${filtered.length}건</div>
+ ${!filtered.length?`<div class="empty">${statuses.find(st=>st.key===selected).empty}</div>`:filtered.map(r=>`<div class="card request-card"><div class="row between"><div><span class="chip ${r.status==='pending'?'orange':r.status==='approved'?'green':'red'}">${r.status==='pending'?'검토 대기':r.status==='approved'?'상품 등록 완료':'반려'}</span><div class="tiny">${fmtDate(r.created_at)}</div></div><div class="tiny">${esc(r.customer_name||'신청자 미기재')}</div></div>
  <img class="request-photo" data-request-photo="${esc(r.photo_path)}" alt="신청 상품 사진" loading="lazy">
  <div class="smallnote">남대문 도매업체</div><h3 style="margin:2px 0 9px">${esc(r.store_name)}</h3><div class="smallnote">상품명</div><b>${esc(r.product_name)}</b>${r.note?`<p class="sub">요청 내용: ${esc(r.note)}</p>`:''}
  ${r.status==='rejected'?`<div class="request-rejection-summary"><b>반려 사유: ${esc(r.rejection_reason||'사유 미기록')}</b>${r.rejection_note?`<div>${esc(r.rejection_note)}</div>`:''}</div><div class="row wrap" style="margin-top:10px"><button class="btn sm secondary" data-action="copy-rejection-notice" data-id="${esc(r.id)}">반려 안내문 복사</button></div>`:''}
@@ -2093,6 +2109,16 @@ if(a==='admin-summary'){
  if(section)window.scrollTo({top:Math.max(0,window.scrollY+section.getBoundingClientRect().top-12),behavior:'auto'});
  return;
 }
+if(a==='request-status-filter'){
+ if(!state.admin||state.page!=='admin'||state.tab!=='requests')throw Error('관리자 상품 신청 화면에서만 사용할 수 있어요.');
+ const status=b.dataset.requestStatus;
+ if(!['pending','approved','rejected'].includes(status))throw Error('알 수 없는 신청 상태예요.');
+ state.requestStatusFilter=status;
+ render();
+ const target=app.querySelector('.request-status-tabs');
+ if(target)window.scrollTo({top:Math.max(0,window.scrollY+target.getBoundingClientRect().top-15),behavior:'auto'});
+ return;
+}
 if(a==='catalog-view'||a==='catalog-filter'){
  if(!state.admin||state.page!=='admin'||state.tab!=='products')throw Error('관리자 상품 관리에서 사용할 수 있어요.');
  if(a==='catalog-view'){
@@ -2271,7 +2297,7 @@ async function change(e){const x=e.target;if(x.id==='deliveryMethodEdit'){
  await adminFulfillment(x.dataset.fulfillment,x.value);await loadAdmin();notif('상품 상태를 변경했어요.');
 }catch(ex){notif(errorText(ex));x.value=state.quotes.find(y=>y.items.some(i=>i.id===x.dataset.fulfillment))?.items.find(i=>i.id===x.dataset.fulfillment)?.fulfillment==='delayed'?'ordered':(state.quotes.find(y=>y.items.some(i=>i.id===x.dataset.fulfillment))?.items.find(i=>i.id===x.dataset.fulfillment)?.fulfillment||'ordered')}finally{busy=false}}}
 function input(e){if(e.target.id==='admin-product-search'){state.adminProductSearch=e.target.value;updateAdminProductSearch();return;}if(e.target.id==='stat-search'){const query=e.target.value.trim().toLowerCase();for(const node of app.querySelectorAll('[data-stats-entry]'))node.classList.toggle('hidden',!!query&&!node.textContent.toLowerCase().includes(query));return;}if(e.target.id==='search'){state.search=e.target.value;const pos=e.target.selectionStart;render();const el=$('#search');if(el){el.focus();el.setSelectionRange(pos,pos)}}}
-app.addEventListener('click',e=>{const summary=e.target.closest('.admin-date-group > summary');if(summary){const group=summary.parentElement;state.dateGroupsOpen[group.dataset.orderDate]=!group.open;return}const tab=e.target.closest('[data-tab]'),filter=e.target.closest('[data-filter]');if(tab){state.tab=tab.dataset.tab;render();return}if(filter){state.filter=filter.dataset.filter;render();return}click(e)});
+app.addEventListener('click',e=>{const summary=e.target.closest('.admin-date-group > summary');if(summary){const group=summary.parentElement;state.dateGroupsOpen[group.dataset.orderDate]=!group.open;return}const tab=e.target.closest('[data-tab]'),filter=e.target.closest('[data-filter]');if(tab){state.tab=tab.dataset.tab;if(state.tab==='requests')state.requestStatusFilter='pending';render();return}if(filter){state.filter=filter.dataset.filter;render();return}click(e)});
 app.addEventListener('submit',submit);app.addEventListener('change',change);app.addEventListener('input',input);
 window.addEventListener('scroll',updateScrollTop,{passive:true});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)updateProcurementSchedule()});

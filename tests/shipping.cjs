@@ -3,13 +3,14 @@ const assert=require('node:assert/strict');
 const vm=require('node:vm');
 const fs=require('node:fs');
 const html=fs.readFileSync('index.html','utf8');
-function setup(quotes=[],admin=true){
+function setup(quotes=[],admin=true,page=admin?'admin':'track'){
  const ctx=vm.createContext({});
- vm.runInContext(`const state=${JSON.stringify({quotes,admin})};
+ vm.runInContext(`const state=${JSON.stringify({quotes,admin,page})};
  const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  ${html.slice(html.indexOf('const trackingInfo='),html.indexOf('\nconst notif='))}
  ${html.slice(html.indexOf('function bundleRootId('),html.indexOf('function bundleWorkControls('))}
- globalThis.api={renderShipment,sharedShipment,bundledQuoteGroups};`,ctx);
+ ${html.slice(html.indexOf('function applyShippingDetails('),html.indexOf('async function loadAdminShipping('))}
+ globalThis.api={renderShipment,sharedShipment,bundledQuoteGroups,v25TrackingSnapshot,indexV25AdminTracking,applyShippingDetails};`,ctx);
  return ctx.api;
 }
 const root={id:'root',delivery_method:'courier',status:'confirmed',workflow_stage:'completed',tracking_carrier:'롯데택배',tracking_number:'1234-5678',created_at:'2026-10-01'};
@@ -60,12 +61,38 @@ test('foreign carrier snapshot cannot be labeled Lotte history',()=>{
  const q={...root,tracking_carrier:'다른 택배',shipment_tracking:{source:'delivery-tracker',carrier_id:'kr.lotte',tracking_number:'12345678',events:[{status:'잘못된 이력'}]}};
  assert.doesNotMatch(setup().renderShipment(q),/잘못된 이력/);
 });
-test('optional enrichment can only change shipment fields',()=>{
- const ctx=vm.createContext({});
- vm.runInContext(html.slice(html.indexOf('function applyShippingDetails('),html.indexOf('async function loadAdminShipping('))+';globalThis.apply=applyShippingDetails;',ctx);
- const q={...root,amount_paid:50000};
- ctx.apply(q,{tracking_carrier:'롯데택배',tracking_number:'99999999',workflow_stage:'new',amount_paid:0,status:'cancelled'});
- assert.equal(q.tracking_number,'99999999');assert.equal(q.workflow_stage,'completed');assert.equal(q.amount_paid,50000);assert.equal(q.status,'confirmed');
+test('v25 enrichment preserves invoice, order and payment fields',()=>{
+ const api=setup();const q={...root,amount_paid:50000};
+ const snapshot=api.v25TrackingSnapshot({tracking_number:'12345678',status_label:'배송 중',events:[]},q.tracking_number);
+ api.applyShippingDetails(q,snapshot);
+ assert.equal(q.tracking_number,'1234-5678');assert.equal(q.workflow_stage,'completed');assert.equal(q.amount_paid,50000);
+ assert.equal(q.shipment_tracking.tracking_number,'12345678');
+ api.applyShippingDetails(q,api.v25TrackingSnapshot({tracking_number:'99999999',events:[]}));
+ assert.equal(q.shipment_tracking.tracking_number,'12345678');
+});
+test('v25 raw time/place/status/detail and ten events map without fabrication',()=>{
+ const api=setup();const row={tracking_number:'12345678',checked_at:'2026-10-21T00:00:00Z',events:Array.from({length:10},()=>({time:'2026-10-15T19:38:21+09:00',place:'집하점',status:'집하',detail:'실제 상세'}))};
+ const snapshot=api.v25TrackingSnapshot(row,'1234-5678');
+ assert.equal(snapshot.events.length,10);assert.equal(snapshot.events[0].location,'집하점');
+ assert.equal(snapshot.events[0].status,'집하 · 실제 상세');assert.equal(snapshot.events[0].time,row.events[0].time);
+ assert.equal(snapshot.fetched_at,row.checked_at);
+ assert.equal(api.v25TrackingSnapshot(null),null);
+ assert.equal(api.v25TrackingSnapshot({tracking_number:'12345678',events:'invalid'}),null);
+ assert.equal(api.v25TrackingSnapshot({events:[]},'12345678'),null);
+ assert.equal(api.v25TrackingSnapshot(row,'99999999'),null);
+});
+test('v25 admin invoice map normalizes identity and rejects ambiguity',()=>{
+ const api=setup();const row={tracking_number:'12345678',events:[]};
+ assert.equal(api.indexV25AdminTracking({'1234-5678':row}).size,1);
+ assert.equal(api.indexV25AdminTracking({'1234-5678':{events:[]}}).size,1);
+ assert.equal(api.indexV25AdminTracking({'1234-5678':{...row,tracking_number:'99999999'}}).size,0);
+ assert.equal(api.indexV25AdminTracking({'1234-5678':row,'12345678':{...row,status_label:'different'}}).size,0);
+ assert.equal(api.indexV25AdminTracking({'12345678':row,'1234-5678':{...row,tracking_number:'99999999'}}).size,0);
+ assert.equal(api.indexV25AdminTracking([row]).size,0);
+});
+test('buyer page never inherits retained administrator cache',()=>{
+ const noInvoice={...child,tracking_number:null,tracking_carrier:null};
+ assert.equal(setup([root,noInvoice],true,'track').sharedShipment(noInvoice).id,'child');
 });
 test('all inline JavaScript and service workers parse',()=>{
  for(const match of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)){

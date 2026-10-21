@@ -3,7 +3,7 @@
   "name": "MINIYENA | 미니예나 아동복",
   "short_name": "미니예나",
   "description": "남아·여아 아동복을 골라 견적을 확인하는 MINIYENA 키즈웨어 셀렉트숍",
-  "start_url": "./index.html",
+  "start_url": "./index.html?v=nav5-7cbb5add",
   "scope": "./",
   "display": "standalone",
   "background_color": "#ffffff",

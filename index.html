@@ -730,6 +730,10 @@ body:has(.overlay) .back-to-top{opacity:0;visibility:hidden;pointer-events:none}
 .product-manage-status{margin-top:11px;align-items:center}
 .product-manage-controls{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0 2px}
 .admin-product-top-actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:6px;flex:0 0 auto}
+.admin-store-actions{display:flex;align-items:center;justify-content:flex-end;gap:6px;flex:0 0 auto}
+.admin-store-delete{border:1px solid #f0b9c4!important;color:#ad2e44!important;background:#fffafb!important}
+.admin-store-delete:hover{background:#fff0f2!important}
+@media(max-width:360px){.admin-store-actions{gap:4px}.admin-store-actions .btn{padding:7px 8px;font-size:10px}}
 .admin-product-delete{border:1px solid #f0b9c4!important;color:#ad2e44!important;background:#fffafb!important}
 .admin-product-delete:hover{background:#fff0f2!important}
 @media(max-width:360px){.admin-product-top-actions{gap:4px}.admin-product-top-actions .btn{padding:7px 8px;font-size:10px}}
@@ -1448,7 +1452,7 @@ function renderAdminProducts(){
    <details class="admin-store-fold" open>
     <summary>등록된 거래처 ${state.stores.length}곳 <span class="admin-store-fold-hint">접기 · 펼치기</span></summary>
     <div class="admin-store-fold-inner">
-     ${state.stores.map(st=>`<div class="card admin-store-list-card"><div class="row between"><b>🏬 ${esc(st.name)}</b><button class="btn sm secondary" data-action="edit-store" data-id="${esc(st.id)}">수정</button></div><div class="tiny">${all.filter(p=>p.store_id===st.id).length}개 상품 · ${st.active?'사용 중':'가게 숨김'}</div></div>`).join('')||'<div class="empty">아직 등록된 거래처가 없어요. + 가게에서 추가해 주세요.</div>'}
+     ${state.stores.map(st=>`<div class="card admin-store-list-card"><div class="row between"><b>🏬 ${esc(st.name)}</b><div class="admin-store-actions"><button class="btn sm secondary" type="button" data-action="edit-store" data-id="${esc(st.id)}">수정</button><button class="btn sm admin-store-delete" type="button" data-action="delete-store" data-id="${esc(st.id)}" aria-label="${esc(st.name)} 거래처 삭제">삭제</button></div></div><div class="tiny">${all.filter(p=>p.store_id===st.id).length}개 상품 · ${st.active?'사용 중':'가게 숨김'}</div></div>`).join('')||'<div class="empty">아직 등록된 거래처가 없어요. + 가게에서 추가해 주세요.</div>'}
     </div>
    </details>
   `:`
@@ -1880,6 +1884,46 @@ async function putProduct(o,id){
  if(!Array.isArray(rows)||rows.length!==1||!rows[0]?.id)throw Error('상품 등록 결과를 확인하지 못했어요. 새로고침 후 확인해 주세요.');
  return rows[0].id;
 }
+async function deleteAdminStore(id){
+ if(!state.admin)throw Error('관리자만 거래처를 삭제할 수 있어요.');
+ const store=state.stores.find(x=>x.id===id);
+ if(!store)throw Error('삭제할 거래처를 찾지 못했어요. 목록을 새로고침해 주세요.');
+ const productCount=state.products.filter(p=>p.store_id===id).length;
+ if(productCount){
+  const openProducts=window.confirm(`‘${store.name}’ 거래처에 상품 ${productCount}개가 있어 아직 삭제할 수 없어요.\n\n상품을 다른 거래처로 옮기거나 삭제한 뒤 거래처를 삭제해 주세요.\n\n이 거래처의 상품 목록을 바로 볼까요?`);
+  if(openProducts){
+   state.tab='products';
+   state.adminCatalogView='products';
+   state.adminCatalogFilter='all';
+   state.adminProductSearch=store.name;
+   render();
+   const section=app.querySelector('#admin-catalog');
+   if(section)window.scrollTo({top:Math.max(0,window.scrollY+section.getBoundingClientRect().top-12),behavior:'auto'});
+  }
+  return false;
+ }
+ if(!window.confirm(`‘${store.name}’ 거래처를 영구 삭제할까요?\n\n상품이 없는 거래처이며, 삭제 후 복구할 수 없어요.`))return false;
+ if(!connected){
+  const index=demo.stores.findIndex(x=>x.id===id);
+  if(index<0)throw Error('삭제할 거래처가 없어요. 다시 확인해 주세요.');
+  if(demo.products.some(p=>p.store_id===id))throw Error('연결된 상품이 있어 삭제할 수 없어요.');
+  demo.stores.splice(index,1);
+  saveDemo();
+ }else{
+  let deleted;
+  try{
+   deleted=await api('/rest/v1/gq_stores?id=eq.'+encodeURIComponent(id),{method:'DELETE',admin:true});
+  }catch(error){
+   if(error?.code==='23503')throw Error('해당 거래처에 연결된 상품이 있어 삭제할 수 없어요. 상품을 이동하거나 삭제한 뒤 다시 시도해 주세요.');
+   throw error;
+  }
+  if(!Array.isArray(deleted)||deleted.length!==1||deleted[0].id!==id)
+   throw Error('거래처 삭제 결과를 확인하지 못했어요. 새로고침 후 다시 확인해 주세요.');
+ }
+ state.adminCatalogView='stores';
+ await loadAdmin();
+ return true;
+}
 async function deleteAdminProduct(id){
  if(!state.admin)throw Error('관리자만 상품을 삭제할 수 있어요.');
  const product=selectedProd(id);
@@ -2236,6 +2280,11 @@ if(a==='catalog-view'||a==='catalog-filter'){
  render();
  const section=app.querySelector('#admin-catalog');
  if(section)window.scrollTo({top:Math.max(0,window.scrollY+section.getBoundingClientRect().top-12),behavior:'auto'});
+ return;
+}
+if(a==='delete-store'){
+ const deleted=await deleteAdminStore(id);
+ if(deleted)notif('거래처를 삭제했어요.');
  return;
 }
 if(a==='delete-product'){

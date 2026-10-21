@@ -1204,11 +1204,18 @@ const storeName=id=>state.stores.find(s=>s.id===id)?.name||'삭제된 가게';
 const cartCount=()=>state.cart.reduce((s,i)=>s+i.quantity,0);
 const buyerLabel=q=>String(q.buyer_name||'이름 미입력')+' · '+(q.baby_name||'아기 이름 미입력');
 const normKey=x=>String(x||'').trim().replace(/\s+/g,'').toLowerCase();
+// 연락처는 입력 형식에 상관없이 같은 번호로 인식합니다.
+// 하이픈·공백·+82 등만 정규화하고, 짧거나 올바르지 않은 번호는 동일인 식별에 사용하지 않습니다.
+const normalizeBuyerPhone=x=>{
+ const digits=String(x||'').replace(/[^0-9]/g,'');
+ const local=digits.startsWith('82')?'0'+digits.slice(2):digits;
+ return /^01[016789][0-9]{7,8}$/.test(local)?local:'';
+};
 // 같은 이름만으로 묶지 않습니다. 아기 이름이 없는 옛 주문은 개별 건으로 유지합니다.
 const buyerIdentity=q=>{
- const a=normKey(q.buyer_name),b=normKey(q.baby_name),c=normKey(q.contact);
+ const a=normKey(q.buyer_name),b=normKey(q.baby_name),phone=normalizeBuyerPhone(q.contact);
  if(!b)return 'old:'+q.id;
- if(c.length>=6)return 'contact:'+a+'|'+b+'|'+c;
+ if(phone)return 'contact:'+a+'|'+b+'|'+phone;
  if(q.customer_key)return 'device:'+a+'|'+b+'|'+q.customer_key;
  return 'unique:'+q.id;
 };

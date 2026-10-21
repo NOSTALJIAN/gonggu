@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#faf8f4">
+<meta name="theme-color" content="#ffffff">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="미니예나">
 <link rel="apple-touch-icon" href="./apple-touch-icon.png">
@@ -320,8 +320,164 @@ input:focus,select:focus,textarea:focus{border-color:#aa8c70;box-shadow:0 0 0 3p
 @media(min-width:720px){.shoplist .shop-catalog-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:23px 15px}.shop-editorial{min-height:290px}.shop-editorial-copy{padding-left:46px}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;transition:none!important}}
 
+
+/* MINIYENA / high-fashion storefront, black + white + cool neutrals.
+   Presentation only: no shipment, quote, or admin business-logic changes. */
+:root{
+ --purple:#111111;--purpdark:#000;--soft:#f2f2f2;--bg:#fff;
+ --ink:#141414;--gray:#747474;--line:#e5e5e5;
+ --green:#266957;--danger:#ad404b;--warn:#865d29;--card:#fff
+}
+html{scroll-padding-top:15px}
+body{background:#f5f5f5;color:#141414;font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Noto Sans KR',Arial,sans-serif;line-height:1.55}
+.shell{background:#fff;box-shadow:none;max-width:860px}
+.hero{background:#fff;color:#000;border-bottom:1px solid #e6e6e6;padding:calc(env(safe-area-inset-top) + 19px) 20px 0}
+.headrow{min-height:39px;gap:12px;align-items:center}
+.brand-lockup,.brand-text{min-width:0}
+.logo{font-family:Arial,Helvetica,'Helvetica Neue',sans-serif;font-size:31px;font-weight:900;letter-spacing:-.077em;color:#000;line-height:1;margin:0}
+.brand-small{display:none}
+.header-actions{gap:8px}
+.heroaction{font-size:10px;letter-spacing:.025em;border:0;border-bottom:1px solid #111;color:#111;background:transparent;border-radius:0;padding:8px 1px 6px;font-weight:750}
+.header-nav{margin-top:24px;gap:25px;padding:0;align-items:end}
+.header-nav a,.header-nav button{border:0;border-bottom:2px solid transparent;padding:0 0 13px;background:transparent;color:#626262;font-size:11px;letter-spacing:.065em;font-weight:800}
+.header-nav a:first-child{color:#101010;border-bottom-color:#101010}
+.header-nav a:hover,.header-nav button:hover{color:#111}
+.header-nav .header-note{font-size:9px;color:#929292;letter-spacing:.07em;font-weight:600;padding-bottom:13px}
+.content{padding:24px 18px}
+.card,.statcard,.tile,.bundle-summary-card,.pushbox{border-radius:2px;background:#fff;border:1px solid #e4e4e4;box-shadow:none}
+.card{padding:18px}
+.sectiontitle h2,.shop-section-head h2{color:#111;font-weight:830}
+.tiny,.sub,.smallnote{color:#777}
+a,.textbutton{color:#171717}
+.btn{background:#111;color:#fff;border-radius:2px;font-weight:760;letter-spacing:-.02em}
+.btn:not(:disabled):hover{background:#303030}
+.btn.secondary,.btn.neutral{background:#f1f1f1;color:#111}
+.btn.outline{background:#fff;color:#111;border:1px solid #111}
+.btn.sm{border-radius:2px}
+.heroaction:focus-visible,.btn:focus-visible,.nav-item:focus-visible,.shop-photo-button:focus-visible{outline:2px solid #111;outline-offset:3px}
+input,select,textarea{background:#fff;color:#151515;border-color:#d8d8d8;border-radius:2px}
+input:focus,select:focus,textarea:focus{border-color:#111;box-shadow:0 0 0 1px #111}
+.label{color:#373737}
+.price,.money{color:#111}
+.chip.purple,.stagebadge,.workflow-stage,.bundle-title-tag{background:#f0f0f0;color:#222;border-radius:2px}
+.chip.blue{background:#edf1f4;color:#4d6270}
+.info,.workflow-card,.bundle-flow,.bundle-info,.delivery-fields,.pushbox,.filehelp,.form-options{background:#fafafa;border:1px solid #e6e6e6;border-radius:2px;color:#343434}
+.info[style*="background:#fff"]{border-color:#e5e5e5!important}
+.noticebar{background:#fafafa;border:1px solid #e2e2e2;border-radius:2px;color:#454545}
+.quote-step{background:#fff;border:1px solid #dedede;border-radius:2px}
+.quote-step span.current{color:#000}
+.quote-step i{background:#d7d7d7}
+.pillchoice,.pillchoice.active{border-radius:2px}
+.pillchoice.active{background:#eee;border-color:#222;color:#111}
+.qty{border-radius:2px}.qty button{background:#eee;border-radius:2px;color:#111}
+.tab{border-radius:2px;background:#fff;color:#444;border-color:#d6d6d6}
+.tab.active{background:#111;border-color:#111;color:#fff}
+.tile{border-radius:2px}
+.bundle-info{color:#333}
+.bundle-flow,.bundle-summary-card{border-color:#dedede;background:#fff}
+.bundle-children>summary,.bundle-ledger-edit>summary,.bundle-ledger-work>summary,.bundle-delete>summary{color:#111}
+.bundle-ledger-head>b{color:#111}
+.bundle-children-inner .ordercard,.bundle-ledger-edit-inner{background:#fff;border-color:#e3e3e3}
+.lotte-tip{background:#f4f4f4;color:#333}
+.lotte-auto-chip{color:#3f3f3f}
+.shipment-progress{background:#fff;border-color:#dcdcdc;border-radius:2px}
+.shipment-progress a,.shipment-history summary{color:#171717}
+.shipment-timeline{border-left-color:#cecece}
+.shipment-timeline-item::before{border-color:#888}
+.shipment-timeline-item:first-child::before{background:#111;border-color:#111}
+.shipment-timeline-head strong{color:#101010}
+.shipment-timeline-head time{color:#757575}
+.shipment-timeline-location{color:#535353}
+.shipment-timeline-detail{color:#626262}
+.page-intro{margin:4px 0 25px;padding-bottom:18px;border-bottom:1px solid #dedede}
+.page-intro-kicker{font-size:10px;letter-spacing:.13em;font-weight:780;color:#777}
+.page-intro h1{font-size:29px;letter-spacing:-.06em;line-height:1.15;margin:8px 0 6px;font-weight:850;color:#111}
+.page-intro p{color:#737373;font-size:12px;margin:0}
+.shop-content{padding-top:0}
+.shop-editorial{margin:0 -18px 0;min-height:440px;height:min(78vh,560px);display:block;position:relative;overflow:hidden;border-radius:0;background:#282828;color:#fff}
+.shop-editorial-visual{position:absolute;inset:0;background:#424242}
+.shop-editorial-visual img{width:100%;height:100%;object-fit:cover;object-position:center 40%;filter:saturate(.68) contrast(.97) brightness(.8)}
+.shop-editorial-visual.has-photo:before{z-index:1;content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(0,0,0,.58),rgba(0,0,0,.13) 80%),linear-gradient(0deg,rgba(0,0,0,.38),transparent 58%);width:auto}
+.shop-editorial-art{height:100%;background:linear-gradient(130deg,#282828 0%,#666 52%,#b7b7b7 100%)}
+.shop-editorial-art:after{content:"";display:none}
+.shop-editorial-copy{position:absolute;z-index:2;left:0;bottom:0;display:flex;align-items:flex-start;justify-content:flex-end;gap:13px;padding:0 22px 31px;color:#fff;max-width:100%}
+.shop-editorial-label{font-size:10px;font-weight:780;color:#e5e5e5;letter-spacing:.19em;line-height:1.4}
+.shop-editorial h1{color:#fff;font-family:Arial,Helvetica,sans-serif;font-size:clamp(40px,10vw,74px);font-weight:900;line-height:.99;letter-spacing:-.09em;margin:0;word-break:keep-all;text-transform:uppercase}
+.shop-editorial p{font-size:12px;line-height:1.7;color:#eee;font-weight:520;margin-top:3px}
+.shop-editorial-link{background:#fff;color:#111;border:0;border-radius:0;padding:13px 18px;font-size:11px;font-weight:850;letter-spacing:.035em;text-decoration:none;margin-top:7px}
+.shop-editorial-link:hover{background:#e4e4e4;color:#111}
+.shop-benefits{grid-template-columns:repeat(3,minmax(0,1fr));margin:0 0 33px;padding:16px 0;border:0;border-bottom:1px solid #e4e4e4;gap:0}
+.shop-benefits span{font-size:9px;color:#676767;letter-spacing:.035em;line-height:1.5;font-weight:630}
+.shop-benefits strong{font-size:10px;color:#101010;margin-bottom:2px;font-weight:790}
+.shop-benefits span+span{border-left:1px solid #e3e3e3}
+.shop-section-head{margin-bottom:20px;align-items:end}
+.shop-section-head h2{font-family:Arial,Helvetica,sans-serif;font-size:33px;color:#111;letter-spacing:-.075em;font-weight:900;line-height:1.1}
+.shop-section-head small{font-size:11px;color:#6f6f6f}
+.shop-kicker{font-size:10px;font-weight:850;letter-spacing:.15em;color:#777;margin:0 0 9px}
+.shop-section-head .sub{font-size:10px;color:#828282;letter-spacing:.07em}
+.shop-actions{display:flex;gap:8px;margin-bottom:17px}
+.shop-actions button{background:#fff;color:#171717;border:1px solid #d1d1d1;border-radius:0;padding:8px 12px;min-height:34px;font-size:11px;font-weight:760}
+.shop-search-wrap:before{content:"";position:absolute;left:14px;top:50%;width:12px;height:12px;transform:translateY(-60%);border:2px solid #757575;border-radius:100%}
+.shop-search-wrap:after{content:"";position:absolute;left:26px;top:calc(50% + 5px);width:7px;height:2px;background:#757575;transform:rotate(45deg);pointer-events:none}
+#search{border-radius:0;border:1px solid #ddd;background:#fff;padding:13px 16px 13px 42px;min-height:47px;font-size:16px}
+.shoplist .shop-catalog-count{margin:22px 0 13px;color:#6d6d6d;font-size:11px;font-weight:670}
+.shoplist .shop-catalog-grid{gap:29px 12px}
+.shoplist .shop-catalog-card{background:#fff;gap:5px;border:0;padding:0;border-radius:0;box-shadow:none}
+.shoplist .shop-catalog-photo{aspect-ratio:3/4;border-radius:0;background:#f0f0f0;overflow:hidden}
+.shoplist .shop-catalog-photo .product-cover,.shoplist .shop-catalog-photo .producticon{aspect-ratio:3/4;border-radius:0;background:#f0f0f0;object-fit:cover;width:100%;height:100%}
+.shop-photo-button{border-radius:0;transition:opacity .18s ease}
+.shop-photo-button:hover{opacity:.86;filter:none}
+.shoplist .shop-catalog-store{margin-top:8px;font-size:10px;color:#868686;letter-spacing:.02em}
+.shoplist .shop-catalog-card .producttitle{font-size:13px;font-weight:750;line-height:1.52;color:#171717}
+.shoplist .shop-catalog-colors{font-size:11px;color:#878787}
+.shop-catalog-quote{color:#444;font-size:11px;font-weight:700;margin-top:6px}
+.shoplist .shop-catalog-select{margin-top:8px;color:#111;background:#fff;border:1px solid #111;border-radius:0;font-size:11px;font-weight:770;min-height:38px}
+.shoplist .shop-catalog-select:hover{background:#111;color:#fff}
+.shop-footer-note{border-top:1px solid #222;color:#666;letter-spacing:.04em;margin:50px 0 0;padding:22px 0 10px;font-size:11px}
+.shop-footer-note b{display:block;color:#111;font:900 18px Arial,Helvetica,sans-serif;letter-spacing:-.07em;margin-bottom:9px}
+.dock{background:#fff;border-color:#e5e5e5;box-shadow:0 -5px 22px #00000008}
+.dock .btn{background:#111}
+.shop-bottom-nav{background:#fffffffa;border-top:1px solid #dedede;box-shadow:0 -2px 16px #00000004;max-width:860px}
+.shop-bottom-nav .nav-item{color:#747474;font-weight:690}
+.shop-bottom-nav .nav-item.active{color:#111;font-weight:840}
+.shop-bottom-nav .nav-count{color:#fff;background:#111}
+.sheet{background:#fff;border-radius:0}
+.sheethead h2{color:#111}
+.sheet .request-photo{background:#f5f5f5;border-color:#e2e2e2;border-radius:0}
+.close{border-radius:0;background:#f0f0f0;color:#111}
+.product-cover,.product-thumb{border-radius:0}
+@media(max-width:519px){
+ .hero{padding:calc(env(safe-area-inset-top) + 18px) 15px 0}
+ .logo{font-size:30px}
+ .heroaction{font-size:10px}
+ .header-nav{margin-top:22px;gap:24px}
+ .content{padding:22px 14px}
+ .shop-content{padding-top:0}
+ .shop-editorial{margin-inline:-14px;min-height:400px;height:min(68vh,530px)}
+ .shop-editorial-copy{padding:0 20px 29px}
+ .shop-editorial h1{font-size:clamp(37px,10.5vw,52px)}
+ .shop-benefits{margin-bottom:29px}
+ .shop-benefits span{font-size:9px}
+ .shoplist .shop-catalog-grid{gap:27px 11px}
+ .shoplist .shop-catalog-card{padding:0}
+ .shoplist .shop-catalog-card .producttitle{font-size:13px}
+ .page-intro h1{font-size:27px}
+}
+@media(max-width:355px){
+ .logo{font-size:27px}
+ .shop-editorial h1{font-size:36px}
+ .shop-editorial-copy{padding:0 15px 25px}
+ .header-nav{gap:17px}
+ .shop-benefits span,.shop-benefits strong{font-size:9px}
+}
+@media(min-width:720px){
+ .shop-editorial{margin-inline:-18px;min-height:520px;max-height:640px}
+ .shop-editorial-copy{padding:0 45px 45px}
+ .shoplist .shop-catalog-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:35px 18px}
+}
+
 </style>
-<title>MINIYENA | 미니예나 아동복</title>
+<title>MINIYENA — Contemporary Kidswear</title>
 <!-- OneSignal Web SDK v16. App ID는 공개용 식별자이며 발송용 REST API 키는 절대 이 파일에 저장하지 마세요. -->
 <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
 <script>
@@ -580,14 +736,14 @@ const img=(p,cls='product-cover')=>p?.image_url?`<img class="${cls}" src="${esc(
 async function showRequestImages(){if(!connected||!state.admin)return;const nodes=[...document.querySelectorAll('[data-request-photo]')];if(!nodes.length)return;const token=await getToken();for(const el of nodes){const path=el.dataset.requestPhoto;if(!path)continue;if(requestImageCache.has(path)){const saved=await requestImageCache.get(path);if(el.isConnected&&saved)el.src=saved;continue}const task=(async()=>{try{const resp=await fetch(url+'/storage/v1/object/authenticated/'+PHOTO_PRIVATE+'/'+path.split('/').map(encodeURIComponent).join('/'),{headers:{apikey:key,Authorization:'Bearer '+token}});if(!resp.ok)throw Error('사진 조회 실패');return URL.createObjectURL(await resp.blob())}catch(e){console.error('신청 사진 표시 오류',e);return null}})();requestImageCache.set(path,task);const value=await task;if(el.isConnected&&value)el.src=value;}}
 function header(){
  const admin=state.page==='admin';
- return `<header class="hero"><div class="headrow"><div class="brand-lockup"><div class="brand-text"><div class="logo" aria-label="MINIYENA">MINIYENA</div></div></div><div class="header-actions">
- ${!admin?'<button class="heroaction" data-action="my-quotes" type="button">내 주문</button>':''}
- <button class="heroaction" data-page="${admin?'shop':'admin'}" type="button">${admin?'쇼핑몰':'관리자'}</button></div></div>
+ return `<header class="hero"><div class="headrow">
+ <div class="brand-lockup"><div class="brand-text"><div class="logo" aria-label="MINIYENA">MINIYENA</div></div></div>
+ <div class="header-actions"><button class="heroaction" data-page="${admin?'shop':'admin'}" type="button">${admin?'SHOP ↗':'ADMIN ↗'}</button></div></div>
  <nav class="header-nav" aria-label="사이트 메뉴">
- ${state.page==='shop'?'<a href="#catalog">전체 상품</a>':'<button data-page="shop" type="button">전체 상품</button>'}
- <button type="button" data-action="suggest-product">상품 신청</button>
- <button type="button" data-action="my-quotes">주문 조회</button>
- ${admin?'<span class="header-note">ADMIN</span>':'<span class="header-note">BABY & KIDS</span>'}</nav>
+ ${state.page==='shop'?'<a href="#catalog">SHOP</a>':'<button data-page="shop" type="button">SHOP</button>'}
+ <button type="button" data-action="my-quotes">ORDER</button>
+ <button type="button" data-action="suggest-product">REQUEST</button>
+ <span class="header-note">${admin?'ADMIN DASHBOARD':'BABY & KIDS'}</span></nav>
  </header>`;
 }
 function shopBottomNav(){
@@ -633,27 +789,28 @@ async function miniEnablePush(){
 function render(){app.innerHTML=`<main class="shell">${header()}${demoNotice()}${state.page==='admin'?renderAdmin():state.page==='track'?renderTrack():renderShop()}${shopBottomNav()}</main>${renderModal()}`;if(state.admin){queueMicrotask(()=>showRequestImages().catch(console.error));queueMicrotask(()=>miniPushStatus().catch(console.warn));}}
 const steps=idx=>`<div class="quote-step">${['① 상품 담기','② 견적 요청','③ 가격 확인','④ 최종 주문'].map((x,i)=>`<span class="${i===idx?'current':''}">${x}</span>${i<3?'<i></i>':''}`).join('')}</div>`;
 function renderShop(){
- // Only genuinely published/active items are shown; no fabricated prices or categories.
+ // No inferred categories, prices, stock levels or rankings: only active, published items.
  const products=state.stores.filter(s=>s.active).flatMap(s=>state.products.filter(p=>p.published&&p.store_id===s.id&&(!state.search||p.name.includes(state.search)||s.name.includes(state.search))).map(p=>({p,store:s})));
  const featured=state.stores.filter(s=>s.active).flatMap(s=>state.products.filter(p=>p.published&&p.store_id===s.id)).find(p=>p.image_url);
- return `<section class="content">
- <div class="shop-editorial"><div class="shop-editorial-copy"><span class="shop-editorial-label">MINIYENA · EVERY LITTLE DAY</span><h1>작은 일상에<br>따뜻한 옷 한 벌</h1><p>남아도 여아도, 우리 아이의<br>소중한 순간을 위한 옷장</p><a class="shop-editorial-link" href="#catalog">상품 둘러보기 →</a></div>
- <div class="shop-editorial-visual ${featured?'has-photo':''}">${featured?`<img src="${esc(featured.image_url)}" alt="등록 상품 사진" loading="lazy">`:'<div class="shop-editorial-art" aria-hidden="true"></div>'}</div></div>
- <div class="shop-benefits"><span><strong>남아 · 여아 모두</strong>우리 아이의 옷</span><span><strong>옵션별 선택</strong>컬러와 사이즈</span><span><strong>견적 확인 후 주문</strong>가격 안내 방식</span></div>
- <div class="shop-section-head" id="catalog"><div><h2>우리 아이의 옷장</h2><small>오늘의 MINIYENA 컬렉션</small></div><span class="sub">ALL ITEMS</span></div>
- <div class="shop-actions"><button type="button" data-action="suggest-product">+ 찾는 상품 신청</button><button type="button" data-action="my-quotes">내 견적·주문 조회</button></div>
+ return `<section class="content shop-content">
+ <div class="shop-editorial"><div class="shop-editorial-visual ${featured?'has-photo':''}">${featured?`<img src="${esc(featured.image_url)}" alt="미니예나 등록 상품" loading="eager">`:'<div class="shop-editorial-art" aria-hidden="true"></div>'}</div>
+ <div class="shop-editorial-copy"><span class="shop-editorial-label">MINIYENA / KIDSWEAR EDIT</span><h1>EVERYDAY<br>KIDSWEAR.</h1><p>아이들의 매일을 위한, 간결하고 편안한 옷.<br>남아와 여아 모두를 위한 컬렉션.</p><a class="shop-editorial-link" href="#catalog">EXPLORE COLLECTION ↗</a></div></div>
+ <div class="shop-benefits"><span><strong>FOR EVERY CHILD</strong>남아 · 여아</span><span><strong>SELECT YOUR FIT</strong>컬러 · 사이즈</span><span><strong>QUOTE TO ORDER</strong>견적 확인 후 주문</span></div>
+ <p class="shop-kicker">THE COLLECTION — 01</p>
+ <div class="shop-section-head" id="catalog"><div><h2>SHOP ALL.</h2><small>MINIYENA의 모든 등록 상품</small></div><span class="sub">SELECTED ITEMS</span></div>
+ <div class="shop-actions"><button type="button" data-action="suggest-product">+ 상품 등록 신청</button><button type="button" data-action="my-quotes">내 견적 · 주문조회 ↗</button></div>
  <div class="shop-search-wrap"><input id="search" type="search" placeholder="상품명 또는 가게 이름 검색" value="${esc(state.search)}" aria-label="상품 검색"></div>
- <div class="shoplist">${products.length?`<div class="shop-catalog-count">전체 상품 ${products.length}개 · 가격은 견적 안내 후 확인</div><div class="shop-catalog-grid">${products.map(({p,store})=>`<article class="shop-catalog-card"><button class="shop-catalog-photo shop-photo-button" type="button" data-action="pick-product" data-id="${esc(p.id)}" aria-label="${esc(p.name)} 옵션 선택">${img(p)}</button><div class="shop-catalog-store">${esc(store.name)}</div><div class="producttitle">${esc(p.name)}</div><div class="shop-catalog-colors">${Object.keys(p.options||{}).map(esc).join(' · ')||'색상 옵션 확인'}</div><div class="shop-catalog-quote">가격은 견적 확인 후 안내</div><button class="btn block shop-catalog-select" type="button" data-action="pick-product" data-id="${esc(p.id)}">옵션 선택 · 담기 →</button></article>`).join('')}</div>`:'<div class="empty">등록된 상품이 없어요.</div>'}</div>
- <div class="shop-footer-note">MINIYENA<br>상품을 담아 견적을 요청하면 확인 후 가격을 안내해 드려요.</div>
+ <div class="shoplist">${products.length?`<div class="shop-catalog-count">ALL ITEMS — ${products.length} PRODUCTS</div><div class="shop-catalog-grid">${products.map(({p,store})=>`<article class="shop-catalog-card"><button class="shop-catalog-photo shop-photo-button" type="button" data-action="pick-product" data-id="${esc(p.id)}" aria-label="${esc(p.name)} 옵션 선택">${img(p)}</button><div class="shop-catalog-store">${esc(store.name)}</div><div class="producttitle">${esc(p.name)}</div><div class="shop-catalog-colors">${Object.keys(p.options||{}).map(esc).join(' · ')||'색상 옵션 확인'}</div><div class="shop-catalog-quote">견적 후 가격 안내</div><button class="btn block shop-catalog-select" type="button" data-action="pick-product" data-id="${esc(p.id)}">옵션 선택 ↗</button></article>`).join('')}</div>`:'<div class="empty">등록된 상품이 없어요.</div>'}</div>
+ <div class="shop-footer-note"><b>MINIYENA</b>상품을 골라 견적을 요청하면 확인 후 가격을 안내해 드려요.</div>
  </section>
  ${state.cart.length?`<div class="dock"><div class="main"><strong>장바구니 ${cartCount()}개</strong><div class="tiny">상품을 모아 한 번에 견적 요청</div></div><button class="btn" data-action="open-cart">견적 요청하기 →</button></div>`:''}`;
 }
-function renderTrack(){const q=state.tracking;return `<section class="content">${steps(!q?1:q.status==='requested'?1:q.status==='quoted'?2:3)}${!state.trackId||!state.trackToken?'<div class="empty">견적 내역에서 확인할 요청을 선택해 주세요.</div>':!q?'<div class="card">견적을 불러오는 중이거나 요청서를 찾지 못했어요.<div class="space"></div><button class="btn secondary" data-action="load-track">다시 불러오기</button></div>':`<div class="card"><div class="row between"><h2 style="margin:0">${esc(q.buyer_name)}님 견적</h2><span class="stagebadge">${statusLabel[q.status]}</span></div><div class="smallnote">아기 이름(태명): ${esc(q.baby_name||'미입력 (이전 견적)')} · 접수 ${fmtDate(q.created_at)} · 견적번호 ${q.id.slice(0,8).toUpperCase()}</div><div class="info">회원가입 없이 이용하는 견적이에요. <b>아래 비밀 확인 링크를 복사해서 보관</b>해 주세요. 같은 이름의 다른 주문과 자동으로 연결되지는 않아요.</div><div class="info" style="background:#fff;border-color:#dedbf4"><b>수령방식: ${deliveryLabel(q)}</b>${q.delivery_method==='courier'?`<div class="smallnote" style="margin-top:4px">받는 사람: ${esc(q.recipient_name||q.buyer_name||'')} · 주소: ${esc(addressLabel(q))}${q.delivery_note?` · 요청사항: ${esc(q.delivery_note)}`:''}</div>`:''}${isBundle(q)?'<div class="smallnote">묶음배송 적용 · 이 주문의 추가 배송비는 0원이에요.</div>':''}</div>${q.delivery_change_requested_at?`<div class="noticefail" style="margin-top:9px"><b>수령방식 변경 요청 대기 중</b><div class="smallnote">요청 내용: ${q.requested_delivery_method==='pickup'?'직접수령':'택배수령'}${q.requested_delivery_method==='courier'?' · '+esc(q.requested_address_line1||''):''}</div>관리자가 승인하기 전까지 현재 수령방식과 결제금액이 유지돼요.</div>`:''}${q.delivery_change_rejected_at&&!q.delivery_change_requested_at?'<div class="noticefail">이전 수령방식 변경 요청이 반려되었어요. 필요하면 다시 요청해 주세요.</div>':''}${q.status!=='cancelled'?`<button class="btn block secondary" style="margin:12px 0 4px" data-action="edit-delivery">수령방식·주소 수정${q.delivery_change_requested_at?' (요청 수정)':''}</button>`:''}<div class="separator"></div>${q.items.map(i=>`<div class="cartline"><div class="row between"><b>${esc(i.store_name)} · ${esc(i.product_name)}</b><span>${i.quantity}개</span></div><div class="sub">${esc(i.color)} / ${esc(i.size)}</div><div class="money">${i.unit_price==null?'가격 안내 전':money(i.unit_price*i.quantity)}${i.unit_price!=null?` <span class="tiny">(${money(i.unit_price)} × ${i.quantity})</span>`:''}</div>${q.status==='confirmed'?`<div class="tiny">상태: ${itemStatusLabel(q,i)}</div>`:''}</div>`).join('')}<div class="separator"></div><div class="sumline"><span>상품 합계</span><b>${unknown(q)?'가격 확인 중':money(previewOrderSum(q))}</b></div><div class="sumline"><span>배송비</span><b>${q.status==='requested'?'견적 안내 전':shippingLabel(q)}</b></div><div class="sumline total"><span>최종 결제금액</span><b>${q.status==='requested'||!readyQuote(q)?'견적 확인 중':money(totalDue(q))}</b></div>${q.status==='requested'?'<div class="info">운영자가 가격을 확인 중이에요. 견적이 올라오면 이 화면에서 확인한 뒤 최종 주문해 주세요.</div>':q.status==='quoted'?`<div class="info">가격을 확인한 뒤 아래 버튼을 눌러야 <b>최종 주문</b>이 확정돼요. 아직 주문 확정 전입니다.</div><button class="btn block" data-action="confirm-quote" ${!readyQuote(q)||q.cancel_requested_at?'disabled':''}>견적 확인 후 최종 주문하기</button>`:q.status==='confirmed'?`<div class="info"><b>📦 주문 진행: ${workflowLabel(q)}</b>${trackingInfo(q)?`<div class="smallnote" style="margin-top:5px">택배사·운송장: ${esc(trackingInfo(q))}</div>${renderShipment(q)}${isLotteShipment(q)?'<div class="smallnote" style="margin-top:4px">롯데택배 배송조회 연결 · 배송 완료 확인 시 자동 반영 (조회 지연 가능)</div>':''}`:''}${q.delivery_method==='courier'&&!trackingInfo(q)?'<div class="smallnote">이 주문에 등록된 송장번호가 아직 없어요. 묶음배송이라면 운영자에게 송장 등록 상태를 확인해 주세요.</div>':''}${q.items.some(i=>i.fulfillment==='sold_out')?`<div class="smallnote" style="margin-top:5px">품절된 상품은 결제금액에서 제외되었어요. 실제 환불은 판매자에게 확인해 주세요.${allSoldOut(q)?' 전부 품절되어 배송비도 제외돼요.':''}</div>`:''}<div class="smallnote">수령 진행 상황은 이 링크에서 새로고침하여 확인할 수 있어요.</div></div><div class="tiny">입금 확인: ${money(q.amount_paid||0)} / 환불 완료: ${money(q.amount_refunded||0)}</div>`:'<div class="noticefail">취소된 견적입니다.</div>'}${q.amount_changed_at&&['quoted','confirmed'].includes(q.status)?`<div class="noticefail" style="margin:10px 0"><b>견적 금액이 수정되었어요</b><div>관리자가 상품 가격 또는 배송비를 변경했어요. 최신 결제금액을 확인하고, 이미 결제했다면 차액·환불 여부를 판매자에게 확인해 주세요.</div><div class="smallnote">변경 ${fmtDate(q.amount_changed_at)}</div></div>`:''}${q.cancel_requested_at&&q.status!=='cancelled'?`<div class="noticefail"><b>취소 요청 접수됨</b><div>관리자가 확인 후 취소 여부를 처리해요. 최종 주문은 잠시 진행하지 말아 주세요.</div>${q.cancel_reason?`<div class="tiny">요청 사유: ${esc(q.cancel_reason)}</div>`:''}</div>`:q.cancel_rejected_at&&q.status!=='cancelled'?'<div class="noticefail">관리자가 이전 취소 요청을 반려했어요. 여전히 취소가 필요하면 다시 요청할 수 있어요.</div>':''}
+function renderTrack(){const q=state.tracking;return `<section class="content"><div class="page-intro"><span class="page-intro-kicker">MINIYENA / ORDER SERVICE</span><h1>ORDER DETAILS.</h1><p>견적과 배송 진행 상황을 확인하세요.</p></div>${steps(!q?1:q.status==='requested'?1:q.status==='quoted'?2:3)}${!state.trackId||!state.trackToken?'<div class="empty">견적 내역에서 확인할 요청을 선택해 주세요.</div>':!q?'<div class="card">견적을 불러오는 중이거나 요청서를 찾지 못했어요.<div class="space"></div><button class="btn secondary" data-action="load-track">다시 불러오기</button></div>':`<div class="card"><div class="row between"><h2 style="margin:0">${esc(q.buyer_name)}님 견적</h2><span class="stagebadge">${statusLabel[q.status]}</span></div><div class="smallnote">아기 이름(태명): ${esc(q.baby_name||'미입력 (이전 견적)')} · 접수 ${fmtDate(q.created_at)} · 견적번호 ${q.id.slice(0,8).toUpperCase()}</div><div class="info">회원가입 없이 이용하는 견적이에요. <b>아래 비밀 확인 링크를 복사해서 보관</b>해 주세요. 같은 이름의 다른 주문과 자동으로 연결되지는 않아요.</div><div class="info" style="background:#fff;border-color:#dedbf4"><b>수령방식: ${deliveryLabel(q)}</b>${q.delivery_method==='courier'?`<div class="smallnote" style="margin-top:4px">받는 사람: ${esc(q.recipient_name||q.buyer_name||'')} · 주소: ${esc(addressLabel(q))}${q.delivery_note?` · 요청사항: ${esc(q.delivery_note)}`:''}</div>`:''}${isBundle(q)?'<div class="smallnote">묶음배송 적용 · 이 주문의 추가 배송비는 0원이에요.</div>':''}</div>${q.delivery_change_requested_at?`<div class="noticefail" style="margin-top:9px"><b>수령방식 변경 요청 대기 중</b><div class="smallnote">요청 내용: ${q.requested_delivery_method==='pickup'?'직접수령':'택배수령'}${q.requested_delivery_method==='courier'?' · '+esc(q.requested_address_line1||''):''}</div>관리자가 승인하기 전까지 현재 수령방식과 결제금액이 유지돼요.</div>`:''}${q.delivery_change_rejected_at&&!q.delivery_change_requested_at?'<div class="noticefail">이전 수령방식 변경 요청이 반려되었어요. 필요하면 다시 요청해 주세요.</div>':''}${q.status!=='cancelled'?`<button class="btn block secondary" style="margin:12px 0 4px" data-action="edit-delivery">수령방식·주소 수정${q.delivery_change_requested_at?' (요청 수정)':''}</button>`:''}<div class="separator"></div>${q.items.map(i=>`<div class="cartline"><div class="row between"><b>${esc(i.store_name)} · ${esc(i.product_name)}</b><span>${i.quantity}개</span></div><div class="sub">${esc(i.color)} / ${esc(i.size)}</div><div class="money">${i.unit_price==null?'가격 안내 전':money(i.unit_price*i.quantity)}${i.unit_price!=null?` <span class="tiny">(${money(i.unit_price)} × ${i.quantity})</span>`:''}</div>${q.status==='confirmed'?`<div class="tiny">상태: ${itemStatusLabel(q,i)}</div>`:''}</div>`).join('')}<div class="separator"></div><div class="sumline"><span>상품 합계</span><b>${unknown(q)?'가격 확인 중':money(previewOrderSum(q))}</b></div><div class="sumline"><span>배송비</span><b>${q.status==='requested'?'견적 안내 전':shippingLabel(q)}</b></div><div class="sumline total"><span>최종 결제금액</span><b>${q.status==='requested'||!readyQuote(q)?'견적 확인 중':money(totalDue(q))}</b></div>${q.status==='requested'?'<div class="info">운영자가 가격을 확인 중이에요. 견적이 올라오면 이 화면에서 확인한 뒤 최종 주문해 주세요.</div>':q.status==='quoted'?`<div class="info">가격을 확인한 뒤 아래 버튼을 눌러야 <b>최종 주문</b>이 확정돼요. 아직 주문 확정 전입니다.</div><button class="btn block" data-action="confirm-quote" ${!readyQuote(q)||q.cancel_requested_at?'disabled':''}>견적 확인 후 최종 주문하기</button>`:q.status==='confirmed'?`<div class="info"><b>📦 주문 진행: ${workflowLabel(q)}</b>${trackingInfo(q)?`<div class="smallnote" style="margin-top:5px">택배사·운송장: ${esc(trackingInfo(q))}</div>${renderShipment(q)}${isLotteShipment(q)?'<div class="smallnote" style="margin-top:4px">롯데택배 배송조회 연결 · 배송 완료 확인 시 자동 반영 (조회 지연 가능)</div>':''}`:''}${q.delivery_method==='courier'&&!trackingInfo(q)?'<div class="smallnote">이 주문에 등록된 송장번호가 아직 없어요. 묶음배송이라면 운영자에게 송장 등록 상태를 확인해 주세요.</div>':''}${q.items.some(i=>i.fulfillment==='sold_out')?`<div class="smallnote" style="margin-top:5px">품절된 상품은 결제금액에서 제외되었어요. 실제 환불은 판매자에게 확인해 주세요.${allSoldOut(q)?' 전부 품절되어 배송비도 제외돼요.':''}</div>`:''}<div class="smallnote">수령 진행 상황은 이 링크에서 새로고침하여 확인할 수 있어요.</div></div><div class="tiny">입금 확인: ${money(q.amount_paid||0)} / 환불 완료: ${money(q.amount_refunded||0)}</div>`:'<div class="noticefail">취소된 견적입니다.</div>'}${q.amount_changed_at&&['quoted','confirmed'].includes(q.status)?`<div class="noticefail" style="margin:10px 0"><b>견적 금액이 수정되었어요</b><div>관리자가 상품 가격 또는 배송비를 변경했어요. 최신 결제금액을 확인하고, 이미 결제했다면 차액·환불 여부를 판매자에게 확인해 주세요.</div><div class="smallnote">변경 ${fmtDate(q.amount_changed_at)}</div></div>`:''}${q.cancel_requested_at&&q.status!=='cancelled'?`<div class="noticefail"><b>취소 요청 접수됨</b><div>관리자가 확인 후 취소 여부를 처리해요. 최종 주문은 잠시 진행하지 말아 주세요.</div>${q.cancel_reason?`<div class="tiny">요청 사유: ${esc(q.cancel_reason)}</div>`:''}</div>`:q.cancel_rejected_at&&q.status!=='cancelled'?'<div class="noticefail">관리자가 이전 취소 요청을 반려했어요. 여전히 취소가 필요하면 다시 요청할 수 있어요.</div>':''}
 ${['requested','quoted','confirmed'].includes(q.status)&&!q.cancel_requested_at?`<button class="btn block outline" style="margin-top:12px" data-action="request-cancel">취소 요청하기</button>`:''}
 <button class="btn block neutral" style="margin-top:12px" data-action="copy-track">견적 확인 링크 복사</button><button class="btn block secondary" style="margin-top:7px" data-action="load-track">새로고침</button></div>`}</section>`}
 function renderAdmin(){if(connected&&!state.admin)return `<section class="content"><div class="card loginbox"><h2>관리자 로그인</h2><p class="sub">상품·가격·배송비·품절·입금은 관리자만 변경해요.</p><form id="login"><label class="label">이메일<input required name="email" type="email" autocomplete="email"></label><label class="label">비밀번호<input required name="password" type="password" autocomplete="current-password"></label><button class="btn block" type="submit">로그인</button></form></div></section>`;
 const nQuote=state.quotes.filter(q=>q.status==='requested').length,nConfirm=state.quotes.filter(q=>q.status==='confirmed').length;
-return `<section class="content"><div class="pushbox"><div class="row between wrap"><div><b>🔔 아이폰 알림</b><div class="smallnote">홈 화면의 미니예나에서 한 번만 허용해 주세요. Gmail 알림은 그대로 유지돼요.</div></div><button class="btn secondary sm" type="button" data-action="enable-admin-push">알림 허용하기</button></div><div class="pushstate" id="mini-push-state">현재 알림 상태 확인 중…</div><div class="smallnote">알림 허용 후 OneSignal에서 시험 발송을 확인하세요. 자동 발송 연동은 별도의 서버 설정이 필요해요.</div></div><div class="three"><div class="tile"><small>견적 요청</small><strong>${nQuote}</strong>${state.quotes.some(q=>q.cancel_requested_at&&q.status!=='cancelled')?`<div class="tiny attention" style="margin-top:6px">취소 요청 ${state.quotes.filter(q=>q.cancel_requested_at&&q.status!=='cancelled').length}건</div>`:''}</div><div class="tile"><small>확정 주문</small><strong>${nConfirm}</strong></div><div class="tile"><small>등록 상품</small><strong>${state.products.length}</strong></div></div><div class="tabs" style="padding:14px 0"><button class="tab ${state.tab==='quotes'?'active':''}" data-tab="quotes">견적·주문</button><button class="tab ${state.tab==='requests'?'active':''}" data-tab="requests">상품 등록 신청 ${state.requests.filter(x=>x.status==='pending').length}</button><button class="tab ${state.tab==='products'?'active':''}" data-tab="products">가게·상품 등록</button><button class="tab ${state.tab==='buyers'?'active':''}" data-tab="buyers">구매자별 집계</button><button class="tab ${state.tab==='items'?'active':''}" data-tab="items">상품별 주문자</button><button class="tab ${state.tab==='vendors'?'active':''}" data-tab="vendors">가게별 발주</button><button class="tab ${state.tab==='settings'?'active':''}" data-tab="settings">설정</button></div>${state.tab==='quotes'?renderAdminQuotes():state.tab==='requests'?renderAdminRequests():state.tab==='products'?renderAdminProducts():state.tab==='buyers'?renderBuyerStats():state.tab==='items'?renderProductStats():state.tab==='vendors'?renderVendorSummary():renderAdminSettings()}</section>`}
+return `<section class="content"><div class="page-intro"><span class="page-intro-kicker">MINIYENA / MANAGEMENT</span><h1>ADMIN DASHBOARD.</h1><p>견적 · 주문 · 상품 · 배송 관리</p></div><div class="pushbox"><div class="row between wrap"><div><b>🔔 아이폰 알림</b><div class="smallnote">홈 화면의 미니예나에서 한 번만 허용해 주세요. Gmail 알림은 그대로 유지돼요.</div></div><button class="btn secondary sm" type="button" data-action="enable-admin-push">알림 허용하기</button></div><div class="pushstate" id="mini-push-state">현재 알림 상태 확인 중…</div><div class="smallnote">알림 허용 후 OneSignal에서 시험 발송을 확인하세요. 자동 발송 연동은 별도의 서버 설정이 필요해요.</div></div><div class="three"><div class="tile"><small>견적 요청</small><strong>${nQuote}</strong>${state.quotes.some(q=>q.cancel_requested_at&&q.status!=='cancelled')?`<div class="tiny attention" style="margin-top:6px">취소 요청 ${state.quotes.filter(q=>q.cancel_requested_at&&q.status!=='cancelled').length}건</div>`:''}</div><div class="tile"><small>확정 주문</small><strong>${nConfirm}</strong></div><div class="tile"><small>등록 상품</small><strong>${state.products.length}</strong></div></div><div class="tabs" style="padding:14px 0"><button class="tab ${state.tab==='quotes'?'active':''}" data-tab="quotes">견적·주문</button><button class="tab ${state.tab==='requests'?'active':''}" data-tab="requests">상품 등록 신청 ${state.requests.filter(x=>x.status==='pending').length}</button><button class="tab ${state.tab==='products'?'active':''}" data-tab="products">가게·상품 등록</button><button class="tab ${state.tab==='buyers'?'active':''}" data-tab="buyers">구매자별 집계</button><button class="tab ${state.tab==='items'?'active':''}" data-tab="items">상품별 주문자</button><button class="tab ${state.tab==='vendors'?'active':''}" data-tab="vendors">가게별 발주</button><button class="tab ${state.tab==='settings'?'active':''}" data-tab="settings">설정</button></div>${state.tab==='quotes'?renderAdminQuotes():state.tab==='requests'?renderAdminRequests():state.tab==='products'?renderAdminProducts():state.tab==='buyers'?renderBuyerStats():state.tab==='items'?renderProductStats():state.tab==='vendors'?renderVendorSummary():renderAdminSettings()}</section>`}
 function renderAdminRequests(){const requests=state.requests||[];return `<div class="sectiontitle"><div><h2>고객 상품 등록 신청</h2><div class="sub">사진과 거래처 확인 후 네가 직접 상품을 등록해요. 신청만으로는 판매 목록에 노출되지 않아요.</div></div><button class="btn secondary sm" data-action="refresh">새로고침</button></div>${!requests.length?'<div class="empty">아직 등록 신청이 없어요.</div>':requests.map(r=>`<div class="card request-card"><div class="row between"><div><span class="chip ${r.status==='pending'?'orange':r.status==='approved'?'green':''}">${r.status==='pending'?'검토 대기':r.status==='approved'?'상품 등록 완료':'반려'}</span><div class="tiny">${fmtDate(r.created_at)}</div></div><div class="tiny">${esc(r.customer_name||'신청자 미기재')}</div></div><img class="request-photo" data-request-photo="${esc(r.photo_path)}" alt="신청 상품 사진" loading="lazy"><div class="smallnote">남대문 도매업체</div><h3 style="margin:2px 0 9px">${esc(r.store_name)}</h3><div class="smallnote">상품명</div><b>${esc(r.product_name)}</b>${r.note?`<p class="sub">요청 내용: ${esc(r.note)}</p>`:''}${r.status==='pending'?`<div class="row wrap" style="margin-top:12px"><button class="btn sm" data-action="approve-request" data-id="${r.id}">검토 후 상품 등록</button><button class="btn sm danger" data-action="reject-request" data-id="${r.id}">반려</button></div>`:''}${r.status==='approved'&&state.products.some(p=>p.id===r.approved_product_id&&p.published&&state.stores.some(st=>st.id===p.store_id&&st.active))?`<div class="row wrap" style="margin-top:12px"><button class="btn sm secondary" data-action="copy-request-notice" data-id="${r.id}">💜 상품 등록 안내문 복사</button></div>`:''}</div>`).join('')}`}
 function renderAdminProducts(){return `<div class="sectiontitle"><div><h2>남대문 거래처</h2><div class="sub">가게를 먼저 등록해요.</div></div><button class="btn sm" data-action="add-store">+ 가게</button></div>${state.stores.map(s=>`<div class="card"><div class="row between"><b>🏬 ${esc(s.name)}</b><button class="btn sm secondary" data-action="edit-store" data-id="${s.id}">수정</button></div><div class="tiny">${state.products.filter(p=>p.store_id===s.id).length}개 상품 · ${s.active?'사용 중':'숨김'}</div></div>`).join('')||'<div class="empty">가게부터 등록해 주세요.</div>'}<div class="sectiontitle" style="margin-top:22px"><div><h2>가게별 상품</h2><div class="sub">각 컬러마다 다른 사이즈 등록 가능</div></div><button class="btn sm" data-action="add-product" ${!state.stores.length?'disabled':''}>+ 상품</button></div>${state.products.map(p=>`<div class="card"><div class="row between"><div class="row"><span>${p.image_url?img(p,'product-thumb'):'🧸'}</span><div><div class="tiny">${esc(storeName(p.store_id))}</div><b>${esc(p.name)}</b></div></div><button class="btn sm secondary" data-action="edit-product" data-id="${p.id}">수정</button></div><div class="form-options">${Object.entries(p.options||{}).map(([c,ss])=>`<div><b>${esc(c)}</b> : ${ss.map(esc).join(', ')}</div>`).join('')}</div><span class="chip ${p.published?'green':''}">${p.published?'공개 중':'숨김'}</span>${p.published&&state.stores.some(st=>st.id===p.store_id&&st.active)?`<div class="row wrap" style="margin-top:10px"><button class="btn sm secondary" data-action="copy-product-notice" data-id="${p.id}">📣 상품 안내문 복사</button></div>`:''}</div>`).join('')||'<div class="empty">상품을 등록해 주세요.</div>'}`}
 // 상태 변경은 관리자 RPC에서 주문 단계·수령방식·상품 입고 여부까지 검증합니다.

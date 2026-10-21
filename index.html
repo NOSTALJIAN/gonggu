@@ -775,7 +775,12 @@ const carrierShipmentStarted=q=>{
 const buyerDeliveryCompleted=q=>!!q&&q.status==='confirmed'&&(
  workflowStage(q)==='completed'||(q.delivery_method==='courier'&&carrierDeliveryComplete(q))
 );
+// Saving a courier invoice in admin is the shipping start, even before a carrier scan.
+// Merely typing into the unsubmitted invoice form does not alter order data.
+const courierInvoiceRegistered=q=>!!q&&q.delivery_method==='courier'
+ &&!!String(q.tracking_carrier||'').trim()&&!!String(q.tracking_number||'').trim();
 const buyerShipmentStarted=q=>!!q&&q.status==='confirmed'&&(
+ courierInvoiceRegistered(q)||
  (q.delivery_method==='courier'&&['shipped','completed'].includes(workflowStage(q)))||
  (q.delivery_method==='courier'&&carrierShipmentStarted(q))||
  (q.delivery_method==='pickup'&&workflowStage(q)==='completed')

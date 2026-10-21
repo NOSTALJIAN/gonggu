@@ -211,7 +211,7 @@ input:focus,select:focus,textarea:focus{border-color:#aa8c70;box-shadow:0 0 0 3p
 .hero{border-radius:0;padding:calc(env(safe-area-inset-top) + 12px) 20px 13px;background:#fffdf9;color:var(--ink);border-bottom:1px solid #ece7e0}
 .headrow{gap:10px}.brand-lockup{display:flex;align-items:center;gap:12px;min-width:0}
 .brand-text{min-width:0}.brand-small{font-size:9px;font-weight:750;letter-spacing:.22em;color:#948778;text-transform:uppercase}
-.logo{font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Noto Sans KR',Arial,sans-serif;font-size:28px;font-weight:850;letter-spacing:-.055em;line-height:1.12;margin:2px 0 0;white-space:nowrap;color:#302c29}
+.logo{font-family:Arial,Helvetica,'Helvetica Neue',-apple-system,BlinkMacSystemFont,sans-serif;font-size:29px;font-weight:900;letter-spacing:-.075em;line-height:1;margin:0;white-space:nowrap;color:#000}
 .header-actions{display:flex;gap:7px;align-items:center}
 .heroaction{border:1px solid #ddd2c5;color:#665443;background:#fffdfa;border-radius:99px;font-weight:720;padding:8px 11px;font-size:11px;white-space:nowrap}
 .heroaction:hover{background:#f5f0e9}
@@ -269,7 +269,7 @@ input:focus,select:focus,textarea:focus{border-color:#aa8c70;box-shadow:0 0 0 3p
 .shop-editorial-visual img{width:100%;height:100%;object-fit:cover;object-position:center;display:block;mix-blend-mode:normal}
 .shop-editorial-visual.has-photo:before{content:"";position:absolute;inset:0 auto 0 0;width:25%;background:linear-gradient(90deg,#e7dac9,transparent);z-index:1;pointer-events:none}
 .shop-editorial-art{height:100%;position:relative;background:radial-gradient(ellipse at 75% 35%,#fdf9f3 0 16%,transparent 17%),radial-gradient(ellipse at 25% 65%,#b5a18e 0 18%,transparent 19%),radial-gradient(ellipse at 65% 85%,#d4c2ad 0 27%,transparent 28%)}
-.shop-editorial-art:after{content:"MINI YENA";position:absolute;bottom:18px;right:12px;font:italic 15px Georgia,serif;color:#6b59499c}
+.shop-editorial-art:after{content:"MINIYENA";position:absolute;bottom:18px;right:12px;font:900 13px Arial,Helvetica,sans-serif;letter-spacing:-.05em;color:#1b1b1b70}
 .shop-benefits{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;margin:12px 0 24px;border-block:1px solid #e9e1d6;padding:12px 0}
 .shop-benefits span{text-align:center;font-size:10px;color:#695c50;line-height:1.5}
 .shop-benefits span+span{border-left:1px solid #e9e0d4}
@@ -321,7 +321,7 @@ input:focus,select:focus,textarea:focus{border-color:#aa8c70;box-shadow:0 0 0 3p
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;transition:none!important}}
 
 </style>
-<title>MINI YENA | 미니예나 아동복</title>
+<title>MINIYENA | 미니예나 아동복</title>
 <!-- OneSignal Web SDK v16. App ID는 공개용 식별자이며 발송용 REST API 키는 절대 이 파일에 저장하지 마세요. -->
 <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
 <script>
@@ -580,7 +580,7 @@ const img=(p,cls='product-cover')=>p?.image_url?`<img class="${cls}" src="${esc(
 async function showRequestImages(){if(!connected||!state.admin)return;const nodes=[...document.querySelectorAll('[data-request-photo]')];if(!nodes.length)return;const token=await getToken();for(const el of nodes){const path=el.dataset.requestPhoto;if(!path)continue;if(requestImageCache.has(path)){const saved=await requestImageCache.get(path);if(el.isConnected&&saved)el.src=saved;continue}const task=(async()=>{try{const resp=await fetch(url+'/storage/v1/object/authenticated/'+PHOTO_PRIVATE+'/'+path.split('/').map(encodeURIComponent).join('/'),{headers:{apikey:key,Authorization:'Bearer '+token}});if(!resp.ok)throw Error('사진 조회 실패');return URL.createObjectURL(await resp.blob())}catch(e){console.error('신청 사진 표시 오류',e);return null}})();requestImageCache.set(path,task);const value=await task;if(el.isConnected&&value)el.src=value;}}
 function header(){
  const admin=state.page==='admin';
- return `<header class="hero"><div class="headrow"><div class="brand-lockup"><div class="brand-text"><div class="brand-small">for all little moments</div><div class="logo">MINI YENA</div></div></div><div class="header-actions">
+ return `<header class="hero"><div class="headrow"><div class="brand-lockup"><div class="brand-text"><div class="logo" aria-label="MINIYENA">MINIYENA</div></div></div><div class="header-actions">
  ${!admin?'<button class="heroaction" data-action="my-quotes" type="button">내 주문</button>':''}
  <button class="heroaction" data-page="${admin?'shop':'admin'}" type="button">${admin?'쇼핑몰':'관리자'}</button></div></div>
  <nav class="header-nav" aria-label="사이트 메뉴">
@@ -637,14 +637,14 @@ function renderShop(){
  const products=state.stores.filter(s=>s.active).flatMap(s=>state.products.filter(p=>p.published&&p.store_id===s.id&&(!state.search||p.name.includes(state.search)||s.name.includes(state.search))).map(p=>({p,store:s})));
  const featured=state.stores.filter(s=>s.active).flatMap(s=>state.products.filter(p=>p.published&&p.store_id===s.id)).find(p=>p.image_url);
  return `<section class="content">
- <div class="shop-editorial"><div class="shop-editorial-copy"><span class="shop-editorial-label">MINI YENA · EVERY LITTLE DAY</span><h1>작은 일상에<br>따뜻한 옷 한 벌</h1><p>남아도 여아도, 우리 아이의<br>소중한 순간을 위한 옷장</p><a class="shop-editorial-link" href="#catalog">상품 둘러보기 →</a></div>
+ <div class="shop-editorial"><div class="shop-editorial-copy"><span class="shop-editorial-label">MINIYENA · EVERY LITTLE DAY</span><h1>작은 일상에<br>따뜻한 옷 한 벌</h1><p>남아도 여아도, 우리 아이의<br>소중한 순간을 위한 옷장</p><a class="shop-editorial-link" href="#catalog">상품 둘러보기 →</a></div>
  <div class="shop-editorial-visual ${featured?'has-photo':''}">${featured?`<img src="${esc(featured.image_url)}" alt="등록 상품 사진" loading="lazy">`:'<div class="shop-editorial-art" aria-hidden="true"></div>'}</div></div>
  <div class="shop-benefits"><span><strong>남아 · 여아 모두</strong>우리 아이의 옷</span><span><strong>옵션별 선택</strong>컬러와 사이즈</span><span><strong>견적 확인 후 주문</strong>가격 안내 방식</span></div>
- <div class="shop-section-head" id="catalog"><div><h2>우리 아이의 옷장</h2><small>오늘의 MINI YENA 컬렉션</small></div><span class="sub">ALL ITEMS</span></div>
+ <div class="shop-section-head" id="catalog"><div><h2>우리 아이의 옷장</h2><small>오늘의 MINIYENA 컬렉션</small></div><span class="sub">ALL ITEMS</span></div>
  <div class="shop-actions"><button type="button" data-action="suggest-product">+ 찾는 상품 신청</button><button type="button" data-action="my-quotes">내 견적·주문 조회</button></div>
  <div class="shop-search-wrap"><input id="search" type="search" placeholder="상품명 또는 가게 이름 검색" value="${esc(state.search)}" aria-label="상품 검색"></div>
  <div class="shoplist">${products.length?`<div class="shop-catalog-count">전체 상품 ${products.length}개 · 가격은 견적 안내 후 확인</div><div class="shop-catalog-grid">${products.map(({p,store})=>`<article class="shop-catalog-card"><button class="shop-catalog-photo shop-photo-button" type="button" data-action="pick-product" data-id="${esc(p.id)}" aria-label="${esc(p.name)} 옵션 선택">${img(p)}</button><div class="shop-catalog-store">${esc(store.name)}</div><div class="producttitle">${esc(p.name)}</div><div class="shop-catalog-colors">${Object.keys(p.options||{}).map(esc).join(' · ')||'색상 옵션 확인'}</div><div class="shop-catalog-quote">가격은 견적 확인 후 안내</div><button class="btn block shop-catalog-select" type="button" data-action="pick-product" data-id="${esc(p.id)}">옵션 선택 · 담기 →</button></article>`).join('')}</div>`:'<div class="empty">등록된 상품이 없어요.</div>'}</div>
- <div class="shop-footer-note">MINI YENA<br>상품을 담아 견적을 요청하면 확인 후 가격을 안내해 드려요.</div>
+ <div class="shop-footer-note">MINIYENA<br>상품을 담아 견적을 요청하면 확인 후 가격을 안내해 드려요.</div>
  </section>
  ${state.cart.length?`<div class="dock"><div class="main"><strong>장바구니 ${cartCount()}개</strong><div class="tiny">상품을 모아 한 번에 견적 요청</div></div><button class="btn" data-action="open-cart">견적 요청하기 →</button></div>`:''}`;
 }

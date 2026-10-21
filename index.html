@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#6756d6">
+<meta name="theme-color" content="#faf8f4">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="미니예나">
 <link rel="apple-touch-icon" href="./apple-touch-icon.png">
@@ -200,8 +200,117 @@
 .shipment-timeline-location{font-size:12px;font-weight:650;color:#62568d;margin-top:4px}
 .shipment-timeline-detail{font-size:12px;line-height:1.65;color:#666176;margin-top:3px}
 @media(max-width:380px){.shipment-progress{padding:10px}.shipment-timeline{margin-left:4px;padding-left:12px}.shipment-timeline-item{padding-left:12px}.shipment-timeline-item::before{left:-18px}}
+
+/* 2026 storefront refresh: neutral, all-gender mini boutique. Visual layer only. */
+:root{--purple:#79614d;--purpdark:#554332;--soft:#f1ebe4;--bg:#faf8f5;--ink:#302c29;--gray:#817a73;--line:#ebe5dd;--green:#3e7765;--danger:#ac5362;--warn:#986d3d;--card:#fff}
+body{background:#eeeae4;color:var(--ink);font-size:14px}
+.shell{max-width:860px;background:var(--bg);box-shadow:0 10px 65px #483b2f0b;padding-bottom:calc(115px + env(safe-area-inset-bottom))}
+a{color:#79614d}button,input,select,textarea{accent-color:#806854}
+input,select,textarea{border-color:#e6e0d8;background:#fffefa}
+input:focus,select:focus,textarea:focus{border-color:#aa8c70;box-shadow:0 0 0 3px #e7dfd6}
+.hero{border-radius:0;padding:calc(env(safe-area-inset-top) + 12px) 20px 13px;background:#fffdf9;color:var(--ink);border-bottom:1px solid #ece7e0}
+.headrow{gap:10px}.brand-lockup{display:flex;align-items:center;gap:12px;min-width:0}
+.brand-text{min-width:0}.brand-small{font-size:9px;font-weight:750;letter-spacing:.22em;color:#948778;text-transform:uppercase}
+.logo{font-family:Georgia,'Times New Roman',serif;font-size:29px;font-weight:500;letter-spacing:.025em;line-height:1.12;margin:2px 0 0;white-space:nowrap;color:#3b332c}
+.header-actions{display:flex;gap:7px;align-items:center}
+.heroaction{border:1px solid #ddd2c5;color:#665443;background:#fffdfa;border-radius:99px;font-weight:720;padding:8px 11px;font-size:11px;white-space:nowrap}
+.heroaction:hover{background:#f5f0e9}
+.header-nav{display:flex;gap:19px;align-items:center;overflow-x:auto;white-space:nowrap;margin-top:15px;scrollbar-width:none}
+.header-nav::-webkit-scrollbar{display:none}
+.header-nav a,.header-nav button{color:#645a52;background:transparent;border:0;font-size:12px;line-height:1.2;padding:3px 0 7px;white-space:nowrap;text-decoration:none;font-weight:650}
+.header-nav a:first-child{border-bottom:2px solid #9b816b;color:#3a2e25}
+.header-nav .header-note{margin-left:auto;font-size:10px;color:#a09283;font-weight:500}
+.content{padding:22px 18px}.sectiontitle h2{font-size:21px;color:#352e29;font-weight:760;letter-spacing:-.7px}
+.sub,.tiny,.smallnote{color:#827c76}
+.card,.productcard,.tile,.statcard{border-color:#eee8e0;box-shadow:0 3px 18px #473b3010}
+.card{border-radius:17px}
+.btn{background:#816a55;border-radius:11px;font-weight:740}
+.btn.secondary,.btn.neutral{background:#f2ede6;color:#695746}
+.btn.outline{color:#745b44;border:1px solid #cdbfac;background:white}
+.btn:focus-visible,.heroaction:focus-visible,.nav-item:focus-visible{outline:3px solid #d1ad86;outline-offset:2px}
+.chip.purple,.stagebadge,.workflow-stage,.bundle-title-tag{background:#f1ebe4;color:#79614d}
+.chip.blue{background:#e8eff1;color:#52727f}
+.info,.workflow-card,.bundle-flow,.bundle-info,.pushbox,.delivery-fields,.filehelp,.form-options{background:#f8f5f0;border-color:#e8e0d5;color:#554638}
+.info[style*="background:#fff"]{border-color:#e5dcd0!important}
+.noticebar{background:#f6f0e6;border-color:#ebddc9;color:#74634f}
+.label{color:#5a514b}.price{color:#4d3b30}
+.producticon{background:linear-gradient(135deg,#e9dfd2,#f7f2e9)}
+.product-cover,.product-thumb{background:#eee8df}
+.quote-step{background:#f7f3ed;border:1px solid #efe7dc}
+.quote-step span.current{color:#68503d}
+.quote-step i{background:#ddd0c1}
+.pillchoice.active{background:#efe8df;border-color:#b7a189;color:#5f4d3b}
+.qty button{background:#f0e9e0;color:#6d5844}
+.tab.active{background:#75604d;border-color:#75604d}
+.tab{border-color:#ece4da}
+.bundle-summary-card{border-color:#e4d9cb;background:#fff}
+.bundle-flow{background:#faf7f2}
+.bundle-children>summary,.bundle-ledger-edit>summary,.bundle-ledger-work>summary,.bundle-delete>summary{color:#766049}
+.bundle-info{color:#594b3c}.bundle-ledger-head>b{color:#584433}
+.bundle-children-inner .ordercard,.bundle-ledger-edit-inner{background:#fcfaf7;border-color:#e9e2da}
+.lotte-tip{background:#f3eee6;color:#66594c}
+.lotte-auto-chip{color:#715b45}
+.shipment-progress{background:#fcfaf6;border-color:#e9dfd3}
+.shipment-progress a,.shipment-history summary{color:#80654e}
+.shipment-timeline{border-left-color:#d9c7b4}
+.shipment-timeline-item:before{border-color:#a58768}
+.shipment-timeline-item:first-child:before{background:#927455;border-color:#927455}
+.shipment-timeline-head strong{color:#493a2d}
+.shipment-timeline-head time{color:#897c6e}
+.shipment-timeline-location{color:#79624d}
+.shipment-timeline-detail{color:#766d64}
+.shop-editorial{position:relative;min-height:240px;display:grid;grid-template-columns:1.12fr .88fr;overflow:hidden;border-radius:17px;background:linear-gradient(124deg,#e6d8c7,#f4ecdf 70%);margin:0 0 20px;color:#4a3b2e}
+.shop-editorial-copy{z-index:1;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:11px;padding:28px 12px 26px 22px}
+.shop-editorial-label{font:700 9px/1.4 -apple-system,BlinkMacSystemFont,sans-serif;letter-spacing:.19em;color:#82705c}
+.shop-editorial h1{font-family:Georgia,'Apple SD Gothic Neo',serif;letter-spacing:-.055em;font-size:clamp(21px,5.4vw,35px);line-height:1.35;font-weight:560;margin:0;word-break:keep-all}
+.shop-editorial p{font-size:11px;line-height:1.7;color:#766352;margin:0;word-break:keep-all}
+.shop-editorial-link{border:1px solid #705c48;color:#594534;border-radius:999px;text-decoration:none;padding:9px 13px;font-weight:720;font-size:11px;margin-top:2px;white-space:nowrap;background:#fff9f066}
+.shop-editorial-visual{position:relative;overflow:hidden}
+.shop-editorial-visual img{width:100%;height:100%;object-fit:cover;object-position:center;display:block;mix-blend-mode:normal}
+.shop-editorial-visual.has-photo:before{content:"";position:absolute;inset:0 auto 0 0;width:25%;background:linear-gradient(90deg,#e7dac9,transparent);z-index:1;pointer-events:none}
+.shop-editorial-art{height:100%;position:relative;background:radial-gradient(ellipse at 75% 35%,#fdf9f3 0 16%,transparent 17%),radial-gradient(ellipse at 25% 65%,#b5a18e 0 18%,transparent 19%),radial-gradient(ellipse at 65% 85%,#d4c2ad 0 27%,transparent 28%)}
+.shop-editorial-art:after{content:"MINI YENA";position:absolute;bottom:18px;right:12px;font:italic 15px Georgia,serif;color:#6b59499c}
+.shop-benefits{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;margin:12px 0 24px;border-block:1px solid #e9e1d6;padding:12px 0}
+.shop-benefits span{text-align:center;font-size:10px;color:#695c50;line-height:1.5}
+.shop-benefits span+span{border-left:1px solid #e9e0d4}
+.shop-benefits strong{display:block;color:#564638;font-weight:780;font-size:11px}
+.shop-section-head{display:flex;align-items:end;justify-content:space-between;gap:12px;margin-bottom:13px}
+.shop-section-head h2{font-size:23px;letter-spacing:-.65px;margin:0;color:#382f29;font-weight:740}
+.shop-section-head small{font-size:11px;color:#8f847a;display:block;margin-top:5px}
+.shop-actions{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:13px}
+.shop-actions button{border:1px solid #ded1c2;border-radius:999px;background:#fffdf9;color:#6c5641;padding:7px 11px;font-size:11px;font-weight:760;min-height:33px}
+.shop-search-wrap{position:relative}
+.shop-search-wrap:before{content:"⌕";position:absolute;top:50%;left:13px;transform:translateY(-55%);font-size:27px;line-height:1;color:#938577;pointer-events:none}
+#search{padding:12px 13px 12px 40px;background:#fffdfa;border-color:#e6dfd6;border-radius:12px;font-size:16px}
+.shoplist .shop-catalog-count{margin:18px 0 10px;color:#827365;font-weight:650;font-size:11px}
+.shoplist .shop-catalog-grid{gap:17px 11px}
+.shoplist .shop-catalog-card{background:transparent;box-shadow:none;border:0;border-radius:0;padding:0;gap:5px}
+.shoplist .shop-catalog-photo{aspect-ratio:4/5;background:#efe8df;border-radius:13px;overflow:hidden}
+.shoplist .shop-catalog-photo .product-cover,.shoplist .shop-catalog-photo .producticon{aspect-ratio:4/5;min-height:100%;height:100%;width:100%;object-fit:cover}
+.shoplist .shop-catalog-photo .producticon{font-size:29px;background:linear-gradient(140deg,#e7dacb,#f5eee4)}
+.shoplist .shop-catalog-store{font-size:10px;color:#9b8d7d;margin-top:7px}
+.shoplist .shop-catalog-card .producttitle{font-size:13px;font-weight:790;letter-spacing:-.2px;line-height:1.52;color:#372f2a}
+.shoplist .shop-catalog-colors{color:#8c8279;font-size:10px}
+.shop-catalog-quote{font-size:11px;color:#655345;font-weight:750;margin-top:4px}
+.shoplist .shop-catalog-select{background:#fffdf9;color:#705a46;border:1px solid #dfd3c4;border-radius:9px;font-size:11px;min-height:35px;margin-top:5px}
+.shoplist .shop-catalog-select:hover{background:#f2ece4}
+.shop-footer-note{font-size:11px;text-align:center;color:#918275;border-top:1px solid #e9e1d7;margin:35px 0 10px;padding-top:19px;line-height:1.8}
+.dock{background:#fffdf9f5;border-color:#e6ded3;box-shadow:0 -5px 23px #493d2c0d}
+.dock .btn{background:#7c654f}
+.shop-bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);max-width:860px;width:100%;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));background:#fffdf9f7;backdrop-filter:blur(18px);border-top:1px solid #e8e2d9;z-index:35;padding:7px 10px calc(7px + env(safe-area-inset-bottom))}
+.shop-bottom-nav .nav-item{appearance:none;border:0;text-decoration:none;background:transparent;display:flex;align-items:center;flex-direction:column;justify-content:center;gap:2px;min-height:44px;color:#867c71;font-size:10px;white-space:nowrap;font-weight:690}
+.shop-bottom-nav .nav-item.active{color:#765b43}
+.shop-bottom-nav .nav-symbol{font-size:23px;line-height:1.1;font-weight:450}
+.shop-bottom-nav .nav-count{font-size:10px;color:#fff;background:#806750;border-radius:99px;padding:0 5px;display:inline-flex;vertical-align:top;transform:translateY(-5px)}
+.shell:has(.shop-bottom-nav){padding-bottom:calc(100px + env(safe-area-inset-bottom))}
+.dock:has(+ .shop-bottom-nav){bottom:calc(57px + env(safe-area-inset-bottom))}
+@media(max-width:519px){.content{padding:16px 13px}.hero{padding-inline:16px}.shop-editorial{min-height:215px}.shop-editorial-copy{padding-left:20px}.shoplist .shop-catalog-grid{gap:16px 11px}.shoplist .shop-catalog-card{padding:0}.shoplist .shop-catalog-card .producttitle{font-size:13px}.shop-editorial h1{font-size:clamp(19px,5.5vw,26px)}}
+@media(max-width:355px){.logo{font-size:23px}.heroaction{padding:7px 8px}.header-nav{gap:13px}.shop-editorial-copy{padding:18px 6px 20px 14px}.shop-editorial h1{font-size:19px}.shop-editorial-link{padding:7px 9px}}
+@media(min-width:720px){.shoplist .shop-catalog-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:23px 15px}.shop-editorial{min-height:290px}.shop-editorial-copy{padding-left:46px}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;transition:none!important}}
+
 </style>
-<title>미니예나 · 묶음배송 한 카드</title>
+<title>MINI YENA | 미니예나 아동복</title>
 <!-- OneSignal Web SDK v16. App ID는 공개용 식별자이며 발송용 REST API 키는 절대 이 파일에 저장하지 마세요. -->
 <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
 <script>
@@ -458,7 +567,27 @@ function productBuyerGroups(){const m=new Map();for(const q of state.quotes.filt
 const demoNotice=()=>!connected?'<div class="noticebar"><b>⚠️ 현재 체험 모드</b>견적 요청과 주문 확정은 이 아이폰 안에서만 저장돼요. 여러 사람이 실제로 주문하려면 <b>Supabase 연결이 먼저 필요</b>해요. 체험 중 만든 주문은 공유되지 않습니다.</div>':'';
 const img=(p,cls='product-cover')=>p?.image_url?`<img class="${cls}" src="${esc(p.image_url)}" alt="${esc(p.name)} 대표사진" loading="lazy">`:`<div class="producticon">🧸</div>`;
 async function showRequestImages(){if(!connected||!state.admin)return;const nodes=[...document.querySelectorAll('[data-request-photo]')];if(!nodes.length)return;const token=await getToken();for(const el of nodes){const path=el.dataset.requestPhoto;if(!path)continue;if(requestImageCache.has(path)){const saved=await requestImageCache.get(path);if(el.isConnected&&saved)el.src=saved;continue}const task=(async()=>{try{const resp=await fetch(url+'/storage/v1/object/authenticated/'+PHOTO_PRIVATE+'/'+path.split('/').map(encodeURIComponent).join('/'),{headers:{apikey:key,Authorization:'Bearer '+token}});if(!resp.ok)throw Error('사진 조회 실패');return URL.createObjectURL(await resp.blob())}catch(e){console.error('신청 사진 표시 오류',e);return null}})();requestImageCache.set(path,task);const value=await task;if(el.isConnected&&value)el.src=value;}}
-function header(){return `<header class="hero"><div class="headrow"><div><div class="eyebrow">남대문 공동구매 · 견적제</div><div class="logo">미니예나 ${state.page==='admin'?'관리자':state.page==='track'?'내 견적':'쇼핑'}</div></div><button class="heroaction" data-page="${state.page==='admin'?'shop':'admin'}">${state.page==='admin'?'주문자 화면':'관리자'}</button></div><p>가게별 상품 선택 → 견적 요청 → 가격 확인 → 최종 주문</p><div class="v3top"><button class="btn sm secondary" data-page="shop">상품 구경</button><button class="btn sm secondary" data-action="suggest-product">+ 상품 등록 신청</button><button class="btn sm secondary" data-action="my-quotes">내 견적 확인</button></div></header>`}
+function header(){
+ const admin=state.page==='admin';
+ return `<header class="hero"><div class="headrow"><div class="brand-lockup"><div class="brand-text"><div class="brand-small">for all little moments</div><div class="logo">MINI YENA</div></div></div><div class="header-actions">
+ ${!admin?'<button class="heroaction" data-action="my-quotes" type="button">내 주문</button>':''}
+ <button class="heroaction" data-page="${admin?'shop':'admin'}" type="button">${admin?'쇼핑몰':'관리자'}</button></div></div>
+ <nav class="header-nav" aria-label="사이트 메뉴">
+ ${state.page==='shop'?'<a href="#catalog">전체 상품</a>':'<button data-page="shop" type="button">전체 상품</button>'}
+ <button type="button" data-action="suggest-product">상품 신청</button>
+ <button type="button" data-action="my-quotes">주문 조회</button>
+ ${admin?'<span class="header-note">ADMIN</span>':'<span class="header-note">BABY & KIDS</span>'}</nav>
+ </header>`;
+}
+function shopBottomNav(){
+ if(state.page==='admin')return '';
+ return `<nav class="shop-bottom-nav" aria-label="빠른 메뉴">
+ <button class="nav-item ${state.page==='shop'?'active':''}" data-page="shop" type="button"><span class="nav-symbol" aria-hidden="true">⌂</span><span>홈</span></button>
+ ${state.page==='shop'?'<a class="nav-item" href="#catalog"><span class="nav-symbol" aria-hidden="true">▦</span><span>상품</span></a>':'<button class="nav-item" data-page="shop" type="button"><span class="nav-symbol" aria-hidden="true">▦</span><span>상품</span></button>'}
+ <button class="nav-item" type="button" data-action="open-cart"><span class="nav-symbol" aria-hidden="true">♧${cartCount()?`<span class="nav-count">${cartCount()}</span>`:''}</span><span>장바구니</span></button>
+ <button class="nav-item ${state.page==='track'?'active':''}" type="button" data-action="my-quotes"><span class="nav-symbol" aria-hidden="true">◷</span><span>주문조회</span></button>
+ </nav>`;
+}
 // 알림은 관리자만 신청하도록 UI를 제한합니다. 발송용 비밀키는 서버에만 둡니다.
 function miniStandalone(){return !!(window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches)}
 function miniIOS(){return /iPhone|iPad|iPod/i.test(navigator.userAgent)}
@@ -490,12 +619,23 @@ async function miniEnablePush(){
  if(!result.client.User.PushSubscription.optedIn)throw Error('알림 허용이 완료되지 않았어요. 권한 상태를 확인해 주세요.');
  miniPushStatus();
 }
-function render(){app.innerHTML=`<main class="shell">${header()}${demoNotice()}${state.page==='admin'?renderAdmin():state.page==='track'?renderTrack():renderShop()}</main>${renderModal()}`;if(state.admin){queueMicrotask(()=>showRequestImages().catch(console.error));queueMicrotask(()=>miniPushStatus().catch(console.warn));}}
+function render(){app.innerHTML=`<main class="shell">${header()}${demoNotice()}${state.page==='admin'?renderAdmin():state.page==='track'?renderTrack():renderShop()}${shopBottomNav()}</main>${renderModal()}`;if(state.admin){queueMicrotask(()=>showRequestImages().catch(console.error));queueMicrotask(()=>miniPushStatus().catch(console.warn));}}
 const steps=idx=>`<div class="quote-step">${['① 상품 담기','② 견적 요청','③ 가격 확인','④ 최종 주문'].map((x,i)=>`<span class="${i===idx?'current':''}">${x}</span>${i<3?'<i></i>':''}`).join('')}</div>`;
 function renderShop(){
- // 서로 다른 가게의 상품도 같은 줄에 표시해 카드가 한쪽으로 몰리지 않게 해요.
+ // Only genuinely published/active items are shown; no fabricated prices or categories.
  const products=state.stores.filter(s=>s.active).flatMap(s=>state.products.filter(p=>p.published&&p.store_id===s.id&&(!state.search||p.name.includes(state.search)||s.name.includes(state.search))).map(p=>({p,store:s})));
- return `<section class="content">${steps(0)}<div class="sectiontitle"><div><h2>상품 둘러보기</h2><p class="sub">가격을 몰라도 견적 요청할 수 있어요. 상품이 없으면 등록 신청부터 해주세요.</p></div><div class="row wrap"><button class="btn secondary sm" data-action="suggest-product">+ 상품 신청</button><button class="btn secondary sm" data-action="open-cart">장바구니 ${cartCount()}</button></div></div><input id="search" type="search" placeholder="가게·옷 이름 검색" value="${esc(state.search)}" aria-label="검색"><div class="shoplist">${products.length?`<div class="shop-catalog-count">전체 상품 ${products.length}개</div><div class="shop-catalog-grid">${products.map(({p,store})=>`<div class="productcard shop-catalog-card"><div class="shop-catalog-photo">${img(p)}</div><div class="shop-catalog-store">${esc(store.name)}</div><div class="producttitle">${esc(p.name)}</div><div class="shop-catalog-colors">${Object.keys(p.options||{}).map(esc).join(' · ')||'색상 옵션 확인'}</div><div class="grow"></div><button class="btn block shop-catalog-select" data-action="pick-product" data-id="${esc(p.id)}">옵션 선택</button></div>`).join('')}</div>`:'<div class="empty">등록된 상품이 없어요.</div>'}</div></section>${state.cart.length?`<div class="dock"><div class="main"><strong>장바구니 ${cartCount()}개</strong><div class="tiny">상품을 모아 한 번에 견적 요청</div></div><button class="btn" data-action="open-cart">견적 요청하기 →</button></div>`:''}`
+ const featured=state.stores.filter(s=>s.active).flatMap(s=>state.products.filter(p=>p.published&&p.store_id===s.id)).find(p=>p.image_url);
+ return `<section class="content">
+ <div class="shop-editorial"><div class="shop-editorial-copy"><span class="shop-editorial-label">MINI YENA · EVERY LITTLE DAY</span><h1>작은 일상에<br>따뜻한 옷 한 벌</h1><p>남아도 여아도, 우리 아이의<br>소중한 순간을 위한 옷장</p><a class="shop-editorial-link" href="#catalog">상품 둘러보기 →</a></div>
+ <div class="shop-editorial-visual ${featured?'has-photo':''}">${featured?`<img src="${esc(featured.image_url)}" alt="등록 상품 사진" loading="lazy">`:'<div class="shop-editorial-art" aria-hidden="true"></div>'}</div></div>
+ <div class="shop-benefits"><span><strong>남아 · 여아 모두</strong>우리 아이의 옷</span><span><strong>옵션별 선택</strong>컬러와 사이즈</span><span><strong>견적 확인 후 주문</strong>가격 안내 방식</span></div>
+ <div class="shop-section-head" id="catalog"><div><h2>우리 아이의 옷장</h2><small>오늘의 MINI YENA 컬렉션</small></div><span class="sub">ALL ITEMS</span></div>
+ <div class="shop-actions"><button type="button" data-action="suggest-product">+ 찾는 상품 신청</button><button type="button" data-action="my-quotes">내 견적·주문 조회</button></div>
+ <div class="shop-search-wrap"><input id="search" type="search" placeholder="상품명 또는 가게 이름 검색" value="${esc(state.search)}" aria-label="상품 검색"></div>
+ <div class="shoplist">${products.length?`<div class="shop-catalog-count">전체 상품 ${products.length}개 · 가격은 견적 안내 후 확인</div><div class="shop-catalog-grid">${products.map(({p,store})=>`<article class="shop-catalog-card"><div class="shop-catalog-photo">${img(p)}</div><div class="shop-catalog-store">${esc(store.name)}</div><div class="producttitle">${esc(p.name)}</div><div class="shop-catalog-colors">${Object.keys(p.options||{}).map(esc).join(' · ')||'색상 옵션 확인'}</div><div class="shop-catalog-quote">가격은 견적 확인 후 안내</div><button class="btn block shop-catalog-select" type="button" data-action="pick-product" data-id="${esc(p.id)}">옵션 선택 · 담기 →</button></article>`).join('')}</div>`:'<div class="empty">등록된 상품이 없어요.</div>'}</div>
+ <div class="shop-footer-note">MINI YENA<br>상품을 담아 견적을 요청하면 확인 후 가격을 안내해 드려요.</div>
+ </section>
+ ${state.cart.length?`<div class="dock"><div class="main"><strong>장바구니 ${cartCount()}개</strong><div class="tiny">상품을 모아 한 번에 견적 요청</div></div><button class="btn" data-action="open-cart">견적 요청하기 →</button></div>`:''}`;
 }
 function renderTrack(){const q=state.tracking;return `<section class="content">${steps(!q?1:q.status==='requested'?1:q.status==='quoted'?2:3)}${!state.trackId||!state.trackToken?'<div class="empty">견적 내역에서 확인할 요청을 선택해 주세요.</div>':!q?'<div class="card">견적을 불러오는 중이거나 요청서를 찾지 못했어요.<div class="space"></div><button class="btn secondary" data-action="load-track">다시 불러오기</button></div>':`<div class="card"><div class="row between"><h2 style="margin:0">${esc(q.buyer_name)}님 견적</h2><span class="stagebadge">${statusLabel[q.status]}</span></div><div class="smallnote">아기 이름(태명): ${esc(q.baby_name||'미입력 (이전 견적)')} · 접수 ${fmtDate(q.created_at)} · 견적번호 ${q.id.slice(0,8).toUpperCase()}</div><div class="info">회원가입 없이 이용하는 견적이에요. <b>아래 비밀 확인 링크를 복사해서 보관</b>해 주세요. 같은 이름의 다른 주문과 자동으로 연결되지는 않아요.</div><div class="info" style="background:#fff;border-color:#dedbf4"><b>수령방식: ${deliveryLabel(q)}</b>${q.delivery_method==='courier'?`<div class="smallnote" style="margin-top:4px">받는 사람: ${esc(q.recipient_name||q.buyer_name||'')} · 주소: ${esc(addressLabel(q))}${q.delivery_note?` · 요청사항: ${esc(q.delivery_note)}`:''}</div>`:''}${isBundle(q)?'<div class="smallnote">묶음배송 적용 · 이 주문의 추가 배송비는 0원이에요.</div>':''}</div>${q.delivery_change_requested_at?`<div class="noticefail" style="margin-top:9px"><b>수령방식 변경 요청 대기 중</b><div class="smallnote">요청 내용: ${q.requested_delivery_method==='pickup'?'직접수령':'택배수령'}${q.requested_delivery_method==='courier'?' · '+esc(q.requested_address_line1||''):''}</div>관리자가 승인하기 전까지 현재 수령방식과 결제금액이 유지돼요.</div>`:''}${q.delivery_change_rejected_at&&!q.delivery_change_requested_at?'<div class="noticefail">이전 수령방식 변경 요청이 반려되었어요. 필요하면 다시 요청해 주세요.</div>':''}${q.status!=='cancelled'?`<button class="btn block secondary" style="margin:12px 0 4px" data-action="edit-delivery">수령방식·주소 수정${q.delivery_change_requested_at?' (요청 수정)':''}</button>`:''}<div class="separator"></div>${q.items.map(i=>`<div class="cartline"><div class="row between"><b>${esc(i.store_name)} · ${esc(i.product_name)}</b><span>${i.quantity}개</span></div><div class="sub">${esc(i.color)} / ${esc(i.size)}</div><div class="money">${i.unit_price==null?'가격 안내 전':money(i.unit_price*i.quantity)}${i.unit_price!=null?` <span class="tiny">(${money(i.unit_price)} × ${i.quantity})</span>`:''}</div>${q.status==='confirmed'?`<div class="tiny">상태: ${itemStatusLabel(q,i)}</div>`:''}</div>`).join('')}<div class="separator"></div><div class="sumline"><span>상품 합계</span><b>${unknown(q)?'가격 확인 중':money(previewOrderSum(q))}</b></div><div class="sumline"><span>배송비</span><b>${q.status==='requested'?'견적 안내 전':shippingLabel(q)}</b></div><div class="sumline total"><span>최종 결제금액</span><b>${q.status==='requested'||!readyQuote(q)?'견적 확인 중':money(totalDue(q))}</b></div>${q.status==='requested'?'<div class="info">운영자가 가격을 확인 중이에요. 견적이 올라오면 이 화면에서 확인한 뒤 최종 주문해 주세요.</div>':q.status==='quoted'?`<div class="info">가격을 확인한 뒤 아래 버튼을 눌러야 <b>최종 주문</b>이 확정돼요. 아직 주문 확정 전입니다.</div><button class="btn block" data-action="confirm-quote" ${!readyQuote(q)||q.cancel_requested_at?'disabled':''}>견적 확인 후 최종 주문하기</button>`:q.status==='confirmed'?`<div class="info"><b>📦 주문 진행: ${workflowLabel(q)}</b>${trackingInfo(q)?`<div class="smallnote" style="margin-top:5px">택배사·운송장: ${esc(trackingInfo(q))}</div>${renderShipment(q)}${isLotteShipment(q)?'<div class="smallnote" style="margin-top:4px">롯데택배 배송조회 연결 · 배송 완료 확인 시 자동 반영 (조회 지연 가능)</div>':''}`:''}${q.delivery_method==='courier'&&!trackingInfo(q)?'<div class="smallnote">이 주문에 등록된 송장번호가 아직 없어요. 묶음배송이라면 운영자에게 송장 등록 상태를 확인해 주세요.</div>':''}${q.items.some(i=>i.fulfillment==='sold_out')?`<div class="smallnote" style="margin-top:5px">품절된 상품은 결제금액에서 제외되었어요. 실제 환불은 판매자에게 확인해 주세요.${allSoldOut(q)?' 전부 품절되어 배송비도 제외돼요.':''}</div>`:''}<div class="smallnote">수령 진행 상황은 이 링크에서 새로고침하여 확인할 수 있어요.</div></div><div class="tiny">입금 확인: ${money(q.amount_paid||0)} / 환불 완료: ${money(q.amount_refunded||0)}</div>`:'<div class="noticefail">취소된 견적입니다.</div>'}${q.amount_changed_at&&['quoted','confirmed'].includes(q.status)?`<div class="noticefail" style="margin:10px 0"><b>견적 금액이 수정되었어요</b><div>관리자가 상품 가격 또는 배송비를 변경했어요. 최신 결제금액을 확인하고, 이미 결제했다면 차액·환불 여부를 판매자에게 확인해 주세요.</div><div class="smallnote">변경 ${fmtDate(q.amount_changed_at)}</div></div>`:''}${q.cancel_requested_at&&q.status!=='cancelled'?`<div class="noticefail"><b>취소 요청 접수됨</b><div>관리자가 확인 후 취소 여부를 처리해요. 최종 주문은 잠시 진행하지 말아 주세요.</div>${q.cancel_reason?`<div class="tiny">요청 사유: ${esc(q.cancel_reason)}</div>`:''}</div>`:q.cancel_rejected_at&&q.status!=='cancelled'?'<div class="noticefail">관리자가 이전 취소 요청을 반려했어요. 여전히 취소가 필요하면 다시 요청할 수 있어요.</div>':''}
 ${['requested','quoted','confirmed'].includes(q.status)&&!q.cancel_requested_at?`<button class="btn block outline" style="margin-top:12px" data-action="request-cancel">취소 요청하기</button>`:''}

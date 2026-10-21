@@ -6,6 +6,27 @@
 <meta name="theme-color" content="#ffffff">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="미니예나">
+<!-- Release 439f3d34: remove only the retired MINIYENA offline cache.
+     Never unregister OneSignal's separate push notification worker. -->
+<script>
+(function(){
+ if(!('serviceWorker' in navigator))return;
+ navigator.serviceWorker.getRegistrations().then(function(registrations){
+  return Promise.all(registrations.filter(function(reg){
+   try{
+    var script=(reg.active||reg.waiting||reg.installing)?.scriptURL||'';
+    var scriptUrl=new URL(script,location.href);
+    return scriptUrl.origin===location.origin && scriptUrl.pathname==='/gonggu/sw.js';
+   }catch(e){return false}
+  }).map(function(reg){return reg.unregister()}));
+ }).then(function(){
+  if(!('caches' in window))return;
+  return caches.keys().then(function(keys){
+   return Promise.all(keys.filter(function(k){return /^gonggunote-cache-/.test(k)}).map(function(k){return caches.delete(k)}));
+  });
+ }).catch(function(e){console.warn('이전 화면 캐시 정리 실패:',e)});
+})();
+</script>
 <link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <link rel="manifest" href="./manifest.webmanifest">
 <style>

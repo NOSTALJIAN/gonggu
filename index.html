@@ -690,6 +690,18 @@ body:has(.overlay) .back-to-top{opacity:0;visibility:hidden;pointer-events:none}
 .track-link-banner p{margin:6px 0 12px;font-size:11px;color:#555;line-height:1.6}
 .track-link-buttons{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:9px}.track-link-buttons .btn{flex:1;min-width:112px;font-size:11px}
 .track-link-banner small{display:block;color:#777;font-size:10px;line-height:1.6}
+
+/* Verified phone-based cross-browser recovery, disabled while server not configured. */
+.phone-order-lookup{border:1px solid #ddd;background:#fafafa;padding:15px 13px;margin-bottom:19px;color:#111}
+.phone-order-lookup h3{font-size:16px;letter-spacing:-.04em;margin:0 0 5px}
+.phone-order-lookup>p{font-size:11px;line-height:1.65;color:#666;margin:0 0 13px}
+.phone-order-lookup form{display:flex;flex-direction:column;gap:10px}
+.phone-order-lookup form .label{margin:0}
+.phone-order-lookup form input{border-radius:4px;font-size:13px}
+.phone-order-lookup .btn:disabled{opacity:.45;cursor:not-allowed}
+.phone-order-lookup small{display:block;color:#777;font-size:10px;line-height:1.65;margin-top:11px}
+.phone-lookup-state{font-size:11px;color:#666;line-height:1.55;margin:9px 0 2px}
+.phone-verify-caption{font-size:11px;color:#444}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -741,7 +753,7 @@ const demo=read(DEMO,initDemo());
 const saveDemo=()=>localStorage.setItem(DEMO,JSON.stringify(demo));
 let session=read(SESS,null),busy=false,refreshing=null;
 const p=new URLSearchParams(location.search);
-const state={page:['admin','track'].includes(p.get('page'))?p.get('page'):'shop',tab:'quotes',stores:[],products:[],requests:[],quotes:[],cart:read(CART,[]),modal:null,search:'',trackId:p.get('id')||'',trackToken:p.get('token')||'',tracking:null,receipts:read(TRACK,[]),notice:'',filter:'all',admin:false,heroPhotoUrl:null,heroStoreId:null,dateGroupsOpen:{}};
+const state={page:['admin','track'].includes(p.get('page'))?p.get('page'):'shop',tab:'quotes',stores:[],products:[],requests:[],quotes:[],cart:read(CART,[]),modal:null,search:'',trackId:p.get('id')||'',trackToken:p.get('token')||'',tracking:null,receipts:read(TRACK,[]),notice:'',filter:'all',admin:false,heroPhotoUrl:null,heroStoreId:null,dateGroupsOpen:{},phoneLookupReady:null,phoneLookup:{step:'phone',phone:'',name:'',message:''}};
 const app=$('#app');
 const fmtDate=x=>x?new Date(x).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):'';
 const previewOrderSum=o=>(o.items||[]).filter(i=>i.fulfillment!=='sold_out').reduce((s,i)=>s+(i.unit_price??0)*i.quantity,0);
@@ -1364,11 +1376,27 @@ if(m.type==='edit-delivery'){
 if(m.type==='suggest'){return wrap('상품 등록 신청',`<div class="filehelp">상품명·남대문 도매업체 이름·대표사진을 올려주세요. 관리자가 확인하고 승인한 뒤에만 실제 상품 목록에 등록돼요. <b>이 신청은 견적 요청이나 최종 주문이 아니에요.</b></div><form id="suggest-form" style="margin-top:16px"><label class="label">남대문 도매업체 이름<input required name="store" maxlength="100" placeholder="예: 오뜨베베"></label><label class="label">상품명<input required name="name" maxlength="100" placeholder="예: 하트호피 전신슈트"></label><label class="label">대표사진 첨부 (필수)<input name="photo" type="file" accept="image/*" required id="suggest-photo"></label><img class="photo-preview hidden" id="suggest-preview" alt="등록할 상품 사진 미리보기"><label class="label">신청자 이름 (선택)<input name="customer" maxlength="40" placeholder="누가 신청했는지 확인용"></label><label class="label">메모 (선택)<textarea name="note" maxlength="300" placeholder="상품에 대해 참고할 내용"></textarea></label><button class="btn block" type="submit">상품 등록 신청 보내기</button></form>`)}
 if(m.type==='approve'){const r=state.requests.find(x=>x.id===m.id);if(!r)return '';return wrap('상품 등록 검토 및 승인',`<div class="info">신청자가 보낸 내용과 사진을 확인하고 컬러별 사이즈를 입력하면 실제 상품으로 등록돼요.</div><img class="request-photo" data-request-photo="${esc(r.photo_path)}" alt="신청 상품 대표사진"><form id="approve-form"><label class="label">남대문 도매업체 이름<input name="store" maxlength="100" required value="${esc(r.store_name)}"></label><label class="label">상품명<input name="name" maxlength="100" required value="${esc(r.product_name)}"></label><label class="label">컬러별 사이즈 옵션<textarea name="options" required rows="5" placeholder="크림: BS, BM&#10;핑크: XS, S, M"></textarea></label><div class="filehelp">한 줄에 컬러 하나씩 입력하세요. 예) 크림: BS, BM</div><label class="stageradio" style="margin:15px 0"><input type="checkbox" name="published" checked> 승인 후 상품을 바로 공개</label><button class="btn block" type="submit">대표사진 포함 상품 등록·승인</button></form>`)}
 if(m.type==='pick'){const p=selectedProd(m.id),colors=Object.keys(p.options||{}),color=colors.includes(m.color)?m.color:colors[0],sizes=p.options[color]||[];return wrap('옵션 선택',`<div class="smallnote">${esc(storeName(p.store_id))}</div><h3>${esc(p.name)}</h3>${p.image_url?img(p,'request-photo'): ''}<form id="pick"><label class="label">컬러<select name="color" id="pickColor">${colors.map(c=>`<option ${c===color?'selected':''}>${esc(c)}</option>`).join('')}</select></label><label class="label">사이즈<select name="size" id="pickSize">${sizes.map(s=>`<option>${esc(s)}</option>`).join('')}</select></label><label class="label">수량<input type="number" name="qty" value="1" min="1" max="20" required></label><button class="btn block" type="submit">장바구니 담기</button></form>`)}
-if(m.type==='cart'){return wrap('견적 요청 장바구니',`<div class="smallnote">여러 가게 상품을 한 번에 견적 요청할 수 있어요.</div><div class="procurement-checkout-note"><b>월·목 오후 7시 최종 주문·입금 마감, 밤 9시 남대문 발주</b>예요. 거래처 입고 후 배송됩니다.</div>${state.cart.map((c,i)=>`<div class="cartline"><b>${esc(storeName(c.store_id))} · ${esc(c.product_name)}</b><div class="tiny">${esc(c.color)} / ${esc(c.size)} · ${c.quantity}개</div><button class="textbutton" data-action="cart-remove" data-i="${i}">삭제</button></div>`).join('')||'<div class="empty">장바구니에 담은 상품이 없어요.</div>'}${state.cart.length?`<form id="request"><label class="label">주문자 이름<input name="name" maxlength="40" required placeholder="예: 지현"></label><label class="label">아기 이름 또는 태명 (필수)<input name="baby" maxlength="40" required placeholder="예: 예나, 토리"></label><label class="label">연락처 (선택·동명이인 구분에 도움)<input name="contact" maxlength="80" placeholder="예: 010-0000-0000"></label><div class="separator"></div><label class="label">수령방식 (필수)<select name="delivery_method" id="deliveryMethod" required><option value="">수령방식을 선택해 주세요</option><option value="pickup">직접수령 (배송비 없음)</option><option value="courier">택배수령</option></select></label><div id="courierFields" class="hidden delivery-fields"><div class="info">택배로 받을 경우 아래 주소로 배송돼요. 묶음배송은 이후 관리자가 같은 구매자의 주문을 확인하고 설정해요.</div><label class="label">받는 사람<input name="recipient_name" maxlength="80" autocomplete="name" data-courier-required placeholder="받는 사람 이름" disabled></label><div class="address-tools"><button class="btn secondary" type="button" data-action="search-address">🔎 주소 검색</button><button class="textbutton address-manual" type="button" data-action="manual-address">주소 직접 입력</button></div><div class="postcode-search hidden" data-postcode-panel><div class="row between"><b>우편번호·주소 찾기</b><button type="button" class="btn sm neutral" data-action="close-address-search">닫기</button></div><div class="address-search-hint">도로명이나 건물 이름을 검색하고 주소를 선택해 주세요.</div><div class="postcode-mount" data-postcode-mount></div></div><label class="label">우편번호 (5자리)<input name="postal_code" readonly data-address-postal inputmode="numeric" maxlength="5" pattern="[0-9]{5}" data-courier-required placeholder="예: 34123" disabled></label><label class="label">주소<input name="address_line1" readonly data-address-primary maxlength="250" data-courier-required placeholder="도로명주소 또는 지번주소" disabled></label><label class="label">상세주소 (선택)<input name="address_line2" maxlength="250" placeholder="동·호수 등" disabled></label><label class="label">배송 요청사항 (선택)<input name="delivery_note" maxlength="200" placeholder="예: 문 앞에 놓아주세요" disabled></label></div><label class="label">요청 메모 (선택)<textarea name="note" maxlength="300" placeholder="거래처에 확인할 내용"></textarea></label><div class="info">지금은 <b>가격만 문의하는 견적 요청</b>이에요. 아직 주문이 확정되지 않아요. 제출 후 나오는 <b>고유 견적 링크를 꼭 보관</b>해 주세요. 같은 이름으로 다시 요청해도 자동으로 합쳐지지 않아요.</div><button class="btn block" type="submit">전체 ${cartCount()}개 견적 요청하기</button></form>`:''}`)}
+if(m.type==='cart'){return wrap('견적 요청 장바구니',`<div class="smallnote">여러 가게 상품을 한 번에 견적 요청할 수 있어요.</div><div class="procurement-checkout-note"><b>월·목 오후 7시 최종 주문·입금 마감, 밤 9시 남대문 발주</b>예요. 거래처 입고 후 배송됩니다.</div>${state.cart.map((c,i)=>`<div class="cartline"><b>${esc(storeName(c.store_id))} · ${esc(c.product_name)}</b><div class="tiny">${esc(c.color)} / ${esc(c.size)} · ${c.quantity}개</div><button class="textbutton" data-action="cart-remove" data-i="${i}">삭제</button></div>`).join('')||'<div class="empty">장바구니에 담은 상품이 없어요.</div>'}${state.cart.length?`<form id="request"><label class="label">주문자 이름<input name="name" maxlength="40" required placeholder="예: 지현"></label><label class="label">아기 이름 또는 태명 (필수)<input name="baby" maxlength="40" required placeholder="예: 예나, 토리"></label><label class="label">휴대폰 번호 (필수 · 주문조회용)<input name="contact" type="tel" inputmode="tel" autocomplete="tel-national" maxlength="15" required placeholder="예: 010-0000-0000"></label><p class="smallnote">다른 브라우저에서 주문을 찾을 때 문자 인증에 사용해요.</p><div class="separator"></div><label class="label">수령방식 (필수)<select name="delivery_method" id="deliveryMethod" required><option value="">수령방식을 선택해 주세요</option><option value="pickup">직접수령 (배송비 없음)</option><option value="courier">택배수령</option></select></label><div id="courierFields" class="hidden delivery-fields"><div class="info">택배로 받을 경우 아래 주소로 배송돼요. 묶음배송은 이후 관리자가 같은 구매자의 주문을 확인하고 설정해요.</div><label class="label">받는 사람<input name="recipient_name" maxlength="80" autocomplete="name" data-courier-required placeholder="받는 사람 이름" disabled></label><div class="address-tools"><button class="btn secondary" type="button" data-action="search-address">🔎 주소 검색</button><button class="textbutton address-manual" type="button" data-action="manual-address">주소 직접 입력</button></div><div class="postcode-search hidden" data-postcode-panel><div class="row between"><b>우편번호·주소 찾기</b><button type="button" class="btn sm neutral" data-action="close-address-search">닫기</button></div><div class="address-search-hint">도로명이나 건물 이름을 검색하고 주소를 선택해 주세요.</div><div class="postcode-mount" data-postcode-mount></div></div><label class="label">우편번호 (5자리)<input name="postal_code" readonly data-address-postal inputmode="numeric" maxlength="5" pattern="[0-9]{5}" data-courier-required placeholder="예: 34123" disabled></label><label class="label">주소<input name="address_line1" readonly data-address-primary maxlength="250" data-courier-required placeholder="도로명주소 또는 지번주소" disabled></label><label class="label">상세주소 (선택)<input name="address_line2" maxlength="250" placeholder="동·호수 등" disabled></label><label class="label">배송 요청사항 (선택)<input name="delivery_note" maxlength="200" placeholder="예: 문 앞에 놓아주세요" disabled></label></div><label class="label">요청 메모 (선택)<textarea name="note" maxlength="300" placeholder="거래처에 확인할 내용"></textarea></label><div class="info">지금은 <b>가격만 문의하는 견적 요청</b>이에요. 아직 주문이 확정되지 않아요. 제출 후 나오는 <b>고유 견적 링크를 꼭 보관</b>해 주세요. 같은 이름으로 다시 요청해도 자동으로 합쳐지지 않아요.</div><button class="btn block" type="submit">전체 ${cartCount()}개 견적 요청하기</button></form>`:''}`)}
 if(m.type==='store'){const s=state.stores.find(x=>x.id===m.id);return wrap(s?'가게 수정':'가게 등록',`<form id="store-form"><label class="label">남대문 가게 이름<input name="name" maxlength="100" required value="${esc(s?.name||'')}" placeholder="예: 동대문상회"></label><label class="stageradio"><input type="checkbox" name="active" ${s?.active===false?'':'checked'}> 주문자 화면에 표시</label><button class="btn block" type="submit">가게 저장</button></form>`)}
 if(m.type==='product'){const pr=selectedProd(m.id);let lines=Object.entries(pr?.options||{}).map(([c,sz])=>c+': '+sz.join(', ')).join('\n');return wrap(pr?'상품 수정':'상품 등록',`<form id="product-form"><label class="label">거래처(가게)<select name="store" required>${state.stores.map(s=>`<option value="${s.id}" ${pr?.store_id===s.id?'selected':''}>${esc(s.name)}</option>`).join('')}</select></label><label class="label">옷 이름<input name="name" maxlength="100" required value="${esc(pr?.name||'')}" placeholder="예: 하트호피 전신슈트"></label>${pr?.image_url?img(pr,'request-photo'): ''}<label class="label">대표사진 추가·변경 (선택)<input name="photo" accept="image/*" type="file"></label><label class="label">컬러별 사이즈 옵션</label><textarea name="options" required rows="6" placeholder="크림: BS, BM\n핑크: XS, S, M">${esc(lines)}</textarea><p class="help">한 줄에 컬러 하나씩 입력하고, 콜론(:) 뒤에 그 컬러에서 선택 가능한 사이즈를 쉼표로 구분해 주세요.</p><div class="form-options">예) 크림: BS, BM<br>블루: XS, S, M<br>레드: L</div><label class="stageradio" style="margin:15px 0"><input type="checkbox" name="published" ${pr?.published===false?'':'checked'}> 주문자 화면에 공개</label><button class="btn block" type="submit">상품 저장</button></form>`)}
 if(m.type==='bundle'){const child=state.quotes.find(x=>x.id===m.id);if(!child)return '';const candidates=state.quotes.filter(x=>x.id!==child.id&&buyerIdentity(x)===buyerIdentity(child)&&x.status!=='cancelled'&&['quoted','confirmed'].includes(x.status)&&x.bundle_parent_id==null&&hasShipping(x)&&x.delivery_method!=='pickup'&&!state.quotes.some(y=>y.bundle_parent_id===child.id));return wrap('묶음배송 설정',`<div class="info">동일 구매자의 택배 주문을 함께 보내면 <b>연결된 추가 주문의 배송비는 0원</b>으로 계산돼요. 대표 주문에 기존 배송비가 남습니다.</div><div class="card"><b>${esc(buyerLabel(child))}</b><div class="smallnote">현재 주문: ${fmtDate(child.created_at)} · ${money(totalDue(child))}</div><div class="smallnote">수령: ${deliveryLabel(child)} · ${esc(addressLabel(child))}</div></div>${child.delivery_method==='pickup'?'<div class="noticefail">직접수령은 묶음배송할 수 없어요.</div>':`<form id="bundle-form"><label class="label">이 주문과 함께 보낼 대표 주문<select name="parent_id"><option value="">${child.bundle_parent_id?'묶음배송 해제 (각각 배송비 청구)':'묶음배송하지 않음'}</option>${candidates.map(q=>`<option value="${q.id}" ${child.bundle_parent_id===q.id?'selected':''}>${esc(q.buyer_name)} · ${fmtDate(q.created_at)} · ${esc(q.items.map(i=>i.product_name).slice(0,2).join(', '))}</option>`).join('')}</select></label>${!candidates.length?'<div class="noticefail">같은 구매자이고 배송비가 설정된 다른 견적/확정 주문이 없어요. 대표 주문이 없으면 아직 묶을 수 없어요.</div>':''}<div class="noticefail">이미 확정된 주문은 금액 차이가 발생할 수 있어요. 주소가 같은지 먼저 확인하고, 입금 완료라면 환불도 직접 확인해 주세요. 배송비 변경 안내는 주문자의 견적 확인 화면에 반영됩니다.</div><button class="btn block" type="submit">묶음배송 설정 저장</button></form>`}`)}
 if(m.type==='myquotes'){return wrap('내 견적 · 주문조회',`
+ <section class="phone-order-lookup"><h3>휴대폰 번호로 주문 찾기</h3>
+  <p>카톡·네이버·사파리에서도 휴대폰 인증 후 같은 번호로 주문한 내역을 불러올 수 있어요. <b>이름만으로는 조회할 수 없어요.</b></p>
+  ${state.phoneLookup.step==='code'?`
+   <form id="phone-verify-form"><div class="phone-verify-caption">${esc(state.phoneLookup.message||'인증번호를 입력해 주세요.')}</div>
+    <label class="label">문자 인증번호<input type="text" name="otp" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6,8}" minlength="6" maxlength="8" placeholder="인증번호" required></label>
+    <button class="btn block" type="submit">인증하고 내 주문 불러오기</button>
+    <button class="btn block secondary" type="button" data-action="phone-lookup-reset">다른 번호로 인증</button>
+   </form>`:`
+   <form id="phone-start-form">
+    <label class="label">휴대폰 번호<input type="tel" name="phone" inputmode="tel" autocomplete="tel-national" maxlength="15" placeholder="010-1234-5678" required></label>
+    <label class="label">주문자 이름 (선택)<input type="text" name="buyer_name" maxlength="40" placeholder="예: 홍길동"></label>
+    <button class="btn block" type="submit" ${state.phoneLookupReady!==true?'disabled':''}>문자로 인증번호 받기</button>
+   </form>
+   <div class="phone-lookup-state">${esc(state.phoneLookup.message||phoneLookupMessage())}</div>`}
+  <small>SMS 인증을 완료한 번호의 주문만 조회할 수 있어요. 예전에 번호를 입력하지 않은 주문은 아래 링크 조회를 이용해 주세요.</small>
+ </section>
  <div class="order-link-explain"><b>카톡 · 네이버 · 사파리 어디서든 주문 확인</b><p>주문할 때 발급된 고유 주문조회 링크로 다른 브라우저에서도 같은 주문을 조회할 수 있어요.</p></div>
  <form id="import-track-form" class="order-link-form"><label class="label">기존 주문조회 링크 붙여넣기<textarea name="track_url" rows="2" maxlength="2500" required placeholder="https://nostaljian.github.io/gonggu/?page=track&id=...&token=..."></textarea></label><button class="btn block" type="submit">내 주문 불러오기</button></form>
  <div class="order-link-list-title"><b>이 브라우저에 저장된 주문</b><small>${state.receipts.length}건</small></div>
@@ -1376,7 +1404,69 @@ if(m.type==='myquotes'){return wrap('내 견적 · 주문조회',`
  <p class="smallnote order-link-help">링크를 가진 사람은 주문 정보를 볼 수 있으니 단체 채팅방에는 보내지 마세요. 카톡 ‘나와의 채팅’에 저장해 주세요.<br>링크를 분실했다면 판매자에게 문의해 주세요.</p>
  `)}return ''}
 function renderModal(){return modal()}
-function modalOpen(type,id=null){state.modal={type,id};render()}
+function modalOpen(type,id=null){state.modal={type,id};render();if(type==='myquotes'&&state.phoneLookupReady===null)checkPhoneLookupReady().catch(e=>console.warn(e))}
+
+/* Recover orders via Supabase Auth SMS OTP + a strictly verified phone SQL RPC.
+   Never return private links to an unverified caller. No SMS/auth session is stored. */
+function customerPhoneLocal(value){
+ const digits=String(value||'').replace(/[^0-9]/g,'');
+ if(!/^01[0-9]{8,9}$/.test(digits))throw Error('휴대폰 번호를 01012345678 형태로 입력해 주세요.');
+ return digits;
+}
+function phoneLookupMessage(){
+ return state.phoneLookupReady===true?'인증번호를 받으면 입력한 번호로 주문된 내역을 조회해요. 이름은 선택 사항이에요.':
+ state.phoneLookupReady===null?'휴대폰 인증 서비스 상태 확인 중…':
+ '휴대폰 인증 주문조회는 서버 연결 준비 중이에요. 아래 주문조회 링크로 기존 주문을 확인할 수 있어요.';
+}
+async function checkPhoneLookupReady(){
+ if(!connected){state.phoneLookupReady=false;return}
+ try{state.phoneLookupReady=(await rpc('gq_phone_lookup_ready_v27',{}))===true}
+ catch(error){state.phoneLookupReady=false;console.warn('인증형 주문조회 준비 중',error)}
+ if(state.modal?.type==='myquotes')render();
+}
+async function phoneAuthRequest(path,payload,token=''){
+ const headers={apikey:key,'Content-Type':'application/json'};
+ if(token)headers.Authorization='Bearer '+token;
+ const response=await fetch(url+path,{method:'POST',headers,body:JSON.stringify(payload)});
+ let body={};try{body=await response.json()}catch{}
+ if(!response.ok){
+  let message=body.msg||body.error_description||body.message||'휴대폰 인증 요청에 실패했어요.';
+  if(response.status===429)message='인증 요청이 너무 많아요. 잠시 후 다시 시도해 주세요.';
+  throw Error(message);
+ }
+ return body;
+}
+async function sendCustomerPhoneOtp(phone,buyerName){
+ if(state.phoneLookupReady!==true)throw Error('휴대폰 인증 주문조회 서버가 아직 연결되지 않았어요.');
+ const local=customerPhoneLocal(phone),name=String(buyerName||'').trim();
+ if(name.length>40)throw Error('주문자 이름은 40자 이내로 입력해 주세요.');
+ const international='+82'+local.slice(1);
+ await phoneAuthRequest('/auth/v1/otp',{phone:international,create_user:true});
+ state.phoneLookup={step:'code',phone:local,name,message:local.slice(0,3)+'-****-'+local.slice(-4)+' 번호로 전송했어요.'};
+ render();
+}
+async function verifyCustomerPhoneOtp(input){
+ if(state.phoneLookupReady!==true||state.phoneLookup.step!=='code')throw Error('휴대폰 인증을 먼저 진행해 주세요.');
+ const code=String(input||'').trim();
+ if(!/^[0-9]{6,8}$/.test(code))throw Error('문자로 받은 인증번호를 확인해 주세요.');
+ const international='+82'+state.phoneLookup.phone.slice(1);
+ const auth=await phoneAuthRequest('/auth/v1/verify',{phone:international,token:code,type:'sms'});
+ if(!auth.access_token)throw Error('문자 인증 확인에 실패했어요.');
+ const rows=await phoneAuthRequest('/rest/v1/rpc/gq_phone_orders_v27',{p_buyer_name:state.phoneLookup.name||null},auth.access_token);
+ if(!Array.isArray(rows))throw Error('주문 목록을 불러오지 못했어요.');
+ let count=0;
+ for(const quote of rows){
+  const id=String(quote.id||''),token=String(quote.lookup_token||'');
+  if(!/^[a-f0-9-]{20,64}$/i.test(id)||!/^[a-z0-9_-]{16,256}$/i.test(token))continue;
+  const entry={id,token,name:quote.buyer_name||'주문자',baby:quote.baby_name||'',date:quote.created_at||now()};
+  state.receipts=[entry,...state.receipts.filter(x=>x.id!==id)].slice(0,100);
+  count++;
+ }
+ if(count)saveTracks();
+ // Destroy the OTP and authentication session; future lookup requires re-verification.
+ state.phoneLookup={step:'phone',phone:'',name:'',message:count?count+'건의 주문을 찾았어요. 아래 목록에서 확인하세요.':'일치하는 주문이 없어요. 주문 시 입력한 번호와 이름을 확인해 주세요.'};
+ render();
+}
 function parseOptions(t){const result={};for(let line of t.split(/\n/)){if(!line.trim())continue;const j=line.indexOf(':');if(j<1)throw Error('옵션을 "크림: BS, BM" 형태로 입력해 주세요');const color=line.slice(0,j).trim(),ss=[...new Set(line.slice(j+1).split(/[,，]/).map(x=>x.trim()).filter(Boolean))];if(!ss.length)throw Error(color+' 컬러에 사이즈가 없어요');if(result[color])throw Error(color+' 컬러가 두 번 입력됐어요');if(color.length>50||ss.some(s=>s.length>30))throw Error('옵션 이름이 너무 길어요');result[color]=ss}if(!Object.keys(result).length||Object.keys(result).length>30)throw Error('컬러 1~30개를 등록해 주세요');return result}
 async function putStore(s,id){if(!connected){if(id)Object.assign(demo.stores.find(x=>x.id===id),s);else demo.stores.push({...s,id:uuid()});saveDemo();return}const path='/rest/v1/gq_stores'+(id?'?id=eq.'+id:'');await api(path,{method:id?'PATCH':'POST',body:s,admin:true})}
 async function putProduct(o,id){if(!connected){if(id)Object.assign(demo.products.find(x=>x.id===id),o);else demo.products.push({...o,id:uuid()});saveDemo();return}const path='/rest/v1/gq_products'+(id?'?id=eq.'+id:'');await api(path,{method:id?'PATCH':'POST',body:o,admin:true})}
@@ -1595,6 +1685,9 @@ if(a==='date-open-all'||a==='date-close-all'){
  return;
 }
 if(a==='scroll-top'){window.scrollTo({top:0,behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});return;}
+if(a==='phone-lookup-reset'){
+ state.phoneLookup={step:'phone',phone:'',name:'',message:''};render();return;
+}
 if(a==='enable-admin-push'){await miniEnablePush();notif('푸시 알림 허용 완료! OneSignal에서 테스트 알림을 보내 보세요.');return;}
 if(a==='bundle-sync-shipment'){
  const q=state.quotes.find(x=>x.id===id);
@@ -1680,7 +1773,11 @@ if(a==='edit-delivery'){
  }
  await copy(link);notif('링크를 복사했어요. 카톡 나와의 채팅에 붙여넣어 보관해 주세요.');
 }else if(a==='copy-track'){await copy(trackLink(state.trackId,state.trackToken))}else if(a==='load-track'){await reloadTracking();notif('최신 상태를 불러왔어요')}else if(a==='copy-quote'){await copy(quoteText(state.quotes.find(q=>q.id===id)))}else if(a==='copy-customer-link'){const q=state.quotes.find(q=>q.id===id);await copy(trackLink(q.id,q.lookup_token))}else if(a==='publish-quote'){if(!window.confirm('가격 확인을 마쳤나요? 고객에게 견적을 보여줍니다.'))return;await adminPublish(id);await loadAdmin();notif('견적을 공개했어요')}else if(a==='confirm-quote'){if(!window.confirm('이 견적으로 최종 주문을 확정할까요?'))return;await confirmFinalQuote();notif('최종 주문이 확정됐어요!')}else if(a==='export-csv'){csv()}else if(a==='copy-vendors'){await copy(vendorText())}else if(a==='logout'){session=null;localStorage.removeItem(SESS);state.admin=false;render()} }catch(ex){notif(errorText(ex))}}
-async function submit(e){const f=e.target;if(!['hero-photo-form','import-track-form','pick','request','store-form','product-form','login','suggest-form','approve-form','bundle-form','edit-delivery-form'].includes(f.id)&&!f.dataset.price&&!f.dataset.payment&&!f.dataset.shipping&&!f.dataset.ship&&!f.dataset.bundleShip)return;e.preventDefault();if(busy)return;busy=true;const data=new FormData(f);try{if(f.id==='import-track-form'){
+async function submit(e){const f=e.target;if(!['hero-photo-form','phone-start-form','phone-verify-form','import-track-form','pick','request','store-form','product-form','login','suggest-form','approve-form','bundle-form','edit-delivery-form'].includes(f.id)&&!f.dataset.price&&!f.dataset.payment&&!f.dataset.shipping&&!f.dataset.ship&&!f.dataset.bundleShip)return;e.preventDefault();if(busy)return;busy=true;const data=new FormData(f);try{if(f.id==='phone-start-form'){
+ await sendCustomerPhoneOtp(data.get('phone'),data.get('buyer_name'));
+ }else if(f.id==='phone-verify-form'){
+ await verifyCustomerPhoneOtp(data.get('otp'));
+ }else if(f.id==='import-track-form'){
  const {id,token}=parseOrderLookupLink(data.get('track_url'));
  await openTracking(id,token);
  if(state.tracking?.id===id)notif('주문을 불러왔어요. 이 브라우저에서도 다시 확인할 수 있어요.');
@@ -1710,7 +1807,7 @@ else if(f.id==='approve-form'){await approveSuggestion(data);state.modal=null;aw
 else if(f.id==='edit-delivery-form'){
  const pending=await updateBuyerDelivery(data);state.modal=null;render();notif(pending?'관리자에게 수령방식 변경 요청을 보냈어요':'수령방식 수정이 저장됐어요. 필요하면 관리자가 배송비를 다시 안내해요');
 }else if(f.id==='pick'){const pr=selectedProd(state.modal.id),color=data.get('color'),size=data.get('size'),quantity=Number(data.get('qty'));if(!pr?.options[color]?.includes(size)||quantity<1||quantity>20)throw Error('옵션을 다시 확인해 주세요');const same=state.cart.find(x=>x.product_id===pr.id&&x.color===color&&x.size===size);if(same)same.quantity+=quantity;else state.cart.push({product_id:pr.id,store_id:pr.store_id,product_name:pr.name,color,size,quantity});saveCart();state.modal=null;render();notif('장바구니에 담았어요')}
-else if(f.id==='request'){const name=String(data.get('name')||'').trim(),baby=String(data.get('baby')||'').trim(),contact=String(data.get('contact')||'').trim(),note=String(data.get('note')||'').trim();if(!name||!baby)throw Error('주문자 이름과 아기 이름(태명)을 모두 입력해 주세요');const method=String(data.get('delivery_method')||'');if(!['pickup','courier'].includes(method))throw Error('수령방식을 선택해 주세요');
+else if(f.id==='request'){const name=String(data.get('name')||'').trim(),baby=String(data.get('baby')||'').trim(),contact=String(data.get('contact')||'').trim(),note=String(data.get('note')||'').trim();if(!name||!baby)throw Error('주문자 이름과 아기 이름(태명)을 모두 입력해 주세요');customerPhoneLocal(contact);const method=String(data.get('delivery_method')||'');if(!['pickup','courier'].includes(method))throw Error('수령방식을 선택해 주세요');
  const delivery={delivery_method:method,recipient_name:String(data.get('recipient_name')||'').trim(),postal_code:String(data.get('postal_code')||'').trim(),address_line1:String(data.get('address_line1')||'').trim(),address_line2:String(data.get('address_line2')||'').trim(),delivery_note:String(data.get('delivery_note')||'').trim()};
  if(method==='courier'&&(!delivery.recipient_name||!/^[0-9]{5}$/.test(delivery.postal_code)||delivery.address_line1.length<4))throw Error('택배 받는 사람, 우편번호 5자리와 주소를 정확히 입력해 주세요');
  const r=await requestQuote(name,baby,contact,note,delivery);state.receipts.unshift({id:r.id,token:r.token,name,baby,date:now()});saveTracks();state.cart=[];saveCart();await openTracking(r.id,r.token);notif('견적 요청 완료! 주문조회 링크를 카톡 나와의 채팅에 보관해 주세요.')}

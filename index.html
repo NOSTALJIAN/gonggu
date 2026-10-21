@@ -1633,7 +1633,10 @@ async function quickProductState(id,kind){
  if(!field)throw Error('변경할 상품 상태가 올바르지 않아요.');
  const next=!Boolean(p[field]);
  if(!connected){const row=demo.products.find(x=>x.id===id);if(!row)throw Error('상품을 찾지 못했어요.');row[field]=next;saveDemo();}
- else await api('/rest/v1/gq_products?id=eq.'+encodeURIComponent(id),{method:'PATCH',body:{[field]:next},admin:true});
+ else{
+  const rows=await api('/rest/v1/gq_products?id=eq.'+encodeURIComponent(id),{method:'PATCH',body:{[field]:next},admin:true});
+  if(!Array.isArray(rows)||rows.length!==1||Boolean(rows[0][field])!==next)throw Error('상품 상태 변경 결과를 확인하지 못했어요. 관리자 화면을 새로고침해 주세요.');
+ }
  await loadAdmin();
  return {field,next};
 }
@@ -1652,9 +1655,10 @@ async function rejectSuggestion(id,reason,detail){
  if(note.length>300)throw Error('상세 사유는 300자 이내로 적어 주세요.');
  if(reason==='기타'&&!note)throw Error('기타 사유를 자세히 입력해 주세요.');
  if(!connected){Object.assign(demo.requests.find(r=>r.id===id),{status:'rejected',rejection_reason:reason,rejection_note:note});saveDemo();return;}
- await api('/rest/v1/gq_product_requests?id=eq.'+encodeURIComponent(id)+'&status=eq.pending',{
+ const rows=await api('/rest/v1/gq_product_requests?id=eq.'+encodeURIComponent(id)+'&status=eq.pending',{
   method:'PATCH',body:{status:'rejected',rejection_reason:reason,rejection_note:note},admin:true
  });
+ if(!Array.isArray(rows)||rows.length!==1||rows[0].status!=='rejected')throw Error('반려 저장 결과를 확인하지 못했어요. 새로고침 후 다시 확인해 주세요.');
 }
 async function approveSuggestion(d){const request=state.requests.find(x=>x.id===state.modal?.id);if(!request||request.status!=='pending')throw Error('승인할 신청서를 찾지 못했어요');const storeName=String(d.get('store')||'').trim(),productName=String(d.get('name')||'').trim(),options=parseOptions(String(d.get('options')||''));if(!storeName||!productName)throw Error('도매업체와 상품명을 입력해 주세요');let store=state.stores.find(x=>x.name.trim().toLowerCase()===storeName.toLowerCase());if(!store){const rows=await api('/rest/v1/gq_stores',{method:'POST',body:{name:storeName,active:true},admin:true});store=rows?.[0];if(!store?.id)throw Error('거래처 등록 확인 실패')}const source=await downloadPrivatePhoto(request.photo_path);const photoPath=await uploadPhoto(source,PHOTO_PUBLIC,true);const payload={store_id:store.id,name:productName,options,published:d.has('published'),is_sold_out:d.has('is_sold_out'),image_url:publicPhotoUrl(photoPath)};const products=await api('/rest/v1/gq_products',{method:'POST',body:payload,admin:true});if(!products?.[0]?.id)throw Error('상품이 저장됐는지 확인해 주세요');await api('/rest/v1/gq_product_requests?id=eq.'+request.id,{method:'PATCH',body:{status:'approved',approved_product_id:products[0].id},admin:true})}
 async function setBundle(id,parentId){if(!connected){const q=demo.quotes.find(x=>x.id===id);if(!q)throw Error('주문을 찾지 못했어요');q.bundle_parent_id=parentId||null;saveDemo();return true;}return rpc('gq_set_bundle',{p_quote_id:id,p_parent_id:parentId||null},true)}

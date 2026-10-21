@@ -485,6 +485,60 @@ input:focus,select:focus,textarea:focus{border-color:#111;box-shadow:0 0 0 1px #
 .shop-benefits strong{font-size:11px}
 @media(max-width:519px){.shop-editorial h1{font-size:clamp(30px,8.6vw,42px)}}
 @media(max-width:355px){.shop-editorial-label{font-size:9px}.shop-editorial h1{font-size:30px}}
+
+/* Five-item monochrome shopping dock; central shortcut uses the existing request dialog. */
+.shop-bottom-nav{
+ grid-template-columns:repeat(5,minmax(0,1fr));
+ gap:0;
+ padding:8px 6px calc(8px + env(safe-area-inset-bottom));
+ border-top:1px solid #e7e7e7;
+ background:#fff;
+}
+.shop-bottom-nav .nav-item{
+ display:flex;
+ flex-direction:column;
+ align-items:center;
+ justify-content:center;
+ gap:5px;
+ min-width:0;
+ min-height:47px;
+ padding:3px 0;
+ font-size:10px;
+ line-height:1.2;
+ letter-spacing:-.035em;
+ font-weight:650;
+ color:#777;
+ -webkit-tap-highlight-color:transparent;
+}
+.shop-bottom-nav .nav-symbol{
+ display:inline-flex;
+ align-items:center;
+ justify-content:center;
+ width:26px;
+ height:26px;
+ min-height:26px;
+ position:relative;
+}
+.shop-bottom-nav .nav-item.active{color:#111;font-weight:830}
+.shop-bottom-nav .nav-register{color:#171717;font-weight:800}
+.shop-bottom-nav .nav-register .nav-symbol{color:#111}
+.shop-bottom-nav .nav-count{
+ position:absolute;
+ top:-5px;
+ right:-10px;
+ transform:none;
+ min-width:16px;
+ height:16px;
+ padding:0 4px;
+ font-size:10px;
+ line-height:16px;
+ border-radius:999px;
+ background:#111;
+ color:#fff;
+}
+.dock:has(+ .shop-bottom-nav){bottom:calc(64px + env(safe-area-inset-bottom))}
+@media(max-width:360px){.shop-bottom-nav{padding-left:2px;padding-right:2px}.shop-bottom-nav .nav-item{font-size:9px;gap:4px}}
+
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -759,11 +813,19 @@ function header(){
 }
 function shopBottomNav(){
  if(state.page==='admin')return '';
- return `<nav class="shop-bottom-nav" aria-label="빠른 메뉴">
- <button class="nav-item ${state.page==='shop'?'active':''}" data-page="shop" type="button"><span class="nav-symbol" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-6v-7h-4v7H4a1 1 0 0 1-1-1V10Z"/></svg></span><span>홈</span></button>
- ${state.page==='shop'?'<a class="nav-item" href="#catalog"><span class="nav-symbol" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span><span>상품</span></a>':'<button class="nav-item" data-page="shop" type="button"><span class="nav-symbol" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span><span>상품</span></button>'}
- <button class="nav-item" type="button" data-action="open-cart"><span class="nav-symbol" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h16l1 13H3L4 8Z"/><path d="M9 9V6a3 3 0 0 1 6 0v3"/></svg>${cartCount()?`<span class="nav-count">${cartCount()}</span>`:''}</span><span>장바구니</span></button>
- <button class="nav-item ${state.page==='track'?'active':''}" type="button" data-action="my-quotes"><span class="nav-symbol" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></svg></span><span>주문조회</span></button>
+ const icons={
+  home:'<svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-6v-7h-4v7H4a1 1 0 0 1-1-1V10Z"/></svg>',
+  catalog:'<svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>',
+  request:'<svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M12 7v10M7 12h10"/></svg>',
+  cart:'<svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h16l1 13H3L4 8Z"/><path d="M9 9V6a3 3 0 0 1 6 0v3"/></svg>',
+  orders:'<svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>'
+ };
+ return `<nav class="shop-bottom-nav" aria-label="하단 메뉴">
+ <button class="nav-item ${state.page==='shop'?'active':''}" data-page="shop" type="button" ${state.page==='shop'?'aria-current="page"':''}><span class="nav-symbol">${icons.home}</span><span>홈</span></button>
+ ${state.page==='shop'?`<a class="nav-item" href="#catalog"><span class="nav-symbol">${icons.catalog}</span><span>상품</span></a>`:`<button class="nav-item" data-page="shop" type="button"><span class="nav-symbol">${icons.catalog}</span><span>상품</span></button>`}
+ <button class="nav-item nav-register" type="button" data-action="suggest-product"><span class="nav-symbol">${icons.request}</span><span>상품등록</span></button>
+ <button class="nav-item" type="button" data-action="open-cart"><span class="nav-symbol">${icons.cart}${cartCount()?`<span class="nav-count">${cartCount()}</span>`:''}</span><span>장바구니</span></button>
+ <button class="nav-item ${state.page==='track'?'active':''}" type="button" data-action="my-quotes"><span class="nav-symbol">${icons.orders}</span><span>주문조회</span></button>
  </nav>`;
 }
 // 알림은 관리자만 신청하도록 UI를 제한합니다. 발송용 비밀키는 서버에만 둡니다.

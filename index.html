@@ -188,10 +188,18 @@
 .bundle-flow .workflow-stage{max-width:100%;white-space:normal;text-align:right}
 .shipment-progress{margin:10px 0;padding:12px;border:1px solid #e2dcfc;border-radius:12px;background:#faf9ff;overflow-wrap:anywhere}
 .shipment-progress a{color:#5141af;text-decoration:underline}
-.shipment-history summary{cursor:pointer;padding:10px 0}
-.shipment-history-scroll{overflow-x:auto}
-.shipment-history table{width:100%;border-collapse:collapse;font-size:12px;text-align:left}
-.shipment-history th,.shipment-history td{padding:8px;border-bottom:1px solid #e2dcfc;vertical-align:top}
+.shipment-history summary{cursor:pointer;padding:11px 0;font-size:13px;font-weight:750;color:#4d438e}
+.shipment-timeline{list-style:none;margin:10px 0 0 8px;padding:0 0 0 15px;border-left:2px solid #dcd5fb}
+.shipment-timeline-item{position:relative;margin:0;padding:0 0 18px 14px;min-width:0;overflow-wrap:break-word;word-break:normal}
+.shipment-timeline-item:last-child{padding-bottom:2px}
+.shipment-timeline-item::before{content:"";position:absolute;top:5px;left:-21px;width:10px;height:10px;border-radius:50%;background:#fff;border:2px solid #9c8dec}
+.shipment-timeline-item:first-child::before{background:#7461dd;border-color:#7461dd}
+.shipment-timeline-head{display:flex;align-items:baseline;justify-content:space-between;gap:4px 12px;flex-wrap:wrap;line-height:1.5}
+.shipment-timeline-head strong{font-size:13px;color:#3c326a;font-weight:800;min-width:0}
+.shipment-timeline-head time{font-size:11px;color:#79718f;white-space:nowrap;font-variant-numeric:tabular-nums}
+.shipment-timeline-location{font-size:12px;font-weight:650;color:#62568d;margin-top:4px}
+.shipment-timeline-detail{font-size:12px;line-height:1.65;color:#666176;margin-top:3px}
+@media(max-width:380px){.shipment-progress{padding:10px}.shipment-timeline{margin-left:4px;padding-left:12px}.shipment-timeline-item{padding-left:12px}.shipment-timeline-item::before{left:-18px}}
 </style>
 <title>미니예나 · 묶음배송 한 카드</title>
 <!-- OneSignal Web SDK v16. App ID는 공개용 식별자이며 발송용 REST API 키는 절대 이 파일에 저장하지 마세요. -->
@@ -314,10 +322,31 @@ const eventText=value=>typeof value==='string'?value:
  value&&typeof value.name==='string'?value.name:
  value&&typeof value.text==='string'?value.text:'';
 const shipmentEvent=e=>{
- const status=eventText(e.status),detail=eventText(e.detail)||eventText(e.description);
+ const status=eventText(e.label)||eventText(e.state)||eventText(e.status);
+ const detail=eventText(e.detail)||eventText(e.description);
  return {time:eventText(e.time),location:eventText(e.location)||eventText(e.place),
-  status:[status,detail&&detail!==status?detail:''].filter(Boolean).join(' · ')};
+  status:[status,detail&&detail!==status?detail:''].filter(Boolean).join(' · '),
+  label:status,detail:detail&&detail!==status?detail:''};
 };
+// Only timezone-qualified ISO strings may be rendered as actual times.
+const shipmentEpoch=value=>{
+ const text=eventText(value).trim();
+ if(!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/i.test(text))return null;
+ const epoch=Date.parse(text);
+ return Number.isFinite(epoch)?epoch:null;
+};
+const shipmentSeoulTime=value=>{
+ const epoch=shipmentEpoch(value);
+ if(epoch===null)return '시간 미확인';
+ const parts=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{
+  timeZone:'Asia/Seoul',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'
+ }).formatToParts(new Date(epoch)).map(part=>[part.type,part.value]));
+ return parts.month+'.'+parts.day+' '+parts.hour+':'+parts.minute;
+};
+// Newest reliable timestamps first; undated records retain their received order.
+const shipmentTimeline=events=>events.map((event,index)=>({...event,index,epoch:shipmentEpoch(event.time)}))
+ .sort((a,b)=>a.epoch===null&&b.epoch===null?a.index-b.index:
+  a.epoch===null?1:b.epoch===null?-1:b.epoch-a.epoch||a.index-b.index);
 // These adapters accept only recognizable v25 records, never guessed nested order data.
 function v25TrackingSnapshot(row,expectedInvoice='',allowMapIdentity=false){
  if(!row||typeof row!=='object'||Array.isArray(row))return null;
@@ -361,11 +390,11 @@ function renderShipment(order){
  // Optional server contract; absent/foreign snapshots never produce invented history.
  const snapshot=q.shipment_tracking;
  const verified=validShipmentSnapshot(q);
- const events=verified&&Array.isArray(snapshot.events)?snapshot.events.filter(e=>e&&typeof e==='object').map(shipmentEvent):[];
+ const events=shipmentTimeline(verified&&Array.isArray(snapshot.events)?snapshot.events.filter(e=>e&&typeof e==='object').map(shipmentEvent):[]);
  return `<div class="shipment-progress"><div><b>배송조회</b> · ${esc(q.tracking_carrier)}</div><div>${link}</div>
  ${verified&&typeof snapshot.status==='string'?`<div class="smallnote">택배사 조회 상태: ${esc(snapshot.status)}</div>`:''}
- ${verified&&typeof snapshot.fetched_at==='string'?`<div class="tiny">마지막 조회: ${esc(snapshot.fetched_at)}</div>`:''}
- ${events.length?`<details class="shipment-history"><summary>배송이력 ${events.length}건</summary><div class="shipment-history-scroll"><table><thead><tr><th>날짜·시간</th><th>위치</th><th>처리상태</th></tr></thead><tbody>${events.map(e=>`<tr><td>${esc(typeof e.time==='string'?e.time:'—')}</td><td>${esc(typeof e.location==='string'?e.location:'—')}</td><td>${esc(typeof e.status==='string'?e.status:'—')}</td></tr>`).join('')}</tbody></table></div></details>`:'<div class="tiny">앱에 제공된 배송이력이 없어요. 최신 진행상황은 택배사 공식 조회에서 확인해 주세요.</div>'}
+ ${verified&&typeof snapshot.fetched_at==='string'?`<div class="tiny">마지막 조회: ${esc(shipmentSeoulTime(snapshot.fetched_at))} (한국시간)</div>`:''}
+ ${events.length?`<details class="shipment-history"><summary>배송이력 ${events.length}건</summary><ol class="shipment-timeline">${events.map(e=>`<li class="shipment-timeline-item"><div class="shipment-timeline-head"><strong>${esc(e.label||e.status||'배송 처리')}</strong><time>${esc(shipmentSeoulTime(e.time))}</time></div>${e.location?`<div class="shipment-timeline-location">${esc(e.location)}</div>`:''}${e.detail?`<div class="shipment-timeline-detail">${esc(e.detail)}</div>`:''}</li>`).join('')}</ol></details>`:'<div class="tiny">앱에 제공된 배송이력이 없어요. 최신 진행상황은 택배사 공식 조회에서 확인해 주세요.</div>'}
  </div>`;
 }
 

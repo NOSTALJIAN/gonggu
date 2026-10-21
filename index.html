@@ -568,6 +568,10 @@ input:focus,select:focus,textarea:focus{border-color:#111;box-shadow:0 0 0 1px #
 .pushbox-settings .smallnote{color:#777}
 /* Notification onboarding is intentionally hidden in every admin view. */
 .pushbox:not(.pushbox-settings),.pushbox-settings{display:none!important}
+
+/* Branding remains visually unchanged; the wordmark is now an accessible home control. */
+button.brand-home{display:block;appearance:none;border:0;background:transparent;padding:0;min-width:0;min-height:0;box-shadow:none;text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent}
+button.brand-home:focus-visible{outline:2px solid #111;outline-offset:5px}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -830,7 +834,7 @@ async function showRequestImages(){if(!connected||!state.admin)return;const node
 function header(){
  const admin=state.page==='admin';
  return `<header class="hero"><div class="headrow">
- <div class="brand-lockup"><div class="brand-text"><div class="logo" aria-label="MINIYENA">MINIYENA</div></div></div>
+ <div class="brand-lockup"><div class="brand-text"><button class="logo brand-home" type="button" data-page="shop" aria-label="미니예나 첫 화면으로 이동">MINIYENA</button></div></div>
  <div class="header-actions"><button class="heroaction" data-page="${admin?'shop':'admin'}" type="button">${admin?'쇼핑몰 ↗':'관리자 ↗'}</button></div></div>
  <nav class="header-nav" aria-label="사이트 메뉴">
  ${state.page==='shop'?'<a href="#catalog">전체상품</a>':'<button data-page="shop" type="button">전체상품</button>'}
@@ -1302,7 +1306,7 @@ function manualKoreanAddress(button){
  const pane=block.querySelector('[data-postcode-panel]');if(pane)pane.classList.add('hidden');
  zip.focus();notif('우편번호와 기본주소를 직접 입력할 수 있어요');
 }
-async function click(e){const pg=e.target.closest('[data-page]');if(pg){goto(pg.dataset.page);return}const b=e.target.closest('[data-action]');if(!b)return;const a=b.dataset.action,id=b.dataset.id;try{
+async function click(e){const pg=e.target.closest('[data-page]');if(pg){goto(pg.dataset.page);if(pg.classList.contains('brand-home'))window.scrollTo({top:0,behavior:'instant'});return}const b=e.target.closest('[data-action]');if(!b)return;const a=b.dataset.action,id=b.dataset.id;try{
 if(a==='enable-admin-push'){await miniEnablePush();notif('푸시 알림 허용 완료! OneSignal에서 테스트 알림을 보내 보세요.');return;}
 if(a==='bundle-sync-shipment'){
  const q=state.quotes.find(x=>x.id===id);

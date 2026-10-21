@@ -845,6 +845,14 @@ body:has(.overlay) .back-to-top{opacity:0;visibility:hidden;pointer-events:none}
 .gallery-edit-photo{display:flex;flex-direction:column;gap:6px;font-size:11px}
 .gallery-edit-photo img{width:100%;aspect-ratio:1;object-fit:cover}
 .gallery-edit-photo span{display:flex;align-items:center;gap:4px}
+
+/* Multi-photo submission from the customer's product suggestion screen. */
+.suggest-photo-previews,.request-photo-gallery{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:12px 0}
+.suggest-photo-preview,.request-photo-tile{margin:0;min-width:0}
+.suggest-photo-preview img,.request-photo-tile img{display:block;width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;background:#fafafa;border:1px solid #ebebeb}
+.suggest-photo-preview figcaption,.request-photo-tile figcaption{text-align:center;margin:5px 0;font-size:11px;color:#777}
+.suggest-photo-preview:first-child figcaption,.request-photo-tile:first-child figcaption{font-weight:850;color:#171717}
+@media(max-width:390px){.suggest-photo-previews,.request-photo-gallery{gap:6px}}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -1411,6 +1419,37 @@ ${canRequestCancel(q)?`<button class="btn block outline" style="margin-top:12px"
 function renderAdmin(){if(connected&&!state.admin)return `<section class="content"><div class="card loginbox"><h2>관리자 로그인</h2><p class="sub">상품·가격·배송비·품절·입금은 관리자만 변경해요.</p><form id="login"><label class="label">이메일<input required name="email" type="email" autocomplete="email"></label><label class="label">비밀번호<input required name="password" type="password" autocomplete="current-password"></label><button class="btn block" type="submit">로그인</button></form></div></section>`;
 const nQuote=state.quotes.filter(q=>q.status==='requested').length,nConfirm=state.quotes.filter(q=>q.status==='confirmed').length;
 return `<section class="content"><div class="page-intro admin-page-intro"><div class="admin-intro-row"><div class="admin-intro-copy"><span class="page-intro-kicker">미니예나 · 관리자</span><h1>관리자 화면</h1><p>견적 · 주문 · 상품 · 배송 관리</p></div><button class="admin-settings-shortcut ${state.tab==='settings'?'active':''}" type="button" data-tab="settings" aria-label="관리자 설정 열기" ${state.tab==='settings'?'aria-current="page"':''}><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h9m4 0h3M4 17h3m4 0h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg><span>설정</span></button></div></div><div class="three"><button type="button" class="tile admin-summary-link" data-action="admin-summary" data-summary="requested" aria-label="견적 요청 ${nQuote}건 보기"><small>견적 요청</small><strong>${nQuote}</strong>${state.quotes.some(q=>q.cancel_requested_at&&q.status!=='cancelled')?`<div class="tiny attention" style="margin-top:6px">취소 요청 ${state.quotes.filter(q=>q.cancel_requested_at&&q.status!=='cancelled').length}건</div>`:''}</button><button type="button" class="tile admin-summary-link" data-action="admin-summary" data-summary="confirmed" aria-label="확정 주문 ${nConfirm}건 보기"><small>확정 주문</small><strong>${nConfirm}</strong></button><button type="button" class="tile admin-summary-link" data-action="admin-summary" data-summary="products" aria-label="등록 상품 ${state.products.length}개 보기"><small>등록 상품</small><strong>${state.products.length}</strong></button></div><section class="admin-procurement" aria-label="발주 일정"><div class="admin-procurement-title"><b>주 2회 남대문 공동발주</b><span>월 · 목 | 오후 7시 마감 · 밤 9시 발주</span></div><div class="admin-procurement-grid"><div><small>다음 최종 주문·입금 마감</small><strong data-next-cutoff>계산 중</strong><span>남은 시간 <b data-cutoff-countdown>계산 중</b></span></div><div><small>다음 남대문 발주</small><strong data-next-order>계산 중</strong><span>남은 시간 <b data-order-countdown>계산 중</b></span></div></div><p>마감 기준으로 주문 확정·입금 확인 건을 모아 발주합니다. 실제 발주 대상과 거래처별 수량은 확인 후 직접 발주해 주세요.</p></section><div class="tabs" style="padding:14px 0"><button class="tab ${state.tab==='quotes'?'active':''}" data-tab="quotes">견적·주문</button><button class="tab ${state.tab==='requests'?'active':''}" data-tab="requests">상품 등록 신청 ${state.requests.filter(x=>x.status==='pending').length}</button><button class="tab ${state.tab==='products'?'active':''}" data-tab="products">가게·상품 등록</button><button class="tab ${state.tab==='buyers'?'active':''}" data-tab="buyers">구매자별 집계</button><button class="tab ${state.tab==='items'?'active':''}" data-tab="items">상품별 주문자</button><button class="tab ${state.tab==='vendors'?'active':''}" data-tab="vendors">가게별 발주</button></div>${state.tab==='quotes'?renderAdminQuotes():state.tab==='requests'?renderAdminRequests():state.tab==='products'?renderAdminProducts():state.tab==='buyers'?renderBuyerStats():state.tab==='items'?renderProductStats():state.tab==='vendors'?renderVendorSummary():renderAdminSettings()}</section>`}
+function requestPhotoPaths(r){
+ const paths=[r?.photo_path,...(Array.isArray(r?.extra_photo_paths)?r.extra_photo_paths:[])];
+ return paths.filter(p=>typeof p==='string'&&p.startsWith('incoming/'));
+}
+function requestPhotoGallery(r){
+ const paths=requestPhotoPaths(r);
+ return `<div class="request-photo-gallery" aria-label="신청 사진 ${paths.length}장">
+ ${paths.map((p,i)=>`<figure class="request-photo-tile"><img data-request-photo="${esc(p)}" alt="신청 상품 ${i===0?'대표사진':'추가 사진 '+(i+1)}" loading="lazy"><figcaption>${i===0?'대표':'사진 '+(i+1)}</figcaption></figure>`).join('')}
+ </div><div class="smallnote">신청 사진 ${paths.length}장 · 승인 시 상품 사진으로 등록돼요.</div>`;
+}
+let suggestPreviewUrls=[];
+function clearSuggestPreviews(){for(const u of suggestPreviewUrls)URL.revokeObjectURL(u);suggestPreviewUrls=[];}
+function updateSuggestPhotoPreviews(input){
+ const box=$('#suggest-previews'),count=$('#suggest-photo-count'),files=[...(input.files||[])];
+ clearSuggestPreviews();
+ if(files.length>9||files.some(f=>!f.type?.startsWith('image/')||f.size>35*1024*1024)){
+  input.value='';
+  if(box){box.innerHTML='';box.classList.add('hidden');}
+  if(count)count.textContent='사진을 다시 선택해 주세요.';
+  notif('이미지 사진만 최대 9장, 장당 35MB 이하로 선택할 수 있어요.');
+  return;
+ }
+ if(count)count.textContent=files.length?`사진 ${files.length}장 선택 · 첫 번째 사진이 대표사진이에요.`:'사진을 여러 장 선택할 수 있어요.';
+ if(box){
+  box.innerHTML=files.map((file,i)=>{
+   const u=URL.createObjectURL(file);suggestPreviewUrls.push(u);
+   return `<figure class="suggest-photo-preview"><img src="${u}" alt="선택한 사진 ${i+1}"><figcaption>${i===0?'대표사진':'사진 '+(i+1)}</figcaption></figure>`;
+  }).join('');
+  box.classList.toggle('hidden',files.length===0);
+ }
+}
 function renderAdminRequests(){
  const requests=state.requests||[];
  const statuses=[
@@ -1426,7 +1465,7 @@ function renderAdminRequests(){
  </div>
  <div class="request-status-count" aria-live="polite">${statuses.find(st=>st.key===selected).label} · ${filtered.length}건</div>
  ${!filtered.length?`<div class="empty">${statuses.find(st=>st.key===selected).empty}</div>`:filtered.map(r=>`<div class="card request-card"><div class="row between"><div><span class="chip ${r.status==='pending'?'orange':r.status==='approved'?'green':'red'}">${r.status==='pending'?'검토 대기':r.status==='approved'?'상품 등록 완료':'반려'}</span><div class="tiny">${fmtDate(r.created_at)}</div></div><div class="tiny">${esc(r.customer_name||'신청자 미기재')}</div></div>
- <img class="request-photo" data-request-photo="${esc(r.photo_path)}" alt="신청 상품 사진" loading="lazy">
+ ${requestPhotoGallery(r)}
  <div class="smallnote">남대문 도매업체</div><h3 style="margin:2px 0 9px">${esc(r.store_name)}</h3><div class="smallnote">상품명</div><b>${esc(r.product_name)}</b>${r.note?`<p class="sub">요청 내용: ${esc(r.note)}</p>`:''}
  ${r.status==='rejected'?`<div class="request-rejection-summary"><b>반려 사유: ${esc(r.rejection_reason||'사유 미기록')}</b>${r.rejection_note?`<div>${esc(r.rejection_note)}</div>`:''}</div><div class="row wrap" style="margin-top:10px"><button class="btn sm secondary" data-action="copy-rejection-notice" data-id="${esc(r.id)}">반려 안내문 복사</button></div>`:''}
  ${r.status==='pending'?`<div class="row wrap" style="margin-top:12px"><button class="btn sm" data-action="approve-request" data-id="${esc(r.id)}">검토 후 상품 등록</button><button class="btn sm danger" data-action="reject-request" data-id="${esc(r.id)}">반려 사유 선택</button></div>`:''}
@@ -1833,7 +1872,7 @@ if(m.type==='edit-delivery'){
  <form id="edit-delivery-form"><label class="label">수령방식<select name="delivery_method" id="deliveryMethodEdit" required><option value="pickup" ${method==='pickup'?'selected':''}>직접수령</option><option value="courier" ${isCourier?'selected':''}>택배수령</option></select></label>
  <div id="courierFieldsEdit" class="delivery-fields ${isCourier?'':'hidden'}"><label class="label">받는 사람<input name="recipient_name" maxlength="80" value="${field('recipient_name')}" data-courier-required ${isCourier?'required':'disabled'}></label><div class="address-tools"><button class="btn secondary" type="button" data-action="search-address">🔎 주소 검색</button><button class="textbutton address-manual" type="button" data-action="manual-address">주소 직접 입력</button></div><div class="postcode-search hidden" data-postcode-panel><div class="row between"><b>우편번호·주소 찾기</b><button type="button" class="btn sm neutral" data-action="close-address-search">닫기</button></div><div class="address-search-hint">도로명이나 건물 이름을 검색하고 주소를 선택해 주세요.</div><div class="postcode-mount" data-postcode-mount></div></div><label class="label">우편번호 (5자리)<input name="postal_code" readonly data-address-postal maxlength="5" inputmode="numeric" pattern="[0-9]{5}" value="${field('postal_code')}" data-courier-required ${isCourier?'required':'disabled'}></label><label class="label">주소<input name="address_line1" readonly data-address-primary maxlength="250" value="${field('address_line1')}" data-courier-required ${isCourier?'required':'disabled'}></label><label class="label">상세주소 (선택)<input name="address_line2" maxlength="250" value="${field('address_line2')}" ${isCourier?'':'disabled'}></label><label class="label">배송 요청사항 (선택)<input name="delivery_note" maxlength="200" value="${field('delivery_note')}" ${isCourier?'':'disabled'}></label></div><button type="submit" class="btn block">${q.status==='confirmed'||isBundle(q)?'변경 요청 보내기':'수령방식 수정 저장'}</button></form>`);
 }
-if(m.type==='suggest'){return wrap('상품 등록 신청',`<div class="filehelp">상품명·남대문 도매업체 이름·대표사진을 올려주세요. 관리자가 확인하고 승인한 뒤에만 실제 상품 목록에 등록돼요. <b>이 신청은 견적 요청이나 최종 주문이 아니에요.</b></div><form id="suggest-form" style="margin-top:16px"><label class="label">남대문 도매업체 이름<input required name="store" maxlength="100" placeholder="예: 오뜨베베"></label><label class="label">상품명<input required name="name" maxlength="100" placeholder="예: 하트호피 전신슈트"></label><label class="label">대표사진 첨부 (필수)<input name="photo" type="file" accept="image/*" required id="suggest-photo"></label><img class="photo-preview hidden" id="suggest-preview" alt="등록할 상품 사진 미리보기"><label class="label">신청자 이름 (선택)<input name="customer" maxlength="40" placeholder="누가 신청했는지 확인용"></label><label class="label">메모 (선택)<textarea name="note" maxlength="300" placeholder="상품에 대해 참고할 내용"></textarea></label><button class="btn block" type="submit">상품 등록 신청 보내기</button></form>`)}
+if(m.type==='suggest'){return wrap('상품 등록 신청',`<div class="filehelp">상품명·남대문 도매업체 이름과 사진을 첨부해 주세요. 첫 번째 사진이 대표사진이며, 최대 9장까지 한 번에 신청할 수 있어요. 관리자가 승인한 뒤에만 실제 상품 목록에 등록돼요. <b>이 신청은 견적 요청이나 최종 주문이 아니에요.</b></div><form id="suggest-form" style="margin-top:16px"><label class="label">남대문 도매업체 이름<input required name="store" maxlength="100" placeholder="예: 오뜨베베"></label><label class="label">상품명<input required name="name" maxlength="100" placeholder="예: 하트호피 전신슈트"></label><label class="label">상품 사진 첨부 (필수 · 최대 9장)<input name="photo" type="file" accept="image/*" multiple required id="suggest-photo"></label><div class="smallnote" id="suggest-photo-count" aria-live="polite">사진을 여러 장 선택할 수 있어요. 첫 번째 사진이 대표사진이에요.</div><div id="suggest-previews" class="suggest-photo-previews hidden" aria-label="신청 사진 미리보기"></div><label class="label">신청자 이름 (선택)<input name="customer" maxlength="40" placeholder="누가 신청했는지 확인용"></label><label class="label">메모 (선택)<textarea name="note" maxlength="300" placeholder="상품에 대해 참고할 내용"></textarea></label><button class="btn block" type="submit">상품 등록 신청 보내기</button></form>`)}
 if(m.type==='reject-request'){
  const req=state.requests.find(r=>r.id===m.id&&r.status==='pending');
  if(!req)return '';
@@ -1844,7 +1883,7 @@ if(m.type==='reject-request'){
  <label class="label">추가 설명 (기타 선택 시 필수)<textarea name="detail" maxlength="300" rows="3" placeholder="고객에게 전달할 내용을 입력해 주세요"></textarea></label>
  <button class="btn block danger" type="submit">사유 저장하고 반려하기</button></form>`);
 }
-if(m.type==='approve'){const r=state.requests.find(x=>x.id===m.id);if(!r)return '';return wrap('상품 등록 검토 및 승인',`<div class="info">신청자가 보낸 내용과 사진을 확인하고 컬러별 사이즈를 입력하면 실제 상품으로 등록돼요.</div><img class="request-photo" data-request-photo="${esc(r.photo_path)}" alt="신청 상품 대표사진"><form id="approve-form"><label class="label">남대문 도매업체 이름<input name="store" maxlength="100" required value="${esc(r.store_name)}"></label><label class="label">상품명<input name="name" maxlength="100" required value="${esc(r.product_name)}"></label><label class="label">컬러별 사이즈 옵션<textarea name="options" required rows="5" placeholder="크림: BS, BM&#10;핑크: XS, S, M"></textarea></label><div class="filehelp">한 줄에 컬러 하나씩 입력하세요. 예) 크림: BS, BM</div><label class="label">추가 상품 사진 (최대 8장 · 여러 장 선택)<input name="extra_photos" accept="image/*" type="file" multiple></label><p class="smallnote">신청 사진이 대표사진이 되고, 선택한 사진들은 상세사진으로 추가돼요.</p>${privateProductFields(null)}<label class="stageradio" style="margin:15px 0"><input type="checkbox" name="published" checked> 승인 후 상품을 바로 공개</label><label class="stageradio"><input type="checkbox" name="is_sold_out"> 품절 상태로 등록 (고객에게 품절 표시)</label><button class="btn block" type="submit">대표사진 포함 상품 등록·승인</button></form>`)}
+if(m.type==='approve'){const r=state.requests.find(x=>x.id===m.id);if(!r)return '';return wrap('상품 등록 검토 및 승인',`<div class="info">신청자가 보낸 내용과 사진을 확인하고 컬러별 사이즈를 입력하면 실제 상품으로 등록돼요.</div>${requestPhotoGallery(r)}<form id="approve-form"><label class="label">남대문 도매업체 이름<input name="store" maxlength="100" required value="${esc(r.store_name)}"></label><label class="label">상품명<input name="name" maxlength="100" required value="${esc(r.product_name)}"></label><label class="label">컬러별 사이즈 옵션<textarea name="options" required rows="5" placeholder="크림: BS, BM&#10;핑크: XS, S, M"></textarea></label><div class="filehelp">한 줄에 컬러 하나씩 입력하세요. 예) 크림: BS, BM</div><label class="label">관리자 추가 상품 사진 (남은 ${Math.max(0,8-(Array.isArray(r.extra_photo_paths)?r.extra_photo_paths.length:0))}장까지)<input name="extra_photos" accept="image/*" type="file" multiple ${Array.isArray(r.extra_photo_paths)&&r.extra_photo_paths.length>=8?'disabled':''}></label><p class="smallnote">고객이 첨부한 사진은 모두 자동 반영돼요. 여유가 있으면 관리자가 추가로 사진을 올릴 수도 있어요.</p>${privateProductFields(null)}<label class="stageradio" style="margin:15px 0"><input type="checkbox" name="published" checked> 승인 후 상품을 바로 공개</label><label class="stageradio"><input type="checkbox" name="is_sold_out"> 품절 상태로 등록 (고객에게 품절 표시)</label><button class="btn block" type="submit">대표사진 포함 상품 등록·승인</button></form>`)}
 if(m.type==='pick'){const p=selectedProd(m.id);if(!p||p.is_sold_out||!p.published||!state.stores.some(st=>st.id===p.store_id&&st.active))return wrap('품절 또는 판매 종료','<div class="noticefail">이 상품은 현재 주문할 수 없어요. 다른 상품을 선택해 주세요.</div>');const colors=Object.keys(p.options||{}),color=colors.includes(m.color)?m.color:colors[0],sizes=p.options[color]||[];return wrap('옵션 선택',`<div class="smallnote">${esc(storeName(p.store_id))}</div><h3>${esc(p.name)}</h3>${productGallery(p)}<form id="pick"><label class="label">컬러<select name="color" id="pickColor">${colors.map(c=>`<option ${c===color?'selected':''}>${esc(c)}</option>`).join('')}</select></label><label class="label">사이즈<select name="size" id="pickSize">${sizes.map(s=>`<option>${esc(s)}</option>`).join('')}</select></label><label class="label">수량<input type="number" name="qty" value="1" min="1" max="20" required></label><button class="btn block" type="submit">장바구니 담기</button></form>`)}
 if(m.type==='product-photos'){
  const p=selectedProd(m.id);
@@ -2053,7 +2092,24 @@ async function toJpeg(input){if(!input||!input.type.startsWith('image/'))throw E
 async function uploadPhoto(file,bucket,admin=false){if(!connected)throw Error('온라인 연결이 필요해요');const blob=file.type==='image/jpeg'&&file instanceof Blob&&file.size<5*1024*1024?file:await toJpeg(file);const path=(bucket===PHOTO_PRIVATE?'incoming/':'covers/')+uuid()+'.jpg';const hdr={apikey:key,'Content-Type':'image/jpeg'};if(admin){const token=await getToken();hdr.Authorization='Bearer '+token}const res=await fetch(url+'/storage/v1/object/'+bucket+'/'+path,{method:'POST',headers:hdr,body:blob});if(!res.ok){let msg='사진 업로드 실패';try{let j=await res.json();msg=j.message||j.error||msg}catch{}throw Error(msg)}return path}
 async function downloadPrivatePhoto(path){const token=await getToken();if(!token)throw Error('관리자 로그인이 필요해요');const r=await fetch(url+'/storage/v1/object/authenticated/'+PHOTO_PRIVATE+'/'+path.split('/').map(encodeURIComponent).join('/'),{headers:{apikey:key,Authorization:'Bearer '+token}});if(!r.ok)throw Error('신청 사진을 가져오지 못했어요');return r.blob()}
 const publicPhotoUrl=path=>url+'/storage/v1/object/public/'+PHOTO_PUBLIC+'/'+path;
-async function submitSuggestion(d){const store=String(d.get('store')||'').trim(),name=String(d.get('name')||'').trim(),customer=String(d.get('customer')||'').trim(),note=String(d.get('note')||'').trim(),file=d.get('photo');if(!store||!name||!file||!file.size)throw Error('도매업체·상품명·사진을 모두 입력해 주세요');const path=await uploadPhoto(await toJpeg(file),PHOTO_PRIVATE);await rpc('gq_submit_product_request',{p_store_name:store,p_product_name:name,p_customer_name:customer,p_note:note,p_photo_path:path})}
+function customerRequestFiles(d){
+ const files=d.getAll('photo').filter(file=>file?.size);
+ if(!files.length)throw Error('상품 사진을 한 장 이상 선택해 주세요.');
+ if(files.length>9)throw Error('상품 사진은 한 번에 최대 9장까지 첨부할 수 있어요.');
+ if(files.some(f=>!f.type?.startsWith('image/')||f.size>35*1024*1024))throw Error('각 사진은 35MB 이하의 이미지여야 해요.');
+ return files;
+}
+async function submitSuggestion(d){
+ const store=String(d.get('store')||'').trim(),name=String(d.get('name')||'').trim(),customer=String(d.get('customer')||'').trim(),note=String(d.get('note')||'').trim();
+ if(!store||!name)throw Error('도매업체와 상품명을 입력해 주세요.');
+ const files=customerRequestFiles(d),paths=[],button=app.querySelector('#suggest-form button[type="submit"]');
+ for(let i=0;i<files.length;i++){
+  if(button)button.textContent=`사진 업로드 중 ${i+1}/${files.length}장…`;
+  paths.push(await uploadPhoto(await toJpeg(files[i]),PHOTO_PRIVATE));
+ }
+ if(button)button.textContent='신청서 접수 중…';
+ return rpc('gq_submit_product_request_v34',{p_store_name:store,p_product_name:name,p_customer_name:customer,p_note:note,p_photo_path:paths[0],p_extra_photo_paths:paths.slice(1)});
+}
 async function rejectSuggestion(id,reason,detail){
  const request=state.requests.find(r=>r.id===id&&r.status==='pending');
  if(!request)throw Error('반려할 검토 대기 신청을 찾지 못했어요.');
@@ -2070,7 +2126,14 @@ async function rejectSuggestion(id,reason,detail){
 }
 async function approveSuggestion(d){const request=state.requests.find(x=>x.id===state.modal?.id);if(!request||request.status!=='pending')throw Error('승인할 신청서를 찾지 못했어요');const storeName=String(d.get('store')||'').trim(),productName=String(d.get('name')||'').trim(),options=parseOptions(String(d.get('options')||''));if(!storeName||!productName)throw Error('도매업체와 상품명을 입력해 주세요');let store=state.stores.find(x=>x.name.trim().toLowerCase()===storeName.toLowerCase());if(!store){const rows=await api('/rest/v1/gq_stores',{method:'POST',body:{name:storeName,active:true},admin:true});store=rows?.[0];if(!store?.id)throw Error('거래처 등록 확인 실패')}const source=await downloadPrivatePhoto(request.photo_path);const photoPath=await uploadPhoto(source,PHOTO_PUBLIC,true);const privateInfo=parsePrivateProductInputs(d);if(!state.productPrivateReady)throw Error('비공개 도매 정보를 불러온 뒤 등록해 주세요.');
 const newPhotos=[...d.getAll('extra_photos')].filter(x=>x?.size);
-const gallery_urls=await uploadGalleryPhotos(newPhotos,8);
+const existingExtra=Array.isArray(request.extra_photo_paths)?request.extra_photo_paths:[];
+if(existingExtra.length+newPhotos.length>8)throw Error('상품 추가 사진은 총 8장까지 등록할 수 있어요. 신청 사진을 포함해 장수를 줄여 주세요.');
+const gallery_urls=[];
+for(const sourcePath of existingExtra){
+ const copiedPath=await uploadPhoto(await downloadPrivatePhoto(sourcePath),PHOTO_PUBLIC,true);
+ gallery_urls.push(publicPhotoUrl(copiedPath));
+}
+gallery_urls.push(...await uploadGalleryPhotos(newPhotos,8-existingExtra.length));
 const payload={store_id:store.id,name:productName,options,published:d.has('published'),is_sold_out:d.has('is_sold_out'),image_url:publicPhotoUrl(photoPath),gallery_urls};
 const products=await api('/rest/v1/gq_products',{method:'POST',body:payload,admin:true});
 if(!products?.[0]?.id)throw Error('상품이 저장됐는지 확인해 주세요');
@@ -2514,7 +2577,7 @@ async function submit(e){const f=e.target;if(!['hero-photo-form','reject-request
  if(!window.confirm('이 두 주문을 묶어 보내나요? 선택한 주문의 추가 배송비는 0원으로 계산됩니다. 기존 금액과 주소를 확인해 주세요.'))return;}
  else if(q.bundle_parent_id&&!window.confirm('묶음배송을 해제하면 이 주문의 배송비가 다시 포함돼요. 해제할까요?'))return;
  await setBundle(q.id,parent||null);state.modal=null;await loadAdmin();notif(parent?'묶음배송을 적용했어요':'묶음배송을 해제했어요');
-}else if(f.id==='suggest-form'){await submitSuggestion(data);state.modal=null;state.page='shop';await loadPublic();notif('상품 등록 신청이 접수됐어요! 관리자가 검토 후 등록해요')}
+}else if(f.id==='suggest-form'){await submitSuggestion(data);clearSuggestPreviews();state.modal=null;state.page='shop';await loadPublic();notif('상품 사진과 등록 신청이 접수됐어요! 관리자가 검토 후 등록해요')}
 else if(f.id==='approve-form'){await approveSuggestion(data);state.modal=null;await loadAdmin();state.tab='requests';render();notif('상품을 등록하고 신청을 승인했어요')}
 else if(f.id==='edit-delivery-form'){
  const pending=await updateBuyerDelivery(data);state.modal=null;render();notif(pending?'관리자에게 수령방식 변경 요청을 보냈어요':'수령방식 수정이 저장됐어요. 필요하면 관리자가 배송비를 다시 안내해요');
@@ -2550,7 +2613,7 @@ else if(f.dataset.payment){const paid=Number(data.get('paid')),refunded=Number(d
 }catch(ex){notif(errorText(ex))}finally{busy=false}}
 async function change(e){const x=e.target;if(x.id==='deliveryMethodEdit'){
  const panel=$('#courierFieldsEdit');if(panel){const show=x.value==='courier';panel.classList.toggle('hidden',!show);if(!show){const el=panel.querySelector('[data-postcode-panel]');if(el)el.classList.add('hidden');}for(const field of panel.querySelectorAll('input')){field.disabled=!show;field.required=show&&field.hasAttribute('data-courier-required');}}return;
-}if(x.id==='deliveryMethod'){const block=$('#courierFields');if(block){const courier=x.value==='courier';block.classList.toggle('hidden',!courier);if(!courier){const el=block.querySelector('[data-postcode-panel]');if(el)el.classList.add('hidden');}for(const input of block.querySelectorAll('input')){input.disabled=!courier;input.required=courier&&input.hasAttribute('data-courier-required');}}return;}if(x.id==='suggest-photo' &&x.files?.[0]){const preview=$('#suggest-preview');if(preview){preview.src=URL.createObjectURL(x.files[0]);preview.classList.remove('hidden')}return}if(x.id==='pickColor'){state.modal.color=x.value;const p=selectedProd(state.modal.id);$('#pickSize').innerHTML=(p.options[x.value]||[]).map(s=>`<option>${esc(s)}</option>`).join('')}else if(x.dataset.tab){state.tab=x.dataset.tab;render()}else if(x.dataset.filter){state.filter=x.dataset.filter;render()}else if(x.dataset.fulfillment){if(busy)return;busy=true;try{
+}if(x.id==='deliveryMethod'){const block=$('#courierFields');if(block){const courier=x.value==='courier';block.classList.toggle('hidden',!courier);if(!courier){const el=block.querySelector('[data-postcode-panel]');if(el)el.classList.add('hidden');}for(const input of block.querySelectorAll('input')){input.disabled=!courier;input.required=courier&&input.hasAttribute('data-courier-required');}}return;}if(x.id==='suggest-photo'){updateSuggestPhotoPreviews(x);return}if(x.id==='pickColor'){state.modal.color=x.value;const p=selectedProd(state.modal.id);$('#pickSize').innerHTML=(p.options[x.value]||[]).map(s=>`<option>${esc(s)}</option>`).join('')}else if(x.dataset.tab){state.tab=x.dataset.tab;render()}else if(x.dataset.filter){state.filter=x.dataset.filter;render()}else if(x.dataset.fulfillment){if(busy)return;busy=true;try{
  const q=state.quotes.find(y=>y.items.some(i=>i.id===x.dataset.fulfillment));const item=q?.items.find(i=>i.id===x.dataset.fulfillment);
  if(x.value==='sold_out'&&item?.fulfillment!=='sold_out'){
   const amount=Number(item.unit_price||0)*item.quantity;

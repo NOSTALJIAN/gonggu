@@ -94,6 +94,26 @@ test('buyer page never inherits retained administrator cache',()=>{
  const noInvoice={...child,tracking_number:null,tracking_carrier:null};
  assert.equal(setup([root,noInvoice],true,'track').sharedShipment(noInvoice).id,'child');
 });
+test('mobile timeline displays short KST dates newest-first and escapes optional fields',()=>{
+ const q={...root,shipment_tracking:{source:'delivery-tracker',carrier_id:'kr.lotte',
+  tracking_number:'12345678',fetched_at:'2026-10-21T03:03:50.452056+00:00',
+  events:[{time:'2026-10-15T19:38:21.000+09:00',location:'<img>',status:'집하',detail:'보내셨습니다'},
+   {time:'2026-10-16T00:25:53.000+09:00',location:'중부권',status:'셔틀도착'},
+   {time:'',location:'',status:'시간 미기재'}]}};
+ const view=setup().renderShipment(q);
+ assert.match(view,/class="shipment-timeline"/);
+ assert.match(view,/10\.15 19:38/);
+ assert.match(view,/10\.16 00:25/);
+ assert.match(view,/10\.21 12:03 \(한국시간\)/);
+ assert(view.indexOf('셔틀도착')<view.indexOf('집하'));
+ assert(view.indexOf('집하')<view.indexOf('시간 미기재'));
+ assert.match(view,/시간 미확인/);
+ assert.match(view,/&lt;img&gt;/);
+ assert.doesNotMatch(view,/<img>/);
+ assert.doesNotMatch(view,/2026-10-15T19:38:21/);
+ assert.doesNotMatch(view,/<table>/);
+});
+
 test('all inline JavaScript and service workers parse',()=>{
  for(const match of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)){
   if(!/\bsrc\s*=/.test(match[1]))new vm.Script(match[2]);

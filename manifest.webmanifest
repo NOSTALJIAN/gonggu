@@ -1,13 +1,13 @@
 {
   "id": "./",
-  "name": "미니예나 - 공동구매",
+  "name": "MINI YENA | 미니예나 아동복",
   "short_name": "미니예나",
-  "description": "남대문 아동복 함께 골라 주문하는 미니예나",
+  "description": "남아·여아 아동복을 함께 고르고 견적을 확인하는 미니예나",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#f7f7fb",
-  "theme_color": "#6256d9",
+  "background_color": "#faf8f5",
+  "theme_color": "#faf8f4",
   "lang": "ko",
   "icons": [
     {

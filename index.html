@@ -1306,7 +1306,7 @@ function manualKoreanAddress(button){
  const pane=block.querySelector('[data-postcode-panel]');if(pane)pane.classList.add('hidden');
  zip.focus();notif('우편번호와 기본주소를 직접 입력할 수 있어요');
 }
-async function click(e){const pg=e.target.closest('[data-page]');if(pg){goto(pg.dataset.page);if(pg.classList.contains('brand-home'))window.scrollTo({top:0,behavior:'instant'});return}const b=e.target.closest('[data-action]');if(!b)return;const a=b.dataset.action,id=b.dataset.id;try{
+async function click(e){const pg=e.target.closest('[data-page]');if(pg){goto(pg.dataset.page);if(pg.classList.contains('brand-home'))window.scrollTo({top:0,behavior:'auto'});return}const b=e.target.closest('[data-action]');if(!b)return;const a=b.dataset.action,id=b.dataset.id;try{
 if(a==='enable-admin-push'){await miniEnablePush();notif('푸시 알림 허용 완료! OneSignal에서 테스트 알림을 보내 보세요.');return;}
 if(a==='bundle-sync-shipment'){
  const q=state.quotes.find(x=>x.id===id);

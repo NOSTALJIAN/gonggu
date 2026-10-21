@@ -778,6 +778,7 @@ body:has(.overlay) .back-to-top{opacity:0;visibility:hidden;pointer-events:none}
 .admin-catalog-switch-btn:focus-visible,.admin-product-filter:focus-visible,.admin-store-fold summary:focus-visible{outline:2px solid #333;outline-offset:3px}
 @media(max-width:390px){.admin-catalog-switch-btn{font-size:12px}.admin-product-filter{font-size:11px;padding:9px 10px;min-height:35px}.admin-store-fold{padding:0 11px}}
 .admin-summary-link{appearance:none;text-align:left;cursor:pointer;font:inherit;color:inherit;width:100%;transition:border-color .15s,background .15s}.admin-summary-link:active{background:#f1f1f1}.admin-summary-link:focus-visible{outline:2px solid #111;outline-offset:3px}
+#admin-quote-results,#admin-catalog{scroll-margin-top:16px}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -1598,7 +1599,7 @@ ${m.name}님, 주문조회 비밀번호가 등록됐어요.
 function renderAdminQuotes(){
  const qq=state.quotes.filter(q=>state.filter==='all'||(state.filter==='cancel_requested'?!!q.cancel_requested_at&&q.status!=='cancelled':state.filter.startsWith('flow_')?q.status==='confirmed'&&workflowStage(q)===state.filter.slice(5):q.status===state.filter));
  const days=groupedQuotesByDay(qq);
- return `<div class="row between"><h2>견적 및 확정 주문</h2><button class="btn sm secondary" data-action="refresh">새로고침</button></div>
+ return `<div class="row between" id="admin-quote-results"><h2>견적 및 확정 주문</h2><button class="btn sm secondary" data-action="refresh">새로고침</button></div>
  <div class="controls" style="margin-bottom:10px">${['all','cancel_requested','requested','quoted','confirmed','flow_new','flow_preparing','flow_pickup_ready','flow_shipped','flow_completed','flow_soldout_closed','cancelled'].map(s=>`<button class="tab ${state.filter===s?'active':''}" data-filter="${s}">${s==='all'?'전체':s==='cancel_requested'?'취소 요청':s.startsWith('flow_')?workflowLabels[s.slice(5)]:statusLabel[s]}</button>`).join('')}</div>
  ${days.length?`<div class="admin-date-toolbar"><div><strong>날짜별 주문</strong><span>${qq.length}건 · ${days.length}일</span></div><div class="admin-date-actions"><button type="button" class="date-all-btn" data-action="date-open-all">전체 펼치기</button><button type="button" class="date-all-btn" data-action="date-close-all">전체 접기</button></div></div>${days.map(([day,groups],i)=>{
   const all=groups.flat();
@@ -2032,11 +2033,15 @@ if(a==='copy-admin-pin-message'){
 if(a==='admin-summary'){
  const target=b.dataset.summary;
  if(target==='products'){state.tab='products';state.adminCatalogView='products';state.adminCatalogFilter='all';}
- else if(target==='requested'||target==='confirmed'){state.tab='quotes';state.filter=target;}
+ else if(target==='requested'||target==='confirmed'){
+  state.tab='quotes';state.filter=target;
+  // Reveal matching orders even when date sections were collapsed previously.
+  state.dateGroupsOpen={};
+ }
  else throw Error('알 수 없는 현황 항목이에요.');
  render();
- const section=app.querySelector(target==='products'?'#admin-catalog':'.admin-page-intro');
- if(section)window.scrollTo({top:Math.max(0,window.scrollY+section.getBoundingClientRect().top-10),behavior:'auto'});
+ const section=app.querySelector(target==='products'?'#admin-catalog':'#admin-quote-results');
+ if(section)window.scrollTo({top:Math.max(0,window.scrollY+section.getBoundingClientRect().top-12),behavior:'auto'});
  return;
 }
 if(a==='catalog-view'||a==='catalog-filter'){

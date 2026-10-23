@@ -1503,8 +1503,7 @@ function renderShop(){
  <div class="shop-search-wrap"><input id="search" type="search" placeholder="상품명 또는 가게 이름 검색" value="${esc(state.search)}" aria-label="상품 검색"></div>
  <div class="shoplist">${products.length?`<div class="shop-catalog-count">남대문 아동복 · 전체 상품 ${products.length}개</div><div class="shop-catalog-grid">${products.map(({p,store})=>`<article class="shop-catalog-card ${p.is_sold_out?'shop-soldout-card':''}"><button class="shop-catalog-photo shop-photo-button" type="button" data-action="product-photos" data-id="${esc(p.id)}" aria-label="${esc(p.name)} 상품 사진 보기">${img(p)}</button>${p.is_sold_out?'<span class="shop-soldout-label">품절</span>':''}<div class="shop-catalog-store">${esc(store.name)}</div><div class="producttitle">${esc(p.name)}</div><div class="shop-catalog-colors">${Object.keys(p.options||{}).map(esc).join(' · ')||'색상 옵션 확인'}</div><div class="shop-catalog-quote">${p.is_sold_out?'현재 품절 · 주문 불가':'견적 후 가격 안내'}</div><button class="btn block shop-catalog-select" type="button" data-action="pick-product" data-id="${esc(p.id)}" ${p.is_sold_out?'disabled':''}>${p.is_sold_out?'품절':'옵션 선택 ↗'}</button></article>`).join('')}</div>`:'<div class="empty">등록된 상품이 없어요.</div>'}</div>
  <div class="shop-footer-note"><b>MINIYENA</b>남대문 아동복 초저가 공동구매.<br>상품을 골라 견적을 요청하면 확인 후 가격을 안내해 드려요.</div>
- </section>
- ${state.cart.length?`<div class="dock"><div class="main"><strong>장바구니 ${cartCount()}개</strong><div class="tiny">상품을 모아 한 번에 견적 요청</div></div><button class="btn" data-action="open-cart">견적 요청하기 →</button></div>`:''}`;
+ </section>`;
 }
 /* MINIYENA final-order bank transfer instructions (never pre-confirmation). */
 const MINI_PAYMENT_BANK='카카오뱅크';

@@ -971,6 +971,17 @@ body:has(.overlay) .back-to-top{opacity:0;visibility:hidden;pointer-events:none}
 .admin-combined-add{display:block;margin:14px 0 8px}
 .admin-combined-photo-editor .smallnote{font-size:11px;color:#777;line-height:1.6}
 @media(max-width:375px){.admin-combined-photo-editor{padding:10px}.admin-combined-photo-grid{gap:5px}.admin-combined-photo{padding:3px}.admin-combined-photo figcaption span{font-size:9px}}
+
+/* iPhone-friendly pointer drag, with visible drop target and the original X overlay. */
+.admin-combined-photo{position:relative;user-select:none;-webkit-user-select:none;transition:border-color .12s,box-shadow .12s}
+.admin-combined-photo-image{touch-action:none;cursor:grab;-webkit-touch-callout:none}
+.admin-combined-photo-image img{pointer-events:none;user-select:none;-webkit-user-select:none;-webkit-user-drag:none}
+.admin-combined-photo-image:active{cursor:grabbing}
+.admin-photo-drag-grip{position:absolute;left:4px;bottom:4px;width:25px;height:25px;display:flex;align-items:center;justify-content:center;background:#111b;color:#fff;border-radius:6px;font-size:19px;pointer-events:none}
+.admin-combined-photo.is-photo-dragging{opacity:.92;border-color:#111;box-shadow:0 10px 24px #1114;transition:none;cursor:grabbing}
+.admin-combined-photo.is-photo-drop-target{border:2px dashed #111;background:#efefef;box-shadow:0 0 0 2px #1112}
+.admin-combined-photo:focus-visible{outline:2px solid #111;outline-offset:2px}
+.admin-combined-photo-x{touch-action:manipulation}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -1506,7 +1517,7 @@ async function miniEnablePush(){
  if(!result.client.User.PushSubscription.optedIn)throw Error('알림 허용이 완료되지 않았어요. 권한 상태를 확인해 주세요.');
  miniPushStatus();
 }
-function render(){app.innerHTML=`<main class="shell">${header()}${demoNotice()}${state.page==='admin'?renderAdmin():state.page==='track'?renderTrack():renderShop()}${shopBottomNav()}<button class="back-to-top" type="button" data-action="scroll-top" aria-label="맨 위로 이동" aria-hidden="true" tabindex="-1"><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 13 7-7 7 7M12 6v12"/></svg><span>위로</span></button></main>${renderModal()}`;updateScrollTop();updateProcurementSchedule();if(state.admin){queueMicrotask(()=>showRequestImages().catch(console.error));queueMicrotask(()=>miniPushStatus().catch(console.warn));}}
+function render(){cancelAdminPhotoDrag();app.innerHTML=`<main class="shell">${header()}${demoNotice()}${state.page==='admin'?renderAdmin():state.page==='track'?renderTrack():renderShop()}${shopBottomNav()}<button class="back-to-top" type="button" data-action="scroll-top" aria-label="맨 위로 이동" aria-hidden="true" tabindex="-1"><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 13 7-7 7 7M12 6v12"/></svg><span>위로</span></button></main>${renderModal()}`;updateScrollTop();updateProcurementSchedule();if(state.admin){queueMicrotask(()=>showRequestImages().catch(console.error));queueMicrotask(()=>miniPushStatus().catch(console.warn));}}
 function updateScrollTop(){const btn=app.querySelector('.back-to-top');if(!btn)return;const visible=window.scrollY>440&&!state.modal;btn.classList.toggle('is-visible',visible);btn.tabIndex=visible?0:-1;btn.setAttribute('aria-hidden',String(!visible));}
 const steps=idx=>`<div class="quote-step">${['① 상품 담기','② 견적 요청','③ 가격 확인','④ 최종 주문'].map((x,i)=>`<span class="${i===idx?'current':''}">${x}</span>${i<3?'<i></i>':''}`).join('')}</div>`;
 
@@ -1699,6 +1710,91 @@ function moveAdminPhotoTo(index,target,form){
 function moveAdminPhoto(index,direction,form){
  if(![-1,1].includes(direction))throw Error('사진 순서를 변경할 수 없어요.');
  return moveAdminPhotoTo(index,index+direction,form);
+}
+
+let adminPhotoDrag=null;
+function cancelAdminPhotoDrag(){
+ const d=adminPhotoDrag;
+ if(!d)return;
+ adminPhotoDrag=null;
+ d.card.classList.remove('is-photo-dragging');
+ d.card.style.removeProperty('transform');
+ d.card.style.removeProperty('z-index');
+ d.grid.classList.remove('is-photo-reordering');
+ d.grid.querySelectorAll('.is-photo-drop-target').forEach(x=>x.classList.remove('is-photo-drop-target'));
+ try{if(d.zone.hasPointerCapture?.(d.id))d.zone.releasePointerCapture(d.id)}catch{}
+}
+function startAdminPhotoDrag(e){
+ if(!state.admin||!['approve','product'].includes(state.modal?.type)||e.isPrimary===false||(e.pointerType==='mouse'&&e.button!==0))return;
+ if(e.target.closest('button'))return; // the little × always deletes, never drags
+ const zone=e.target.closest('[data-photo-drag-zone]');
+ const card=zone?.closest('[data-admin-photo-index]');
+ const grid=card?.closest('[data-admin-photo-list]');
+ const form=grid?.closest('form');
+ if(!zone||!card||!grid||!form||!['approve-form','product-form'].includes(form.id)||adminPhotoSequence.length<2)return;
+ const index=Number(card.dataset.adminPhotoIndex);
+ if(!Number.isInteger(index)||index<0||index>=adminPhotoSequence.length)return;
+ cancelAdminPhotoDrag();
+ adminPhotoDrag={id:e.pointerId,zone,card,grid,form,from:index,to:index,x:e.clientX,y:e.clientY,dragging:false,rect:null};
+ try{zone.setPointerCapture?.(e.pointerId)}catch{}
+ if(e.cancelable)e.preventDefault();
+}
+function targetAdminPhotoIndex(d,x,y){
+ const box=d.grid.getBoundingClientRect();
+ if(x<box.left-40||x>box.right+40||y<box.top-70||y>box.bottom+70)return d.from;
+ let target=d.from,best=Infinity;
+ d.grid.querySelectorAll('[data-admin-photo-index]').forEach(card=>{
+  const rect=card===d.card?d.rect:card.getBoundingClientRect();
+  const dx=x-(rect.left+rect.width/2),dy=y-(rect.top+rect.height/2),distance=dx*dx+dy*dy;
+  if(distance<best){best=distance;target=Number(card.dataset.adminPhotoIndex);}
+ });
+ return target;
+}
+function moveAdminPhotoDrag(e){
+ const d=adminPhotoDrag;
+ if(!d||d.id!==e.pointerId)return;
+ if(!d.card.isConnected||!d.grid.isConnected){cancelAdminPhotoDrag();return;}
+ const dx=e.clientX-d.x,dy=e.clientY-d.y;
+ if(!d.dragging){
+  if(Math.hypot(dx,dy)<7)return;
+  d.dragging=true;
+  d.rect=d.card.getBoundingClientRect();
+  d.card.classList.add('is-photo-dragging');
+  d.grid.classList.add('is-photo-reordering');
+ }
+ if(e.cancelable)e.preventDefault();
+ d.card.style.transform='translate3d('+dx+'px,'+dy+'px,0) scale(1.04)';
+ d.card.style.zIndex='5';
+ d.to=targetAdminPhotoIndex(d,e.clientX,e.clientY);
+ d.grid.querySelectorAll('.is-photo-drop-target').forEach(x=>x.classList.remove('is-photo-drop-target'));
+ const target=d.grid.querySelector('[data-admin-photo-index="'+d.to+'"]');
+ if(target&&target!==d.card)target.classList.add('is-photo-drop-target');
+ const sheet=d.grid.closest('.sheet');
+ if(sheet){
+  const box=sheet.getBoundingClientRect();
+  if(e.clientY>box.bottom-54)sheet.scrollTop+=14;
+  else if(e.clientY<box.top+54)sheet.scrollTop-=14;
+ }
+}
+function endAdminPhotoDrag(e){
+ const d=adminPhotoDrag;
+ if(!d||d.id!==e.pointerId)return;
+ const {from,to,form,dragging}=d;
+ cancelAdminPhotoDrag();
+ if(dragging){
+  if(e.cancelable)e.preventDefault();
+  moveAdminPhotoTo(from,to,form);
+ }
+}
+function keyAdminPhotoMove(e){
+ if(!state.admin||!['approve','product'].includes(state.modal?.type)||!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key))return;
+ if(e.target.matches('input,textarea,select,button'))return;
+ const card=e.target.closest('[data-admin-photo-index]'),form=card?.closest('form');
+ if(!card||!form||!['approve-form','product-form'].includes(form.id))return;
+ e.preventDefault();
+ const from=Number(card.dataset.adminPhotoIndex);
+ const target=from+((e.key==='ArrowLeft'||e.key==='ArrowUp')?-1:1);
+ if(moveAdminPhotoTo(from,target,form))form.querySelector('[data-admin-photo-index="'+target+'"]')?.focus();
 }
 function validateAdminPhotoSequence(type,id){
  if(!state.admin)throw Error('관리자만 사진을 편집할 수 있어요.');
@@ -3144,6 +3240,11 @@ function input(e){
  if(e.target.id==='admin-product-search'){state.adminProductSearch=e.target.value;updateAdminProductSearch();return;}if(e.target.id==='stat-search'){const query=e.target.value.trim().toLowerCase();for(const node of app.querySelectorAll('[data-stats-entry]'))node.classList.toggle('hidden',!!query&&!node.textContent.toLowerCase().includes(query));return;}if(e.target.id==='search'){state.search=e.target.value;const pos=e.target.selectionStart;render();const el=$('#search');if(el){el.focus();el.setSelectionRange(pos,pos)}}}
 app.addEventListener('click',e=>{const summary=e.target.closest('.admin-date-group > summary');if(summary){const group=summary.parentElement;state.dateGroupsOpen[group.dataset.orderDate]=!group.open;return}const tab=e.target.closest('[data-tab]'),filter=e.target.closest('[data-filter]');if(tab){state.tab=tab.dataset.tab;if(state.tab==='requests')state.requestStatusFilter='pending';render();return}if(filter){state.filter=filter.dataset.filter;render();return}click(e)});
 app.addEventListener('submit',submit);app.addEventListener('change',change);app.addEventListener('input',input);
+app.addEventListener('pointerdown',startAdminPhotoDrag,{passive:false});
+app.addEventListener('pointermove',moveAdminPhotoDrag,{passive:false});
+app.addEventListener('pointerup',endAdminPhotoDrag);
+app.addEventListener('pointercancel',cancelAdminPhotoDrag);
+app.addEventListener('keydown',keyAdminPhotoMove);
 window.addEventListener('scroll',updateScrollTop,{passive:true});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)updateProcurementSchedule()});
 setInterval(updateProcurementSchedule,60000);

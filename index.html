@@ -929,7 +929,7 @@ body:has(.overlay) .back-to-top{opacity:0;visibility:hidden;pointer-events:none}
 .bulk-option-heading b{font-size:14px}
 .bulk-option-heading span{font-size:11px;line-height:1.5;color:#777}
 .bulk-option-builder .label{display:block;font-size:12px;margin:10px 0}
-.bulk-option-builder .label input{display:block;width:100%;min-width:0;margin-top:5px}
+.bulk-option-builder .label textarea{display:block;width:100%;min-width:0;margin-top:6px;padding:12px;min-height:80px;resize:vertical;line-height:1.7;font-size:14px;white-space:pre-wrap}.bulk-option-enter-hint{font-size:11px;color:#777;font-weight:500;margin-left:5px}
 .bulk-option-apply{background:#111!important;color:white!important;margin:12px 0 9px;padding:13px 8px!important;font-size:13px!important}
 .bulk-option-builder .smallnote{line-height:1.7;font-size:11px;color:#777}
 
@@ -2480,8 +2480,8 @@ function splitBulkOptionNames(value){
 }
 function composeBulkOptions(existingText,colorsInput,sizesInput){
  const colors=splitBulkOptionNames(colorsInput), sizes=splitBulkOptionNames(sizesInput);
- if(!colors.length)throw Error('색상을 먼저 입력해 주세요. 예) 핑크, 블루, 머스타드, 자주');
- if(!sizes.length)throw Error('공통 사이즈를 입력해 주세요. 예) 1호, 2호');
+ if(!colors.length)throw Error('색상을 한 줄에 하나씩 입력해 주세요. 예) 핑크 ↵ 블루 ↵ 머스타드');
+ if(!sizes.length)throw Error('공통 사이즈를 한 줄에 하나씩 입력해 주세요. 예) 1호 ↵ 2호');
  if(colors.some(c=>c.includes(':')||c.length>50)||sizes.some(sz=>sz.includes(':')||sz.length>30))throw Error('색상·사이즈에 콜론(:)이 들어 있거나 이름이 너무 길어요.');
  const parsed=String(existingText||'').trim()?parseOptions(existingText):{};
  for(const c of colors)parsed[c]=[...sizes];
@@ -2493,10 +2493,10 @@ function composeBulkOptions(existingText,colorsInput,sizesInput){
 function bulkOptionsBuilder(){
  return `<div class="bulk-option-builder">
  <div class="bulk-option-heading"><b>색상·사이즈 한 번에 입력</b><span>색상마다 사이즈가 같다면 한 번만 적으세요.</span></div>
- <label class="label">색상 여러 개<input type="text" name="bulk_colors" autocomplete="off" placeholder="핑크, 블루, 머스타드, 자주"></label>
- <label class="label">공통 사이즈<input type="text" name="bulk_sizes" autocomplete="off" placeholder="1호, 2호"></label>
+ <label class="label">색상 여러 개 <span class="bulk-option-enter-hint">엔터로 구분</span><textarea name="bulk_colors" rows="4" autocomplete="off" placeholder="핑크&#10;블루&#10;머스타드&#10;자주" aria-label="색상 한 줄에 하나씩 입력"></textarea></label>
+ <label class="label">공통 사이즈 <span class="bulk-option-enter-hint">엔터로 구분</span><textarea name="bulk_sizes" rows="3" autocomplete="off" placeholder="1호&#10;2호" aria-label="사이즈 한 줄에 하나씩 입력"></textarea></label>
  <button type="button" class="btn block bulk-option-apply" data-action="bulk-options-apply">선택한 색상에 사이즈 일괄 적용</button>
- <div class="smallnote">색상·사이즈는 쉼표로 구분해요. 기존의 다른 색상 옵션은 유지되고, 같은 색상을 넣으면 그 색상의 사이즈만 변경돼요.</div>
+ <div class="smallnote">색상과 사이즈를 한 줄에 하나씩 적고 엔터로 구분해 주세요. 쉼표로 구분해도 돼요. 기존에 없는 색상은 추가되고, 이미 있는 색상은 해당 사이즈만 변경돼요.</div>
  </div>`;
 }
 function parseOptions(t){const result={};for(let line of t.split(/\n/)){if(!line.trim())continue;const j=line.indexOf(':');if(j<1)throw Error('옵션을 "크림: BS, BM" 형태로 입력해 주세요');const color=line.slice(0,j).trim(),ss=[...new Set(line.slice(j+1).split(/[,，]/).map(x=>x.trim()).filter(Boolean))];if(!ss.length)throw Error(color+' 컬러에 사이즈가 없어요');if(result[color])throw Error(color+' 컬러가 두 번 입력됐어요');if(color.length>50||ss.some(s=>s.length>30))throw Error('옵션 이름이 너무 길어요');result[color]=ss}if(!Object.keys(result).length||Object.keys(result).length>30)throw Error('컬러 1~30개를 등록해 주세요');return result}

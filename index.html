@@ -1033,7 +1033,30 @@ const demo=read(DEMO,initDemo());
 const saveDemo=()=>localStorage.setItem(DEMO,JSON.stringify(demo));
 let session=read(SESS,null),busy=false,refreshing=null;
 const p=new URLSearchParams(location.search);
-const state={page:['admin','track'].includes(p.get('page'))?p.get('page'):'shop',tab:'quotes',stores:[],products:[],requests:[],quotes:[],cart:read(CART,[]),modal:null,search:'',trackId:p.get('id')||'',trackToken:p.get('token')||'',tracking:null,receipts:read(TRACK,[]),notice:'',filter:'all',admin:false,heroPhotoUrl:null,heroStoreId:null,dateGroupsOpen:{},requestStatusFilter:'pending',adminCatalogView:'products',adminCatalogFilter:'all',adminProductSearch:'',productPrivate:{},productPrivateReady:false,adminPinIds:new Set(),phoneLookupReady:null,pinLookupNotice:''};
+const state={page:['admin','track'].includes(p.get('page'))?p.get('page'):'shop',tab:'quotes',stores:[],products:[],requests:[],quotes:[],cart:read(CART,[]),modal:null,search:'',shopCategory:'all',adminCategory:'all',trackId:p.get('id')||'',trackToken:p.get('token')||'',tracking:null,receipts:read(TRACK,[]),notice:'',filter:'all',admin:false,heroPhotoUrl:null,heroStoreId:null,dateGroupsOpen:{},requestStatusFilter:'pending',adminCatalogView:'products',adminCatalogFilter:'all',adminProductSearch:'',productPrivate:{},productPrivateReady:false,adminPinIds:new Set(),phoneLookupReady:null,pinLookupNotice:''};
+
+const PRODUCT_CATEGORIES=['양말','모자','아우터','상의','하의','스커트','원피스','바디수트','세트','악세서리','잡화'];
+const validProductCategory=x=>PRODUCT_CATEGORIES.includes(String(x||'').trim());
+const categoryLabel=p=>validProductCategory(p?.category)?p.category:'미분류';
+const categoryFilterKeys=['all',...PRODUCT_CATEGORIES,'uncategorized'];
+function productCategoryInput(selected,required=true){
+ const value=validProductCategory(selected)?selected:'';
+ return `<label class="label">상품 카테고리 ${required?'(필수)':'(기존 미분류 상품)'}
+  <select name="category" ${required?'required':''} aria-label="상품 카테고리">
+   <option value="" ${value?'':'selected'}>${required?'카테고리를 선택해 주세요':'미분류 (필요할 때 분류)'}</option>
+   ${PRODUCT_CATEGORIES.map(c=>`<option value="${c}" ${value===c?'selected':''}>${c}</option>`).join('')}
+  </select>
+ </label>`;
+}
+function validateProductCategory(category,allowEmpty=false){
+ const value=String(category||'').trim();
+ if(!value&&allowEmpty)return null;
+ if(!validProductCategory(value))throw Error('상품 카테고리를 선택해 주세요.');
+ return value;
+}
+function matchesCategory(p,key){
+ return key==='all'||(key==='uncategorized'?!validProductCategory(p.category):p.category===key);
+}
 const app=$('#app');
 const fmtDate=x=>x?new Date(x).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):'';
 const previewOrderSum=o=>(o.items||[]).filter(i=>i.fulfillment!=='sold_out').reduce((s,i)=>s+(i.unit_price??0)*i.quantity,0);
@@ -1549,7 +1572,10 @@ function updateProcurementSchedule(){
 }
 function renderShop(){
  // No inferred categories, prices, stock levels or rankings: only active, published items.
- const products=state.stores.filter(s=>s.active).flatMap(s=>state.products.filter(p=>p.published&&p.store_id===s.id&&(!state.search||p.name.includes(state.search)||s.name.includes(state.search))).map(p=>({p,store:s})));
+ const catalogue=state.stores.filter(st=>st.active).flatMap(st=>state.products.filter(p=>p.published&&p.store_id===st.id).map(p=>({p,store:st})));
+ const activeCategory=categoryFilterKeys.includes(state.shopCategory)?state.shopCategory:'all';
+ const products=catalogue.filter(({p,store})=>matchesCategory(p,activeCategory)&&(!state.search||p.name.includes(state.search)||store.name.includes(state.search)||categoryLabel(p).includes(state.search)));
+ const categoryCounts=Object.fromEntries(categoryFilterKeys.map(k=>[k,catalogue.filter(({p})=>matchesCategory(p,k)).length]));
  const featuredProducts=state.stores.filter(s=>s.active).flatMap(s=>state.products.filter(p=>p.published&&p.store_id===s.id));const featured=featuredProducts.find(p=>p.image_url&&!p.is_sold_out)||featuredProducts.find(p=>p.image_url);
  const banner=state.heroPhotoUrl||featured?.image_url||'';
  return `<section class="content shop-content">
@@ -1559,8 +1585,11 @@ function renderShop(){
  <section class="procurement-notice" aria-label="주 2회 공동발주 일정"><div class="procurement-title"><span>남대문 아동복 · 주 2회 공동발주</span><strong>매주 월 · 목</strong></div><div class="procurement-times"><div><small>최종 주문·입금 마감</small><b>오후 7시</b></div><div><small>남대문 거래처 발주</small><b>밤 9시</b></div></div><div class="procurement-next">다음 주문 마감 <strong data-next-cutoff>계산 중</strong></div><p>마감 전 최종 주문 확정과 입금 확인이 완료된 건을 모아 발주합니다. 이후 확정 건은 다음 발주 회차로 넘어가요. 거래처 입고 후 순차 배송되며 지연될 수 있어요.</p></section><p class="shop-kicker">남대문 아동복 · 초저가 셀렉션</p>
  <div class="shop-section-head" id="catalog"><div><h2>전체 상품</h2><small>남대문 아동복을 초저가로 만나보세요</small></div><span class="sub">상품 둘러보기</span></div>
  <div class="shop-actions"><button type="button" data-action="suggest-product">+ 상품 등록 신청</button><button type="button" data-action="my-quotes">내 견적 · 주문조회 ↗</button></div>
- <div class="shop-search-wrap"><input id="search" type="search" placeholder="상품명 또는 가게 이름 검색" value="${esc(state.search)}" aria-label="상품 검색"></div>
- <div class="shoplist">${products.length?`<div class="shop-catalog-count">남대문 아동복 · 전체 상품 ${products.length}개</div><div class="shop-catalog-grid">${products.map(({p,store})=>`<article class="shop-catalog-card ${p.is_sold_out?'shop-soldout-card':''}"><button class="shop-catalog-photo shop-photo-button" type="button" data-action="product-photos" data-id="${esc(p.id)}" aria-label="${esc(p.name)} 상품 사진 보기">${img(p)}</button>${p.is_sold_out?'<span class="shop-soldout-label">품절</span>':''}<div class="shop-catalog-store">${esc(store.name)}</div><div class="producttitle">${esc(p.name)}</div><div class="shop-catalog-colors">${Object.keys(p.options||{}).map(esc).join(' · ')||'색상 옵션 확인'}</div><div class="shop-catalog-quote">${p.is_sold_out?'현재 품절 · 주문 불가':'견적 후 가격 안내'}</div><button class="btn block shop-catalog-select" type="button" data-action="pick-product" data-id="${esc(p.id)}" ${p.is_sold_out?'disabled':''}>${p.is_sold_out?'품절':'옵션 선택 ↗'}</button></article>`).join('')}</div>`:'<div class="empty">등록된 상품이 없어요.</div>'}</div>
+ <div class="shop-category-list" role="group" aria-label="상품 카테고리별 보기">
+ ${categoryFilterKeys.map(k=>`<button type="button" class="shop-category-tab ${activeCategory===k?'active':''}" data-action="shop-category" data-category="${k}" aria-pressed="${activeCategory===k}">${k==='all'?'전체':k==='uncategorized'?'미분류':k}<span>${categoryCounts[k]}</span></button>`).join('')}
+ </div>
+ <div class="shop-search-wrap"><input id="search" type="search" placeholder="상품명·가게명·카테고리 검색" value="${esc(state.search)}" aria-label="상품 검색"></div>
+ <div class="shoplist">${products.length?`<div class="shop-catalog-count">${activeCategory==='all'?'전체 상품':activeCategory==='uncategorized'?'미분류 상품':activeCategory} · ${products.length}개</div><div class="shop-catalog-grid">${products.map(({p,store})=>`<article class="shop-catalog-card ${p.is_sold_out?'shop-soldout-card':''}"><button class="shop-catalog-photo shop-photo-button" type="button" data-action="product-photos" data-id="${esc(p.id)}" aria-label="${esc(p.name)} 상품 사진 보기">${img(p)}</button>${p.is_sold_out?'<span class="shop-soldout-label">품절</span>':''}<div class="shop-catalog-store">${esc(store.name)} <span class="shop-catalog-category">${esc(categoryLabel(p))}</span></div><div class="producttitle">${esc(p.name)}</div><div class="shop-catalog-colors">${Object.keys(p.options||{}).map(esc).join(' · ')||'색상 옵션 확인'}</div><div class="shop-catalog-quote">${p.is_sold_out?'현재 품절 · 주문 불가':'견적 후 가격 안내'}</div><button class="btn block shop-catalog-select" type="button" data-action="pick-product" data-id="${esc(p.id)}" ${p.is_sold_out?'disabled':''}>${p.is_sold_out?'품절':'옵션 선택 ↗'}</button></article>`).join('')}</div>`:'<div class="empty">조건에 맞는 상품이 없어요. 다른 카테고리나 검색어를 선택해 주세요.</div>'}</div>
  <div class="shop-footer-note"><b>MINIYENA</b>남대문 아동복 초저가 공동구매.<br>상품을 골라 견적을 요청하면 확인 후 가격을 안내해 드려요.</div>
  </section>`;
 }

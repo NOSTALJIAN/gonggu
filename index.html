@@ -1002,6 +1002,16 @@ body:has(.overlay) .back-to-top{opacity:0;visibility:hidden;pointer-events:none}
 .sheet-product-save{flex:0 0 auto;background:#fff;border-top:1px solid #e7e7e7;padding:12px 0 calc(12px + env(safe-area-inset-bottom));box-shadow:0 -8px 22px #0000000c;z-index:5}
 .sheet-product-save .btn{width:100%;min-height:50px;border-radius:11px;font-size:15px;font-weight:850}
 @media(max-height:500px){.sheet.sheet-product-editor{max-height:100dvh}}
+
+.product-estimate{margin:8px 0 4px;display:flex;align-items:baseline;flex-wrap:wrap;gap:5px;color:#554331}
+.product-estimate .product-estimate-label{font-size:11px;color:#85725d;letter-spacing:-.2px}
+.product-estimate strong{font-size:16px;font-weight:900;letter-spacing:-.45px;color:#382c22}
+.product-estimate-card{padding:7px 0 1px;border-top:1px solid #f0ebe4}
+.product-estimate-detail{display:block;margin:13px 0 16px;padding:13px 15px;background:#faf7f1;border:1px solid #e8e0d5;border-radius:12px}
+.product-estimate-detail .product-estimate-label{display:block;margin-bottom:4px;font-size:12px}
+.product-estimate-detail strong{display:block;font-size:23px;color:#413126}
+.product-estimate-note{margin-top:7px;line-height:1.55;font-size:11px;color:#776d61}
+.estimate-unavailable{padding:11px 0;font-size:12px;color:#777}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -1360,7 +1370,7 @@ function privateProductFields(existingId){
   ${!state.productPrivateReady?'<div class="noticefail">비공개 도매 정보 서버를 불러오지 못했어요. 다시 로그인하거나 새로고침해 주세요.</div>':''}
   <label class="label">실제 도매업체명 (비공개)<input name="private_supplier" maxlength="150" autocomplete="off" value="${esc(meta.supplier_name||'')}" placeholder="예: 실제 거래처 업체명"></label>
   <label class="label">도매가 (원 · 비공개)<input name="private_cost" type="number" inputmode="numeric" min="0" max="100000000" step="1" value="${meta.wholesale_price==null?'':meta.wholesale_price}" placeholder="예: 12500"></label>
-  <div class="smallnote">미입력 시 빈칸으로 저장돼요. 도매가는 고객 판매가격과 관계없이 관리자만 볼 수 있어요.</div>
+  <div class="smallnote">미입력 시 예상가가 표시되지 않아요. 도매 원가는 관리자만 볼 수 있고, 고객에게는 도매가 × 1.3을 1,000원 단위로 반올림한 예상가만 공개돼요. 정확한 최종 판매가는 견적에서 확정합니다.</div>
  </section>`;
 }
 // Administrator-only cost information. Never include in buyer-facing quote payloads,
@@ -1455,6 +1465,16 @@ const demoNotice=()=>!connected?'<div class="noticebar"><b>⚠️ 현재 체험 
 function productPhotoUrls(p){
  const links=[p?.image_url,...(Array.isArray(p?.gallery_urls)?p.gallery_urls:[])];
  return [...new Set(links.filter(x=>typeof x==='string'&&x.startsWith('https://')))];
+}
+// Public approximation only: a rounded display estimate maintained in Postgres
+// from admin-only wholesale cost. Never fetch private supplier or wholesale data for buyers.
+function hasProductEstimate(p){return Number.isInteger(p?.estimated_price)&&p.estimated_price>=1000&&p.estimated_price%1000===0;}
+function estimatedProductPrice(p,detail=false){
+ if(!hasProductEstimate(p))return detail?'<div class="estimate-unavailable">예상 가격은 견적 요청 후 안내해 드려요.</div>':'';
+ return `<div class="product-estimate ${detail?'product-estimate-detail':'product-estimate-card'}">
+  <span class="product-estimate-label">예상가</span><strong>약 ${money(p.estimated_price)}</strong>
+  ${detail?'<div class="product-estimate-note">참고용 예상 금액이에요. 실제 상품 가격과 배송비는 견적 확인 후 확정됩니다.</div>':''}
+ </div>`;
 }
 function productGallery(p){
  const photos=productPhotoUrls(p);
@@ -1609,7 +1629,7 @@ function renderShop(){
  ${categoryFilterKeys.filter(k=>k==='all'||categoryCounts[k]>0||k===activeCategory).map(k=>`<button type="button" class="shop-category-tab ${activeCategory===k?'active':''}" data-action="shop-category" data-category="${k}" aria-pressed="${activeCategory===k}">${k==='all'?'전체':k==='uncategorized'?'미분류':k}<span>${categoryCounts[k]}</span></button>`).join('')}
  </div>
  <div class="shop-search-wrap"><input id="search" type="search" placeholder="상품명·가게명·카테고리 검색" value="${esc(state.search)}" aria-label="상품 검색"></div>
- <div class="shoplist">${products.length?`<div class="shop-catalog-count">${activeCategory==='all'?'전체 상품':activeCategory==='uncategorized'?'미분류 상품':activeCategory} · ${products.length}개</div><div class="shop-catalog-grid">${products.map(({p,store})=>`<article class="shop-catalog-card ${p.is_sold_out?'shop-soldout-card':''}"><button class="shop-catalog-photo shop-photo-button" type="button" data-action="product-photos" data-id="${esc(p.id)}" aria-label="${esc(p.name)} 상품 사진 보기">${img(p)}</button>${p.is_sold_out?'<span class="shop-soldout-label">품절</span>':''}<div class="shop-catalog-store">${esc(store.name)} <span class="shop-catalog-category">${esc(categoryLabel(p))}</span></div><div class="producttitle">${esc(p.name)}</div><div class="shop-catalog-colors">${Object.keys(p.options||{}).map(esc).join(' · ')||'색상 옵션 확인'}</div><div class="shop-catalog-quote">${p.is_sold_out?'현재 품절 · 주문 불가':'견적 후 가격 안내'}</div><button class="btn block shop-catalog-select" type="button" data-action="pick-product" data-id="${esc(p.id)}" ${p.is_sold_out?'disabled':''}>${p.is_sold_out?'품절':'옵션 선택 ↗'}</button></article>`).join('')}</div>`:'<div class="empty">조건에 맞는 상품이 없어요. 다른 카테고리나 검색어를 선택해 주세요.</div>'}</div>
+ <div class="shoplist">${products.length?`<div class="shop-catalog-count">${activeCategory==='all'?'전체 상품':activeCategory==='uncategorized'?'미분류 상품':activeCategory} · ${products.length}개</div><div class="shop-catalog-grid">${products.map(({p,store})=>`<article class="shop-catalog-card ${p.is_sold_out?'shop-soldout-card':''}"><button class="shop-catalog-photo shop-photo-button" type="button" data-action="product-photos" data-id="${esc(p.id)}" aria-label="${esc(p.name)} 상품 사진 보기">${img(p)}</button>${p.is_sold_out?'<span class="shop-soldout-label">품절</span>':''}<div class="shop-catalog-store">${esc(store.name)} <span class="shop-catalog-category">${esc(categoryLabel(p))}</span></div><div class="producttitle">${esc(p.name)}</div><div class="shop-catalog-colors">${Object.keys(p.options||{}).map(esc).join(' · ')||'색상 옵션 확인'}</div>${estimatedProductPrice(p)}<div class="shop-catalog-quote">${p.is_sold_out?'현재 품절 · 주문 불가':hasProductEstimate(p)?'실제 결제금액은 견적에서 확정':'견적 후 가격 안내'}</div><button class="btn block shop-catalog-select" type="button" data-action="pick-product" data-id="${esc(p.id)}" ${p.is_sold_out?'disabled':''}>${p.is_sold_out?'품절':'옵션 선택 ↗'}</button></article>`).join('')}</div>`:'<div class="empty">조건에 맞는 상품이 없어요. 다른 카테고리나 검색어를 선택해 주세요.</div>'}</div>
  <div class="shop-footer-note"><b>MINIYENA</b>남대문 아동복 초저가 공동구매.<br>상품을 골라 견적을 요청하면 확인 후 가격을 안내해 드려요.</div>
  </section>`;
 }
@@ -2337,11 +2357,11 @@ if(m.type==='reject-request'){
  <button class="btn block danger" type="submit">사유 저장하고 반려하기</button></form>`);
 }
 if(m.type==='approve'){const r=state.requests.find(x=>x.id===m.id);if(!r)return '';return wrap('상품 등록 검토 및 승인',`<div class="info">신청자가 올린 사진과 내가 추가한 사진을 한곳에서 정리하고 순서를 바꿀 수 있어요. ×로 제외해도 신청 원본은 남아요.</div><form id="approve-form">${renderAdminPhotoWorkspace()}<label class="label">남대문 도매업체 이름<input name="store" maxlength="100" required value="${esc(r.store_name)}"></label><label class="label">상품명<input name="name" maxlength="100" required value="${esc(r.product_name)}"></label>${productCategoryInput(r.category,true)}${bulkOptionsBuilder()}<label class="label">완성된 색상별 옵션 (확인·수정 가능)<textarea name="options" required rows="5" placeholder="위에서 색상과 사이즈를 입력하고 일괄 적용을 눌러 주세요."></textarea></label><div class="filehelp">색상별 사이즈가 다르면 여기서 해당 줄만 수정할 수 있어요.</div>${privateProductFields(null)}<label class="stageradio" style="margin:15px 0"><input type="checkbox" name="published" checked> 승인 후 상품을 바로 공개</label><label class="stageradio"><input type="checkbox" name="is_sold_out"> 품절 상태로 등록 (고객에게 품절 표시)</label><button class="btn block" type="submit">사진 순서대로 상품 등록·승인</button></form>`)}
-if(m.type==='pick'){const p=selectedProd(m.id);if(!p||p.is_sold_out||!p.published||!state.stores.some(st=>st.id===p.store_id&&st.active))return wrap('품절 또는 판매 종료','<div class="noticefail">이 상품은 현재 주문할 수 없어요. 다른 상품을 선택해 주세요.</div>');const colors=Object.keys(p.options||{}),color=colors.includes(m.color)?m.color:colors[0],sizes=p.options[color]||[];return wrap('옵션 선택',`<div class="smallnote">${esc(storeName(p.store_id))}</div><h3>${esc(p.name)}</h3>${productGallery(p)}<form id="pick"><label class="label">컬러<select name="color" id="pickColor">${colors.map(c=>`<option ${c===color?'selected':''}>${esc(c)}</option>`).join('')}</select></label><label class="label">사이즈<select name="size" id="pickSize">${sizes.map(s=>`<option>${esc(s)}</option>`).join('')}</select></label><label class="label">수량<input type="number" name="qty" value="1" min="1" max="20" required></label><button class="btn block" type="submit">장바구니 담기</button></form>`)}
+if(m.type==='pick'){const p=selectedProd(m.id);if(!p||p.is_sold_out||!p.published||!state.stores.some(st=>st.id===p.store_id&&st.active))return wrap('품절 또는 판매 종료','<div class="noticefail">이 상품은 현재 주문할 수 없어요. 다른 상품을 선택해 주세요.</div>');const colors=Object.keys(p.options||{}),color=colors.includes(m.color)?m.color:colors[0],sizes=p.options[color]||[];return wrap('옵션 선택',`<div class="smallnote">${esc(storeName(p.store_id))}</div><h3>${esc(p.name)}</h3>${productGallery(p)}${estimatedProductPrice(p,true)}<form id="pick"><label class="label">컬러<select name="color" id="pickColor">${colors.map(c=>`<option ${c===color?'selected':''}>${esc(c)}</option>`).join('')}</select></label><label class="label">사이즈<select name="size" id="pickSize">${sizes.map(s=>`<option>${esc(s)}</option>`).join('')}</select></label><label class="label">수량<input type="number" name="qty" value="1" min="1" max="20" required></label><button class="btn block" type="submit">장바구니 담기</button></form>`)}
 if(m.type==='product-photos'){
  const p=selectedProd(m.id);
  if(!p||!p.published||!state.stores.some(st=>st.id===p.store_id&&st.active))return '';
- return wrap('상품 사진',`<h3>${esc(p.name)}</h3>${productGallery(p)}${p.is_sold_out?'<div class="smallnote">현재 품절된 상품이에요.</div>':`<button type="button" class="btn block" data-action="pick-product" data-id="${esc(p.id)}">옵션 선택하기</button>`}`);
+ return wrap('상품 사진',`<h3>${esc(p.name)}</h3>${productGallery(p)}${estimatedProductPrice(p,true)}${p.is_sold_out?'<div class="smallnote">현재 품절된 상품이에요.</div>':`<button type="button" class="btn block" data-action="pick-product" data-id="${esc(p.id)}">옵션 선택하기</button>`}`);
 }
 if(m.type==='cart'){return wrap('견적 요청 장바구니',`<div class="cart-review-intro">담은 상품을 먼저 확인하고, 필요 없는 상품은 <b>‘장바구니에서 삭제’</b>를 누르세요.</div><div class="cart-review-toolbar"><strong>담은 상품 <span id="cart-review-count">${cartCount()}</span>개</strong><button type="button" id="cart-review-clear" class="cart-review-clear ${state.cart.length?'':'hidden'}" data-action="cart-clear">전체 비우기</button></div><div class="cart-review-list" id="cart-review-list">${state.cart.map((c,i)=>{
  const p=selectedProd(c.product_id),unavailable=!p||!p.published||p.is_sold_out||!state.stores.some(st=>st.id===p.store_id&&st.active);

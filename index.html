@@ -929,7 +929,12 @@ body:has(.overlay) .back-to-top{opacity:0;visibility:hidden;pointer-events:none}
 .bulk-option-heading b{font-size:14px}
 .bulk-option-heading span{font-size:11px;line-height:1.5;color:#777}
 .bulk-option-builder .label{display:block;font-size:12px;margin:10px 0}
-.bulk-option-builder .label textarea{display:block;width:100%;min-width:0;margin-top:6px;padding:12px;min-height:80px;resize:vertical;line-height:1.7;font-size:14px;white-space:pre-wrap}.bulk-option-enter-hint{font-size:11px;color:#777;font-weight:500;margin-left:5px}
+.bulk-option-builder .label textarea{display:block;width:100%;min-width:0;margin-top:6px;padding:12px;min-height:80px;resize:vertical;line-height:1.7;font-size:14px;white-space:pre-wrap}
+ /* A plain-text editor keeps iOS Safari's contact AutoFill toolbar off these option fields. */
+ .bulk-option-builder .bulk-option-textbox{display:block;box-sizing:border-box;width:100%;min-width:0;min-height:150px;margin-top:6px;padding:12px;border:1px solid #d3d3d3;border-radius:4px;background:#fff;color:#111;font:inherit;font-size:16px;line-height:1.7;white-space:pre-wrap;overflow-wrap:anywhere;overflow-y:auto;-webkit-user-select:text;user-select:text;outline:none}
+ .bulk-option-builder .bulk-option-textbox[data-bulk-editor="sizes"]{min-height:110px}
+ .bulk-option-builder .bulk-option-textbox:focus{border-color:#222;box-shadow:0 0 0 1px #222}
+ .bulk-option-builder .bulk-option-textbox:empty:before{content:attr(data-placeholder);color:#aaa;white-space:pre-line;pointer-events:none}.bulk-option-enter-hint{font-size:11px;color:#777;font-weight:500;margin-left:5px}
 .bulk-option-apply{background:#111!important;color:white!important;margin:12px 0 9px;padding:13px 8px!important;font-size:13px!important}
 .bulk-option-builder .smallnote{line-height:1.7;font-size:11px;color:#777}
 
@@ -2566,8 +2571,8 @@ function composeBulkOptions(existingText,colorsInput,sizesInput){
 function bulkOptionsBuilder(){
  return `<div class="bulk-option-builder">
  <div class="bulk-option-heading"><b>색상·사이즈 한 번에 입력</b><span>색상마다 사이즈가 같다면 한 번만 적으세요.</span></div>
- <label class="label">색상 여러 개 <span class="bulk-option-enter-hint">엔터로 구분</span><textarea name="bulk_colors" rows="4" autocomplete="off" placeholder="핑크&#10;블루&#10;머스타드&#10;자주" aria-label="색상 한 줄에 하나씩 입력"></textarea></label>
- <label class="label">공통 사이즈 <span class="bulk-option-enter-hint">엔터로 구분</span><textarea name="bulk_sizes" rows="3" autocomplete="off" placeholder="1호&#10;2호" aria-label="사이즈 한 줄에 하나씩 입력"></textarea></label>
+ <label class="label">색상 여러 개 <span class="bulk-option-enter-hint">엔터로 구분</span><div class="bulk-option-textbox" data-bulk-editor="colors" role="textbox" aria-multiline="true" aria-label="색상 한 줄에 하나씩 입력" contenteditable="plaintext-only" spellcheck="false" autocorrect="off" autocapitalize="off" data-placeholder="핑크 · 블루 · 머스타드 · 자주 (엔터로 구분)"></div></label>
+ <label class="label">공통 사이즈 <span class="bulk-option-enter-hint">엔터로 구분</span><div class="bulk-option-textbox" data-bulk-editor="sizes" role="textbox" aria-multiline="true" aria-label="사이즈 한 줄에 하나씩 입력" contenteditable="plaintext-only" spellcheck="false" autocorrect="off" autocapitalize="off" data-placeholder="1호 · 2호 (엔터로 구분)"></div></label>
  <button type="button" class="btn block bulk-option-apply" data-action="bulk-options-apply">선택한 색상에 사이즈 일괄 적용</button>
  <div class="smallnote">색상과 사이즈를 한 줄에 하나씩 적고 엔터로 구분해 주세요. 쉼표로 구분해도 돼요. 기존에 없는 색상은 추가되고, 이미 있는 색상은 해당 사이즈만 변경돼요.</div>
  </div>`;
@@ -3032,11 +3037,12 @@ if(a==='admin-photo-remove'||a==='admin-photo-move'){
 if(a==='bulk-options-apply'){
  const form=b.closest('form');
  if(!form||!['approve-form','product-form'].includes(form.id))throw Error('상품 등록 화면에서만 옵션을 한 번에 입력할 수 있어요.');
- const colors=form.querySelector('[name="bulk_colors"]'),sizes=form.querySelector('[name="bulk_sizes"]'),output=form.querySelector('textarea[name="options"]');
+ const colors=form.querySelector('[data-bulk-editor="colors"]'),sizes=form.querySelector('[data-bulk-editor="sizes"]'),output=form.querySelector('textarea[name="options"]');
  if(!colors||!sizes||!output)throw Error('옵션 입력창을 찾지 못했어요.');
- const result=composeBulkOptions(output.value,colors.value,sizes.value);
+ const result=composeBulkOptions(output.value,colors.innerText,sizes.innerText);
  output.value=result.text;
- output.focus({preventScroll:true});
+ document.activeElement?.blur();
+ output.scrollIntoView({block:'nearest'});
  notif(result.colors+'가지 색상에 '+result.sizes+'가지 사이즈를 적용했어요. 내용을 확인한 뒤 상품을 저장해 주세요.');
  return;
 }

@@ -982,6 +982,16 @@ body:has(.overlay) .back-to-top{opacity:0;visibility:hidden;pointer-events:none}
 .admin-combined-photo.is-photo-drop-target{border:2px dashed #111;background:#efefef;box-shadow:0 0 0 2px #1112}
 .admin-combined-photo:focus-visible{outline:2px solid #111;outline-offset:2px}
 .admin-combined-photo-x{touch-action:manipulation}
+
+/* MINIYENA product categories · scrollable on iPhone without wrapping cards. */
+.shop-category-list,.admin-category-list{display:flex;align-items:center;gap:7px;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;white-space:nowrap;padding:7px 1px 12px;margin:9px 0 10px;scroll-margin-top:14px}
+.shop-category-list::-webkit-scrollbar,.admin-category-list::-webkit-scrollbar{display:none}
+.shop-category-tab,.admin-category-tab{border:1px solid #dedede;border-radius:999px;background:#fff;color:#555;display:inline-flex;align-items:center;gap:5px;padding:10px 13px;min-height:38px;cursor:pointer;font-size:12px;flex:0 0 auto;font-weight:730}
+.shop-category-tab span,.admin-category-tab span{font-size:10px;font-weight:550;color:#929292}
+.shop-category-tab.active,.admin-category-tab.active{background:#111;color:#fff;border-color:#111}
+.shop-category-tab.active span,.admin-category-tab.active span{color:#dddddd}
+.shop-catalog-category{display:inline-block;margin-left:5px;border:1px solid #dedede;padding:2px 5px;border-radius:5px;font-size:10px;font-weight:700;color:#555}
+.request-category-label{margin:5px 0 8px;display:inline-block;font-size:11px;padding:4px 8px;background:#f3f3f3;border-radius:7px;color:#444}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -1893,7 +1903,7 @@ function renderAdminRequests(){
  <div class="request-status-count" aria-live="polite">${statuses.find(st=>st.key===selected).label} · ${filtered.length}건</div>
  ${!filtered.length?`<div class="empty">${statuses.find(st=>st.key===selected).empty}</div>`:filtered.map(r=>`<div class="card request-card"><div class="row between"><div><span class="chip ${r.status==='pending'?'orange':r.status==='approved'?'green':'red'}">${r.status==='pending'?'검토 대기':r.status==='approved'?'상품 등록 완료':'반려'}</span><div class="tiny">${fmtDate(r.created_at)}</div></div><div class="tiny">${esc(r.customer_name||'신청자 미기재')}</div></div>
  ${requestPhotoGallery(r)}
- <div class="smallnote">남대문 도매업체</div><h3 style="margin:2px 0 9px">${esc(r.store_name)}</h3><div class="smallnote">상품명</div><b>${esc(r.product_name)}</b>${r.note?`<p class="sub">요청 내용: ${esc(r.note)}</p>`:''}
+ <div class="smallnote">남대문 도매업체</div><h3 style="margin:2px 0 9px">${esc(r.store_name)}</h3><div class="smallnote">상품명</div><b>${esc(r.product_name)}</b><div class="request-category-label">카테고리 · ${esc(categoryLabel(r))}</div>${r.note?`<p class="sub">요청 내용: ${esc(r.note)}</p>`:''}
  ${r.status==='rejected'?`<div class="request-rejection-summary"><b>반려 사유: ${esc(r.rejection_reason||'사유 미기록')}</b>${r.rejection_note?`<div>${esc(r.rejection_note)}</div>`:''}</div><div class="row wrap" style="margin-top:10px"><button class="btn sm secondary" data-action="copy-rejection-notice" data-id="${esc(r.id)}">반려 안내문 복사</button></div>`:''}
  ${r.status==='pending'?`<div class="row wrap" style="margin-top:12px"><button class="btn sm" data-action="approve-request" data-id="${esc(r.id)}">검토 후 상품 등록</button><button class="btn sm danger" data-action="reject-request" data-id="${esc(r.id)}">반려 사유 선택</button></div>`:''}
  ${r.status==='approved'&&state.products.some(p=>p.id===r.approved_product_id&&p.published&&!p.is_sold_out&&state.stores.some(st=>st.id===p.store_id&&st.active))?`<div class="row wrap" style="margin-top:12px"><button class="btn sm secondary" data-action="copy-request-notice" data-id="${esc(r.id)}">💜 상품 등록 안내문 복사</button></div>`:''}
@@ -1903,7 +1913,7 @@ function renderAdminRequests(){
 /* Search is administrator-local and never queried through the customer API. */
 function adminProductSearchText(p){
  const options=Object.entries(p.options||{}).flatMap(([color,sizes])=>[color,...(Array.isArray(sizes)?sizes:[])]);
- return [p.name,storeName(p.store_id),...options,state.productPrivate?.[p.id]?.supplier_name||''].join(' ').toLocaleLowerCase('ko-KR');
+ return [p.name,storeName(p.store_id),categoryLabel(p),...options,state.productPrivate?.[p.id]?.supplier_name||''].join(' ').toLocaleLowerCase('ko-KR');
 }
 function updateAdminProductSearch(){
  const query=String(state.adminProductSearch||'').trim().toLocaleLowerCase('ko-KR');
@@ -1936,7 +1946,8 @@ function renderAdminProducts(){
   {key:'available',label:'판매 가능',count:all.length-soldCount}
  ];
  const activeFilter=filters.some(f=>f.key===state.adminCatalogFilter)?state.adminCatalogFilter:'all';
- const shown=all.filter(p=>activeFilter==='all'||(activeFilter==='shown'&&isVisible(p))||(activeFilter==='hidden'&&!isVisible(p))||(activeFilter==='soldout'&&p.is_sold_out)||(activeFilter==='available'&&!p.is_sold_out));
+ const activeCategory=categoryFilterKeys.includes(state.adminCategory)?state.adminCategory:'all';
+ const shown=all.filter(p=>matchesCategory(p,activeCategory)&&(activeFilter==='all'||(activeFilter==='shown'&&isVisible(p))||(activeFilter==='hidden'&&!isVisible(p))||(activeFilter==='soldout'&&p.is_sold_out)||(activeFilter==='available'&&!p.is_sold_out)));
  const searchQuery=String(state.adminProductSearch||'').trim().toLocaleLowerCase('ko-KR');
  const matchingCount=shown.filter(p=>!searchQuery||adminProductSearchText(p).includes(searchQuery)).length;
  const storesView=state.adminCatalogView==='stores';
@@ -1967,11 +1978,14 @@ function renderAdminProducts(){
    <div class="admin-product-filter-list" role="group" aria-label="상품 전시 및 품절 상태 필터">
     ${filters.map(filter=>`<button type="button" class="admin-product-filter ${activeFilter===filter.key?'active':''}" data-action="catalog-filter" data-filter-state="${filter.key}" aria-pressed="${activeFilter===filter.key}">${filter.label} <span>${filter.count}</span></button>`).join('')}
    </div>
+   <div class="admin-category-list" role="group" aria-label="관리자 상품 카테고리 필터">
+    ${categoryFilterKeys.map(k=>`<button type="button" class="admin-category-tab ${activeCategory===k?'active':''}" data-action="admin-category" data-category="${k}" aria-pressed="${activeCategory===k}">${k==='all'?'전체':k==='uncategorized'?'미분류':k} <span>${all.filter(p=>matchesCategory(p,k)).length}</span></button>`).join('')}
+   </div>
    <div class="admin-product-filter-result" aria-live="polite">${filters.find(f=>f.key===activeFilter).label} · <strong id="admin-product-result-count">${matchingCount}</strong>개 상품${activeFilter==='hidden'?'<span>거래처가 숨겨져 미노출되는 상품도 포함돼요.</span>':''}</div>
    ${shown.map(p=>{
     const storeActive=state.stores.some(st=>st.id===p.store_id&&st.active);
     const visibleToCustomer=p.published&&storeActive;
-    return `<div class="card admin-product-card" data-admin-product-card data-product-search="${esc(adminProductSearchText(p))}" ${searchQuery&&!adminProductSearchText(p).includes(searchQuery)?'hidden':''}><div class="row between"><div class="row"><span>${p.image_url?img(p,'product-thumb'):'🧸'}</span><div><div class="tiny">${esc(storeName(p.store_id))}</div><b>${esc(p.name)}</b></div></div><div class="admin-product-top-actions"><button class="btn sm secondary" data-action="edit-product" data-id="${esc(p.id)}">상품 수정</button><button type="button" class="btn sm admin-product-delete" data-action="delete-product" data-id="${esc(p.id)}" aria-label="${esc(p.name)} 상품 삭제">삭제</button></div></div>
+    return `<div class="card admin-product-card" data-admin-product-card data-product-search="${esc(adminProductSearchText(p))}" ${searchQuery&&!adminProductSearchText(p).includes(searchQuery)?'hidden':''}><div class="row between"><div class="row"><span>${p.image_url?img(p,'product-thumb'):'🧸'}</span><div><div class="tiny">${esc(storeName(p.store_id))} · ${esc(categoryLabel(p))}</div><b>${esc(p.name)}</b></div></div><div class="admin-product-top-actions"><button class="btn sm secondary" data-action="edit-product" data-id="${esc(p.id)}">상품 수정</button><button type="button" class="btn sm admin-product-delete" data-action="delete-product" data-id="${esc(p.id)}" aria-label="${esc(p.name)} 상품 삭제">삭제</button></div></div>
     <div class="form-options">${Object.entries(p.options||{}).map(([c,ss])=>`<div><b>${esc(c)}</b> : ${ss.map(esc).join(', ')}</div>`).join('')}</div>
     ${privateProductSummary(p.id)}
     <div class="row wrap product-manage-status"><span class="chip ${visibleToCustomer?'green':'orange'}">${visibleToCustomer?'고객 전시 중':p.published?'가게 숨김으로 미노출':'전시 숨김'}</span><span class="chip ${p.is_sold_out?'red':'green'}">${p.is_sold_out?'품절':'판매 가능'}</span></div>
@@ -2301,7 +2315,7 @@ if(m.type==='edit-delivery'){
  <form id="edit-delivery-form"><label class="label">수령방식<select name="delivery_method" id="deliveryMethodEdit" required><option value="pickup" ${method==='pickup'?'selected':''}>직접수령</option><option value="courier" ${isCourier?'selected':''}>택배수령</option></select></label>
  <div id="courierFieldsEdit" class="delivery-fields ${isCourier?'':'hidden'}"><label class="label">받는 사람<input name="recipient_name" maxlength="80" value="${field('recipient_name')}" data-courier-required ${isCourier?'required':'disabled'}></label><div class="address-tools"><button class="btn secondary" type="button" data-action="search-address">🔎 주소 검색</button><button class="textbutton address-manual" type="button" data-action="manual-address">주소 직접 입력</button></div><div class="postcode-search hidden" data-postcode-panel><div class="row between"><b>우편번호·주소 찾기</b><button type="button" class="btn sm neutral" data-action="close-address-search">닫기</button></div><div class="address-search-hint">도로명이나 건물 이름을 검색하고 주소를 선택해 주세요.</div><div class="postcode-mount" data-postcode-mount></div></div><label class="label">우편번호 (5자리)<input name="postal_code" readonly data-address-postal maxlength="5" inputmode="numeric" pattern="[0-9]{5}" value="${field('postal_code')}" data-courier-required ${isCourier?'required':'disabled'}></label><label class="label">주소<input name="address_line1" readonly data-address-primary maxlength="250" value="${field('address_line1')}" data-courier-required ${isCourier?'required':'disabled'}></label><label class="label">상세주소 (선택)<input name="address_line2" maxlength="250" value="${field('address_line2')}" ${isCourier?'':'disabled'}></label><label class="label">배송 요청사항 (선택)<input name="delivery_note" maxlength="200" value="${field('delivery_note')}" ${isCourier?'':'disabled'}></label></div><button type="submit" class="btn block">${q.status==='confirmed'||isBundle(q)?'변경 요청 보내기':'수령방식 수정 저장'}</button></form>`);
 }
-if(m.type==='suggest'){return wrap('상품 등록 신청',`<div class="filehelp">상품명·남대문 도매업체 이름과 사진을 첨부해 주세요. 첫 번째 사진이 대표사진이며, 최대 9장까지 한 번에 신청할 수 있어요. 관리자가 승인한 뒤에만 실제 상품 목록에 등록돼요. <b>이 신청은 견적 요청이나 최종 주문이 아니에요.</b></div><form id="suggest-form" style="margin-top:16px"><label class="label">남대문 도매업체 이름<input required name="store" maxlength="100" placeholder="예: 오뜨베베"></label><label class="label">상품명<input required name="name" maxlength="100" placeholder="예: 하트호피 전신슈트"></label><label class="label">상품 사진 첨부 (필수 · 최대 9장)<input name="photo" type="file" accept="image/*" multiple required id="suggest-photo"></label><div class="smallnote" id="suggest-photo-count" aria-live="polite">사진을 여러 장 선택할 수 있어요. 첫 번째 사진이 대표사진이에요.</div><div id="suggest-previews" class="suggest-photo-previews hidden" aria-label="신청 사진 미리보기"></div><label class="label">신청자 이름 (필수)<input name="customer" maxlength="40" required autocomplete="name" placeholder="신청자 이름을 입력해 주세요"></label><label class="label">메모 (선택)<textarea name="note" maxlength="300" placeholder="상품에 대해 참고할 내용"></textarea></label><button class="btn block" type="submit">상품 등록 신청 보내기</button></form>`)}
+if(m.type==='suggest'){return wrap('상품 등록 신청',`<div class="filehelp">상품명·남대문 도매업체 이름과 사진을 첨부해 주세요. 첫 번째 사진이 대표사진이며, 최대 9장까지 한 번에 신청할 수 있어요. 관리자가 승인한 뒤에만 실제 상품 목록에 등록돼요. <b>이 신청은 견적 요청이나 최종 주문이 아니에요.</b></div><form id="suggest-form" style="margin-top:16px"><label class="label">남대문 도매업체 이름<input required name="store" maxlength="100" placeholder="예: 오뜨베베"></label><label class="label">상품명<input required name="name" maxlength="100" placeholder="예: 하트호피 전신슈트"></label>${productCategoryInput('',true)}<label class="label">상품 사진 첨부 (필수 · 최대 9장)<input name="photo" type="file" accept="image/*" multiple required id="suggest-photo"></label><div class="smallnote" id="suggest-photo-count" aria-live="polite">사진을 여러 장 선택할 수 있어요. 첫 번째 사진이 대표사진이에요.</div><div id="suggest-previews" class="suggest-photo-previews hidden" aria-label="신청 사진 미리보기"></div><label class="label">신청자 이름 (필수)<input name="customer" maxlength="40" required autocomplete="name" placeholder="신청자 이름을 입력해 주세요"></label><label class="label">메모 (선택)<textarea name="note" maxlength="300" placeholder="상품에 대해 참고할 내용"></textarea></label><button class="btn block" type="submit">상품 등록 신청 보내기</button></form>`)}
 if(m.type==='reject-request'){
  const req=state.requests.find(r=>r.id===m.id&&r.status==='pending');
  if(!req)return '';
@@ -2312,7 +2326,7 @@ if(m.type==='reject-request'){
  <label class="label">추가 설명 (기타 선택 시 필수)<textarea name="detail" maxlength="300" rows="3" placeholder="고객에게 전달할 내용을 입력해 주세요"></textarea></label>
  <button class="btn block danger" type="submit">사유 저장하고 반려하기</button></form>`);
 }
-if(m.type==='approve'){const r=state.requests.find(x=>x.id===m.id);if(!r)return '';return wrap('상품 등록 검토 및 승인',`<div class="info">신청자가 올린 사진과 내가 추가한 사진을 한곳에서 정리하고 순서를 바꿀 수 있어요. ×로 제외해도 신청 원본은 남아요.</div><form id="approve-form">${renderAdminPhotoWorkspace()}<label class="label">남대문 도매업체 이름<input name="store" maxlength="100" required value="${esc(r.store_name)}"></label><label class="label">상품명<input name="name" maxlength="100" required value="${esc(r.product_name)}"></label>${bulkOptionsBuilder()}<label class="label">완성된 색상별 옵션 (확인·수정 가능)<textarea name="options" required rows="5" placeholder="위에서 색상과 사이즈를 입력하고 일괄 적용을 눌러 주세요."></textarea></label><div class="filehelp">색상별 사이즈가 다르면 여기서 해당 줄만 수정할 수 있어요.</div>${privateProductFields(null)}<label class="stageradio" style="margin:15px 0"><input type="checkbox" name="published" checked> 승인 후 상품을 바로 공개</label><label class="stageradio"><input type="checkbox" name="is_sold_out"> 품절 상태로 등록 (고객에게 품절 표시)</label><button class="btn block" type="submit">사진 순서대로 상품 등록·승인</button></form>`)}
+if(m.type==='approve'){const r=state.requests.find(x=>x.id===m.id);if(!r)return '';return wrap('상품 등록 검토 및 승인',`<div class="info">신청자가 올린 사진과 내가 추가한 사진을 한곳에서 정리하고 순서를 바꿀 수 있어요. ×로 제외해도 신청 원본은 남아요.</div><form id="approve-form">${renderAdminPhotoWorkspace()}<label class="label">남대문 도매업체 이름<input name="store" maxlength="100" required value="${esc(r.store_name)}"></label><label class="label">상품명<input name="name" maxlength="100" required value="${esc(r.product_name)}"></label>${productCategoryInput(r.category,true)}${bulkOptionsBuilder()}<label class="label">완성된 색상별 옵션 (확인·수정 가능)<textarea name="options" required rows="5" placeholder="위에서 색상과 사이즈를 입력하고 일괄 적용을 눌러 주세요."></textarea></label><div class="filehelp">색상별 사이즈가 다르면 여기서 해당 줄만 수정할 수 있어요.</div>${privateProductFields(null)}<label class="stageradio" style="margin:15px 0"><input type="checkbox" name="published" checked> 승인 후 상품을 바로 공개</label><label class="stageradio"><input type="checkbox" name="is_sold_out"> 품절 상태로 등록 (고객에게 품절 표시)</label><button class="btn block" type="submit">사진 순서대로 상품 등록·승인</button></form>`)}
 if(m.type==='pick'){const p=selectedProd(m.id);if(!p||p.is_sold_out||!p.published||!state.stores.some(st=>st.id===p.store_id&&st.active))return wrap('품절 또는 판매 종료','<div class="noticefail">이 상품은 현재 주문할 수 없어요. 다른 상품을 선택해 주세요.</div>');const colors=Object.keys(p.options||{}),color=colors.includes(m.color)?m.color:colors[0],sizes=p.options[color]||[];return wrap('옵션 선택',`<div class="smallnote">${esc(storeName(p.store_id))}</div><h3>${esc(p.name)}</h3>${productGallery(p)}<form id="pick"><label class="label">컬러<select name="color" id="pickColor">${colors.map(c=>`<option ${c===color?'selected':''}>${esc(c)}</option>`).join('')}</select></label><label class="label">사이즈<select name="size" id="pickSize">${sizes.map(s=>`<option>${esc(s)}</option>`).join('')}</select></label><label class="label">수량<input type="number" name="qty" value="1" min="1" max="20" required></label><button class="btn block" type="submit">장바구니 담기</button></form>`)}
 if(m.type==='product-photos'){
  const p=selectedProd(m.id);
@@ -2344,7 +2358,7 @@ if(m.type==='cart'){return wrap('견적 요청 장바구니',`<div class="cart-r
 <div class="cart-review-checkout-form"><div class="smallnote">견적만 요청하는 단계예요. 최종 주문은 견적 확인 후 별도로 진행돼요.</div><form id="request"><label class="label">주문자 이름<input name="name" maxlength="40" required placeholder="예: 지현"></label><label class="label">아기 이름 또는 태명 (필수)<input name="baby" maxlength="40" required placeholder="예: 예나, 토리"></label><label class="label">휴대폰 번호 (필수 · 주문조회용)<input name="contact" type="tel" inputmode="tel" autocomplete="tel-national" maxlength="15" required placeholder="예: 010-0000-0000"></label><label class="label">주문조회 비밀번호 (숫자 6자리 · 필수)<input name="lookup_pin" type="password" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" autocomplete="off" required placeholder="6자리 숫자"></label><label class="label">주문조회 비밀번호 확인<input name="lookup_pin_confirm" type="password" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" autocomplete="off" required placeholder="다시 입력"></label><p class="smallnote">문자 발송은 없어요. 다른 브라우저에서 이름·휴대폰 번호와 이 비밀번호로 주문을 찾을 수 있어요. 다음 주문에도 같은 비밀번호를 사용하면 한꺼번에 조회돼요.</p><div class="separator"></div><label class="label">수령방식 (필수)<select name="delivery_method" id="deliveryMethod" required><option value="">수령방식을 선택해 주세요</option><option value="pickup">직접수령 (배송비 없음)</option><option value="courier">택배수령</option></select></label><div id="courierFields" class="hidden delivery-fields"><div class="info">택배로 받을 경우 아래 주소로 배송돼요. 묶음배송은 이후 관리자가 같은 구매자의 주문을 확인하고 설정해요.</div><label class="label">받는 사람<input name="recipient_name" maxlength="80" autocomplete="name" data-courier-required placeholder="받는 사람 이름" disabled></label><div class="address-tools"><button class="btn secondary" type="button" data-action="search-address">🔎 주소 검색</button><button class="textbutton address-manual" type="button" data-action="manual-address">주소 직접 입력</button></div><div class="postcode-search hidden" data-postcode-panel><div class="row between"><b>우편번호·주소 찾기</b><button type="button" class="btn sm neutral" data-action="close-address-search">닫기</button></div><div class="address-search-hint">도로명이나 건물 이름을 검색하고 주소를 선택해 주세요.</div><div class="postcode-mount" data-postcode-mount></div></div><label class="label">우편번호 (5자리)<input name="postal_code" readonly data-address-postal inputmode="numeric" maxlength="5" pattern="[0-9]{5}" data-courier-required placeholder="예: 34123" disabled></label><label class="label">주소<input name="address_line1" readonly data-address-primary maxlength="250" data-courier-required placeholder="도로명주소 또는 지번주소" disabled></label><label class="label">상세주소 (선택)<input name="address_line2" maxlength="250" placeholder="동·호수 등" disabled></label><label class="label">배송 요청사항 (선택)<input name="delivery_note" maxlength="200" placeholder="예: 문 앞에 놓아주세요" disabled></label></div><label class="label">요청 메모 (선택)<textarea name="note" maxlength="300" placeholder="거래처에 확인할 내용"></textarea></label><div class="info">지금은 <b>가격만 문의하는 견적 요청</b>이에요. 아직 주문이 확정되지 않아요. 제출 후 나오는 <b>고유 견적 링크를 꼭 보관</b>해 주세요. 같은 이름으로 다시 요청해도 자동으로 합쳐지지 않아요.</div><button class="btn block" type="submit">전체 ${cartCount()}개 견적 요청하기</button></form></div>
 </details></div>`:''}`)}
 if(m.type==='store'){const s=state.stores.find(x=>x.id===m.id);return wrap(s?'가게 수정':'가게 등록',`<form id="store-form"><label class="label">남대문 가게 이름<input name="name" maxlength="100" required value="${esc(s?.name||'')}" placeholder="예: 동대문상회"></label><label class="stageradio"><input type="checkbox" name="active" ${s?.active===false?'':'checked'}> 주문자 화면에 표시</label><button class="btn block" type="submit">가게 저장</button></form>`)}
-if(m.type==='product'){const pr=selectedProd(m.id);let lines=Object.entries(pr?.options||{}).map(([c,sz])=>c+': '+sz.join(', ')).join('\n');return wrap(pr?'상품 수정':'상품 등록',`<form id="product-form"><label class="label">거래처(가게)<select name="store" required>${state.stores.map(st=>`<option value="${st.id}" ${pr?.store_id===st.id?'selected':''}>${esc(st.name)}</option>`).join('')}</select></label><label class="label">옷 이름<input name="name" maxlength="100" required value="${esc(pr?.name||'')}" placeholder="예: 하트호피 전신슈트"></label>${renderAdminPhotoWorkspace()}${bulkOptionsBuilder()}<label class="label">완성된 색상별 옵션 (확인·수정 가능)</label><textarea name="options" required rows="6" placeholder="색상과 사이즈 입력 후 일괄 적용을 눌러 주세요.">${esc(lines)}</textarea><p class="help">색상별 사이즈가 다르면 아래에서 그 줄만 수정하면 돼요.</p>${privateProductFields(pr?.id)}<label class="stageradio" style="margin:15px 0"><input type="checkbox" name="published" ${pr?.published===false?'':'checked'}> 주문자 화면에 공개</label><label class="stageradio"><input type="checkbox" name="is_sold_out" ${pr?.is_sold_out?'checked':''}> 품절 표시 (전시해도 주문 불가)</label><button class="btn block" type="submit">상품 저장</button></form>`)}
+if(m.type==='product'){const pr=selectedProd(m.id);let lines=Object.entries(pr?.options||{}).map(([c,sz])=>c+': '+sz.join(', ')).join('\n');return wrap(pr?'상품 수정':'상품 등록',`<form id="product-form"><label class="label">거래처(가게)<select name="store" required>${state.stores.map(st=>`<option value="${st.id}" ${pr?.store_id===st.id?'selected':''}>${esc(st.name)}</option>`).join('')}</select></label><label class="label">옷 이름<input name="name" maxlength="100" required value="${esc(pr?.name||'')}" placeholder="예: 하트호피 전신슈트"></label>${productCategoryInput(pr?.category,!pr||Boolean(pr.category))}${renderAdminPhotoWorkspace()}${bulkOptionsBuilder()}<label class="label">완성된 색상별 옵션 (확인·수정 가능)</label><textarea name="options" required rows="6" placeholder="색상과 사이즈 입력 후 일괄 적용을 눌러 주세요.">${esc(lines)}</textarea><p class="help">색상별 사이즈가 다르면 아래에서 그 줄만 수정하면 돼요.</p>${privateProductFields(pr?.id)}<label class="stageradio" style="margin:15px 0"><input type="checkbox" name="published" ${pr?.published===false?'':'checked'}> 주문자 화면에 공개</label><label class="stageradio"><input type="checkbox" name="is_sold_out" ${pr?.is_sold_out?'checked':''}> 품절 표시 (전시해도 주문 불가)</label><button class="btn block" type="submit">상품 저장</button></form>`)}
 if(m.type==='bundle'){const child=state.quotes.find(x=>x.id===m.id);if(!child)return '';const candidates=state.quotes.filter(x=>x.id!==child.id&&buyerIdentity(x)===buyerIdentity(child)&&x.status!=='cancelled'&&['quoted','confirmed'].includes(x.status)&&x.bundle_parent_id==null&&hasShipping(x)&&x.delivery_method!=='pickup'&&!state.quotes.some(y=>y.bundle_parent_id===child.id));return wrap('묶음배송 설정',`<div class="info">동일 구매자의 택배 주문을 함께 보내면 <b>연결된 추가 주문의 배송비는 0원</b>으로 계산돼요. 대표 주문에 기존 배송비가 남습니다.</div><div class="card"><b>${esc(buyerLabel(child))}</b><div class="smallnote">현재 주문: ${fmtDate(child.created_at)} · ${money(totalDue(child))}</div><div class="smallnote">수령: ${deliveryLabel(child)} · ${esc(addressLabel(child))}</div></div>${child.delivery_method==='pickup'?'<div class="noticefail">직접수령은 묶음배송할 수 없어요.</div>':`<form id="bundle-form"><label class="label">이 주문과 함께 보낼 대표 주문<select name="parent_id"><option value="">${child.bundle_parent_id?'묶음배송 해제 (각각 배송비 청구)':'묶음배송하지 않음'}</option>${candidates.map(q=>`<option value="${q.id}" ${child.bundle_parent_id===q.id?'selected':''}>${esc(q.buyer_name)} · ${fmtDate(q.created_at)} · ${esc(q.items.map(i=>i.product_name).slice(0,2).join(', '))}</option>`).join('')}</select></label>${!candidates.length?'<div class="noticefail">같은 구매자이고 배송비가 설정된 다른 견적/확정 주문이 없어요. 대표 주문이 없으면 아직 묶을 수 없어요.</div>':''}<div class="noticefail">이미 확정된 주문은 금액 차이가 발생할 수 있어요. 주소가 같은지 먼저 확인하고, 입금 완료라면 환불도 직접 확인해 주세요. 배송비 변경 안내는 주문자의 견적 확인 화면에 반영됩니다.</div><button class="btn block" type="submit">묶음배송 설정 저장</button></form>`}`)}
 
 if(m.type==='admin-pin'){
@@ -2634,7 +2648,7 @@ function customerRequestFiles(d){
  return files;
 }
 async function submitSuggestion(d){
- const store=String(d.get('store')||'').trim(),name=String(d.get('name')||'').trim(),customer=String(d.get('customer')||'').trim(),note=String(d.get('note')||'').trim();
+ const store=String(d.get('store')||'').trim(),name=String(d.get('name')||'').trim(),customer=String(d.get('customer')||'').trim(),note=String(d.get('note')||'').trim(),category=validateProductCategory(d.get('category'));
  if(!store||!name)throw Error('도매업체와 상품명을 입력해 주세요.');
  if(!customer)throw Error('신청자 이름을 입력해 주세요.');
  const files=customerRequestFiles(d),paths=[],button=app.querySelector('#suggest-form button[type="submit"]');
@@ -2643,7 +2657,7 @@ async function submitSuggestion(d){
   paths.push(await uploadPhoto(await toJpeg(files[i]),PHOTO_PRIVATE));
  }
  if(button)button.textContent='신청서 접수 중…';
- return rpc('gq_submit_product_request_v34',{p_store_name:store,p_product_name:name,p_customer_name:customer,p_note:note,p_photo_path:paths[0],p_extra_photo_paths:paths.slice(1)});
+ return rpc('gq_submit_product_request_v36',{p_store_name:store,p_product_name:name,p_customer_name:customer,p_note:note,p_photo_path:paths[0],p_extra_photo_paths:paths.slice(1),p_category:category});
 }
 async function rejectSuggestion(id,reason,detail){
  const request=state.requests.find(r=>r.id===id&&r.status==='pending');
@@ -2663,6 +2677,7 @@ async function approveSuggestion(d){
  const request=state.requests.find(x=>x.id===state.modal?.id);
  if(!state.admin||!request||request.status!=='pending')throw Error('승인할 신청서를 찾지 못했어요.');
  const storeName=String(d.get('store')||'').trim(),productName=String(d.get('name')||'').trim();
+ const category=validateProductCategory(d.get('category'));
  const options=parseOptions(String(d.get('options')||''));
  if(!storeName||!productName)throw Error('도매업체와 상품명을 입력해 주세요.');
  const selected=validateAdminPhotoSequence('approve',request.id);
@@ -2675,7 +2690,7 @@ async function approveSuggestion(d){
   if(!store?.id)throw Error('거래처 등록 확인에 실패했어요.');
  }
  const photos=await saveAdminPhotoSequence(selected);
- const payload={store_id:store.id,name:productName,options,published:d.has('published'),is_sold_out:d.has('is_sold_out'),...photos};
+ const payload={store_id:store.id,name:productName,category,options,published:d.has('published'),is_sold_out:d.has('is_sold_out'),...photos};
  const products=await api('/rest/v1/gq_products',{method:'POST',body:payload,admin:true});
  if(!products?.[0]?.id)throw Error('상품 저장 결과를 확인해 주세요.');
  try{await savePrivateProduct(products[0].id,privateInfo)}
@@ -3016,6 +3031,25 @@ if(a==='admin-summary'){
  if(section)window.scrollTo({top:Math.max(0,window.scrollY+section.getBoundingClientRect().top-12),behavior:'auto'});
  return;
 }
+if(a==='shop-category'){
+ if(state.page!=='shop')throw Error('상품 화면에서 카테고리를 선택해 주세요.');
+ const chosen=b.dataset.category;
+ if(!categoryFilterKeys.includes(chosen))throw Error('올바르지 않은 카테고리예요.');
+ state.shopCategory=chosen;
+ render();
+ const section=app.querySelector('.shop-category-list');
+ if(section)window.scrollTo({top:Math.max(0,window.scrollY+section.getBoundingClientRect().top-12),behavior:'auto'});
+ return;
+}
+if(a==='admin-category'){
+ if(!state.admin||state.page!=='admin'||state.tab!=='products')throw Error('관리자 상품 관리에서만 선택할 수 있어요.');
+ const chosen=b.dataset.category;
+ if(!categoryFilterKeys.includes(chosen))throw Error('올바르지 않은 카테고리예요.');
+ state.adminCategory=chosen;state.adminCatalogView='products';render();
+ const section=app.querySelector('.admin-category-list');
+ if(section)window.scrollTo({top:Math.max(0,window.scrollY+section.getBoundingClientRect().top-12),behavior:'auto'});
+ return;
+}
 if(a==='request-status-filter'){
  if(!state.admin||state.page!=='admin'||state.tab!=='requests')throw Error('관리자 상품 신청 화면에서만 사용할 수 있어요.');
  const status=b.dataset.requestStatus;
@@ -3213,7 +3247,7 @@ else if(f.id==='product-form'){
  if(!state.admin||!state.productPrivateReady)throw Error('관리자 인증 및 도매 정보 연결을 확인해 주세요.');
  const photos=validateAdminPhotoSequence('product',old?.id||null);
  const privateData=parsePrivateProductInputs(data);
- const product={store_id:String(data.get('store')),name:String(data.get('name')).trim(),options:parseOptions(String(data.get('options'))),published:data.has('published'),is_sold_out:data.has('is_sold_out')};
+ const product={store_id:String(data.get('store')),name:String(data.get('name')).trim(),category:validateProductCategory(data.get('category'),Boolean(old&&!old.category)),options:parseOptions(String(data.get('options'))),published:data.has('published'),is_sold_out:data.has('is_sold_out')};
  if(!product.store_id||!product.name)throw Error('거래처와 상품명을 입력해 주세요.');
  Object.assign(product,await saveAdminPhotoSequence(photos));
  const savedProductId=await putProduct(product,state.modal.id);

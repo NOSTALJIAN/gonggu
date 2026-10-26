@@ -1641,21 +1641,18 @@ function adminPhotoPreview(entry){
  return `<img src="${entry.preview}" alt="관리자가 새로 추가한 상품 사진" loading="lazy">`;
 }
 function adminPhotoGridMarkup(){
- return adminPhotoSequence.map((entry,i)=>`<figure class="admin-combined-photo">
-  <div class="admin-combined-photo-image">
+ return adminPhotoSequence.map((entry,i)=>`<figure class="admin-combined-photo" data-admin-photo-index="${i}" tabindex="0" aria-label="${i===0?'대표사진':(i+1)+'번째 사진'} · 드래그해서 위치 변경">
+  <div class="admin-combined-photo-image" data-photo-drag-zone title="끌어서 사진 순서 변경">
    ${adminPhotoPreview(entry)}
+   <span class="admin-photo-drag-grip" aria-hidden="true">⠿</span>
    <button type="button" class="admin-combined-photo-x" data-action="admin-photo-remove" data-index="${i}" aria-label="${i+1}번째 사진 제외" title="사진 삭제">×</button>
   </div>
   <figcaption><b>${i===0?'대표사진':(i+1)+'번째 사진'}</b><span>${entry.kind==='request'?'신청 사진':entry.kind==='existing'?'등록된 사진':'관리자 추가'}</span></figcaption>
-  <div class="admin-combined-move">
-   <button type="button" data-action="admin-photo-move" data-index="${i}" data-direction="-1" ${i===0?'disabled':''} aria-label="${i+1}번째 사진을 앞으로 이동">←</button>
-   <button type="button" data-action="admin-photo-move" data-index="${i}" data-direction="1" ${i===adminPhotoSequence.length-1?'disabled':''} aria-label="${i+1}번째 사진을 뒤로 이동">→</button>
-  </div>
  </figure>`).join('');
 }
 function renderAdminPhotoWorkspace(){
  return `<section class="admin-combined-photo-editor">
-  <div class="admin-combined-photo-heading"><b>상품 사진 · 순서 편집</b><p>신청 사진과 관리자 추가 사진을 한 번에 볼 수 있어요. ← → 버튼으로 순서를 바꾸고, 사진 오른쪽 위 ×로 삭제해요. <strong>첫 번째 사진이 대표사진</strong>이에요.</p></div>
+  <div class="admin-combined-photo-heading"><b>상품 사진 · 순서 편집</b><p>신청 사진과 관리자 추가 사진을 한 번에 볼 수 있어요. 사진을 누른 채 원하는 위치로 드래그해서 순서를 바꾸고, 오른쪽 위 ×로 삭제해요. <strong>첫 번째 사진이 대표사진</strong>이에요.</p></div>
   <div class="admin-combined-photo-grid" data-admin-photo-list>${adminPhotoGridMarkup()}</div>
   <div class="admin-combined-photo-empty ${adminPhotoSequence.length?'hidden':''}" data-admin-photo-empty>사진이 없어요. 아래에서 사진을 추가해 주세요.</div>
   <label class="label admin-combined-add">사진 추가하기 (최대 9장)<input type="file" name="extra_photos" multiple accept="image/*"></label>
@@ -1692,14 +1689,16 @@ function removeAdminPhoto(index,form){
  if(removed.kind==='new'&&removed.preview)URL.revokeObjectURL(removed.preview);
  updateAdminPhotoEditor(form);
 }
-function moveAdminPhoto(index,direction,form){
- if(!Number.isInteger(index)||![-1,1].includes(direction))throw Error('사진 순서를 변경할 수 없어요.');
- const target=index+direction;
- if(index<0||target<0||target>=adminPhotoSequence.length) return;
- const item=adminPhotoSequence[index];
- adminPhotoSequence[index]=adminPhotoSequence[target];
- adminPhotoSequence[target]=item;
+function moveAdminPhotoTo(index,target,form){
+ if(!Number.isInteger(index)||!Number.isInteger(target)||index<0||target<0||index>=adminPhotoSequence.length||target>=adminPhotoSequence.length||index===target)return false;
+ const [photo]=adminPhotoSequence.splice(index,1);
+ adminPhotoSequence.splice(target,0,photo);
  updateAdminPhotoEditor(form);
+ return true;
+}
+function moveAdminPhoto(index,direction,form){
+ if(![-1,1].includes(direction))throw Error('사진 순서를 변경할 수 없어요.');
+ return moveAdminPhotoTo(index,index+direction,form);
 }
 function validateAdminPhotoSequence(type,id){
  if(!state.admin)throw Error('관리자만 사진을 편집할 수 있어요.');

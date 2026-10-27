@@ -815,6 +815,11 @@ body:has(.overlay) .floating-actions{opacity:0;visibility:hidden;pointer-events:
 .admin-store-fold-hint{font-weight:520;color:#888;font-size:11px;margin-left:auto}
 .admin-store-fold-inner{padding-top:13px;border-top:1px solid #eee}
 .admin-store-list-card{border-radius:9px}
+.admin-store-name-status{display:flex;flex-direction:column;align-items:flex-start;gap:6px;min-width:0;flex:1}
+.admin-store-name-status b{font-size:13px;overflow-wrap:anywhere}
+.store-size-chart-status{display:inline-flex;align-items:center;gap:5px;border:1px solid #dfdfdf;border-radius:99px;padding:4px 8px;font-size:10px;font-weight:750;line-height:1.2;white-space:nowrap}
+.store-size-chart-status.is-registered{background:#edf6f0;border-color:#c8e4d0;color:#24643c}
+.store-size-chart-status.is-unregistered{background:#f6f6f6;border-color:#e4e4e4;color:#777}
 .admin-product-filter-list{display:flex;flex-wrap:wrap;gap:7px;margin:13px 0 10px}
 .admin-product-filter{border:1px solid #ddd;border-radius:20px;padding:10px 12px;background:#fff;color:#444;font-size:12px;font-weight:720;line-height:1.1;min-height:36px;cursor:pointer;white-space:nowrap}
 .admin-product-filter span{font-size:10px;opacity:.68;margin-left:4px}
@@ -1033,6 +1038,8 @@ body:has(.overlay) .floating-actions{opacity:0;visibility:hidden;pointer-events:
 .product-size-chart-images figcaption{font-size:12px;font-weight:750;margin:0 0 8px;color:#444}
 .product-size-chart-images img{max-height:none}
 .supplier-size-settings{margin-bottom:16px}
+.store-size-editor-heading{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.store-size-editor-heading h3{margin:0}
 .supplier-size-card{border:1px solid #e6e6e6;padding:13px;margin-top:13px}
 .supplier-size-title{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:9px}
 .supplier-size-title strong{font-size:14px}
@@ -2083,7 +2090,7 @@ function renderAdminProducts(){
    <details class="admin-store-fold" open>
     <summary>등록된 거래처 ${state.stores.length}곳 <span class="admin-store-fold-hint">접기 · 펼치기</span></summary>
     <div class="admin-store-fold-inner">
-     ${state.stores.map(st=>`<div class="card admin-store-list-card"><div class="row between"><b>🏬 ${esc(st.name)}</b><div class="admin-store-actions"><button class="btn sm secondary" type="button" data-action="edit-store" data-id="${esc(st.id)}">수정</button><button class="btn sm admin-store-delete" type="button" data-action="delete-store" data-id="${esc(st.id)}" aria-label="${esc(st.name)} 거래처 삭제">삭제</button></div></div><div class="tiny">${all.filter(p=>p.store_id===st.id).length}개 상품 · ${st.active?'사용 중':'가게 숨김'}</div></div>`).join('')||'<div class="empty">아직 등록된 거래처가 없어요. + 가게에서 추가해 주세요.</div>'}
+     ${state.stores.map(st=>`<div class="card admin-store-list-card"><div class="row between"><div class="admin-store-name-status"><b>🏬 ${esc(st.name)}</b><span class="store-size-chart-status ${Array.isArray(st.size_chart_paths)&&st.size_chart_paths.length?'is-registered':'is-unregistered'}">${Array.isArray(st.size_chart_paths)&&st.size_chart_paths.length?'사이즈표 등록완료 · '+st.size_chart_paths.length+'장':'사이즈표 미등록'}</span></div><div class="admin-store-actions"><button class="btn sm secondary" type="button" data-action="edit-store" data-id="${esc(st.id)}">수정</button><button class="btn sm admin-store-delete" type="button" data-action="delete-store" data-id="${esc(st.id)}" aria-label="${esc(st.name)} 거래처 삭제">삭제</button></div></div><div class="tiny">${all.filter(p=>p.store_id===st.id).length}개 상품 · ${st.active?'사용 중':'가게 숨김'}</div></div>`).join('')||'<div class="empty">아직 등록된 거래처가 없어요. + 가게에서 추가해 주세요.</div>'}
     </div>
    </details>
   `:`
@@ -2423,7 +2430,7 @@ function renderVendorSummary(){const groups=vendorGroups(),stores=[...new Set(gr
 function renderStoreSizeChartEditor(store){
  const paths=Array.isArray(store?.size_chart_paths)?store.size_chart_paths:[];
  return `<section class="supplier-size-settings store-size-chart-editor" aria-label="남대문 거래처 사이즈표 관리">
-  <h3>이 가게의 사이즈표</h3>
+  <div class="store-size-editor-heading"><h3>이 가게의 사이즈표</h3><span class="store-size-chart-status ${paths.length?'is-registered':'is-unregistered'}">${paths.length?'등록완료 · '+paths.length+'장':'미등록'}</span></div>
   <p class="smallnote"><b>${esc(store.name)}</b> 거래처 상품 상세에 공통으로 표시돼요. 사진은 최대 12장까지 추가하고 순서를 바꿀 수 있어요.</p>
   <div class="supplier-size-gallery">${paths.map((path,i)=>`<div class="supplier-size-photo">
    <a class="supplier-size-preview" href="${esc(publicPhotoUrl(path))}" target="_blank" rel="noopener noreferrer" aria-label="${esc(store.name)} 사이즈표 ${i+1} 크게 보기"><img src="${esc(publicPhotoUrl(path))}" alt="사이즈표 ${i+1}" loading="lazy"></a>

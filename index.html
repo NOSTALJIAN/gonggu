@@ -715,6 +715,15 @@ body:has(.overlay) .floating-actions{opacity:0;visibility:hidden;pointer-events:
 .order-link-form{margin:12px 0 22px}.order-link-form textarea{font-size:12px;min-height:77px;border-radius:4px}.order-link-form .btn{margin-top:10px}
 .order-link-list-title{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e9e9e9;padding:0 0 10px;margin:18px 0 4px;color:#161616}
 .order-link-list-title b{font-size:13px}.order-link-list-title small{color:#777;font-size:11px}
+.saved-order-row{align-items:center}
+.saved-order-info{flex:1;min-width:0;overflow-wrap:anywhere}
+.saved-order-actions{display:flex;flex:0 0 auto;align-items:center;gap:7px}
+.saved-order-actions button{min-height:40px;padding:9px 11px}
+.saved-order-actions .saved-order-remove{border:1px solid #ddd;background:#fff;color:#a33a3a}
+.saved-order-actions .saved-order-remove:hover{background:#fff4f3;border-color:#d9aaa6}
+.saved-order-remove:focus-visible{outline:2px solid #a33a3a;outline-offset:2px}
+.saved-order-delete-notice{margin:10px 0 0;color:#888;font-size:11px;line-height:1.7}
+@media(max-width:355px){.saved-order-actions{gap:4px}.saved-order-actions button{font-size:11px;padding:8px 7px}}
 .order-link-help{margin-top:18px;line-height:1.8;color:#777}
 .track-link-banner{border:1px solid #dadada;background:#f9f9f9;margin:14px 0;padding:14px 12px;color:#141414}
 .track-link-banner>b{display:block;font-size:13px}
@@ -2554,8 +2563,11 @@ if(m.type==='myquotes'){return wrap('내 견적 · 주문조회',`
  </section>
  <div class="order-link-explain"><b>주문조회 링크로 불러오기</b><p>기존에 보관한 주문조회 링크로도 카톡·네이버·사파리 어디에서든 확인할 수 있어요.</p></div>
  <form id="import-track-form" class="order-link-form"><label class="label">기존 주문조회 링크 붙여넣기<textarea name="track_url" rows="2" maxlength="2500" required placeholder="https://nostaljian.github.io/gonggu/?page=track&id=...&token=..."></textarea></label><button class="btn block" type="submit">링크로 주문 불러오기</button></form>
- <div class="order-link-list-title"><b>이 브라우저에 저장된 주문</b><small>${state.receipts.length}건</small></div>
- ${state.receipts.map(q=>`<div class="storeitem"><div><b>${esc(q.name)}${q.baby?' · '+esc(q.baby):''}</b><div class="tiny">${fmtDate(q.date)} · ${esc(q.id.slice(0,8).toUpperCase())}</div></div><button class="btn sm secondary" data-action="open-saved" data-id="${esc(q.id)}">확인하기</button></div>`).join('')||'<div class="empty">현재 브라우저에 저장된 주문이 없어요.</div>'}
+ <div class="order-link-list-title"><b>이 브라우저에 저장된 주문</b><small data-saved-order-count>${state.receipts.length}건</small></div>
+ <div class="saved-order-list" data-saved-order-list>
+ ${state.receipts.map(q=>`<div class="storeitem saved-order-row" data-saved-order-id="${esc(q.id)}"><div class="saved-order-info"><b>${esc(q.name)}${q.baby?' · '+esc(q.baby):''}</b><div class="tiny">${fmtDate(q.date)} · ${esc(q.id.slice(0,8).toUpperCase())}</div></div><div class="saved-order-actions"><button class="btn sm secondary" type="button" data-action="open-saved" data-id="${esc(q.id)}">확인하기</button><button class="btn sm saved-order-remove" type="button" data-action="remove-saved-order" data-id="${esc(q.id)}" aria-label="${esc(q.name)}${q.baby?' · '+esc(q.baby):''} 저장된 주문조회 기록 삭제">삭제</button></div></div>`).join('')||'<div class="empty">현재 브라우저에 저장된 주문이 없어요.</div>'}
+ </div>
+ <p class="saved-order-delete-notice">삭제하면 이 기기의 주문조회 목록에서만 없어져요. 실제 주문은 취소되거나 삭제되지 않아요.</p>
  <p class="smallnote order-link-help">주문 비밀번호나 주문조회 링크를 다른 사람에게 알려주지 마세요. 비밀번호를 잊어버렸다면 보관한 주문 링크를 이용하거나 판매자에게 문의해 주세요.</p>
  `)}return ''}
 function renderModal(){return modal()}
@@ -3357,7 +3369,23 @@ else if(a==='cart-checkout'){
  return;
 }
 else if(a==='cart-continue'){state.modal=null;render();return}
-else if(a==='suggest-product'){modalOpen('suggest')}else if(a==='approve-request'){modalOpen('approve',id)}else if(a==='reject-request'){modalOpen('reject-request',id)}else if(a==='copy-rejection-notice'){await copy(rejectionAnnouncement(state.requests.find(r=>r.id===id)));notif('반려 안내문을 복사했어요. 고객에게 개별 전달해 주세요.')}else if(a==='add-store'||a==='edit-store'){modalOpen('store',a==='edit-store'?id:null)}else if(a==='add-product'||a==='edit-product'){modalOpen('product',a==='edit-product'?id:null)}else if(a==='my-quotes'){modalOpen('myquotes')}else if(a==='open-saved'){const r=findTrack(id);if(r)await openTracking(r.id,r.token)}else if(a==='refresh'){await loadAdmin();notif('새로고침 완료')}else if(a==='copy-shop-link'){await copy(publicLink())}else if(a==='copy-request-notice'){await copy(requestAnnouncement(state.requests.find(r=>r.id===id)))}else if(a==='copy-product-notice'){await copy(productAnnouncement(state.products.find(p=>p.id===id)))}else if(a==='copy-quote-notice'){await copy(quoteAnnouncement(state.quotes.find(q=>q.id===id)))}else if(a==='share-track'){
+else if(a==='suggest-product'){modalOpen('suggest')}else if(a==='approve-request'){modalOpen('approve',id)}else if(a==='reject-request'){modalOpen('reject-request',id)}else if(a==='copy-rejection-notice'){await copy(rejectionAnnouncement(state.requests.find(r=>r.id===id)));notif('반려 안내문을 복사했어요. 고객에게 개별 전달해 주세요.')}else if(a==='add-store'||a==='edit-store'){modalOpen('store',a==='edit-store'?id:null)}else if(a==='add-product'||a==='edit-product'){modalOpen('product',a==='edit-product'?id:null)}else if(a==='my-quotes'){modalOpen('myquotes')}else if(a==='open-saved'){const r=findTrack(id);if(r)await openTracking(r.id,r.token)}else if(a==='remove-saved-order'){
+ if(state.modal?.type!=='myquotes')throw Error('내 주문조회 화면에서만 저장 기록을 삭제할 수 있어요.');
+ const saved=state.receipts.find(q=>q.id===id);
+ if(!saved)throw Error('이 기기에 저장된 주문조회 기록을 찾지 못했어요.');
+ const label=[saved.name,saved.baby].filter(Boolean).join(' · ');
+ if(!window.confirm('‘'+label+'’ 주문조회 기록을 이 기기 목록에서 삭제할까요?\n\n실제 주문이나 견적은 삭제되지 않아요. 나중에 보관한 주문 링크 또는 이름·연락처·비밀번호로 다시 불러올 수 있어요.'))return;
+ const previous=state.receipts;
+ state.receipts=previous.filter(q=>q.id!==id);
+ try{saveTracks()}catch(error){state.receipts=previous;throw Error('기기의 주문조회 기록을 저장하지 못했어요. 다시 시도해 주세요.');}
+ const list=app.querySelector('[data-saved-order-list]');
+ const row=[...(list?.querySelectorAll('[data-saved-order-id]')||[])].find(item=>item.dataset.savedOrderId===id);
+ if(row)row.remove();
+ if(list&&!state.receipts.length)list.innerHTML='<div class="empty">현재 브라우저에 저장된 주문이 없어요.</div>';
+ const count=app.querySelector('[data-saved-order-count]');
+ if(count)count.textContent=state.receipts.length+'건';
+ notif('이 기기에서 저장된 주문조회 기록을 삭제했어요.');
+}else if(a==='refresh'){await loadAdmin();notif('새로고침 완료')}else if(a==='copy-shop-link'){await copy(publicLink())}else if(a==='copy-request-notice'){await copy(requestAnnouncement(state.requests.find(r=>r.id===id)))}else if(a==='copy-product-notice'){await copy(productAnnouncement(state.products.find(p=>p.id===id)))}else if(a==='copy-quote-notice'){await copy(quoteAnnouncement(state.quotes.find(q=>q.id===id)))}else if(a==='share-track'){
  const link=trackLink(state.trackId,state.trackToken);
  if(navigator.share){
   try{await navigator.share({title:'미니예나 주문조회',text:'내 미니예나 주문조회 링크예요.',url:link});return}

@@ -1396,6 +1396,7 @@ function privateProductFields(existingId){
   <label class="label">실제 도매업체명 (비공개)<input name="private_supplier" maxlength="150" autocomplete="off" value="${esc(meta.supplier_name||'')}" placeholder="예: 실제 거래처 업체명"></label>
   <label class="label">도매가 (원 · 비공개)<input name="private_cost" type="number" inputmode="numeric" min="0" max="100000000" step="1" value="${meta.wholesale_price==null?'':meta.wholesale_price}" placeholder="예: 12500"></label>
   <div class="smallnote">미입력 시 예상가가 표시되지 않아요. 도매 원가는 관리자만 볼 수 있고, 고객에게는 도매가 × 1.4를 1,000원 단위로 반올림한 예상가만 공개돼요. 정확한 최종 판매가는 견적에서 확정합니다.</div>
+  <div class="smallnote">업체별 사이즈표는 관리자 → 설정 → 업체별 사이즈표 관리에서 사진으로 등록해 주세요. 실제 도매업체명이 같으면 연결된 상품에 자동 적용돼요.</div>
  </section>`;
 }
 // Administrator-only cost information. Never include in buyer-facing quote payloads,

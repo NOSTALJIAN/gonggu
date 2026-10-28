@@ -48,7 +48,7 @@ revoke all on gq_private.gq_supplier_fee_baselines_v50 from public,anon,authenti
 
 -- Guarded status/fee procedures installed on production.
 
--- Current installed transactional functions.
+-- Production-installed RPCs tested in rollback-only transactions.
 
 -- gq_private.gq_recalculate_supplier_fee_v50(uuid)
 CREATE OR REPLACE FUNCTION gq_private.gq_recalculate_supplier_fee_v50(p_quote_id uuid)
@@ -203,10 +203,11 @@ begin
  for v_key in select key from unnest(v_keys) as key order by key loop
   v_index:=v_index+1;
   v_amount:=v_base+case when v_index<=v_extra then 1 else 0 end;
-  select min(i.quote_id) into v_quote_id
+  select i.quote_id into v_quote_id
   from public.gq_quote_items i join public.gq_quotes q on q.id=i.quote_id
   where i.id=any(p_item_ids)
-   and regexp_replace(coalesce(q.contact,''),'[^0-9]','','g')=v_key;
+   and regexp_replace(coalesce(q.contact,''),'[^0-9]','','g')=v_key
+  order by i.quote_id limit 1;
   if v_quote_id is null then raise exception '배분할 주문을 찾지 못했어요.';end if;
   insert into gq_private.gq_supplier_fee_baselines_v50(quote_id,original_amount)
    select q.id,q.supplier_shipping_share

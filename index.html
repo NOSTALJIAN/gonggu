@@ -2905,7 +2905,7 @@ function supplierBatchPaymentState(batch){
  return {people:result,paid:result.filter(r=>r.eligible).length,
   canOrder:result.length===Number(batch.people)&&result.every(r=>r.eligible)};
 }
-function renderSupplierBulkManager(){
+function renderSupplierBulkManager(historyOnly=false){
  if(!state.admin||state.page!=='admin')return '';
  const allStores=[...new Set(state.quotes.flatMap(q=>(q.items||[]).map(supplierItemStore)))].filter(Boolean);
  const stores=state.stores.filter(store=>allStores.includes(store.id))
@@ -2981,6 +2981,13 @@ function renderSupplierBulkManager(){
    </div>
   </details>`;
  }).join(''):'';
+ if(historyOnly){
+  if(!state.supplierBatches.length)return '';
+  return `<details class="card supplier-bulk-history-only">
+   <summary style="cursor:pointer;font-weight:800;font-size:15px">거래처별 배송비 · 입금·발주 현황 (${state.supplierBatches.length}건) ▾</summary>
+   <div class="supplier-bulk-list" style="margin-top:14px">${history}</div>
+  </details>`;
+ }
  return `<section class="card supplier-bulk-manager" id="supplier-bulk-manager">
   <div class="supplier-bulk-heading"><h3>거래처별 도매배송비 배분</h3><span>상품별 선택 · 인원별 분담</span></div>
   <p class="smallnote">먼저 <b>남대문 거래처</b>를 선택하고, 해당 거래처의 상품을 체크해 주세요. 같은 사람이 이 거래처 상품을 여러 개 주문해도 배송비는 <b>한 명 몫</b>만 계산돼요. 다른 거래처 상품은 거래처를 바꿔서 별도로 배분해요.</p>
@@ -3023,7 +3030,7 @@ function renderAdminQuotes(){
  <div class="controls" style="margin-bottom:10px">${['all','cancel_requested','requested','quoted','confirmed','flow_new','flow_preparing','flow_pickup_ready','flow_shipped','flow_completed','flow_soldout_closed','cancelled'].map(s=>`<button class="tab ${state.filter===s?'active':''}" data-filter="${s}">${s==='all'?'전체':s==='cancel_requested'?'취소 요청':s.startsWith('flow_')?workflowLabels[s.slice(5)]:statusLabel[s]}</button>`).join('')}</div>
  ${qq.length?`<div class="admin-date-toolbar"><div><strong>날짜별 주문</strong><span>${qq.length}건 · ${dayCount}일 · 가격 미입력 ${unfinished}종</span></div><div class="admin-date-actions"><button type="button" class="date-all-btn" data-action="date-open-all">전체 펼치기</button><button type="button" class="date-all-btn" data-action="date-close-all">전체 접기</button></div></div>
  <div class="admin-overall-prices"><h3>현재 목록 상품 총액 비교</h3>${adminPriceTotalMarkup(qq)}</div>
- ${renderSupplierBulkManager()}
+ ${state.filter==='requested'?renderSupplierBulkManager():''}
  ${renderAdminQuoteDateSection(qq,awaiting,'pending')}
  ${renderAdminQuoteDateSection(qq,priced,'saved',!awaiting.length)}
  <p class="admin-date-hint">주문자 이름을 누르면 해당 주문만 접거나 펼칠 수 있어요. 미입력 주문은 처음부터 펼쳐지고, 가격 저장 완료 주문은 접힌 상태로 시작해요.</p>`:'<div class="empty">해당 상태의 견적이 없어요.</div>'}`;
@@ -3075,7 +3082,7 @@ function renderBuyerStats(){const groups=customerGroups();const confirmed=groups
 function renderProductStats(){const groups=productBuyerGroups();return `<div class="sectiontitle"><div><h2>상품별 누가 주문했나요?</h2><div class="sub">가게·상품·컬러·사이즈별 주문자, 확정 수량과 견적 대기 수량 별도</div></div><button class="btn sm secondary" data-action="refresh">새로고침</button></div><div class="identity-warning">발주해야 할 수량은 ‘확정’ 수량만 확인해 주세요. 품절·취소는 제외하고 상품 준비 중인 수량도 포함돼요.</div><input id="stat-search" type="search" placeholder="가게·상품·컬러·주문자·아기 이름 검색"><div class="statlist">${groups.map(g=>`<div class="statcard" data-stats-entry><div class="smallnote">🏬 ${esc(g.store)}</div><h3 style="margin:3px 0 3px;font-size:15px">${esc(g.product)}</h3><div class="tiny">${esc(g.color)} / ${esc(g.size)}</div><div class="substats" style="margin-top:9px"><span>확정 ${g.confirmedQty}개</span><span>견적 중 ${g.pendingQty}개</span><span>확정 주문자 ${new Set(g.confirmed.map(x=>buyerIdentity(x.q))).size}명</span></div><details ${g.confirmed.length?'open':''}><summary class="stats-summary">확정 주문자 ${g.confirmed.length}건</summary>${g.confirmed.map(({q,qty,subtotal})=>`<div class="stat-detail"><div class="row between"><b>${esc(buyerLabel(q))}</b><strong>${qty}개</strong></div><div class="tiny">${fmtDate(q.created_at)} · ${subtotal==null?'금액 미정':money(subtotal)} ${q.cancel_requested_at?'· 취소 요청 중':''}</div></div>`).join('')||'<div class="tiny">확정 주문이 없어요.</div>'}</details>${g.pending.length?`<details><summary class="stats-summary">견적 요청·안내 중 ${g.pending.length}건 (미확정)</summary>${g.pending.map(({q,qty})=>`<div class="stat-detail"><div class="row between"><span>${esc(buyerLabel(q))} · ${esc(statusLabel[q.status])}</span><b>${qty}개</b></div></div>`).join('')}</details>`:''}</div>`).join('')||'<div class="empty">아직 상품 주문 데이터가 없어요.</div>'}</div>`}
 function vendorGroups(){const g=new Map();for(const q of state.quotes.filter(q=>q.status==='confirmed'))for(const i of q.items){if(i.fulfillment==='sold_out')continue;const key=JSON.stringify([i.store_name,i.product_name,i.color,i.size]);let x=g.get(key);if(!x){x={store:i.store_name,product:i.product_name,color:i.color,size:i.size,qty:0,people:new Set()};g.set(key,x)}x.qty+=i.quantity;x.people.add(buyerLabel(q))}return [...g.values()].sort((a,b)=>a.store.localeCompare(b.store,'ko')||a.product.localeCompare(b.product,'ko'))}
 function vendorText(){return vendorGroups().map(x=>`${x.store} / ${x.product} / ${x.color} / ${x.size} ×${x.qty}`).join('\n')||'확정된 발주 내역이 없어요'}
-function renderVendorSummary(){const groups=vendorGroups(),stores=[...new Set(groups.map(g=>g.store))];return `<div class="sectiontitle"><div><h2>가게별 확정 발주</h2><div class="sub">최종 주문만 합산 · 품절 제외 · 상품 준비 중 포함</div></div><button class="btn sm secondary" data-action="copy-vendors">전체 복사</button></div>${stores.map(name=>{const a=groups.filter(g=>g.store===name);return `<div class="card"><h3>🏬 ${esc(name)}</h3>${a.map(x=>`<div class="line"><div class="row between"><div><b>${esc(x.product)}</b><div class="tiny">${esc(x.color)} / ${esc(x.size)} · ${esc([...x.people].join(', '))}</div></div><strong>${x.qty}개</strong></div></div>`).join('')}<div class="sumline total"><span>이 가게 발주 수량</span><strong>${a.reduce((s,i)=>s+i.qty,0)}개</strong></div></div>`}).join('')||'<div class="empty">아직 확정된 주문이 없어요.</div>'}`}
+function renderVendorSummary(){const groups=vendorGroups(),stores=[...new Set(groups.map(g=>g.store))];return `${renderSupplierBulkManager(true)}<div class="sectiontitle"><div><h2>가게별 확정 발주</h2><div class="sub">최종 주문만 합산 · 품절 제외 · 상품 준비 중 포함</div></div><button class="btn sm secondary" data-action="copy-vendors">전체 복사</button></div>${stores.map(name=>{const a=groups.filter(g=>g.store===name);return `<div class="card"><h3>🏬 ${esc(name)}</h3>${a.map(x=>`<div class="line"><div class="row between"><div><b>${esc(x.product)}</b><div class="tiny">${esc(x.color)} / ${esc(x.size)} · ${esc([...x.people].join(', '))}</div></div><strong>${x.qty}개</strong></div></div>`).join('')}<div class="sumline total"><span>이 가게 발주 수량</span><strong>${a.reduce((s,i)=>s+i.qty,0)}개</strong></div></div>`}).join('')||'<div class="empty">아직 확정된 주문이 없어요.</div>'}`}
 function renderStoreSizeChartEditor(store){
  const paths=Array.isArray(store?.size_chart_paths)?store.size_chart_paths:[];
  return `<section class="supplier-size-settings store-size-chart-editor" aria-label="남대문 거래처 사이즈표 관리">

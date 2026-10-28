@@ -1661,7 +1661,7 @@ async function refreshStoreSizeChartEditor(){
 async function loadAdminEmailSettings(){
  if(!state.admin||!connected){state.emailSettings=null;state.emailSettingsReady=false;return;}
  try{
-  const settings=await rpc('gq_admin_email_settings_v45',{},true);
+  const settings=await rpc('gq_admin_email_settings_v52',{},true);
   if(!settings||typeof settings!=='object')throw Error('이메일 설정 응답이 올바르지 않아요.');
   state.emailSettings=settings;state.emailSettingsReady=true;state.emailSettingsError='';
  }catch(e){
@@ -3042,28 +3042,22 @@ function renderStoreSizeChartEditor(store){
 }
 function renderEmailNotificationSettings(){
  const s=state.emailSettings;
- if(!state.emailSettingsReady)return `<section class="card admin-notification-settings"><h3>이메일 자동 알림 설정</h3><p class="smallnote">메일 발송 설정을 확인하지 못했어요. ${esc(state.emailSettingsError||'로그인 후 다시 확인해 주세요.')}</p><button class="btn sm secondary" type="button" data-action="reload-email-settings">설정 다시 불러오기</button></section>`;
+ if(!state.emailSettingsReady)return `<section class="card admin-notification-settings"><h3>Gmail 고객 자동 안내</h3><p class="smallnote">발송 상태를 확인하지 못했어요. ${esc(state.emailSettingsError||'로그인 후 다시 확인해 주세요.')}</p><button class="btn sm secondary" type="button" data-action="reload-email-settings">상태 다시 확인</button></section>`;
+ const ready=Boolean(s.connected);
  return `<section class="card admin-notification-settings">
-  <h3>이메일 자동 알림 설정</h3>
-  <p>견적 완료, 견적·주문 금액 수정, 상품 등록 완료·반려, 주문 확정·취소 및 배송 진행상태 변경 때 신청자의 이메일로 안내해요. 이미 안내한 견적의 가격을 여러 번 수정하면 약 90초 동안 모아 한 통으로 안내해요.</p>
-  ${s.needs_verified_domain?`<div class="noticefail admin-mail-blocker"><b>이메일 전송 불가 · 발신 도메인 인증 필요</b><p>현재 등록된 ${esc(s.from_email||'발신 주소')}는 Resend에서 인증할 수 없는 개인 메일 도메인이에요. 실제 발송 요청도 403 오류로 거부됐어요. Gmail·네이버 이메일 대신 본인이 소유한 도메인을 Resend에서 인증하고, 그 도메인의 발신 주소(예: notice@내도메인.com)로 변경해 주세요.</p></div>`:''}
-  ${s.last_failure?`<p class="admin-mail-recent-error"><b>최근 이메일 발송 실패:</b> ${esc(s.last_failure)}</p>`:''}
-  <div class="admin-mail-status"><strong>${s.needs_verified_domain?'발신 차단 · 도메인 인증 필요':s.enabled?'자동 발송 설정 켜짐':'자동 발송 꺼짐'}</strong>
-   <span>${s.configured?'메일 서비스 키 등록됨':'메일 서비스 키 미등록'}</span></div>
-  <form id="email-settings-form">
-   <label class="label">발신 이메일 주소 (인증한 내 도메인만 사용 · Gmail/네이버 불가)
-    <input name="from_email" type="email" autocomplete="off" maxlength="254" value="${esc(s.from_email||'')}" placeholder="notice@yourdomain.com"></label>
-   <label class="label">Resend API 키 ${s.configured?'(이미 등록됨 · 변경할 때만 입력)':'(최초 등록 필요)'}
-    <input name="api_key" type="password" autocomplete="new-password" spellcheck="false" placeholder="re_..." value=""></label>
-   <label class="stageradio"><input name="enabled" type="checkbox" ${s.enabled?'checked':''}> 상태 변경 자동 이메일 발송 사용</label>
-   <button type="submit" class="btn block">이메일 발송 설정 저장</button>
+  <h3>Gmail 고객 자동 안내</h3>
+  <p>미니예나 신청 접수, 견적 완료 및 금액 변경, 상품등록 승인·반려, 주문 확정·취소, 배송 진행 상태를 구매자가 입력한 이메일 주소로 알려줘요. 발신자는 기존에 사용하던 Gmail 계정입니다.</p>
+  <div class="admin-mail-status"><strong>${ready?(s.enabled?'Gmail 연결 완료 · 자동 발송 켜짐':'Gmail 연결 완료 · 자동 발송 꺼짐'):'Gmail 연결 준비 중'}</strong><span>발신: ${esc(s.from_email||'기존 Gmail 계정')}</span></div>
+  ${!ready?`<div class="admin-mail-blocker"><b>Google Apps Script 배포 확인이 필요해요.</b><p>기존 Gmail 웹앱에 고객 메일 통합코드를 반영하고 같은 배포를 새 버전으로 업데이트하면 서버가 자동으로 연결 상태를 확인해요. 관리자 알림과 롯데택배 기능은 유지돼요.</p><p>${esc(s.blocked_reason||'메일 연결을 확인 중이에요.')}</p></div>`:''}
+  <form id="gmail-settings-form">
+   <label class="stageradio"><input name="enabled" type="checkbox" ${s.enabled?'checked':''}> 고객에게 상태 변경 이메일 자동 발송 사용</label>
+   <button type="submit" class="btn block">자동 발송 설정 저장</button>
   </form>
-  <p class="smallnote">Resend에서 발송용 도메인을 먼저 인증하고 API 키를 발급받아 등록해 주세요. API 키는 서버의 암호화 저장소에만 보관되고 이 화면에는 다시 표시되지 않아요.</p>
-  <div class="row wrap"><a href="https://resend.com/domains" target="_blank" rel="noopener noreferrer">Resend 도메인 인증</a><a href="https://resend.com/api-keys" target="_blank" rel="noopener noreferrer">API 키 발급</a></div>
-  <div class="admin-mail-queue"><span>대기 중 <b>${Number(s.pending)||0}건</b></span><span>발송 서비스 접수 <b>${Number(s.sent)||0}건</b></span><span>오류 <b>${Number(s.failed)||0}건</b></span></div>
-  ${Number(s.failed)>0?`<button class="btn sm secondary" type="button" data-action="retry-failed-email" ${s.needs_verified_domain?'disabled':''}>오류 메일 다시 시도</button>`:''}
-  ${Number(s.failed)>0&&s.needs_verified_domain?'<p class="smallnote">발신 도메인을 인증한 뒤 기존 실패 메일을 다시 전송할 수 있어요.</p>':''}
-  <p class="smallnote">서버가 약 1분마다 발송을 처리해요. 접수 건수는 메일 서비스의 발송 요청 성공 기준이며 실제 수신함 도착 여부와 다를 수 있어요. 기존 신청자의 이메일을 수정해도 과거 알림은 자동 발송되지 않아요.</p>
+  <div class="admin-mail-queue"><span>대기 중 <b>${Number(s.pending)||0}건</b></span><span>Gmail 발송 성공 <b>${Number(s.sent)||0}건</b></span><span>오류 <b>${Number(s.failed)||0}건</b></span></div>
+  ${s.last_failure?`<p class="admin-mail-recent-error"><b>최근 발송 실패:</b> ${esc(s.last_failure)}</p>`:''}
+  ${Number(s.failed)>0?`<button class="btn sm secondary" type="button" data-action="retry-failed-email" ${!ready?'disabled':''}>오류 메일 다시 시도</button>`:''}
+  <button class="btn sm secondary" type="button" data-action="reload-email-settings">Gmail 연결 상태 새로고침</button>
+  <p class="smallnote">서버가 약 1분 간격으로 발송합니다. Gmail 일일 전송 한도가 적용되며, 발송 성공은 수신함 도착을 보장하지 않습니다. 고객에게 안내할 이메일 주소는 각 견적·상품 신청에서 수정할 수 있어요.</p>
  </section>`;
 }
 function renderAdminSettings(){return `${renderEmailNotificationSettings()}<div class="card hero-photo-settings"><h3>메인 사진 관리</h3><p class="smallnote">쇼핑몰 첫 화면의 큰 사진을 직접 변경할 수 있어요. 상품 대표사진과는 별개예요.</p><div class="hero-settings-preview">${state.heroPhotoUrl?`<img src="${esc(state.heroPhotoUrl)}" alt="현재 메인 사진">`:'<div class="hero-settings-placeholder">별도 메인 사진이 없어요.<br>현재는 등록된 상품 사진이 자동으로 표시돼요.</div>'}</div><form id="hero-photo-form"><label class="label">새 메인 사진 선택<input type="file" name="hero_photo" id="hero-photo-input" accept="image/*" required></label><p class="smallnote">세로형 사진을 추천해요. 원본이 커도 자동으로 크기를 줄여 저장해요.</p><button class="btn block" type="submit">메인 사진 변경하기</button></form>${state.heroPhotoUrl?'<button class="btn block secondary" style="margin-top:9px" type="button" data-action="reset-hero-photo">기존 자동 사진으로 되돌리기</button>':''}</div><div class="card"><h3>고객에게 보낼 주소</h3><p class="smallnote">상품 고르고 견적 요청을 보낼 수 있는 링크예요.</p><div class="info nooverflow">${esc(publicLink())}</div><button class="btn block" data-action="copy-shop-link">주문 링크 복사</button><div class="separator"></div><button class="btn block secondary" data-action="export-csv">주문 내역 CSV 저장</button>${connected?'<button class="btn block neutral" style="margin-top:9px" data-action="logout">관리자 로그아웃</button>':''}<p class="smallnote">가격·주문별 배송비·품절·상품 준비·입금 상태는 관리자 전용입니다. 아직 견적만 요청한 상품은 확정 주문 수량에 포함되지 않아요.</p></div>`}
@@ -3123,7 +3117,7 @@ if(m.type==='cart'){return wrap('견적 요청 장바구니',`<div class="cart-r
 <button type="button" class="btn block cart-review-proceed" data-action="cart-checkout">다음: 견적 요청 정보 입력하기 →</button>
 <details class="cart-review-details" id="cart-review-details">
 <summary>주문자·수령 정보 입력 <span class="cart-review-expand">펼쳐서 입력하기 ↓</span></summary>
-<div class="cart-review-checkout-form"><div class="smallnote">견적만 요청하는 단계예요. 최종 주문은 견적 확인 후 별도로 진행돼요.</div><form id="request"><label class="label">주문자 이름<input name="name" maxlength="40" required placeholder="예: 지현"></label><label class="label">아기 이름 또는 태명 (필수)<input name="baby" maxlength="40" required placeholder="예: 예나, 토리"></label><label class="label">휴대폰 번호 (필수 · 주문조회용)<input name="contact" type="tel" inputmode="tel" autocomplete="tel-national" maxlength="15" required placeholder="예: 010-0000-0000"></label><label class="label">이메일 주소 (필수 · 견적 및 주문 상태 안내)<input name="email" type="email" inputmode="email" autocomplete="email" maxlength="254" required placeholder="example@gmail.com"></label><p class="smallnote">견적 완료와 이후 주문 진행 상태를 이메일로 안내해요. 실제 이메일 발송은 판매자 발송 서비스 설정 후 시작돼요.</p><label class="label">주문조회 비밀번호 (숫자 6자리 · 필수)<input name="lookup_pin" type="password" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" autocomplete="off" required placeholder="6자리 숫자"></label><label class="label">주문조회 비밀번호 확인<input name="lookup_pin_confirm" type="password" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" autocomplete="off" required placeholder="다시 입력"></label><p class="smallnote">문자 발송은 없어요. 다른 브라우저에서 이름·휴대폰 번호와 이 비밀번호로 주문을 찾을 수 있어요. 다음 주문에도 같은 비밀번호를 사용하면 한꺼번에 조회돼요.</p><div class="separator"></div><label class="label">수령방식 (필수)<select name="delivery_method" id="deliveryMethod" required><option value="">수령방식을 선택해 주세요</option><option value="pickup">직접수령 (배송비 없음)</option><option value="courier">택배수령</option></select></label><div id="courierFields" class="hidden delivery-fields"><div class="info">택배로 받을 경우 아래 주소로 배송돼요. 묶음배송은 이후 관리자가 같은 구매자의 주문을 확인하고 설정해요.</div><label class="label">받는 사람<input name="recipient_name" maxlength="80" autocomplete="name" data-courier-required placeholder="받는 사람 이름" disabled></label><div class="address-tools"><button class="btn secondary" type="button" data-action="search-address">🔎 주소 검색</button><button class="textbutton address-manual" type="button" data-action="manual-address">주소 직접 입력</button></div><div class="postcode-search hidden" data-postcode-panel><div class="row between"><b>우편번호·주소 찾기</b><button type="button" class="btn sm neutral" data-action="close-address-search">닫기</button></div><div class="address-search-hint">도로명이나 건물 이름을 검색하고 주소를 선택해 주세요.</div><div class="postcode-mount" data-postcode-mount></div></div><label class="label">우편번호 (5자리)<input name="postal_code" readonly data-address-postal inputmode="numeric" maxlength="5" pattern="[0-9]{5}" data-courier-required placeholder="예: 34123" disabled></label><label class="label">주소<input name="address_line1" readonly data-address-primary maxlength="250" data-courier-required placeholder="도로명주소 또는 지번주소" disabled></label><label class="label">상세주소 (선택)<input name="address_line2" maxlength="250" placeholder="동·호수 등" disabled></label><label class="label">배송 요청사항 (선택)<input name="delivery_note" maxlength="200" placeholder="예: 문 앞에 놓아주세요" disabled></label></div><label class="label">요청 메모 (선택)<textarea name="note" maxlength="300" placeholder="거래처에 확인할 내용"></textarea></label><div class="info">지금은 <b>가격만 문의하는 견적 요청</b>이에요. 아직 주문이 확정되지 않아요. 제출 후 나오는 <b>고유 견적 링크를 꼭 보관</b>해 주세요. 같은 이름으로 다시 요청해도 자동으로 합쳐지지 않아요.</div><button class="btn block" type="submit">전체 ${cartCount()}개 견적 요청하기</button></form></div>
+<div class="cart-review-checkout-form"><div class="smallnote">견적만 요청하는 단계예요. 최종 주문은 견적 확인 후 별도로 진행돼요.</div><form id="request"><label class="label">주문자 이름<input name="name" maxlength="40" required placeholder="예: 지현"></label><label class="label">아기 이름 또는 태명 (필수)<input name="baby" maxlength="40" required placeholder="예: 예나, 토리"></label><label class="label">휴대폰 번호 (필수 · 주문조회용)<input name="contact" type="tel" inputmode="tel" autocomplete="tel-national" maxlength="15" required placeholder="예: 010-0000-0000"></label><label class="label">이메일 주소 (필수 · 견적 및 주문 상태 안내)<input name="email" type="email" inputmode="email" autocomplete="email" maxlength="254" required placeholder="example@gmail.com"></label><p class="smallnote">견적 접수, 견적 완료와 이후 주문 진행 상태를 기존 Gmail 주소로 안내해요. Gmail 연동이 완료된 후 실제 발송돼요.</p><label class="label">주문조회 비밀번호 (숫자 6자리 · 필수)<input name="lookup_pin" type="password" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" autocomplete="off" required placeholder="6자리 숫자"></label><label class="label">주문조회 비밀번호 확인<input name="lookup_pin_confirm" type="password" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" autocomplete="off" required placeholder="다시 입력"></label><p class="smallnote">문자 발송은 없어요. 다른 브라우저에서 이름·휴대폰 번호와 이 비밀번호로 주문을 찾을 수 있어요. 다음 주문에도 같은 비밀번호를 사용하면 한꺼번에 조회돼요.</p><div class="separator"></div><label class="label">수령방식 (필수)<select name="delivery_method" id="deliveryMethod" required><option value="">수령방식을 선택해 주세요</option><option value="pickup">직접수령 (배송비 없음)</option><option value="courier">택배수령</option></select></label><div id="courierFields" class="hidden delivery-fields"><div class="info">택배로 받을 경우 아래 주소로 배송돼요. 묶음배송은 이후 관리자가 같은 구매자의 주문을 확인하고 설정해요.</div><label class="label">받는 사람<input name="recipient_name" maxlength="80" autocomplete="name" data-courier-required placeholder="받는 사람 이름" disabled></label><div class="address-tools"><button class="btn secondary" type="button" data-action="search-address">🔎 주소 검색</button><button class="textbutton address-manual" type="button" data-action="manual-address">주소 직접 입력</button></div><div class="postcode-search hidden" data-postcode-panel><div class="row between"><b>우편번호·주소 찾기</b><button type="button" class="btn sm neutral" data-action="close-address-search">닫기</button></div><div class="address-search-hint">도로명이나 건물 이름을 검색하고 주소를 선택해 주세요.</div><div class="postcode-mount" data-postcode-mount></div></div><label class="label">우편번호 (5자리)<input name="postal_code" readonly data-address-postal inputmode="numeric" maxlength="5" pattern="[0-9]{5}" data-courier-required placeholder="예: 34123" disabled></label><label class="label">주소<input name="address_line1" readonly data-address-primary maxlength="250" data-courier-required placeholder="도로명주소 또는 지번주소" disabled></label><label class="label">상세주소 (선택)<input name="address_line2" maxlength="250" placeholder="동·호수 등" disabled></label><label class="label">배송 요청사항 (선택)<input name="delivery_note" maxlength="200" placeholder="예: 문 앞에 놓아주세요" disabled></label></div><label class="label">요청 메모 (선택)<textarea name="note" maxlength="300" placeholder="거래처에 확인할 내용"></textarea></label><div class="info">지금은 <b>가격만 문의하는 견적 요청</b>이에요. 아직 주문이 확정되지 않아요. 제출 후 나오는 <b>고유 견적 링크를 꼭 보관</b>해 주세요. 같은 이름으로 다시 요청해도 자동으로 합쳐지지 않아요.</div><button class="btn block" type="submit">전체 ${cartCount()}개 견적 요청하기</button></form></div>
 </details></div>`:''}`)}
 if(m.type==='store'){const s=state.stores.find(x=>x.id===m.id);return wrap(s?'가게 수정':'가게 등록',`<form id="store-form"><label class="label">남대문 가게 이름<input name="name" maxlength="100" required value="${esc(s?.name||'')}" placeholder="예: 동대문상회"></label><label class="stageradio"><input type="checkbox" name="active" ${s?.active===false?'':'checked'}> 주문자 화면에 표시</label><button class="btn block" type="submit">가게 저장</button></form>${s?renderStoreSizeChartEditor(s):''}`)}
 if(m.type==='product'){const pr=selectedProd(m.id);let lines=Object.entries(pr?.options||{}).map(([c,sz])=>c+': '+sz.join(', ')).join('\n');return wrap(pr?'상품 수정':'상품 등록',`<form id="product-form"><label class="label">거래처(가게)<select name="store" required>${state.stores.map(st=>`<option value="${st.id}" ${pr?.store_id===st.id?'selected':''}>${esc(st.name)}</option>`).join('')}</select></label><label class="label">옷 이름<input name="name" maxlength="100" required value="${esc(pr?.name||'')}" placeholder="예: 하트호피 전신슈트"></label>${productCategoryInput(pr?.category,!pr||Boolean(pr.category))}${renderAdminPhotoWorkspace()}${bulkOptionsBuilder()}<label class="label">완성된 색상별 옵션 (확인·수정 가능)</label><textarea name="options" required rows="6" placeholder="색상과 사이즈 입력 후 일괄 적용을 눌러 주세요.">${esc(lines)}</textarea><p class="help">색상별 사이즈가 다르면 아래에서 그 줄만 수정하면 돼요.</p>${privateProductFields(pr?.id)}<label class="stageradio" style="margin:15px 0"><input type="checkbox" name="published" ${pr?.published===false?'':'checked'}> 주문자 화면에 공개</label><label class="stageradio"><input type="checkbox" name="is_sold_out" ${pr?.is_sold_out?'checked':''}> 품절 표시 (전시해도 주문 불가)</label></form>`,true)}
@@ -3762,7 +3756,8 @@ if(a==='reload-email-settings'){
 }
 if(a==='retry-failed-email'){
  if(!state.admin)throw Error('관리자 로그인이 필요해요.');
- if(!window.confirm('발송 오류가 난 알림 메일을 다시 발송 예약할까요? 메일 서비스 설정을 먼저 확인해 주세요.'))return;
+ if(!state.emailSettings?.connected)throw Error('Gmail 연결 확인이 끝난 후 다시 시도해 주세요.');
+ if(!window.confirm('발송 오류가 난 알림 메일을 다시 발송 예약할까요?'))return;
  const count=await rpc('gq_admin_retry_customer_emails_v46',{},true);
  await loadAdminEmailSettings();render();
  notif('오류 메일 '+Number(count||0)+'건을 재시도 대기열에 넣었어요.');
@@ -3774,11 +3769,12 @@ if(a==='send-current-email'){
  if(!['quote','product_request'].includes(kind)||!target)throw Error('알림 대상을 찾지 못했어요.');
  const obj=kind==='quote'?state.quotes.find(x=>x.id===target):state.requests.find(x=>x.id===target);
  if(!obj?.customer_email)throw Error('이메일 주소부터 저장해 주세요.');
+ if(!state.emailSettings?.connected)throw Error('Gmail 연결 확인 후 이메일을 발송할 수 있어요.');
  if(!window.confirm('현재 상태 이메일을 '+obj.customer_email+' 주소로 다시 발송 예약할까요?'))return;
  const saved=await rpc('gq_admin_queue_current_email_v45',{p_kind:kind,p_id:target},true);
  if(saved!==true)throw Error('이메일 예약 결과를 확인하지 못했어요.');
  await loadAdminEmailSettings();render();
- notif('이메일 발송을 예약했어요. 발송 서비스 설정 후 약 1분 단위로 전송돼요.');
+ notif('Gmail 이메일 발송을 예약했어요. 약 1분 간격으로 전송돼요.');
  return;
 }
 if(a==='supplier-bulk-clear'){
@@ -4101,7 +4097,7 @@ else if(a==='suggest-product'){modalOpen('suggest')}else if(a==='approve-request
  }
  await copy(link);notif('링크를 복사했어요. 카톡 나와의 채팅에 붙여넣어 보관해 주세요.');
 }else if(a==='copy-track'){await copy(trackLink(state.trackId,state.trackToken))}else if(a==='load-track'){refreshFullOrderPage();return;}else if(a==='copy-quote'){await copy(quoteText(state.quotes.find(q=>q.id===id)))}else if(a==='copy-customer-link'){const q=state.quotes.find(q=>q.id===id);await copy(trackLink(q.id,q.lookup_token))}else if(a==='publish-quote'){if(!window.confirm('가격 확인을 마쳤나요? 고객에게 견적을 보여줍니다.'))return;await adminPublish(id);await loadAdmin();notif('견적을 공개했어요')}else if(a==='confirm-quote'){if(!window.confirm('이 견적으로 최종 주문을 확정할까요?'))return;await confirmFinalQuote();notif('최종 주문이 확정됐어요!')}else if(a==='export-csv'){csv()}else if(a==='copy-vendors'){await copy(vendorText())}else if(a==='logout'){session=null;localStorage.removeItem(SESS);state.admin=false;state.productPrivate={};state.productPrivateReady=false;render()} }catch(ex){notif(errorText(ex))}}
-async function submit(e){const f=e.target;if(!f.dataset.sizeChartForm&&!f.dataset.customerEmail&&!['email-settings-form','hero-photo-form','reject-request-form','admin-pin-form','pin-register-form','pin-lookup-form','import-track-form','pick','request','store-form','product-form','login','suggest-form','approve-form','bundle-form','edit-delivery-form','bulk-supplier-shipping-form'].includes(f.id)&&!f.dataset.price&&!f.dataset.payment&&!f.dataset.shipping&&!f.dataset.supplierShipping&&!f.dataset.ship&&!f.dataset.bundleShip)return;e.preventDefault();if(busy)return;busy=true;const data=new FormData(f);try{if(f.id==='bulk-supplier-shipping-form'){
+async function submit(e){const f=e.target;if(!f.dataset.sizeChartForm&&!f.dataset.customerEmail&&!['gmail-settings-form','hero-photo-form','reject-request-form','admin-pin-form','pin-register-form','pin-lookup-form','import-track-form','pick','request','store-form','product-form','login','suggest-form','approve-form','bundle-form','edit-delivery-form','bulk-supplier-shipping-form'].includes(f.id)&&!f.dataset.price&&!f.dataset.payment&&!f.dataset.shipping&&!f.dataset.supplierShipping&&!f.dataset.ship&&!f.dataset.bundleShip)return;e.preventDefault();if(busy)return;busy=true;const data=new FormData(f);try{if(f.id==='bulk-supplier-shipping-form'){
  if(!state.admin||!state.supplierBatchesReady)throw Error('관리자 배송비 배분 현황을 먼저 불러와 주세요.');
  const value=String(data.get('bulk_supplier_total')??'').trim();
  if(!/^(0|[1-9][0-9]{0,6})$/.test(value)||Number(value)>1000000)throw Error('거래처 배송비 총액은 0~100만원으로 입력해 주세요.');
@@ -4136,14 +4132,12 @@ async function submit(e){const f=e.target;if(!f.dataset.sizeChartForm&&!f.datase
  await saveAdminCustomerEmail(kind,id,data.get('email'));
  await loadAdmin();
  notif('안내 이메일 주소를 저장했어요. 이후 상태 변경 알림부터 적용돼요.');
-}else if(f.id==='email-settings-form'){
+}else if(f.id==='gmail-settings-form'){
  if(!state.admin)throw Error('관리자 로그인이 필요해요.');
- const from=normalizeCustomerEmail(data.get('from_email'),!data.has('enabled'));
- const secret=String(data.get('api_key')||'').trim();
- const saved=await rpc('gq_admin_configure_email_v45',{p_from_email:from,p_api_key:secret,p_enabled:data.has('enabled')},true);
- if(saved!==true)throw Error('발송 설정 저장 결과를 확인할 수 없어요.');
+ const saved=await rpc('gq_admin_set_gmail_enabled_v52',{p_enabled:data.has('enabled')},true);
+ if(saved!==true)throw Error('Gmail 자동 발송 설정을 저장하지 못했어요.');
  await loadAdminEmailSettings();render();
- notif('이메일 자동 알림 설정을 저장했어요.');
+ notif('Gmail 고객 자동 알림 설정을 저장했어요.');
 }else if(f.id==='reject-request-form'){
  if(!state.admin||state.modal?.type!=='reject-request')throw Error('관리자 반려 창을 확인해 주세요.');
  const id=state.modal.id,reason=String(data.get('reason')||''),detail=String(data.get('detail')||'');

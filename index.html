@@ -1175,6 +1175,9 @@ body:has(.overlay) .floating-actions{opacity:0;visibility:hidden;pointer-events:
 .admin-mail-status strong{font-size:13px}
 .admin-mail-status span{font-size:11px;color:#777}
 .admin-mail-queue{display:flex;flex-wrap:wrap;gap:12px;margin:14px 0;font-size:11px;color:#555}
+.admin-mail-blocker{padding:12px;margin:12px 0;border:1px solid #c99b93;background:#fff9f7;color:#7a3025;font-size:12px;line-height:1.7}
+.admin-mail-blocker p{margin:7px 0 0;color:#7a3025;line-height:1.65}
+.admin-mail-recent-error{color:#9a412e;font-size:12px;line-height:1.6;margin:10px 0}
 .admin-mail-queue b{color:#111}
 @media(max-width:390px){.admin-customer-email-form{grid-template-columns:minmax(0,1fr)}.admin-customer-email-form .btn{width:100%}}
 
@@ -3042,11 +3045,13 @@ function renderEmailNotificationSettings(){
  if(!state.emailSettingsReady)return `<section class="card admin-notification-settings"><h3>이메일 자동 알림 설정</h3><p class="smallnote">메일 발송 설정을 확인하지 못했어요. ${esc(state.emailSettingsError||'로그인 후 다시 확인해 주세요.')}</p><button class="btn sm secondary" type="button" data-action="reload-email-settings">설정 다시 불러오기</button></section>`;
  return `<section class="card admin-notification-settings">
   <h3>이메일 자동 알림 설정</h3>
-  <p>견적 완료, 상품 등록 완료·반려, 주문 확정·취소 및 배송 진행상태 변경 때 신청자의 이메일로 안내해요.</p>
-  <div class="admin-mail-status"><strong>${s.enabled?'자동 발송 켜짐':'자동 발송 꺼짐'}</strong>
+  <p>견적 완료, 견적·주문 금액 수정, 상품 등록 완료·반려, 주문 확정·취소 및 배송 진행상태 변경 때 신청자의 이메일로 안내해요. 이미 안내한 견적의 가격을 여러 번 수정하면 약 90초 동안 모아 한 통으로 안내해요.</p>
+  ${s.needs_verified_domain?`<div class="noticefail admin-mail-blocker"><b>이메일 전송 불가 · 발신 도메인 인증 필요</b><p>현재 등록된 ${esc(s.from_email||'발신 주소')}는 Resend에서 인증할 수 없는 개인 메일 도메인이에요. 실제 발송 요청도 403 오류로 거부됐어요. Gmail·네이버 이메일 대신 본인이 소유한 도메인을 Resend에서 인증하고, 그 도메인의 발신 주소(예: notice@내도메인.com)로 변경해 주세요.</p></div>`:''}
+  ${s.last_failure?`<p class="admin-mail-recent-error"><b>최근 이메일 발송 실패:</b> ${esc(s.last_failure)}</p>`:''}
+  <div class="admin-mail-status"><strong>${s.needs_verified_domain?'발신 차단 · 도메인 인증 필요':s.enabled?'자동 발송 설정 켜짐':'자동 발송 꺼짐'}</strong>
    <span>${s.configured?'메일 서비스 키 등록됨':'메일 서비스 키 미등록'}</span></div>
   <form id="email-settings-form">
-   <label class="label">발신 이메일 주소 (Resend에서 인증한 도메인)
+   <label class="label">발신 이메일 주소 (인증한 내 도메인만 사용 · Gmail/네이버 불가)
     <input name="from_email" type="email" autocomplete="off" maxlength="254" value="${esc(s.from_email||'')}" placeholder="notice@yourdomain.com"></label>
    <label class="label">Resend API 키 ${s.configured?'(이미 등록됨 · 변경할 때만 입력)':'(최초 등록 필요)'}
     <input name="api_key" type="password" autocomplete="new-password" spellcheck="false" placeholder="re_..." value=""></label>
@@ -3056,7 +3061,8 @@ function renderEmailNotificationSettings(){
   <p class="smallnote">Resend에서 발송용 도메인을 먼저 인증하고 API 키를 발급받아 등록해 주세요. API 키는 서버의 암호화 저장소에만 보관되고 이 화면에는 다시 표시되지 않아요.</p>
   <div class="row wrap"><a href="https://resend.com/domains" target="_blank" rel="noopener noreferrer">Resend 도메인 인증</a><a href="https://resend.com/api-keys" target="_blank" rel="noopener noreferrer">API 키 발급</a></div>
   <div class="admin-mail-queue"><span>대기 중 <b>${Number(s.pending)||0}건</b></span><span>발송 서비스 접수 <b>${Number(s.sent)||0}건</b></span><span>오류 <b>${Number(s.failed)||0}건</b></span></div>
-  ${Number(s.failed)>0?`<button class="btn sm secondary" type="button" data-action="retry-failed-email">오류 메일 다시 시도</button>`:''}
+  ${Number(s.failed)>0?`<button class="btn sm secondary" type="button" data-action="retry-failed-email" ${s.needs_verified_domain?'disabled':''}>오류 메일 다시 시도</button>`:''}
+  ${Number(s.failed)>0&&s.needs_verified_domain?'<p class="smallnote">발신 도메인을 인증한 뒤 기존 실패 메일을 다시 전송할 수 있어요.</p>':''}
   <p class="smallnote">서버가 약 1분마다 발송을 처리해요. 접수 건수는 메일 서비스의 발송 요청 성공 기준이며 실제 수신함 도착 여부와 다를 수 있어요. 기존 신청자의 이메일을 수정해도 과거 알림은 자동 발송되지 않아요.</p>
  </section>`;
 }
@@ -4233,10 +4239,19 @@ else if(f.dataset.price){
   const oldTotal=totalDue(q),newTotal=oldTotal+(newPrice-Number(item.unit_price??0))*item.quantity;
   if(!window.confirm(`확정 주문의 개당 가격을 ${item.unit_price==null?'미입력':money(item.unit_price)} → ${money(newPrice)}으로 수정할까요?\n결제금액: ${money(oldTotal)} → ${money(newTotal)}\n구매자에게 안내하고 입금·환불 차액을 꼭 확인하세요.`))return;
  }
+ const changed=item.unit_price!==newPrice;
+ const recipientSaved=Boolean(q.customer_email);
+ const notifiedStatus=['quoted','confirmed'].includes(q.status);
  const result=await adminItemPrice(id,newPrice);
  await loadAdmin();
  const synced=Number(result?.auto_updated)||0;
- notif(synced>0?`가격 저장 완료 · 같은 상품의 미입력 주문 ${synced}건에도 적용했어요.`:'가격을 저장했어요. 같은 상품의 다음 견적에도 자동 적용돼요.');
+ const autoNotice=changed&&notifiedStatus?
+  !recipientSaved?'이 주문은 수신 이메일이 없어 가격 변경 메일이 생성되지 않았어요. 이메일을 등록해 주세요.':
+  state.emailSettings?.needs_verified_domain?'가격 변경 메일은 대기 중이지만, 발신 도메인 미인증으로 전송되지 않아요. 관리자 설정에서 발신 도메인을 변경해 주세요.':
+  state.emailSettings?.enabled?'가격 변경 알림이 예약됐어요. 여러 번 수정한 경우 약 90초간 모아 발송해요.':
+  '가격 변경 메일이 대기 중이지만 자동 발송이 꺼져 있어요. 관리자 이메일 설정을 확인해 주세요.':'';
+ const savedMsg=synced>0?`가격 저장 완료 · 다른 견적의 미입력 상품 ${synced}건에도 반영했어요.`:'가격을 저장했어요.';
+ notif(autoNotice?savedMsg+' '+autoNotice:savedMsg);
 }
 else if(f.dataset.payment){const paid=Number(data.get('paid')),refunded=Number(data.get('refunded'));if(!Number.isInteger(paid)||!Number.isInteger(refunded)||paid<0||refunded<0)throw Error('금액을 확인해 주세요');await adminPayment(f.dataset.payment,paid,refunded);await loadAdmin();notif('입금 기록 완료')}
 }catch(ex){notif(errorText(ex))}finally{busy=false}}

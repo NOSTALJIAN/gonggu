@@ -76,7 +76,7 @@ CREATE OR REPLACE FUNCTION public.gq_admin_create_supplier_shipping_batch_v47(p_
  SET search_path TO ''
 AS $function$
 declare
- v_count integer:=0;v_people integer;v_share integer;
+ v_count integer:=0;v_people integer;v_share integer;v_base integer;v_remainder integer;v_person_index integer:=0;v_current_share integer;
  v_root public.gq_quotes%rowtype;v_member public.gq_quotes%rowtype;
  v_root_id uuid;v_batch_id uuid;v_contact text;v_contacts text[]:=array[]::text[];
 begin
@@ -119,9 +119,13 @@ begin
   raise exception '일부 주문이 존재하지 않아요. 새로고침해 주세요.' using errcode='22023';
  end if;
  v_share:=(p_total+v_people-1)/v_people;
+ v_base:=p_total/v_people;
+ v_remainder:=mod(p_total,v_people);
  insert into gq_private.gq_supplier_shipping_batches_v47(total,people,share)
  values(p_total,v_people,v_share) returning id into v_batch_id;
  for v_root_id in select unnest(p_root_quote_ids) order by 1 loop
+  v_person_index:=v_person_index+1;
+  v_current_share:=v_base+case when v_person_index<=v_remainder then 1 else 0 end;
   for v_member in
    select * from public.gq_quotes q
    where (q.id=v_root_id or q.bundle_parent_id=v_root_id)
@@ -140,8 +144,10 @@ begin
    values(v_batch_id,v_member.id,v_member.id=v_root_id,
     v_member.supplier_shipping_total,v_member.supplier_shipping_people);
    if v_member.id=v_root_id then
-    update public.gq_quotes set supplier_shipping_total=p_total,
-      supplier_shipping_people=v_people where id=v_member.id;
+    -- Every won is allocated exactly once. The first v_remainder buyers
+    -- (by stable UUID order) pay one more won than the others.
+    update public.gq_quotes set supplier_shipping_total=v_current_share,
+      supplier_shipping_people=1 where id=v_member.id;
    else
     update public.gq_quotes set supplier_shipping_total=0,
       supplier_shipping_people=1 where id=v_member.id;

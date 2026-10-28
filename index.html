@@ -694,6 +694,49 @@ body:has(.overlay) .floating-actions{opacity:0;visibility:hidden;pointer-events:
 .admin-date-group[open]>.admin-date-heading{border-bottom:1px solid #ededed;background:#fafafa}
 .admin-date-orders{padding:13px 11px 4px;background:#fdfdfd}
 .admin-date-orders>.card{margin:0 0 13px}
+/* Bulk supplier freight allocation: selected buyer rows and saved payment batches. */
+.admin-date-orders>.admin-order-select-row{display:flex;align-items:stretch;gap:8px;margin:0 0 12px;min-width:0}
+.admin-order-select-row>.admin-order-fold{flex:1;min-width:0;margin:0}
+.admin-order-check{display:flex;flex:0 0 40px;flex-direction:column;align-items:center;gap:4px;padding:17px 0 0;cursor:pointer;color:#6a6a6a;font-size:10px;font-weight:750;line-height:1.3}
+.admin-order-check input{appearance:auto;width:22px;height:22px;margin:0;accent-color:#171717;cursor:pointer}
+.admin-order-check.is-checked{color:#111}
+.admin-order-check.is-disabled{opacity:.32;cursor:not-allowed}
+.admin-order-check input:disabled{cursor:not-allowed}
+.admin-order-fold-batched,.admin-order-fold-ordered{display:block;font-size:10px;line-height:1.3;font-weight:760}
+.admin-order-fold-batched{color:#616161}
+.admin-order-fold-ordered{color:#275b39}
+.supplier-bulk-manager{border:1px solid #d8d8d8;padding:15px;margin:15px 0 23px}
+.supplier-bulk-heading{display:flex;align-items:baseline;justify-content:space-between;gap:9px;margin-bottom:7px}
+.supplier-bulk-heading h3{font-size:16px;font-weight:850;margin:0}
+.supplier-bulk-heading span{font-size:10px;color:#777}
+.supplier-bulk-controls{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:14px 0 11px}
+.supplier-bulk-controls strong{font-size:14px}
+.supplier-bulk-manager .label{font-size:12px}
+.supplier-bulk-manager input[name="bulk_supplier_total"]{font-size:16px;min-height:42px}
+.supplier-bulk-preview{font-size:12px;font-weight:750;line-height:1.6;background:#f7f7f7;padding:12px;margin:10px 0;overflow-wrap:anywhere}
+.supplier-bulk-manager button:disabled{opacity:.45;cursor:not-allowed}
+.supplier-bulk-list{margin-top:20px;padding-top:14px;border-top:1px solid #dcdcdc}
+.supplier-bulk-list h4{font-size:13px;margin:0 0 10px}
+.supplier-bulk-batch{border:1px solid #ddd;margin-bottom:9px;background:#fff}
+.supplier-bulk-batch>summary{display:flex;align-items:center;justify-content:space-between;gap:9px;cursor:pointer;padding:12px;list-style:none}
+.supplier-bulk-batch>summary::-webkit-details-marker{display:none}
+.supplier-bulk-batch>summary>span{display:flex;flex-direction:column;gap:5px;min-width:0}
+.supplier-bulk-batch>summary strong{font-size:12px;line-height:1.45}
+.supplier-bulk-batch>summary small{font-size:11px;color:#777;line-height:1.45}
+.supplier-bulk-batch>summary em{font-style:normal;font-size:11px;font-weight:730;white-space:nowrap}
+.supplier-bulk-batch-body{padding:11px 12px;border-top:1px solid #ececec}
+.supplier-bulk-person{display:flex;align-items:baseline;justify-content:space-between;gap:10px;border-bottom:1px solid #f0f0f0;padding:9px 0;font-size:11px}
+.supplier-bulk-person>span:first-child{font-weight:750}
+.supplier-bulk-person .is-paid{color:#285d38}
+.supplier-bulk-person .is-waiting{color:#90612e;text-align:right}
+.supplier-bulk-done{background:#f0f6f1;padding:10px;font-size:11px;color:#306444;line-height:1.65}
+.supplier-bulk-cancel{margin-top:11px}
+.supplier-shipping-optional{border:1px solid #e7e7e7;margin-top:11px;padding:8px 11px}
+.supplier-shipping-optional>summary{font-size:12px;font-weight:750;color:#777;cursor:pointer;padding:5px 0}
+.supplier-shipping-optional .supplier-shipping-form{margin-top:12px}
+.supplier-shipping-batched{margin:11px 0;padding:11px;background:#f4f5f5;border:1px solid #e1e2e2;font-size:12px;line-height:1.65;color:#333}
+@media(max-width:390px){.admin-date-orders>.admin-order-select-row{gap:5px}.admin-order-check{flex-basis:33px;font-size:9px}.admin-order-check input{width:20px;height:20px}.supplier-bulk-manager{padding:12px}.supplier-bulk-batch>summary{align-items:flex-start;flex-direction:column}}
+
 /* Independent per-customer collapsible cards in admin quote lists (v47). */
 .admin-date-orders>.admin-order-fold{margin:0 0 12px;background:#fff;border:1px solid #dedede;min-width:0}
 .admin-order-fold-heading{list-style:none;cursor:pointer;display:flex;align-items:center;gap:12px;min-height:76px;padding:14px 13px;color:#111;-webkit-tap-highlight-color:transparent}

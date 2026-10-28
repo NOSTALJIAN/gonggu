@@ -2557,13 +2557,19 @@ function adminEstimatedUnitPrice(item){
  return Number.isFinite(wholesale)&&wholesale>0?Math.round(wholesale*1.4/1000)*1000:null;
 }
 function adminPriceSummary(orders){
- const summary={estimate:0,actual:0,missingEstimates:0,missingActual:0,pricedCount:0,itemCount:0};
+ const summary={estimate:0,actual:0,wholesale:0,missingEstimates:0,missingActual:0,missingWholesale:0,pricedCount:0,itemCount:0};
  for(const q of orders){
   if(q.status==='cancelled')continue;
   for(const item of q.items||[]){
    if(item.fulfillment==='sold_out')continue;
    const qty=Number(item.quantity)||0;
    summary.itemCount++;
+   // 도매 단가는 관리자 전용 데이터에서만 읽으며, 상품 수량을 곱해 합산합니다.
+   const privateCost=item.product_id&&state.productPrivateReady?state.productPrivate?.[item.product_id]:null;
+   const rawWholesale=privateCost?.wholesale_price;
+   const wholesale=rawWholesale===null||rawWholesale===undefined||rawWholesale===''?null:Number(rawWholesale);
+   if(!state.productPrivateReady||wholesale===null||!Number.isFinite(wholesale)||wholesale<0)summary.missingWholesale++;
+   else summary.wholesale+=wholesale*qty;
    const price=adminEstimatedUnitPrice(item);
    if(price==null)summary.missingEstimates++;
    else summary.estimate+=price*qty;
@@ -2583,7 +2589,8 @@ function adminPriceTotalMarkup(orders,compact=false){
  return `<section class="admin-compare-totals ${compact?'is-compact':''}" aria-label="관리자 상품금액 비교">
   <div class="admin-compare-total-row"><span>예상가 기준 상품 총액</span><strong>${amount(t.estimate,t.missingEstimates,true)}</strong>${note(t.missingEstimates,'예상가 미등록')}</div>
   <div class="admin-compare-total-row"><span>입력 판매가 기준 상품 총액</span><strong>${amount(t.actual,t.missingActual,false)}</strong>${note(t.missingActual,'가격 미입력')}</div>
-  <p>상품 수량 반영 · 배송비 제외 · 품절·취소 제외 · 예상가는 최종 결제금액이 아니에요.</p>
+  <div class="admin-compare-total-row"><span>도매가 기준 상품 총액 (관리자 전용)</span><strong>${!state.productPrivateReady?'조회 불가':amount(t.wholesale,t.missingWholesale,false)}</strong>${note(t.missingWholesale,state.productPrivateReady?'도매가 미등록':'도매 정보 미조회')}</div>
+  <p>상품 수량 반영 · 배송비 제외 · 품절·취소 제외 · 예상가는 최종 결제금액이 아니에요. 도매가 합계는 관리자에게만 표시돼요.</p>
  </section>`;
 }
 function supplierItemProgress(i){

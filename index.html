@@ -1177,6 +1177,38 @@ body:has(.overlay) .floating-actions{opacity:0;visibility:hidden;pointer-events:
 .admin-mail-queue{display:flex;flex-wrap:wrap;gap:12px;margin:14px 0;font-size:11px;color:#555}
 .admin-mail-queue b{color:#111}
 @media(max-width:390px){.admin-customer-email-form{grid-template-columns:minmax(0,1fr)}.admin-customer-email-form .btn{width:100%}}
+
+/* Supplier-level bulk wholesale fees: group selectable order items by customer.
+   Customer order cards remain independently collapsible below this manager. */
+.supplier-bulk-customer-list{display:grid;gap:10px;max-height:510px;overflow-y:auto;-webkit-overflow-scrolling:touch;margin:12px 0;border-top:1px solid #e9e9e9;padding-top:10px}
+.supplier-bulk-store-summary{padding:9px 11px;background:#f7f7f7;font-size:12px;line-height:1.6;margin-top:10px}
+.supplier-bulk-store-summary strong{color:#111}
+.supplier-bulk-customer{border:1px solid #ddd;background:white;padding:12px 11px;min-width:0}
+.supplier-bulk-customer-header{display:flex;align-items:center;justify-content:space-between;gap:9px;margin-bottom:9px}
+.supplier-bulk-customer-header>div{display:flex;flex-direction:column;gap:3px;min-width:0}
+.supplier-bulk-customer-header strong{font-size:13px;font-weight:800;overflow-wrap:anywhere}
+.supplier-bulk-customer-header small{font-size:10px;color:#777}
+.supplier-bulk-customer-header button{max-width:165px;white-space:normal;text-align:center;line-height:1.25;padding:9px 8px}
+.supplier-bulk-item{display:flex;align-items:flex-start;gap:10px;padding:9px 5px;min-width:0;border-top:1px solid #f0f0f0;cursor:pointer}
+.supplier-bulk-item input{appearance:auto;flex:0 0 22px;width:22px;height:22px;accent-color:#111;margin:1px 0 0}
+.supplier-bulk-item input:disabled{opacity:.3;cursor:not-allowed}
+.supplier-bulk-item:has(input:disabled){opacity:.68;cursor:default}
+.supplier-bulk-item-detail{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.supplier-bulk-item-detail b{font-size:12px;line-height:1.4;font-weight:800;overflow-wrap:anywhere}
+.supplier-bulk-item-detail small{font-size:11px;color:#777;line-height:1.4}
+.supplier-bulk-item-detail .supplier-item-mark{color:#2b6440;font-weight:800}
+.supplier-bulk-items-count{margin:9px 0;overflow-wrap:anywhere;line-height:1.7}
+.supplier-bulk-manager select[data-supplier-bulk-store]{width:100%;max-width:100%;font-size:16px;box-sizing:border-box;min-height:46px}
+.supplier-shipping-batched{line-height:1.6}
+.supplier-shipping-batched>b{font-size:12px}
+.supplier-shipping-batched .smallnote{margin:4px 0}
+@media(max-width:400px){
+ .supplier-bulk-manager{padding:12px 10px}
+ .supplier-bulk-customer{padding:11px 8px}
+ .supplier-bulk-customer-header{align-items:flex-start}
+ .supplier-bulk-customer-header button{font-size:10px;max-width:140px}
+ .supplier-bulk-customer-list{max-height:450px}
+}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">

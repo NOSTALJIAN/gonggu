@@ -1228,7 +1228,7 @@ const demo=read(DEMO,initDemo());
 const saveDemo=()=>localStorage.setItem(DEMO,JSON.stringify(demo));
 let session=read(SESS,null),busy=false,refreshing=null;
 const p=new URLSearchParams(location.search);
-const state={page:['admin','track'].includes(p.get('page'))?p.get('page'):'shop',tab:'quotes',stores:[],products:[],requests:[],quotes:[],cart:read(CART,[]),modal:null,search:'',shopCategory:'all',adminCategory:'all',trackId:p.get('id')||'',trackToken:p.get('token')||'',tracking:null,receipts:read(TRACK,[]),notice:'',filter:'all',admin:false,heroPhotoUrl:null,heroStoreId:null,dateGroupsOpen:{},orderCardsOpen:{},supplierBulkSelected:new Set(),supplierBatches:[],supplierBatchesReady:false,supplierBatchesError:'',requestStatusFilter:'pending',adminCatalogView:'products',adminCatalogFilter:'all',adminProductSearch:'',productPrivate:{},productPrivateReady:false,emailSettings:null,emailSettingsReady:false,emailSettingsError:'',adminPinIds:new Set(),phoneLookupReady:null,pinLookupNotice:''};
+const state={page:['admin','track'].includes(p.get('page'))?p.get('page'):'shop',tab:'quotes',stores:[],products:[],requests:[],quotes:[],cart:read(CART,[]),modal:null,search:'',shopCategory:'all',adminCategory:'all',trackId:p.get('id')||'',trackToken:p.get('token')||'',tracking:null,receipts:read(TRACK,[]),notice:'',filter:'all',admin:false,heroPhotoUrl:null,heroStoreId:null,dateGroupsOpen:{},orderCardsOpen:{},supplierBulkSelected:new Set(),supplierBulkStoreId:'',supplierBatches:[],supplierBatchesReady:false,supplierBatchesError:'',requestStatusFilter:'pending',adminCatalogView:'products',adminCatalogFilter:'all',adminProductSearch:'',productPrivate:{},productPrivateReady:false,emailSettings:null,emailSettingsReady:false,emailSettingsError:'',adminPinIds:new Set(),phoneLookupReady:null,pinLookupNotice:''};
 
 const PRODUCT_CATEGORIES=['양말','모자','아우터','상의','하의','스커트','원피스','바디수트','세트','악세서리','잡화'];
 const validProductCategory=x=>PRODUCT_CATEGORIES.includes(String(x||'').trim());
@@ -1659,27 +1659,46 @@ function renderAdminEmailEditor(kind,item){
 async function loadAdminSupplierBatches(){
  if(!connected||!state.admin){state.supplierBatches=[];state.supplierBatchesReady=false;return;}
  try{
-  const data=await rpc('gq_admin_list_supplier_shipping_batches_v47',{},true);
-  if(!Array.isArray(data))throw Error('배송비 일괄 배분 내역을 불러오지 못했어요.');
+  const data=await rpc('gq_admin_list_supplier_item_batches_v50',{},true);
+  if(!Array.isArray(data))throw Error('거래처별 배송비 배분 내역을 불러오지 못했어요.');
   state.supplierBatches=data.sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at)));
   state.supplierBatchesReady=true;state.supplierBatchesError='';
  }catch(error){
   state.supplierBatches=[];state.supplierBatchesReady=false;
   state.supplierBatchesError=errorText(error);
-  console.warn('도매 배송비 일괄 배분 현황 조회 실패',error);
+  console.warn('거래처별 배송비 배분 조회 실패',error);
  }
 }
-function supplierBatchOfQuote(id){
- return state.supplierBatches.find(batch=>Array.isArray(batch.quote_ids)&&batch.quote_ids.includes(id));
+function supplierItemStore(item){
+ const product=state.products.find(p=>p.id===item.product_id);
+ return product?.store_id||state.stores.find(store=>store.name===item.store_name)?.id||'';
 }
-function supplierBulkRoots(){
- return [...state.supplierBulkSelected].map(id=>state.quotes.find(q=>q.id===id)).filter(Boolean);
+function supplierItemBatch(itemId){
+ return state.supplierBatches.find(b=>Array.isArray(b.item_ids)&&b.item_ids.includes(itemId));
+}
+function supplierBatchesForQuote(q){
+ return state.supplierBatches.filter(b=>
+  (b.item_ids||[]).some(id=>q.items?.some(item=>item.id===id))||
+  (b.payers||[]).some(p=>p.charged_quote_id===q.id));
+}
+function supplierBulkAvailableItem(q,item){
+ return Boolean(state.supplierBatchesReady&&supplierItemStore(item)&&
+  q.status!=='cancelled'&&item.fulfillment!=='sold_out'&&
+  !q.supplier_ordered_at&&!item.supplier_ordered_at&&!supplierItemBatch(item.id));
+}
+function supplierBulkSelectedItems(){
+ const wanted=state.supplierBulkSelected;
+ return state.quotes.flatMap(q=>(q.items||[]).filter(i=>wanted.has(i.id)).map(item=>({q,item})));
 }
 function supplierBulkSelectedInfo(){
- const roots=supplierBulkRoots();
- const phones=roots.map(q=>String(q.contact||'').replace(/\D/g,''));
- return {roots,duplicate:phones.length!==new Set(phones).size,
-  invalid:roots.some(q=>q.status==='cancelled'||q.bundle_parent_id||q.supplier_ordered_at||supplierBatchOfQuote(q.id))};
+ const selected=supplierBulkSelectedItems();
+ const storeId=state.supplierBulkStoreId;
+ const buyerKeys=[...new Set(selected.map(({q})=>String(q.contact||'').replace(/\D/g,'')))].sort();
+ const invalid=selected.length!==state.supplierBulkSelected.size||
+  selected.some(({q,item})=>!supplierBulkAvailableItem(q,item)||
+   supplierItemStore(item)!==storeId||
+   String(q.contact||'').replace(/\D/g,'').length<8);
+ return {selected,buyerKeys,people:buyerKeys.length,invalid};
 }
 function updateSupplierBulkPreview(){
  const root=app.querySelector('#supplier-bulk-manager');
@@ -1688,29 +1707,30 @@ function updateSupplierBulkPreview(){
  const submit=root.querySelector('[data-supplier-bulk-apply]');
  const chosen=root.querySelector('[data-supplier-bulk-chosen]');
  const totalInput=root.querySelector('[name="bulk_supplier_total"]');
- const {roots,duplicate,invalid}=supplierBulkSelectedInfo();
+ const {selected,people,invalid}=supplierBulkSelectedInfo();
  const total=Number(totalInput?.value||0);
  const validTotal=totalInput?.value!==''&&Number.isInteger(total)&&total>=0&&total<=1000000;
- const people=roots.length;
  const base=people&&validTotal?Math.floor(total/people):0;
  const extra=people&&validTotal?total%people:0;
- if(chosen)chosen.textContent=people+'명 선택';
- if(output)output.textContent=duplicate?'같은 구매자의 주문이 중복 선택됐어요. 한 사람당 한 건만 체크해 주세요.':
-  invalid?'선택할 수 없는 주문이 포함돼 있어요. 배분 완료·취소·도매 발주 주문을 제외해 주세요.':
-  !people?'먼저 아래 주문자의 체크박스를 선택해 주세요.':
-  !validTotal?'업체 배송비 총액을 입력해 주세요.':
+ if(chosen)chosen.textContent=people+'명 · '+selected.length+'개 상품 선택';
+ if(output)output.textContent=!state.supplierBulkStoreId?'먼저 도매 거래처를 선택해 주세요.':
+  invalid?'선택된 상품 중 다른 거래처이거나 배분할 수 없는 상품이 있어요. 체크를 다시 확인해 주세요.':
+  !selected.length?'이 거래처의 상품을 체크해 주세요. 같은 사람의 여러 상품은 한 명으로 계산해요.':
+  !validTotal?'이 거래처의 도매배송비 총액을 입력해 주세요.':
   (extra?`${extra}명 × ${money(base+1)} + ${people-extra}명 × ${money(base)}`:`${people}명 × ${money(base)}`)+
-  ' = 총 '+money(total)+' (1원도 남기지 않고 정확히 분담)';
- if(submit)submit.disabled=!state.supplierBatchesReady||!people||people>100||duplicate||invalid||!validTotal;
+  ' = '+money(total)+' · 같은 거래처 구매자는 1명으로 계산';
+ if(submit)submit.disabled=!state.supplierBatchesReady||!selected.length||
+  selected.length>300||people>100||invalid||!validTotal;
 }
 async function adminCreateSupplierBulkShipping(ids,total){
- if(!state.admin||!state.supplierBatchesReady)throw Error('관리자 로그인 후 일괄 배분 기능을 이용해 주세요.');
- if(!Array.isArray(ids)||ids.length<1||ids.length>100||!Number.isInteger(total)||total<0||total>1000000)throw Error('선택한 주문과 배송비 총액을 확인해 주세요.');
- return rpc('gq_admin_create_supplier_shipping_batch_v47',{p_root_quote_ids:ids,p_total:total},true);
+ if(!state.admin||!state.supplierBatchesReady)throw Error('관리자 로그인 후 배송비를 배분해 주세요.');
+ if(!Array.isArray(ids)||ids.length<1||ids.length>300||
+   !Number.isInteger(total)||total<0||total>1000000)throw Error('선택한 거래처 상품과 도매배송비를 확인해 주세요.');
+ return rpc('gq_admin_create_supplier_item_batch_v50',{p_item_ids:ids,p_total:total},true);
 }
 async function adminMarkSupplierBatchOrdered(id){
  if(!state.admin)throw Error('관리자 권한이 필요해요.');
- return rpc('gq_admin_mark_supplier_batch_ordered_v47',{p_batch_id:id},true);
+ return rpc('gq_admin_mark_supplier_item_batch_ordered_v50',{p_batch_id:id},true);
 }
 async function loadAdmin(){if(!connected){state.admin=true;state.productPrivate={};state.productPrivateReady=false;state.stores=clone(demo.stores);state.products=clone(demo.products);state.requests=clone(demo.requests||[]);syncDemo();render();return}if(!session){state.admin=false;state.productPrivate={};state.productPrivateReady=false;render();return}try{const auth=await rpc('gq_is_admin',{},true);if(!auth)throw Error('관리자 권한이 없습니다');state.admin=true;await loadCatalog(true);const [qq,ii,rr]=await Promise.all([api('/rest/v1/gq_quotes?select=*&order=created_at.desc',{admin:true}),api('/rest/v1/gq_quote_items?select=*&order=created_at.asc',{admin:true}),api('/rest/v1/gq_product_requests?select=*&order=created_at.desc',{admin:true})]);state.quotes=qq.map(q=>({...q,items:ii.filter(i=>i.quote_id===q.id)}));state.requests=rr;await loadAdminProductPrivate();await loadAdminSupplierBatches();render();await Promise.all([loadAdminShipping(),loadAdminPinStatus(),loadAdminEmailSettings()]);render()}catch(e){state.admin=false;render();throw e}}
 async function loadPublic(){await loadCatalog(false);render()}

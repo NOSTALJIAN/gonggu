@@ -694,6 +694,28 @@ body:has(.overlay) .floating-actions{opacity:0;visibility:hidden;pointer-events:
 .admin-date-group[open]>.admin-date-heading{border-bottom:1px solid #ededed;background:#fafafa}
 .admin-date-orders{padding:13px 11px 4px;background:#fdfdfd}
 .admin-date-orders>.card{margin:0 0 13px}
+/* Independent per-customer collapsible cards in admin quote lists (v47). */
+.admin-date-orders>.admin-order-fold{margin:0 0 12px;background:#fff;border:1px solid #dedede;min-width:0}
+.admin-order-fold-heading{list-style:none;cursor:pointer;display:flex;align-items:center;gap:12px;min-height:76px;padding:14px 13px;color:#111;-webkit-tap-highlight-color:transparent}
+.admin-order-fold-heading::-webkit-details-marker{display:none}
+.admin-order-fold-heading::marker{content:''}
+.admin-order-fold-heading:focus-visible{outline:2px solid #333;outline-offset:-3px}
+.admin-order-fold-left{min-width:0;flex:1;display:flex;flex-direction:column;gap:6px;overflow-wrap:anywhere}
+.admin-order-fold-left>strong{font-size:15px;font-weight:850;line-height:1.45;letter-spacing:-.025em}
+.admin-order-fold-baby{display:inline-block;background:#f3f3f3;color:#444;padding:3px 7px;margin-left:3px;font-size:11px;font-weight:730;vertical-align:middle}
+.admin-order-fold-meta{font-size:11px;line-height:1.5;color:#777}
+.admin-order-fold-right{flex:0 1 auto;max-width:36%;display:flex;flex-direction:column;gap:6px;align-items:flex-end;text-align:right}
+.admin-order-fold-status{font-size:11px;font-weight:800;color:#444;line-height:1.45}
+.admin-order-fold-alert{font-size:10px;font-weight:750;color:#9b4e34;line-height:1.45}
+.admin-order-fold-chevron{width:9px;height:9px;flex:0 0 auto;margin-right:3px;border-right:2px solid #333;border-bottom:2px solid #333;transform:rotate(45deg);transition:transform .17s ease}
+.admin-order-fold[open]>.admin-order-fold-heading{background:#fafafa;border-bottom:1px solid #ebebeb}
+.admin-order-fold[open]>.admin-order-fold-heading .admin-order-fold-chevron{transform:rotate(225deg)}
+.admin-order-fold-body{padding:11px 10px 0;min-width:0}
+.admin-order-fold-body>.card{margin:0 0 11px}
+.admin-order-fold-body>.bundle-summary-card{margin:0 0 11px}
+@media(max-width:390px){.admin-order-fold-heading{padding:12px 10px;gap:8px}.admin-order-fold-left>strong{font-size:13px}.admin-order-fold-baby{font-size:10px;padding:2px 5px;margin-left:1px}.admin-order-fold-right{max-width:34%}.admin-order-fold-status{font-size:10px}.admin-order-fold-meta{font-size:10px}.admin-order-fold-body{padding:9px 7px 0}}
+@media(prefers-reduced-motion:reduce){.admin-order-fold-chevron{transition:none}}
+
 .admin-date-hint{color:#888;font-size:10px;line-height:1.55;margin:11px 1px 24px}
 @media(max-width:390px){.admin-date-toolbar{gap:4px}.admin-date-toolbar strong{font-size:13px}.date-all-btn{padding:7px;font-size:10px}.admin-date-heading{padding:12px}}
 @media(prefers-reduced-motion:reduce){.admin-date-chevron{transition:none}}
@@ -1163,7 +1185,7 @@ const demo=read(DEMO,initDemo());
 const saveDemo=()=>localStorage.setItem(DEMO,JSON.stringify(demo));
 let session=read(SESS,null),busy=false,refreshing=null;
 const p=new URLSearchParams(location.search);
-const state={page:['admin','track'].includes(p.get('page'))?p.get('page'):'shop',tab:'quotes',stores:[],products:[],requests:[],quotes:[],cart:read(CART,[]),modal:null,search:'',shopCategory:'all',adminCategory:'all',trackId:p.get('id')||'',trackToken:p.get('token')||'',tracking:null,receipts:read(TRACK,[]),notice:'',filter:'all',admin:false,heroPhotoUrl:null,heroStoreId:null,dateGroupsOpen:{},requestStatusFilter:'pending',adminCatalogView:'products',adminCatalogFilter:'all',adminProductSearch:'',productPrivate:{},productPrivateReady:false,emailSettings:null,emailSettingsReady:false,emailSettingsError:'',adminPinIds:new Set(),phoneLookupReady:null,pinLookupNotice:''};
+const state={page:['admin','track'].includes(p.get('page'))?p.get('page'):'shop',tab:'quotes',stores:[],products:[],requests:[],quotes:[],cart:read(CART,[]),modal:null,search:'',shopCategory:'all',adminCategory:'all',trackId:p.get('id')||'',trackToken:p.get('token')||'',tracking:null,receipts:read(TRACK,[]),notice:'',filter:'all',admin:false,heroPhotoUrl:null,heroStoreId:null,dateGroupsOpen:{},orderCardsOpen:{},requestStatusFilter:'pending',adminCatalogView:'products',adminCatalogFilter:'all',adminProductSearch:'',productPrivate:{},productPrivateReady:false,emailSettings:null,emailSettingsReady:false,emailSettingsError:'',adminPinIds:new Set(),phoneLookupReady:null,pinLookupNotice:''};
 
 const PRODUCT_CATEGORIES=['양말','모자','아우터','상의','하의','스커트','원피스','바디수트','세트','악세서리','잡화'];
 const validProductCategory=x=>PRODUCT_CATEGORIES.includes(String(x||'').trim());
@@ -2529,6 +2551,37 @@ function quoteNeedsPriceInput(q){
  return q.status!=='cancelled'&&(q.items||[]).some(i=>i.unit_price==null&&i.fulfillment!=='sold_out');
 }
 function quoteGroupNeedsPriceInput(group){return group.some(quoteNeedsPriceInput);}
+// Each customer order can be expanded independently within its received-date group.
+// Unpriced orders open by default so the admin can enter prices quickly; priced orders
+// start collapsed, keeping the list compact on mobile.
+function renderCollapsibleAdminOrder(group,section){
+ const root=group.find(q=>q.id===bundleRootId(q))||group[0];
+ const key=root.id;
+ const open=state.orderCardsOpen[key]===undefined?section==='pending':state.orderCardsOpen[key];
+ const uniqueItems=group.reduce((count,q)=>count+(q.items||[]).length,0);
+ const qty=group.reduce((count,q)=>count+(q.items||[]).reduce((sum,i)=>sum+Number(i.quantity||0),0),0);
+ const pending=group.reduce((count,q)=>count+(q.status==='cancelled'?0:(q.items||[]).filter(i=>i.unit_price==null&&i.fulfillment!=='sold_out').length),0);
+ const attention=group.some(q=>(q.cancel_requested_at&&q.status!=='cancelled')||q.delivery_change_requested_at);
+ const states=[...new Set(group.map(q=>q.status))];
+ const stateText=states.length===1?statusLabel[states[0]]||states[0]:'상태 혼합';
+ const stage=group.length===1&&root.status==='confirmed'?workflowLabel(root):'';
+ return `<details class="admin-order-fold ${pending?'has-pending':''}" data-admin-order-id="${esc(key)}" ${open?'open':''}>
+  <summary class="admin-order-fold-heading">
+   <span class="admin-order-fold-left">
+    <strong>${esc(root.buyer_name||'주문자 미입력')} <span class="admin-order-fold-baby">아기: ${esc(root.baby_name||'미입력')}</span></strong>
+    <span class="admin-order-fold-meta">${group.length>1?group.length+'건 묶음배송 · ':''}상품 ${uniqueItems}종 · 총 ${qty}개 · ${fmtDate(root.created_at)}</span>
+   </span>
+   <span class="admin-order-fold-right">
+    <span class="admin-order-fold-status">${esc(stateText)}${stage?' · '+esc(stage):''}</span>
+    ${pending?`<span class="admin-order-fold-alert">가격 미입력 ${pending}종</span>`:attention?'<span class="admin-order-fold-alert">요청 확인 필요</span>':''}
+   </span>
+   <span class="admin-order-fold-chevron" aria-hidden="true"></span>
+  </summary>
+  <div class="admin-order-fold-body">
+   ${group.length>1?renderBundleCard(group):renderAdminQuoteCard(group[0])}
+  </div>
+ </details>`;
+}
 function renderAdminQuoteDateSection(visible,groups,section,defaultDoneOpen=false){
  if(!groups.length)return '';
  const waiting=section==='pending';
@@ -2550,7 +2603,7 @@ function renderAdminQuoteDateSection(visible,groups,section,defaultDoneOpen=fals
     <summary class="admin-date-heading"><div class="admin-date-left"><strong>${receivedDayLabel(day)}</strong>
      <span>${all.length}건${waiting?' · 가격 미입력 '+remaining+'종':''}${confirmed?' · 확정 '+confirmed+'건':''}${attention?' · 확인 필요 '+attention+'건':''}</span>
     </div><span class="admin-date-chevron" aria-hidden="true"></span></summary>
-    <div class="admin-date-orders">${sorted.map(group=>group.length>1?renderBundleCard(group):renderAdminQuoteCard(group[0])).join('')}</div>
+    <div class="admin-date-orders">${sorted.map(group=>renderCollapsibleAdminOrder(group,section)).join('')}</div>
    </details>`;
   }).join('')}
  </section>`;
@@ -2567,7 +2620,7 @@ function renderAdminQuotes(){
  <div class="admin-overall-prices"><h3>현재 목록 상품 총액 비교</h3>${adminPriceTotalMarkup(qq)}</div>
  ${renderAdminQuoteDateSection(qq,awaiting,'pending')}
  ${renderAdminQuoteDateSection(qq,priced,'saved',!awaiting.length)}
- <p class="admin-date-hint">가격 입력이 필요한 견적을 위에, 저장 완료된 견적·확정 주문을 아래에 구분했어요. 묶음배송은 함께 표시돼요.</p>`:'<div class="empty">해당 상태의 견적이 없어요.</div>'}`;
+ <p class="admin-date-hint">주문자 이름을 누르면 해당 주문만 접거나 펼칠 수 있어요. 미입력 주문은 처음부터 펼쳐지고, 가격 저장 완료 주문은 접힌 상태로 시작해요.</p>`:'<div class="empty">해당 상태의 견적이 없어요.</div>'}`;
 }
 function renderBuyerOrderDetail(q){
  if(!state.admin)return '';
@@ -3374,6 +3427,7 @@ if(a==='send-current-email'){
 if(a==='date-open-all'||a==='date-close-all'){
  const open=a==='date-open-all';
  app.querySelectorAll('.admin-date-group').forEach(el=>{el.open=open;state.dateGroupsOpen[el.dataset.orderDate]=open});
+ app.querySelectorAll('.admin-order-fold').forEach(el=>{el.open=open;state.orderCardsOpen[el.dataset.adminOrderId]=open});
  return;
 }
 if(a==='scroll-top'){window.scrollTo({top:0,behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});return;}
@@ -3785,7 +3839,7 @@ function input(e){
   return;
  }
  if(e.target.id==='admin-product-search'){state.adminProductSearch=e.target.value;updateAdminProductSearch();return;}if(e.target.id==='stat-search'){const query=e.target.value.trim().toLowerCase();for(const node of app.querySelectorAll('[data-stats-entry]'))node.classList.toggle('hidden',!!query&&!node.textContent.toLowerCase().includes(query));return;}if(e.target.id==='search'){state.search=e.target.value;const pos=e.target.selectionStart;render();const el=$('#search');if(el){el.focus();el.setSelectionRange(pos,pos)}}}
-app.addEventListener('click',e=>{const summary=e.target.closest('.admin-date-group > summary');if(summary){const group=summary.parentElement;state.dateGroupsOpen[group.dataset.orderDate]=!group.open;return}const tab=e.target.closest('[data-tab]'),filter=e.target.closest('[data-filter]');if(tab){state.tab=tab.dataset.tab;if(state.tab==='requests')state.requestStatusFilter='pending';render();return}if(filter){state.filter=filter.dataset.filter;render();return}click(e)});
+app.addEventListener('click',e=>{const orderSummary=e.target.closest('.admin-order-fold > summary');if(orderSummary){const order=orderSummary.parentElement;state.orderCardsOpen[order.dataset.adminOrderId]=!order.open;return}const summary=e.target.closest('.admin-date-group > summary');if(summary){const group=summary.parentElement;state.dateGroupsOpen[group.dataset.orderDate]=!group.open;return}const tab=e.target.closest('[data-tab]'),filter=e.target.closest('[data-filter]');if(tab){state.tab=tab.dataset.tab;if(state.tab==='requests')state.requestStatusFilter='pending';render();return}if(filter){state.filter=filter.dataset.filter;render();return}click(e)});
 app.addEventListener('submit',submit);app.addEventListener('change',change);app.addEventListener('input',input);
 app.addEventListener('pointerdown',startAdminPhotoDrag,{passive:false});
 app.addEventListener('pointermove',moveAdminPhotoDrag,{passive:false});

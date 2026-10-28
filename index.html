@@ -2619,22 +2619,33 @@ function renderCollapsibleAdminOrder(group,section){
  const states=[...new Set(group.map(q=>q.status))];
  const stateText=states.length===1?statusLabel[states[0]]||states[0]:'상태 혼합';
  const stage=group.length===1&&root.status==='confirmed'?workflowLabel(root):'';
- return `<details class="admin-order-fold ${pending?'has-pending':''}" data-admin-order-id="${esc(key)}" ${open?'open':''}>
-  <summary class="admin-order-fold-heading">
-   <span class="admin-order-fold-left">
-    <strong>${esc(root.buyer_name||'주문자 미입력')} <span class="admin-order-fold-baby">아기: ${esc(root.baby_name||'미입력')}</span></strong>
-    <span class="admin-order-fold-meta">${group.length>1?group.length+'건 묶음배송 · ':''}상품 ${uniqueItems}종 · 총 ${qty}개 · ${fmtDate(root.created_at)}</span>
-   </span>
-   <span class="admin-order-fold-right">
-    <span class="admin-order-fold-status">${esc(stateText)}${stage?' · '+esc(stage):''}</span>
-    ${pending?`<span class="admin-order-fold-alert">가격 미입력 ${pending}종</span>`:attention?'<span class="admin-order-fold-alert">요청 확인 필요</span>':''}
-   </span>
-   <span class="admin-order-fold-chevron" aria-hidden="true"></span>
-  </summary>
-  <div class="admin-order-fold-body">
-   ${group.length>1?renderBundleCard(group):renderAdminQuoteCard(group[0])}
-  </div>
- </details>`;
+ const assigned=group.some(q=>supplierBatchOfQuote(q.id));
+ const supplierOrdered=group.some(q=>q.supplier_ordered_at);
+ const eligible=state.supplierBatchesReady&&!assigned&&!supplierOrdered&&root.status!=='cancelled'&&!root.bundle_parent_id&&!allSoldOut(root);
+ const selected=eligible&&state.supplierBulkSelected.has(key);
+ return `<div class="admin-order-select-row">
+  <label class="admin-order-check ${selected?'is-checked':''} ${!eligible?'is-disabled':''}" title="${eligible?'도매 배송비 일괄 배분에 포함':'취소·배분 완료·도매 발주 완료 주문은 선택할 수 없어요.'}">
+   <input type="checkbox" data-supplier-select="${esc(key)}" aria-label="${esc(root.buyer_name)} 도매배송비 배분 대상 선택" ${selected?'checked':''} ${eligible?'':'disabled'}>
+   <span>선택</span>
+  </label>
+  <details class="admin-order-fold ${pending?'has-pending':''}" data-admin-order-id="${esc(key)}" ${open?'open':''}>
+   <summary class="admin-order-fold-heading">
+    <span class="admin-order-fold-left">
+     <strong>${esc(root.buyer_name||'주문자 미입력')} <span class="admin-order-fold-baby">아기: ${esc(root.baby_name||'미입력')}</span></strong>
+     <span class="admin-order-fold-meta">${group.length>1?group.length+'건 묶음배송 · ':''}상품 ${uniqueItems}종 · 총 ${qty}개 · ${fmtDate(root.created_at)}</span>
+    </span>
+    <span class="admin-order-fold-right">
+     <span class="admin-order-fold-status">${esc(stateText)}${stage?' · '+esc(stage):''}</span>
+     ${supplierOrdered?'<span class="admin-order-fold-ordered">도매 발주 완료</span>':assigned?'<span class="admin-order-fold-batched">도매배송비 배분됨</span>':''}
+     ${pending?`<span class="admin-order-fold-alert">가격 미입력 ${pending}종</span>`:attention?'<span class="admin-order-fold-alert">요청 확인 필요</span>':''}
+    </span>
+    <span class="admin-order-fold-chevron" aria-hidden="true"></span>
+   </summary>
+   <div class="admin-order-fold-body">
+    ${group.length>1?renderBundleCard(group):renderAdminQuoteCard(group[0])}
+   </div>
+  </details>
+ </div>`;
 }
 function renderAdminQuoteDateSection(visible,groups,section,defaultDoneOpen=false){
  if(!groups.length)return '';
@@ -2662,6 +2673,74 @@ function renderAdminQuoteDateSection(visible,groups,section,defaultDoneOpen=fals
   }).join('')}
  </section>`;
 }
+// Customer-by-customer wholesale allocation, with a saved batch that can be
+// marked supplier-ordered only after *every* included quote is confirmed+paid.
+function supplierBatchPaymentState(batch){
+ const roots=Array.isArray(batch.root_quote_ids)?batch.root_quote_ids:[];
+ const allIds=Array.isArray(batch.quote_ids)?batch.quote_ids:[];
+ const result=roots.map(rootId=>{
+  const root=state.quotes.find(q=>q.id===rootId);
+  const orders=allIds.map(id=>state.quotes.find(q=>q.id===id))
+   .filter(q=>q&&((q.id===rootId)||(q.bundle_parent_id===rootId)));
+  const due=orders.reduce((s,q)=>s+totalDue(q),0);
+  const net=orders.reduce((s,q)=>s+Number(q.amount_paid||0)-Number(q.amount_refunded||0),0);
+  const eligible=Boolean(root&&orders.length)&&orders.every(q=>
+   q.status==='confirmed'&&readyQuote(q)&&!allSoldOut(q)&&
+   !q.cancel_requested_at&&!q.delivery_change_requested_at&&
+   ['new','preparing'].includes(workflowStage(q))&&!q.supplier_ordered_at&&
+   Number(q.amount_paid||0)-Number(q.amount_refunded||0)>=totalDue(q));
+  const hasPending=orders.some(q=>q.status!=='confirmed');
+  const isBlocked=orders.some(q=>q.status==='cancelled'||q.cancel_requested_at||q.delivery_change_requested_at);
+  const missing=orders.some(q=>!readyQuote(q)||allSoldOut(q));
+  const unpaid=orders.reduce((sum,q)=>sum+Math.max(0,totalDue(q)-(Number(q.amount_paid||0)-Number(q.amount_refunded||0))),0);
+  const reason=eligible?'입금 확인':hasPending?'최종 주문 대기':isBlocked?'취소·변경 확인 필요':
+   missing?'상품 가격·배송비 확인 필요':unpaid>0?'미입금 '+money(unpaid):'진행 상태 확인 필요';
+  return {root,orders,due,net,eligible,reason};
+ });
+ return {people:result,paid:result.filter(r=>r.eligible).length,
+  canOrder:roots.length>0&&result.length===Number(batch.people)&&result.every(r=>r.eligible)};
+}
+function renderSupplierBulkManager(){
+ if(!state.admin||state.page!=='admin')return '';
+ const history=state.supplierBatchesReady?
+ state.supplierBatches.map((batch,index)=>{
+  const checked=supplierBatchPaymentState(batch),ordered=Boolean(batch.ordered_at);
+  const share=Number(batch.share||0);
+  const rootCount=Number(batch.people||0);
+  const total=Number(batch.total||0);
+  return `<details class="supplier-bulk-batch" ${!ordered&&index===0?'open':''}>
+   <summary><span><strong>${ordered?'도매 발주 완료':'도매 발주 대기'} · ${fmtDate(batch.created_at)}</strong>
+    <small>${rootCount}명 · 업체 배송비 ${money(total)} · 1인 ${money(share)}</small></span>
+    <em>${ordered?'완료':checked.paid+'/'+rootCount+'명 입금 확인'}</em></summary>
+   <div class="supplier-bulk-batch-body">
+    ${checked.people.map(p=>`<div class="supplier-bulk-person">
+     <span>${esc(p.root?.buyer_name||'삭제된 주문')} ${p.orders.length>1?'('+p.orders.length+'건 묶음)':''}</span>
+     <span class="${ordered||p.eligible?'is-paid':'is-waiting'}">${ordered?'도매 발주 완료':esc(p.reason)}</span>
+    </div>`).join('')}
+    <p class="smallnote">결제금액은 상품값 + 고객 배송비 + 도매배송비 분담금을 기준으로 확인해요. 입금 기록은 각 주문 카드에서 저장해야 해요.</p>
+    ${ordered?`<div class="supplier-bulk-done">도매 발주 완료 처리: ${fmtDate(batch.ordered_at)} · 이후 상품 입고·배송 관리는 기존 주문에서 계속해 주세요.</div>`:
+      `<button type="button" class="btn block" data-action="supplier-bulk-ordered" data-id="${esc(batch.id)}" ${checked.canOrder?'':'disabled'}>전원 입금 확인 → 도매 발주 완료 처리</button>
+       ${!checked.canOrder?'<p class="smallnote">모든 주문의 최종 확정과 입금 기록이 완료되어야 버튼이 활성화돼요.</p>':''}
+       <button type="button" class="btn sm neutral supplier-bulk-cancel" data-action="supplier-bulk-cancel" data-id="${esc(batch.id)}">이 배분 취소·기존 배송비로 복구</button>`}
+   </div>
+  </details>`;
+ }).join(''):'';
+ return `<section class="card supplier-bulk-manager" id="supplier-bulk-manager">
+  <div class="supplier-bulk-heading"><h3>도매배송비 한 번에 배분</h3><span>남대문 발주 관리</span></div>
+  <p class="smallnote">아래 주문자 이름 왼쪽의 <b>선택</b>을 체크하고 업체 배송비 총액을 넣어 주세요. 체크한 <b>주문자 수</b>로 나누고, 같은 사람은 한 번만 계산해요. 묶음배송도 한 명 몫만 반영돼요.</p>
+  ${!state.supplierBatchesReady?`<p class="noticefail">배분 현황을 불러올 수 없어요. ${esc(state.supplierBatchesError||'관리자 새로고침을 해주세요.')}</p>`:''}
+  <div class="supplier-bulk-controls"><strong data-supplier-bulk-chosen>${state.supplierBulkSelected.size}명 선택</strong><button type="button" class="btn sm secondary" data-action="supplier-bulk-clear">선택 해제</button></div>
+  <form id="bulk-supplier-shipping-form">
+   <label class="label">도매업체 배송비 총액 (원)
+    <input type="number" name="bulk_supplier_total" min="0" max="1000000" step="1" inputmode="numeric" placeholder="예: 4000" required></label>
+   <div class="supplier-bulk-preview" data-supplier-bulk-preview>먼저 아래 주문자의 체크박스를 선택해 주세요.</div>
+   <button type="submit" class="btn block" data-supplier-bulk-apply disabled>선택한 사람들에게 배송비 일괄 적용</button>
+  </form>
+  <p class="smallnote">1원 단위 올림으로 나누기 때문에 나누어떨어지지 않으면 총 부과액이 몇 원 더 많을 수 있어요. 이미 안내한 견적은 금액 변경 여부를 확인해 주세요.</p>
+  ${state.supplierBatches.length?`<div class="supplier-bulk-list"><h4>저장된 배송비 배분 · 입금 현황</h4>${history}</div>`:'<p class="smallnote">아직 일괄 배분한 내역이 없어요.</p>'}
+ </section>`;
+}
+
 function renderAdminQuotes(){
  const qq=state.quotes.filter(q=>state.filter==='all'||(state.filter==='cancel_requested'?!!q.cancel_requested_at&&q.status!=='cancelled':state.filter.startsWith('flow_')?q.status==='confirmed'&&workflowStage(q)===state.filter.slice(5):q.status===state.filter));
  const groups=bundledQuoteGroups(qq);
@@ -2672,6 +2751,7 @@ function renderAdminQuotes(){
  <div class="controls" style="margin-bottom:10px">${['all','cancel_requested','requested','quoted','confirmed','flow_new','flow_preparing','flow_pickup_ready','flow_shipped','flow_completed','flow_soldout_closed','cancelled'].map(s=>`<button class="tab ${state.filter===s?'active':''}" data-filter="${s}">${s==='all'?'전체':s==='cancel_requested'?'취소 요청':s.startsWith('flow_')?workflowLabels[s.slice(5)]:statusLabel[s]}</button>`).join('')}</div>
  ${qq.length?`<div class="admin-date-toolbar"><div><strong>날짜별 주문</strong><span>${qq.length}건 · ${dayCount}일 · 가격 미입력 ${unfinished}종</span></div><div class="admin-date-actions"><button type="button" class="date-all-btn" data-action="date-open-all">전체 펼치기</button><button type="button" class="date-all-btn" data-action="date-close-all">전체 접기</button></div></div>
  <div class="admin-overall-prices"><h3>현재 목록 상품 총액 비교</h3>${adminPriceTotalMarkup(qq)}</div>
+ ${renderSupplierBulkManager()}
  ${renderAdminQuoteDateSection(qq,awaiting,'pending')}
  ${renderAdminQuoteDateSection(qq,priced,'saved',!awaiting.length)}
  <p class="admin-date-hint">주문자 이름을 누르면 해당 주문만 접거나 펼칠 수 있어요. 미입력 주문은 처음부터 펼쳐지고, 가격 저장 완료 주문은 접힌 상태로 시작해요.</p>`:'<div class="empty">해당 상태의 견적이 없어요.</div>'}`;
@@ -3232,9 +3312,11 @@ function parseSupplierShippingValues(totalInput,peopleInput){
 }
 function renderSupplierShippingForm(q){
  if(!state.admin||state.page!=='admin')return '';
+ const batch=supplierBatchOfQuote(q.id);
+ if(batch)return `<div class="supplier-shipping-batched">도매배송비 일괄 배분 · 업체 배송비 ${money(batch.total)} ÷ ${batch.people}명 · 이 주문 분담금 ${money(supplierShippingShare(q))}</div>`;
  const total=Number(q.supplier_shipping_total||0),people=Number(q.supplier_shipping_people||1);
  const disabled=q.status==='cancelled';
- return `<form class="supplier-shipping-form" data-supplier-shipping="${esc(q.id)}">
+ return `<details class="supplier-shipping-optional"><summary>개별 도매배송비 조정 (예외적으로 직접 입력)</summary><form class="supplier-shipping-form" data-supplier-shipping="${esc(q.id)}">
   <div class="supplier-shipping-head">도매 배송비 분담금<span>도매업체 → 미니예나 (고객 수령 배송비와 별도)</span></div>
   <div class="supplier-shipping-inputs">
    <label class="label">업체 배송비 총액 (원)<input name="supplier_total" type="number" min="0" max="1000000" step="1" inputmode="numeric" required value="${total}" ${disabled?'disabled':''}></label>
@@ -3243,7 +3325,7 @@ function renderSupplierShippingForm(q){
   <div class="supplier-shipping-result"><span>이 주문에 더할 배송비</span><b data-supplier-preview>${money(Number(q.supplier_shipping_share||0))}</b></div>
   <p class="smallnote">업체 배송비 ÷ 구매자 수 (원 단위 올림). 배송비를 나눠 낼 구매자들의 견적에도 동일하게 입력해 주세요. 묶음 주문을 한 고객에게는 한 번만 부과해 중복을 피하세요.</p>
   <button type="submit" class="btn sm secondary" ${disabled?'disabled':''}>도매 배송비 분담금 저장</button>
- </form>`;
+ </form></details>`;
 }
 async function adminSupplierShipping(id,total,people){
  const q=state.quotes.find(x=>x.id===id);

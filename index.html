@@ -1144,7 +1144,7 @@ const demo=read(DEMO,initDemo());
 const saveDemo=()=>localStorage.setItem(DEMO,JSON.stringify(demo));
 let session=read(SESS,null),busy=false,refreshing=null;
 const p=new URLSearchParams(location.search);
-const state={page:['admin','track'].includes(p.get('page'))?p.get('page'):'shop',tab:'quotes',stores:[],products:[],requests:[],quotes:[],cart:read(CART,[]),modal:null,search:'',shopCategory:'all',adminCategory:'all',trackId:p.get('id')||'',trackToken:p.get('token')||'',tracking:null,receipts:read(TRACK,[]),notice:'',filter:'all',admin:false,heroPhotoUrl:null,heroStoreId:null,dateGroupsOpen:{},requestStatusFilter:'pending',adminCatalogView:'products',adminCatalogFilter:'all',adminProductSearch:'',productPrivate:{},productPrivateReady:false,adminPinIds:new Set(),phoneLookupReady:null,pinLookupNotice:''};
+const state={page:['admin','track'].includes(p.get('page'))?p.get('page'):'shop',tab:'quotes',stores:[],products:[],requests:[],quotes:[],cart:read(CART,[]),modal:null,search:'',shopCategory:'all',adminCategory:'all',trackId:p.get('id')||'',trackToken:p.get('token')||'',tracking:null,receipts:read(TRACK,[]),notice:'',filter:'all',admin:false,heroPhotoUrl:null,heroStoreId:null,dateGroupsOpen:{},requestStatusFilter:'pending',adminCatalogView:'products',adminCatalogFilter:'all',adminProductSearch:'',productPrivate:{},productPrivateReady:false,emailSettings:null,emailSettingsReady:false,emailSettingsError:'',adminPinIds:new Set(),phoneLookupReady:null,pinLookupNotice:''};
 
 const PRODUCT_CATEGORIES=['양말','모자','아우터','상의','하의','스커트','원피스','바디수트','세트','악세서리','잡화'];
 const validProductCategory=x=>PRODUCT_CATEGORIES.includes(String(x||'').trim());
@@ -1531,7 +1531,48 @@ async function refreshStoreSizeChartEditor(){
  if(newName&&oldName!==undefined)newName.value=oldName;
  if(newActive&&oldActive!==undefined)newActive.checked=oldActive;
 }
-async function loadAdmin(){if(!connected){state.admin=true;state.productPrivate={};state.productPrivateReady=false;state.stores=clone(demo.stores);state.products=clone(demo.products);state.requests=clone(demo.requests||[]);syncDemo();render();return}if(!session){state.admin=false;state.productPrivate={};state.productPrivateReady=false;render();return}try{const auth=await rpc('gq_is_admin',{},true);if(!auth)throw Error('관리자 권한이 없습니다');state.admin=true;await loadCatalog(true);const [qq,ii,rr]=await Promise.all([api('/rest/v1/gq_quotes?select=*&order=created_at.desc',{admin:true}),api('/rest/v1/gq_quote_items?select=*&order=created_at.asc',{admin:true}),api('/rest/v1/gq_product_requests?select=*&order=created_at.desc',{admin:true})]);state.quotes=qq.map(q=>({...q,items:ii.filter(i=>i.quote_id===q.id)}));state.requests=rr;await loadAdminProductPrivate();render();await Promise.all([loadAdminShipping(),loadAdminPinStatus()]);render()}catch(e){state.admin=false;render();throw e}}
+async function loadAdminEmailSettings(){
+ if(!state.admin||!connected){state.emailSettings=null;state.emailSettingsReady=false;return;}
+ try{
+  const settings=await rpc('gq_admin_email_settings_v45',{},true);
+  if(!settings||typeof settings!=='object')throw Error('이메일 설정 응답이 올바르지 않아요.');
+  state.emailSettings=settings;state.emailSettingsReady=true;state.emailSettingsError='';
+ }catch(e){
+  state.emailSettings=null;state.emailSettingsReady=false;
+  state.emailSettingsError=e.message||'이메일 발송 설정을 불러오지 못했어요.';
+  console.warn('이메일 발송 설정을 확인하지 못했어요.',e);
+ }
+}
+function normalizeCustomerEmail(raw,allowEmpty=false){
+ const email=String(raw||'').trim().toLowerCase();
+ if(!email&&allowEmpty)return '';
+ if(email.length>254||!/^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,24}$/i.test(email))
+  throw Error('올바른 이메일 주소를 입력해 주세요.');
+ return email;
+}
+async function saveAdminCustomerEmail(kind,id,email){
+ if(!state.admin)throw Error('관리자 로그인 후 이메일을 변경해 주세요.');
+ const saved=await rpc('gq_admin_set_customer_email_v45',{
+  p_kind:kind,p_id:id,p_email:normalizeCustomerEmail(email,true)
+ },true);
+ if(saved!==true)throw Error('이메일 주소 저장 결과를 확인할 수 없어요.');
+}
+function renderAdminEmailEditor(kind,item){
+ if(!state.admin)return '';
+ const name=kind==='quote'?'주문':'상품 신청';
+ const status=kind==='quote'?item.status:item.status;
+ const canResend=kind==='quote'?status!=='requested':['approved','rejected'].includes(status);
+ return `<section class="admin-customer-email-editor" aria-label="${name} 이메일 관리">
+  <form class="admin-customer-email-form" data-customer-email="${kind}" data-id="${esc(item.id)}">
+   <label class="label">✉️ 안내 이메일 (기존 신청자 입력·수정)
+    <input type="email" name="email" maxlength="254" autocomplete="off" value="${esc(item.customer_email||'')}" placeholder="customer@example.com"></label>
+   <button class="btn sm secondary" type="submit">이메일 저장</button>
+  </form>
+  ${item.customer_email&&canResend?`<button class="admin-email-resend" type="button" data-action="send-current-email" data-kind="${kind}" data-id="${esc(item.id)}">현재 상태 이메일 다시 보내기</button>`:''}
+  <p>이메일을 변경해도 과거 알림은 자동 발송되지 않아요. 이후 상태 변경부터 적용돼요.</p>
+ </section>`;
+}
+async function loadAdmin(){if(!connected){state.admin=true;state.productPrivate={};state.productPrivateReady=false;state.stores=clone(demo.stores);state.products=clone(demo.products);state.requests=clone(demo.requests||[]);syncDemo();render();return}if(!session){state.admin=false;state.productPrivate={};state.productPrivateReady=false;render();return}try{const auth=await rpc('gq_is_admin',{},true);if(!auth)throw Error('관리자 권한이 없습니다');state.admin=true;await loadCatalog(true);const [qq,ii,rr]=await Promise.all([api('/rest/v1/gq_quotes?select=*&order=created_at.desc',{admin:true}),api('/rest/v1/gq_quote_items?select=*&order=created_at.asc',{admin:true}),api('/rest/v1/gq_product_requests?select=*&order=created_at.desc',{admin:true})]);state.quotes=qq.map(q=>({...q,items:ii.filter(i=>i.quote_id===q.id)}));state.requests=rr;await loadAdminProductPrivate();render();await Promise.all([loadAdminShipping(),loadAdminPinStatus(),loadAdminEmailSettings()]);render()}catch(e){state.admin=false;render();throw e}}
 async function loadPublic(){await loadCatalog(false);render()}
 async function saveHeroPhoto(file){
  if(!state.admin||!connected||!session)throw Error('관리자 로그인 후 사진을 변경해 주세요.');

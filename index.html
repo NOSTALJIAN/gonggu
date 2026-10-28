@@ -1209,6 +1209,9 @@ body:has(.overlay) .floating-actions{opacity:0;visibility:hidden;pointer-events:
  .supplier-bulk-customer-header button{font-size:10px;max-width:140px}
  .supplier-bulk-customer-list{max-height:450px}
 }
+
+.supplier-item-progress{display:block;margin:7px 0;padding:5px 8px;width:fit-content;font-size:11px;font-weight:770;background:#f2f2f2;color:#555;line-height:1.35;border-radius:4px}
+.supplier-item-progress.is-ordered{background:#eef6ef;color:#2b6240}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -1714,9 +1717,14 @@ function supplierBatchesForQuote(q){
   (b.payers||[]).some(p=>p.charged_quote_id===q.id));
 }
 function supplierBulkAvailableItem(q,item){
- return Boolean(state.supplierBatchesReady&&supplierItemStore(item)&&
+ const storeId=supplierItemStore(item);
+ const phone=String(q.contact||'').replace(/\D/g,'');
+ const hasPending=state.supplierBatches.some(b=>b.store_id===storeId&&
+  !b.ordered_at&&(b.payers||[]).some(p=>p.buyer_key===phone));
+ return Boolean(state.supplierBatchesReady&&storeId&&phone.length>=8&&
   q.status!=='cancelled'&&item.fulfillment!=='sold_out'&&
-  !q.supplier_ordered_at&&!item.supplier_ordered_at&&!supplierItemBatch(item.id));
+  !q.supplier_ordered_at&&!item.supplier_ordered_at&&
+  !supplierItemBatch(item.id)&&!hasPending);
 }
 function supplierBulkSelectedItems(){
  const wanted=state.supplierBulkSelected;
@@ -2543,11 +2551,17 @@ function adminPriceTotalMarkup(orders,compact=false){
   <p>상품 수량 반영 · 배송비 제외 · 품절·취소 제외 · 예상가는 최종 결제금액이 아니에요.</p>
  </section>`;
 }
+function supplierItemProgress(i){
+ const batch=supplierItemBatch(i.id);
+ if(i.supplier_ordered_at)return '<span class="supplier-item-progress is-ordered">도매 발주 완료</span>';
+ if(batch)return '<span class="supplier-item-progress">거래처 배송비 배분 완료</span>';
+ return '';
+}
 function adminQuoteItemMarkup(q,i,bundle=false){
  const disabled=q.status==='cancelled'?'disabled':'';
  const priceForm=`<form class="controlinline" data-price="${esc(i.id)}"><input name="price" type="number" min="0" max="100000000" step="1" value="${i.unit_price??''}" placeholder="개당 가격" aria-label="개당 가격" ${disabled}><button class="btn sm secondary" type="submit" ${disabled}>${i.unit_price==null?'가격 저장':'가격 수정'}</button></form>`;
- if(bundle)return `<div class="bundle-price-item"><div class="tiny"><b>${esc(i.store_name)} · ${esc(i.product_name)}</b> · ${esc(i.color)} / ${esc(i.size)} · ${i.quantity}개</div>${privateQuoteItemInfo(i)}${priceForm}</div>`;
- return `<div class="orderitem"><div class="row between"><div class="grow"><b>${esc(i.store_name)} · ${esc(i.product_name)}</b><div class="tiny">${esc(i.color)} / ${esc(i.size)} · ${i.quantity}개</div>${privateQuoteItemInfo(i)}</div><span class="money">${i.unit_price==null?'가격 미정':money(i.unit_price*i.quantity)}</span></div><div class="row wrap" style="margin-top:8px">${priceForm}${q.status==='confirmed'?`<div style="min-width:0;flex:1">${workflowStage(q)==='new'?`<span class="workflow-stage">${itemStatusLabel(q,i)}</span>`:itemFulfillmentControl(q,i)}${workflowStage(q)==='new'?'<div class="workflow-item-help">먼저 상품 준비 시작을 눌러 주세요.</div>':''}</div>`:''}</div></div>`;
+ if(bundle)return `<div class="bundle-price-item"><div class="tiny"><b>${esc(i.store_name)} · ${esc(i.product_name)}</b> · ${esc(i.color)} / ${esc(i.size)} · ${i.quantity}개</div>${privateQuoteItemInfo(i)}${supplierItemProgress(i)}${priceForm}</div>`;
+ return `<div class="orderitem"><div class="row between"><div class="grow"><b>${esc(i.store_name)} · ${esc(i.product_name)}</b><div class="tiny">${esc(i.color)} / ${esc(i.size)} · ${i.quantity}개</div>${privateQuoteItemInfo(i)}${supplierItemProgress(i)}</div><span class="money">${i.unit_price==null?'가격 미정':money(i.unit_price*i.quantity)}</span></div><div class="row wrap" style="margin-top:8px">${priceForm}${q.status==='confirmed'?`<div style="min-width:0;flex:1">${workflowStage(q)==='new'?`<span class="workflow-stage">${itemStatusLabel(q,i)}</span>`:itemFulfillmentControl(q,i)}${workflowStage(q)==='new'?'<div class="workflow-item-help">먼저 상품 준비 시작을 눌러 주세요.</div>':''}</div>`:''}</div></div>`;
 }
 function groupedAdminQuoteItems(q,bundle=false){
  const missing=q.items.filter(i=>i.unit_price==null);
@@ -2592,7 +2606,7 @@ function renderBundleCard(group){
  return `<div class="card bundle-summary-card"><div class="row between wrap"><div><h3>${esc(root.buyer_name)} <span class="chip purple">아기: ${esc(root.baby_name||'미입력')}</span></h3><div class="tiny">${esc(root.contact||'연락처 없음')} · ${group.length}건 묶음</div>${group.some(q=>q.supplier_ordered_at)?'<div class="workflow-stage" style="margin-top:7px">도매 발주 완료 · 상품 준비 중</div>':''}</div><span class="bundle-title-tag">📦 묶음배송</span></div>
  <div class="bundle-info"><b>${esc(deliveryLabel(root))}</b> · 주문 ${group.length}건 / 상품 ${qty}개<div class="tiny">${root.delivery_method==='courier'?esc(addressLabel(root)):'배송비는 묶음 대표 주문 기준 한 번만 적용돼요.'}</div></div>
  ${issue?'<div class="noticefail">변경 또는 취소 요청이 있어요. 아래 주문별 상세를 열어 확인해 주세요.</div>':''}
- <div class="bundle-items">${group.flatMap(q=>q.items.map(i=>({q,i}))).sort((a,b)=>Number(a.i.unit_price!=null)-Number(b.i.unit_price!=null)).map(({q,i})=>`<div class="bundle-item"><div class="bundle-item-main"><b>${esc(i.store_name)} · ${esc(i.product_name)}</b><div class="tiny">${esc(i.color)} / ${esc(i.size)} · ${i.quantity}개${q===root?'':' · 추가 주문'}</div>${privateQuoteItemInfo(i)}</div><div class="bundle-item-side"><strong>${i.unit_price==null?'가격 미정':money(i.unit_price*i.quantity)}</strong>${q.status==='confirmed'?(i.fulfillment==='sold_out'?'<span class="workflow-stage">품절</span>':group.every(x=>['new','preparing'].includes(workflowStage(x)))?itemFulfillmentControl(q,i):''):`<small>${esc(statusLabel[q.status]||q.status)}</small>`}</div></div>`).join('')}</div>
+ <div class="bundle-items">${group.flatMap(q=>q.items.map(i=>({q,i}))).sort((a,b)=>Number(a.i.unit_price!=null)-Number(b.i.unit_price!=null)).map(({q,i})=>`<div class="bundle-item"><div class="bundle-item-main"><b>${esc(i.store_name)} · ${esc(i.product_name)}</b><div class="tiny">${esc(i.color)} / ${esc(i.size)} · ${i.quantity}개${q===root?'':' · 추가 주문'}</div>${privateQuoteItemInfo(i)}${supplierItemProgress(i)}</div><div class="bundle-item-side"><strong>${i.unit_price==null?'가격 미정':money(i.unit_price*i.quantity)}</strong>${q.status==='confirmed'?(i.fulfillment==='sold_out'?'<span class="workflow-stage">품절</span>':group.every(x=>['new','preparing'].includes(workflowStage(x)))?itemFulfillmentControl(q,i):''):`<small>${esc(statusLabel[q.status]||q.status)}</small>`}</div></div>`).join('')}</div>
  ${adminPriceTotalMarkup(group,true)}
  <div class="sumline"><span>총 상품금액</span><strong>${group.some(unknown)?'일부 가격 미정':money(group.reduce((n,q)=>n+previewOrderSum(q),0))}</strong></div><div class="sumline"><span>고객 배송비 합계 (한 번)</span><strong>${money(group.reduce((n,q)=>n+appliedShipping(q),0))}</strong></div><div class="sumline"><span>도매 배송비 분담금 합계</span><strong>${money(group.reduce((n,q)=>n+supplierShippingShare(q),0))}</strong></div><div class="sumline total"><span>묶음 결제금액</span><strong>${costKnown?money(due):'견적 작성 중'}</strong></div>
  <div class="smallnote">입금 합계 ${money(paid)} · 환불 완료 ${money(refunded)} · 잔여 결제액 ${money(Math.max(0,due-paid+refunded))}</div>

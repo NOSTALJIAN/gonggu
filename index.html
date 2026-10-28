@@ -1440,8 +1440,12 @@ function privateQuoteItemInfo(item){
   const meta=state.productPrivate[item.product_id]||{};
   const supplier=String(meta.supplier_name||'').trim();
   const price=meta.wholesale_price==null?null:Number(meta.wholesale_price);
+  // Keep this identical to the public estimate rule: wholesale × 1.4,
+  // rounded to the nearest KRW 1,000. Do not alter the actual quote price.
+  const estimate=price!=null&&Number.isFinite(price)&&price>0?Math.round(price*1.4/1000)*1000:null;
   body=`<span>도매업체 <b>${esc(supplier||'미입력')}</b></span>
-   <span>도매가 <b>${price==null||!Number.isFinite(price)?'미입력':money(price)+' / 개'}</b></span>`;
+   <span>도매가 <b>${price==null||!Number.isFinite(price)?'미입력':money(price)+' / 개'}</b></span>
+   <span class="admin-order-estimate">예상가 <b>${estimate==null?'미표시':'약 '+money(estimate)+' / 개'}</b></span>`;
  }
  return `<div class="admin-order-private-meta" aria-label="관리자 전용 도매 정보">
   <div class="admin-order-private-meta-head">🔒 관리자 전용 · 비공개 도매 정보</div>

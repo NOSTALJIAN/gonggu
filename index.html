@@ -1264,6 +1264,23 @@ window.miniYenaOneSignalReady = new Promise(function(resolve) {
 </head>
 <body>
 <div id="app"><div class="loading">미니예나를 여는 중이에요…</div></div>
+<script>
+/* If any older iPhone browser fails before app boot, never leave a blank loading screen forever. */
+(function(){
+ setTimeout(function(){
+  var el=document.querySelector('#app > .loading');
+  if(!el)return;
+  el.innerHTML='<strong style="color:#333;font-size:16px">페이지를 불러오지 못했어요.</strong>'+
+    '<p style="font-size:13px;line-height:1.7">연결이 지연되거나 저장된 화면이 오래된 경우예요. 다시 시도해 주세요.</p>'+
+    '<button type="button" id="miniyena-boot-retry" style="border:0;background:#222;color:#fff;border-radius:10px;padding:12px 17px;font-size:14px;font-weight:bold">다시 불러오기</button>';
+  var button=document.getElementById('miniyena-boot-retry');
+  if(button)button.onclick=function(){
+   try{var u=new URL(location.href);u.searchParams.set('_ui',String(Date.now()));location.replace(u.toString())}
+   catch(e){location.reload()}
+  };
+ },12000);
+})();
+</script>
 <div id="toasts"></div>
 <script>
 // Supabase 연결 후 이 두 값만 바꾸세요. 둘 다 공개용 값이며 비밀번호가 아닙니다.
@@ -1282,7 +1299,24 @@ const conf=window.GONGGU_CONFIG||{},url=String(conf.supabaseUrl||'').replace(/\/
 const PHOTO_PRIVATE='gq-request-photos',PHOTO_PUBLIC='gq-product-photos',HERO_META_PREFIX='__MINIYENA_HERO_V1__:',requestImageCache=new Map();
 const DEMO='gonggu-quote-v3-demo',CART='gonggu-quote-v3-cart',SESS='gonggu-quote-v3-session',TRACK='gonggu-quote-v3-tracks',CUSTOMER='gonggu-quote-v7-customer-key';
 const read=(k,f)=>{try{return JSON.parse(localStorage.getItem(k))??f}catch{return f}};
-const customerKey=(()=>{try{let v=localStorage.getItem(CUSTOMER);if(!v||!/^[0-9a-f-]{36}$/i.test(v)){v=crypto.randomUUID();localStorage.setItem(CUSTOMER,v)}return v}catch{return crypto.randomUUID()}})();
+// Tracking links should never require localStorage or randomUUID support just to open.
+const customerKey=(()=>{
+ if(new URLSearchParams(location.search).get('page')==='track')return '';
+ const create=()=>{
+  if(typeof crypto!=='undefined'&&typeof crypto.randomUUID==='function')return crypto.randomUUID();
+  if(typeof crypto!=='undefined'&&typeof crypto.getRandomValues==='function'){
+   const a=crypto.getRandomValues(new Uint8Array(16));
+   a[6]=(a[6]&15)|64;a[8]=(a[8]&63)|128;
+   const h=Array.from(a,x=>x.toString(16).padStart(2,'0')).join('');
+   return h.slice(0,8)+'-'+h.slice(8,12)+'-'+h.slice(12,16)+'-'+h.slice(16,20)+'-'+h.slice(20);
+  }
+  return '';
+ };
+ try{let v=localStorage.getItem(CUSTOMER);
+  if(!v||!/^[0-9a-f-]{36}$/i.test(v)){v=create();if(v)localStorage.setItem(CUSTOMER,v)}
+  return v;
+ }catch{return create()}
+})();
 const initDemo=()=>({stores:[{id:'s1',name:'예시 · 남대문 A가게',active:true},{id:'s2',name:'예시 · 남대문 B가게',active:true}],products:[{id:'p1',store_id:'s1',name:'예시 · 하트호피 전신슈트',options:{크림:['BS','BM'],핑크:['BS','BM']},published:true},{id:'p2',store_id:'s1',name:'예시 · 알라딘 상하복',options:{'크림(블루)':['XS','S','M']},published:true},{id:'p3',store_id:'s2',name:'예시 · 레인보우 양말',options:{베이직:['XS','S'],채소:['XS','S'],어텀:['XS','S']},published:true}],quotes:[],items:[]});
 const demo=read(DEMO,initDemo());
 const saveDemo=()=>localStorage.setItem(DEMO,JSON.stringify(demo));
@@ -3514,7 +3548,10 @@ function refreshFullOrderPage(){
  location.replace(url.toString());
 }
 async function openTracking(id,token){state.trackId=id;state.trackToken=token;state.page='track';state.modal=null;history.pushState({},'',location.pathname+'?page=track&id='+encodeURIComponent(id)+'&token='+encodeURIComponent(token));state.tracking=null;render();try{await reloadTracking()}catch(e){notif(errorText(e));render()}}
-async function reloadTracking(){if(!state.trackId||!state.trackToken)return;let q;if(!connected){q=demo.quotes.find(x=>x.id===state.trackId&&x.lookup_token===state.trackToken);q=q?{...clone(q),bundle_applied:!!q.bundle_parent_id&&demo.quotes.some(x=>x.id===q.bundle_parent_id&&x.status!=='cancelled'),items:clone(demo.items.filter(i=>i.quote_id===q.id)).map(i=>({...i,unit_price:q.status==='requested'?null:i.unit_price,fulfillment:q.status==='confirmed'?i.fulfillment:'ordered'}))}:null}else q=await rpc('gq_read_quote',{p_quote_id:state.trackId,p_lookup_token:state.trackToken});if(!q)throw Error('견적을 찾을 수 없어요');state.tracking=q;rememberAccessibleOrder(q);render();if(connected&&q.delivery_method==='courier'&&isLotteShipment(q)){const payload=await optionalShippingRPC('gq_lotte_tracking_for_quote_v25',{p_quote_id:state.trackId,p_lookup_token:state.trackToken});if(state.tracking===q){applyShippingDetails(q,v25TrackingSnapshot(payload,q.tracking_number));render()}}}
+async function reloadTracking(){if(!state.trackId||!state.trackToken)return;let q;if(!connected){q=demo.quotes.find(x=>x.id===state.trackId&&x.lookup_token===state.trackToken);q=q?{...clone(q),bundle_applied:!!q.bundle_parent_id&&demo.quotes.some(x=>x.id===q.bundle_parent_id&&x.status!=='cancelled'),items:clone(demo.items.filter(i=>i.quote_id===q.id)).map(i=>({...i,unit_price:q.status==='requested'?null:i.unit_price,fulfillment:q.status==='confirmed'?i.fulfillment:'ordered'}))}:null}else q=await Promise.race([
+ rpc('gq_read_quote',{p_quote_id:state.trackId,p_lookup_token:state.trackToken}),
+ new Promise((_,reject)=>setTimeout(()=>reject(Error('주문조회 서버 응답이 늦어지고 있어요. 아래 새로고침을 눌러 다시 시도해 주세요.')),14000))
+]);if(!q)throw Error('견적을 찾을 수 없어요');state.tracking=q;rememberAccessibleOrder(q);render();if(connected&&q.delivery_method==='courier'&&isLotteShipment(q)){const payload=await optionalShippingRPC('gq_lotte_tracking_for_quote_v25',{p_quote_id:state.trackId,p_lookup_token:state.trackToken});if(state.tracking===q){applyShippingDetails(q,v25TrackingSnapshot(payload,q.tracking_number));render()}}}
 async function confirmFinalQuote(){if(!state.tracking||state.tracking.status!=='quoted')throw Error('최종 주문할 수 없는 상태예요');if(!connected){const q=demo.quotes.find(x=>x.id===state.trackId&&x.lookup_token===state.trackToken);if(!q||demo.items.some(i=>i.quote_id===q.id&&i.unit_price==null)||!hasShipping(q))throw Error('상품 가격과 배송비를 확인해 주세요');q.status='confirmed';saveDemo()}else await rpc('gq_confirm_quote',{p_quote_id:state.trackId,p_lookup_token:state.trackToken});await reloadTracking()}
 const deliveryPayload=(d)=>{
  const method=String(d.get('delivery_method')||'');if(!['pickup','courier'].includes(method))throw Error('수령방식을 선택해 주세요');
@@ -4356,7 +4393,25 @@ window.addEventListener('scroll',updateScrollTop,{passive:true});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)updateProcurementSchedule()});
 setInterval(updateProcurementSchedule,60000);
 window.addEventListener('popstate',()=>{const pp=new URLSearchParams(location.search);state.page=pp.get('page')||'shop';state.trackId=pp.get('id')||'';state.trackToken=pp.get('token')||'';state.modal=null;render();if(state.page==='track')reloadTracking().catch(e=>notif(errorText(e)));if(state.page==='admin')loadAdmin().catch(e=>notif(errorText(e)))});
-(async()=>{try{if(state.page==='admin')await loadAdmin();else if(state.page==='track'){await loadCatalog();await reloadTracking()}else await loadPublic()}catch(e){render();notif(errorText(e))}})();
+(async()=>{
+ try{
+  if(state.page==='admin')await loadAdmin();
+  else if(state.page==='track'){
+   // Show the order screen immediately and fetch the private order independently.
+   // A slow product catalog must never block a customer's emailed quote link.
+   render();
+   await reloadTracking();
+   loadCatalog().catch(e=>console.warn('주문조회 중 상품 목록 지연:',e));
+  }else await loadPublic();
+ }catch(e){
+  console.error('미니예나 초기 로딩 오류:',e);
+  try{render()}catch(renderError){
+   console.error('오류 화면 표시 실패:',renderError);
+   app.innerHTML='<div class="loading"><b>미니예나를 열 수 없어요.</b><p>주소를 확인하거나 새로고침을 눌러 주세요.</p><button onclick="location.reload()">다시 불러오기</button></div>';
+  }
+  notif(errorText(e));
+ }
+})();
 // Banner metadata is loaded with public catalog results.
 })();
 

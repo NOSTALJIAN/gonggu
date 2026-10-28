@@ -48,6 +48,8 @@ revoke all on gq_private.gq_supplier_fee_baselines_v50 from public,anon,authenti
 
 -- Guarded status/fee procedures installed on production.
 
+-- Current installed transactional functions.
+
 -- gq_private.gq_recalculate_supplier_fee_v50(uuid)
 CREATE OR REPLACE FUNCTION gq_private.gq_recalculate_supplier_fee_v50(p_quote_id uuid)
  RETURNS void
@@ -67,7 +69,9 @@ begin
  '선택한 주문의 도매 배송비 총액이 100만원을 초과해요.' using errcode='22023';end if;
  update public.gq_quotes
  set supplier_shipping_total=v_current::integer,supplier_shipping_people=1
- where id=p_quote_id;
+ where id=p_quote_id and status<>'cancelled';
+ -- Cancelled quotes remain historical and are not modified; the other
+ -- buyers in the supplier batch are still accurately recalculated.
 end $function$;
 revoke all on function gq_private.gq_recalculate_supplier_fee_v50(uuid) from public,anon,authenticated;
 

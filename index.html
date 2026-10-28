@@ -352,6 +352,15 @@ input:focus,select:focus,textarea:focus{border-color:#aa8c70;box-shadow:0 0 0 3p
 .shop-catalog-quote{font-size:11px;color:#655345;font-weight:750;margin-top:4px}
 .shoplist .shop-catalog-select{background:#fffdf9;color:#705a46;border:1px solid #dfd3c4;border-radius:9px;font-size:11px;min-height:35px;margin-top:5px}
 .shoplist .shop-catalog-select:hover{background:#f2ece4}
+/* Shop: newest-first catalog pagination (10 products per page). */
+.shop-catalog-pagination{display:flex;justify-content:center;align-items:center;gap:7px;flex-wrap:wrap;margin:21px 0 9px;padding:7px 0}
+.shop-catalog-pagination button{min-width:37px;min-height:38px;padding:7px 10px;border:1px solid #e1e1e1;background:#fff;color:#3a3a3a;border-radius:7px;font-size:12px;font-weight:750;cursor:pointer}
+.shop-catalog-pagination button[aria-current="page"]{background:#202020;color:#fff;border-color:#202020}
+.shop-catalog-pagination button:disabled{opacity:.38;cursor:not-allowed}
+.shop-catalog-pagination button:focus-visible{outline:2px solid #111;outline-offset:2px}
+.shop-catalog-pagination .page-control{padding-inline:12px}
+.shop-catalog-pagination-status{font-size:11px;color:#777;text-align:center;margin:0 0 8px}
+@media(max-width:380px){.shop-catalog-pagination{gap:5px}.shop-catalog-pagination button{min-width:33px;min-height:35px;padding:6px 8px}}
 .shop-footer-note{font-size:11px;text-align:center;color:#918275;border-top:1px solid #e9e1d7;margin:35px 0 10px;padding-top:19px;line-height:1.8}
 .dock{background:#fffdf9f5;border-color:#e6ded3;box-shadow:0 -5px 23px #493d2c0d}
 .dock .btn{background:#7c654f}
@@ -1321,7 +1330,7 @@ const demo=read(DEMO,initDemo());
 const saveDemo=()=>localStorage.setItem(DEMO,JSON.stringify(demo));
 let session=read(SESS,null),busy=false,refreshing=null;
 const p=new URLSearchParams(location.search);
-const state={page:['admin','track'].includes(p.get('page'))?p.get('page'):'shop',tab:'quotes',stores:[],products:[],requests:[],quotes:[],cart:read(CART,[]),modal:null,search:'',shopCategory:'all',adminCategory:'all',trackId:p.get('id')||'',trackToken:p.get('token')||'',tracking:null,receipts:read(TRACK,[]),notice:'',filter:'all',admin:false,heroPhotoUrl:null,heroStoreId:null,dateGroupsOpen:{},orderCardsOpen:{},supplierBulkSelected:new Set(),supplierBulkStoreId:'',supplierBatches:[],supplierBatchesReady:false,supplierBatchesError:'',requestStatusFilter:'pending',adminCatalogView:'products',adminCatalogFilter:'all',adminProductSearch:'',productPrivate:{},productPrivateReady:false,emailSettings:null,emailSettingsReady:false,emailSettingsError:'',adminPinIds:new Set(),phoneLookupReady:null,pinLookupNotice:''};
+const state={page:['admin','track'].includes(p.get('page'))?p.get('page'):'shop',tab:'quotes',stores:[],products:[],requests:[],quotes:[],cart:read(CART,[]),modal:null,search:'',shopCategory:'all',shopPage:1,adminCategory:'all',trackId:p.get('id')||'',trackToken:p.get('token')||'',tracking:null,receipts:read(TRACK,[]),notice:'',filter:'all',admin:false,heroPhotoUrl:null,heroStoreId:null,dateGroupsOpen:{},orderCardsOpen:{},supplierBulkSelected:new Set(),supplierBulkStoreId:'',supplierBatches:[],supplierBatchesReady:false,supplierBatchesError:'',requestStatusFilter:'pending',adminCatalogView:'products',adminCatalogFilter:'all',adminProductSearch:'',productPrivate:{},productPrivateReady:false,emailSettings:null,emailSettingsReady:false,emailSettingsError:'',adminPinIds:new Set(),phoneLookupReady:null,pinLookupNotice:''};
 
 const PRODUCT_CATEGORIES=['양말','모자','아우터','상의','하의','스커트','원피스','바디수트','세트','악세서리','잡화'];
 const validProductCategory=x=>PRODUCT_CATEGORIES.includes(String(x||'').trim());
@@ -2080,7 +2089,16 @@ function renderShop(){
  // No inferred categories, prices, stock levels or rankings: only active, published items.
  const catalogue=state.stores.filter(st=>st.active).flatMap(st=>state.products.filter(p=>p.published&&p.store_id===st.id).map(p=>({p,store:st})));
  const activeCategory=categoryFilterKeys.includes(state.shopCategory)?state.shopCategory:'all';
- const products=catalogue.filter(({p,store})=>matchesCategory(p,activeCategory)&&(!state.search||p.name.includes(state.search)||store.name.includes(state.search)||categoryLabel(p).includes(state.search)));
+ // Sort across every store, not store-by-store, so the newest registered products appear first.
+ const products=catalogue.filter(({p,store})=>matchesCategory(p,activeCategory)&&(!state.search||p.name.includes(state.search)||store.name.includes(state.search)||categoryLabel(p).includes(state.search)))
+  .sort((a,b)=>(Date.parse(b.p.created_at)||0)-(Date.parse(a.p.created_at)||0)||String(b.p.id).localeCompare(String(a.p.id)));
+ const shopPageSize=10;
+ const shopPageCount=Math.max(1,Math.ceil(products.length/shopPageSize));
+ const shopPage=Math.min(Math.max(1,Number.isInteger(state.shopPage)?state.shopPage:1),shopPageCount);
+ state.shopPage=shopPage;
+ const pageProducts=products.slice((shopPage-1)*shopPageSize,shopPage*shopPageSize);
+ const firstNumber=products.length?(shopPage-1)*shopPageSize+1:0;
+ const lastNumber=Math.min(products.length,shopPage*shopPageSize);
  const categoryCounts=Object.fromEntries(categoryFilterKeys.map(k=>[k,catalogue.filter(({p})=>matchesCategory(p,k)).length]));
  const featuredProducts=state.stores.filter(s=>s.active).flatMap(s=>state.products.filter(p=>p.published&&p.store_id===s.id));const featured=featuredProducts.find(p=>p.image_url&&!p.is_sold_out)||featuredProducts.find(p=>p.image_url);
  const banner=state.heroPhotoUrl||featured?.image_url||'';
@@ -2095,7 +2113,12 @@ function renderShop(){
  ${categoryFilterKeys.filter(k=>k==='all'||categoryCounts[k]>0||k===activeCategory).map(k=>`<button type="button" class="shop-category-tab ${activeCategory===k?'active':''}" data-action="shop-category" data-category="${k}" aria-pressed="${activeCategory===k}">${k==='all'?'전체':k==='uncategorized'?'미분류':k}<span>${categoryCounts[k]}</span></button>`).join('')}
  </div>
  <div class="shop-search-wrap"><input id="search" type="search" placeholder="상품명·가게명·카테고리 검색" value="${esc(state.search)}" aria-label="상품 검색"></div>
- <div class="shoplist">${products.length?`<div class="shop-catalog-count">${activeCategory==='all'?'전체 상품':activeCategory==='uncategorized'?'미분류 상품':activeCategory} · ${products.length}개</div><div class="shop-catalog-grid">${products.map(({p,store})=>`<article class="shop-catalog-card ${p.is_sold_out?'shop-soldout-card':''}"><button class="shop-catalog-photo shop-photo-button" type="button" data-action="product-photos" data-id="${esc(p.id)}" aria-label="${esc(p.name)} 상품 사진 보기">${img(p)}</button>${p.is_sold_out?'<span class="shop-soldout-label">품절</span>':''}<div class="shop-catalog-store">${esc(store.name)} <span class="shop-catalog-category">${esc(categoryLabel(p))}</span></div><div class="producttitle">${esc(p.name)}</div><div class="shop-catalog-colors">${Object.keys(p.options||{}).map(esc).join(' · ')||'색상 옵션 확인'}</div>${estimatedProductPrice(p)}<div class="shop-catalog-quote">${p.is_sold_out?'현재 품절 · 주문 불가':hasProductEstimate(p)?'실제 결제금액은 견적에서 확정':'견적 후 가격 안내'}</div><button class="btn block shop-catalog-select" type="button" data-action="pick-product" data-id="${esc(p.id)}" ${p.is_sold_out?'disabled':''}>${p.is_sold_out?'품절':'옵션 선택 ↗'}</button></article>`).join('')}</div>`:'<div class="empty">조건에 맞는 상품이 없어요. 다른 카테고리나 검색어를 선택해 주세요.</div>'}</div>
+ <div class="shoplist">${products.length?`<div class="shop-catalog-count">${activeCategory==='all'?'전체 상품':activeCategory==='uncategorized'?'미분류 상품':activeCategory} · 총 ${products.length}개 · 최신 등록순 · ${firstNumber}~${lastNumber}개 표시</div><div class="shop-catalog-grid">${pageProducts.map(({p,store})=>`<article class="shop-catalog-card ${p.is_sold_out?'shop-soldout-card':''}"><button class="shop-catalog-photo shop-photo-button" type="button" data-action="product-photos" data-id="${esc(p.id)}" aria-label="${esc(p.name)} 상품 사진 보기">${img(p)}</button>${p.is_sold_out?'<span class="shop-soldout-label">품절</span>':''}<div class="shop-catalog-store">${esc(store.name)} <span class="shop-catalog-category">${esc(categoryLabel(p))}</span></div><div class="producttitle">${esc(p.name)}</div><div class="shop-catalog-colors">${Object.keys(p.options||{}).map(esc).join(' · ')||'색상 옵션 확인'}</div>${estimatedProductPrice(p)}<div class="shop-catalog-quote">${p.is_sold_out?'현재 품절 · 주문 불가':hasProductEstimate(p)?'실제 결제금액은 견적에서 확정':'견적 후 가격 안내'}</div><button class="btn block shop-catalog-select" type="button" data-action="pick-product" data-id="${esc(p.id)}" ${p.is_sold_out?'disabled':''}>${p.is_sold_out?'품절':'옵션 선택 ↗'}</button></article>`).join('')}</div>
+ ${shopPageCount>1?`<nav class="shop-catalog-pagination" aria-label="상품 페이지 이동">
+  <button type="button" class="page-control" data-action="shop-page" data-page-number="${shopPage-1}" ${shopPage===1?'disabled':''} aria-label="이전 상품 페이지">이전</button>
+  ${Array.from({length:shopPageCount},(_,i)=>i+1).map(n=>`<button type="button" data-action="shop-page" data-page-number="${n}" ${n===shopPage?'aria-current="page"':''} aria-label="${n}페이지">${n}</button>`).join('')}
+  <button type="button" class="page-control" data-action="shop-page" data-page-number="${shopPage+1}" ${shopPage===shopPageCount?'disabled':''} aria-label="다음 상품 페이지">다음</button>
+ </nav><p class="shop-catalog-pagination-status">${shopPage} / ${shopPageCount} 페이지 · 페이지당 10개</p>`:''}`:'<div class="empty">조건에 맞는 상품이 없어요. 다른 카테고리나 검색어를 선택해 주세요.</div>'}</div>
  <div class="shop-footer-note"><b>MINIYENA</b>남대문 아동복 초저가 공동구매.<br>상품을 골라 견적을 요청하면 확인 후 가격을 안내해 드려요.</div>
  </section>`;
 }
@@ -3983,11 +4006,25 @@ if(a==='admin-summary'){
  if(section)window.scrollTo({top:Math.max(0,window.scrollY+section.getBoundingClientRect().top-12),behavior:'auto'});
  return;
 }
+if(a==='shop-page'){
+ if(state.page!=='shop')throw Error('상품 화면에서만 페이지를 이동할 수 있어요.');
+ const next=Number(b.dataset.pageNumber);
+ const total=state.stores.filter(st=>st.active).flatMap(st=>state.products.filter(p=>p.published&&p.store_id===st.id).map(p=>({p,store:st})))
+  .filter(({p,store})=>matchesCategory(p,state.shopCategory)&&(!state.search||p.name.includes(state.search)||store.name.includes(state.search)||categoryLabel(p).includes(state.search))).length;
+ const maxPage=Math.max(1,Math.ceil(total/10));
+ if(!Number.isInteger(next)||next<1||next>maxPage) return;
+ state.shopPage=next;
+ render();
+ const section=app.querySelector('#catalog');
+ if(section)window.scrollTo({top:Math.max(0,window.scrollY+section.getBoundingClientRect().top-12),behavior:'auto'});
+ return;
+}
 if(a==='shop-category'){
  if(state.page!=='shop')throw Error('상품 화면에서 카테고리를 선택해 주세요.');
  const chosen=b.dataset.category;
  if(!categoryFilterKeys.includes(chosen))throw Error('올바르지 않은 카테고리예요.');
  state.shopCategory=chosen;
+ state.shopPage=1;
  render();
  const section=app.querySelector('.shop-category-list');
  if(section)window.scrollTo({top:Math.max(0,window.scrollY+section.getBoundingClientRect().top-12),behavior:'auto'});
@@ -4387,7 +4424,7 @@ function input(e){
   }catch{if(output)output.textContent='금액과 인원을 확인해 주세요.'}
   return;
  }
- if(e.target.id==='admin-product-search'){state.adminProductSearch=e.target.value;updateAdminProductSearch();return;}if(e.target.id==='stat-search'){const query=e.target.value.trim().toLowerCase();for(const node of app.querySelectorAll('[data-stats-entry]'))node.classList.toggle('hidden',!!query&&!node.textContent.toLowerCase().includes(query));return;}if(e.target.id==='search'){state.search=e.target.value;const pos=e.target.selectionStart;render();const el=$('#search');if(el){el.focus();el.setSelectionRange(pos,pos)}}}
+ if(e.target.id==='admin-product-search'){state.adminProductSearch=e.target.value;updateAdminProductSearch();return;}if(e.target.id==='stat-search'){const query=e.target.value.trim().toLowerCase();for(const node of app.querySelectorAll('[data-stats-entry]'))node.classList.toggle('hidden',!!query&&!node.textContent.toLowerCase().includes(query));return;}if(e.target.id==='search'){state.search=e.target.value;state.shopPage=1;const pos=e.target.selectionStart;render();const el=$('#search');if(el){el.focus();el.setSelectionRange(pos,pos)}}}
 app.addEventListener('click',e=>{const orderSummary=e.target.closest('.admin-order-fold > summary');if(orderSummary){const order=orderSummary.parentElement;state.orderCardsOpen[order.dataset.adminOrderId]=!order.open;return}const summary=e.target.closest('.admin-date-group > summary');if(summary){const group=summary.parentElement;state.dateGroupsOpen[group.dataset.orderDate]=!group.open;return}const tab=e.target.closest('[data-tab]'),filter=e.target.closest('[data-filter]');if(tab){state.tab=tab.dataset.tab;if(state.tab==='requests')state.requestStatusFilter='pending';render();return}if(filter){state.filter=filter.dataset.filter;state.supplierBulkSelected.clear();render();return}click(e)});
 app.addEventListener('submit',submit);app.addEventListener('change',change);app.addEventListener('input',input);
 app.addEventListener('pointerdown',startAdminPhotoDrag,{passive:false});

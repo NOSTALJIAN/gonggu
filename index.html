@@ -2733,72 +2733,141 @@ function renderAdminQuoteDateSection(visible,groups,section,defaultDoneOpen=fals
 }
 // Customer-by-customer wholesale allocation, with a saved batch that can be
 // marked supplier-ordered only after *every* included quote is confirmed+paid.
+// Each wholesale supplier has an independent freight batch, even when
+// multiple suppliers' items belong to the very same customer order.
 function supplierBatchPaymentState(batch){
- const roots=Array.isArray(batch.root_quote_ids)?batch.root_quote_ids:[];
- const allIds=Array.isArray(batch.quote_ids)?batch.quote_ids:[];
- const result=roots.map(rootId=>{
-  const root=state.quotes.find(q=>q.id===rootId);
-  const orders=allIds.map(id=>state.quotes.find(q=>q.id===id))
-   .filter(q=>q&&((q.id===rootId)||(q.bundle_parent_id===rootId)));
-  const due=orders.reduce((s,q)=>s+totalDue(q),0);
-  const net=orders.reduce((s,q)=>s+Number(q.amount_paid||0)-Number(q.amount_refunded||0),0);
-  // A bundled buyer may pay for all their orders in one transfer to the
-  // parent quote. Match the database rule: sum all of that buyer's net payments.
-  const eligible=Boolean(root&&orders.length)&&orders.every(q=>
-   q.status==='confirmed'&&readyQuote(q)&&!allSoldOut(q)&&
+ const items=(batch.item_ids||[]).map(itemId=>
+  state.quotes.flatMap(q=>(q.items||[]).map(item=>({q,item}))).find(x=>x.item.id===itemId)
+ ).filter(Boolean);
+ const result=(batch.payers||[]).map(payer=>{
+  const selected=items.filter(x=>String(x.q.contact||'').replace(/\D/g,'')===payer.buyer_key);
+  const rootIds=new Set(selected.map(x=>x.q.bundle_parent_id||x.q.id));
+  const orders=state.quotes.filter(q=>q.status!=='cancelled'&&
+   (rootIds.has(q.id)||rootIds.has(q.bundle_parent_id)));
+  const due=orders.reduce((sum,q)=>sum+totalDue(q),0);
+  const net=orders.reduce((sum,q)=>sum+Number(q.amount_paid||0)-Number(q.amount_refunded||0),0);
+  const selectedReady=selected.length>0&&selected.every(({q,item})=>
+   q.status==='confirmed'&&item.fulfillment!=='sold_out'&&
+   !item.supplier_ordered_at&&!q.supplier_ordered_at&&
    !q.cancel_requested_at&&!q.delivery_change_requested_at&&
-   ['new','preparing'].includes(workflowStage(q))&&!q.supplier_ordered_at)&&net>=due;
-  const hasPending=orders.some(q=>q.status!=='confirmed');
-  const isBlocked=orders.some(q=>q.status==='cancelled'||q.cancel_requested_at||q.delivery_change_requested_at);
-  const missing=orders.some(q=>!readyQuote(q)||allSoldOut(q));
-  const unpaid=Math.max(0,due-net);
-  const reason=eligible?'입금 확인':hasPending?'최종 주문 대기':isBlocked?'취소·변경 확인 필요':
-   missing?'상품 가격·배송비 확인 필요':unpaid>0?'미입금 '+money(unpaid):'진행 상태 확인 필요';
-  return {root,orders,due,net,eligible,reason};
+   ['new','preparing'].includes(workflowStage(q)));
+  const allReady=orders.length>0&&orders.every(q=>
+   q.status==='confirmed'&&readyQuote(q)&&!allSoldOut(q)&&
+   !q.cancel_requested_at&&!q.delivery_change_requested_at);
+  const eligible=selectedReady&&allReady&&net>=due;
+  const missingPayment=Math.max(0,due-net);
+  const reason=eligible?'입금 확인':
+   !selectedReady?'선택 상품·주문 상태 확인':
+   !allReady?'최종 주문·가격 확정 대기':
+   missingPayment>0?'미입금 '+money(missingPayment):
+   '상태 확인 필요';
+  return {payer,selected,orders,due,net,eligible,reason,
+   buyerName:selected[0]?.q.buyer_name||state.quotes.find(q=>q.id===payer.charged_quote_id)?.buyer_name||'주문자'};
  });
  return {people:result,paid:result.filter(r=>r.eligible).length,
-  canOrder:roots.length>0&&result.length===Number(batch.people)&&result.every(r=>r.eligible)};
+  canOrder:result.length===Number(batch.people)&&result.every(r=>r.eligible)};
 }
 function renderSupplierBulkManager(){
  if(!state.admin||state.page!=='admin')return '';
- const history=state.supplierBatchesReady?
- state.supplierBatches.map((batch,index)=>{
-  const checked=supplierBatchPaymentState(batch),ordered=Boolean(batch.ordered_at);
-  const rootCount=Number(batch.people||0);
-  const total=Number(batch.total||0);
-  const base=rootCount?Math.floor(total/rootCount):0;
-  const extra=rootCount?total%rootCount:0;
+ const allStores=[...new Set(state.quotes.flatMap(q=>(q.items||[]).map(supplierItemStore)))].filter(Boolean);
+ const stores=state.stores.filter(store=>allStores.includes(store.id))
+  .sort((a,b)=>a.name.localeCompare(b.name,'ko'));
+ const storeId=state.supplierBulkStoreId;
+ const store=state.stores.find(s=>s.id===storeId);
+ const entries=storeId?state.quotes.flatMap(q=>(q.items||[])
+  .filter(item=>supplierItemStore(item)===storeId)
+  .map(item=>({q,item}))):[];
+ const groups=new Map();
+ for(const row of entries){
+  const phone=String(row.q.contact||'').replace(/\D/g,'');
+  const key=phone||row.q.id;
+  if(!groups.has(key))groups.set(key,[]);
+  groups.get(key).push(row);
+ }
+ const customerList=[...groups.entries()].map(([key,rows])=>{
+  const first=rows[0].q;
+  const eligible=rows.filter(({q,item})=>supplierBulkAvailableItem(q,item));
+  const selected=eligible.filter(({item})=>state.supplierBulkSelected.has(item.id));
+  const existingPending=state.supplierBatches.some(b=>b.store_id===storeId&&
+   !b.ordered_at&&(b.payers||[]).some(p=>p.buyer_key===key));
+  const statuses=rows.map(({q,item})=>{
+   const assigned=supplierItemBatch(item.id);
+   return `<label class="supplier-bulk-item ${assigned?'is-assigned':''}">
+    <input type="checkbox" data-supplier-item-select="${esc(item.id)}" ${state.supplierBulkSelected.has(item.id)?'checked':''}
+     ${supplierBulkAvailableItem(q,item)&&!existingPending?'':'disabled'} aria-label="${esc(q.buyer_name)} ${esc(item.product_name)} 배송비 대상 선택">
+    <span class="supplier-bulk-item-detail">
+     <b>${esc(item.product_name)}</b>
+     <small>${esc(item.color)} / ${esc(item.size)} · ${item.quantity}개 · ${esc(statusLabel[q.status]||q.status)}</small>
+     ${assigned?`<small class="supplier-item-mark">${assigned.ordered_at?'도매 발주 완료':'배송비 배분 완료'}</small>`:item.supplier_ordered_at?'<small class="supplier-item-mark">도매 발주 완료</small>':''}
+    </span>
+   </label>`;
+  }).join('');
+  return `<div class="supplier-bulk-customer">
+   <div class="supplier-bulk-customer-header"><div>
+    <strong>${esc(first.buyer_name||'주문자 미입력')}</strong>
+    <small>아기: ${esc(first.baby_name||'미입력')} · 거래처 상품 ${rows.length}종</small>
+   </div>
+    <button type="button" class="btn sm secondary" data-action="supplier-bulk-select-buyer"
+     data-buyer-key="${esc(key)}" ${!eligible.length||existingPending?'disabled':''}>
+     ${selected.length&&selected.length===eligible.length?'선택 해제':'이 사람 상품 모두 선택'}
+    </button>
+   </div>
+   ${existingPending?'<p class="smallnote">이 거래처 배송비를 이미 배분한 구매자예요. 상품을 추가하려면 기존 미발주 배분을 취소하고 함께 선택해 주세요.</p>':''}
+   ${statuses}
+  </div>`;
+ }).join('');
+ const history=state.supplierBatchesReady?state.supplierBatches.map((batch,index)=>{
+  const checked=supplierBatchPaymentState(batch);
+  const ordered=Boolean(batch.ordered_at);
+  const base=batch.people?Math.floor(batch.total/batch.people):0;
+  const extra=batch.people?batch.total%batch.people:0;
   const shareText=extra?`${money(base)}~${money(base+1)}`:money(base);
+  const batchItems=(batch.item_ids||[]).map(id=>state.quotes.flatMap(q=>q.items||[]).find(i=>i.id===id)).filter(Boolean);
   return `<details class="supplier-bulk-batch" ${!ordered&&index===0?'open':''}>
-   <summary><span><strong>${ordered?'도매 발주 완료':'도매 발주 대기'} · ${fmtDate(batch.created_at)}</strong>
-    <small>${rootCount}명 · 업체 배송비 ${money(total)} · 1인 ${shareText}</small></span>
-    <em>${ordered?'완료':checked.paid+'/'+rootCount+'명 입금 확인'}</em></summary>
+   <summary><span><strong>${esc(batch.supplier||'거래처')} · ${ordered?'도매 발주 완료':'발주 대기'}</strong>
+    <small>${batch.people}명 · ${batchItems.length}종 · 배송비 ${money(batch.total)} · 1인 ${shareText}</small>
+    <small>${fmtDate(batch.created_at)}</small></span>
+    <em>${ordered?'완료':checked.paid+'/'+batch.people+'명 입금 확인'}</em>
+   </summary>
    <div class="supplier-bulk-batch-body">
     ${checked.people.map(p=>`<div class="supplier-bulk-person">
-     <span>${esc(p.root?.buyer_name||'삭제된 주문')} ${p.orders.length>1?'('+p.orders.length+'건 묶음)':''}</span>
-     <span class="${ordered||p.eligible?'is-paid':'is-waiting'}">${ordered?'도매 발주 완료':esc(p.reason)}</span>
-    </div>`).join('')}
-    <p class="smallnote">결제금액은 상품값 + 고객 배송비 + 도매배송비 분담금을 기준으로 확인해요. 입금 기록은 각 주문 카드에서 저장해야 해요.</p>
-    ${ordered?`<div class="supplier-bulk-done">도매 발주 완료 처리: ${fmtDate(batch.ordered_at)} · 이후 상품 입고·배송 관리는 기존 주문에서 계속해 주세요.</div>`:
-      `<button type="button" class="btn block" data-action="supplier-bulk-ordered" data-id="${esc(batch.id)}" ${checked.canOrder?'':'disabled'}>전원 입금 확인 → 도매 발주 완료 처리</button>
-       ${!checked.canOrder?'<p class="smallnote">모든 주문의 최종 확정과 입금 기록이 완료되어야 버튼이 활성화돼요.</p>':''}
-       <button type="button" class="btn sm neutral supplier-bulk-cancel" data-action="supplier-bulk-cancel" data-id="${esc(batch.id)}">이 배분 취소·기존 배송비로 복구</button>`}
+      <span>${esc(p.buyerName)} · ${money(p.payer.amount)} 분담</span>
+      <span class="${ordered||p.eligible?'is-paid':'is-waiting'}">${ordered?'도매 발주 완료':esc(p.reason)}</span>
+     </div>`).join('')}
+    <div class="smallnote supplier-bulk-items-count">배분 상품: ${batchItems.map(i=>esc(i.product_name)).join(' · ')||'기록 확인 필요'}</div>
+    <p class="smallnote">이 거래처에 체크한 상품만 발주 처리해요. 구매자 입금은 해당 주문의 상품·배송비 전체 금액을 확인해요.</p>
+    ${ordered?`<div class="supplier-bulk-done">이 거래처 발주 완료: ${fmtDate(batch.ordered_at)}</div>`:
+      `<button type="button" class="btn block" data-action="supplier-bulk-ordered" data-id="${esc(batch.id)}" ${checked.canOrder?'':'disabled'}>전원 입금 확인 → 이 거래처 도매 발주 완료</button>
+       ${!checked.canOrder?'<p class="smallnote">모든 해당 주문의 최종 확정·가격·입금 확인이 필요해요.</p>':''}
+       <button type="button" class="btn sm neutral supplier-bulk-cancel" data-action="supplier-bulk-cancel" data-id="${esc(batch.id)}">이 거래처 배송비 배분 취소</button>`}
    </div>
   </details>`;
  }).join(''):'';
  return `<section class="card supplier-bulk-manager" id="supplier-bulk-manager">
-  <div class="supplier-bulk-heading"><h3>도매배송비 한 번에 배분</h3><span>남대문 발주 관리</span></div>
-  <p class="smallnote">아래 주문자 이름 왼쪽의 <b>선택</b>을 체크하고 업체 배송비 총액을 넣어 주세요. 체크한 <b>주문자 수</b>로 나누고, 같은 사람은 한 번만 계산해요. 묶음배송도 한 명 몫만 반영돼요.</p>
-  ${!state.supplierBatchesReady?`<p class="noticefail">배분 현황을 불러올 수 없어요. ${esc(state.supplierBatchesError||'관리자 새로고침을 해주세요.')}</p>`:''}
-  <div class="supplier-bulk-controls"><strong data-supplier-bulk-chosen>${state.supplierBulkSelected.size}명 선택</strong><button type="button" class="btn sm secondary" data-action="supplier-bulk-clear">선택 해제</button></div>
+  <div class="supplier-bulk-heading"><h3>거래처별 도매배송비 배분</h3><span>상품별 선택 · 인원별 분담</span></div>
+  <p class="smallnote">먼저 <b>남대문 거래처</b>를 선택하고, 해당 거래처의 상품을 체크해 주세요. 같은 사람이 이 거래처 상품을 여러 개 주문해도 배송비는 <b>한 명 몫</b>만 계산돼요. 다른 거래처 상품은 거래처를 바꿔서 별도로 배분해요.</p>
+  ${!state.supplierBatchesReady?`<p class="noticefail">배분 현황을 불러오지 못했어요. ${esc(state.supplierBatchesError||'관리자 새로고침 후 확인해 주세요.')}</p>`:''}
+  <label class="label">도매 거래처 선택
+   <select data-supplier-bulk-store aria-label="배송비를 배분할 도매 거래처">
+    <option value="">거래처를 선택해 주세요</option>
+    ${stores.map(s=>`<option value="${esc(s.id)}" ${storeId===s.id?'selected':''}>${esc(s.name)}</option>`).join('')}
+   </select>
+  </label>
+  ${store?`<div class="supplier-bulk-store-summary"><strong>${esc(store.name)}</strong> · 상품 ${entries.length}종 · 구매자 ${groups.size}명</div>
+   <div class="supplier-bulk-customer-list">${customerList||'<p class="smallnote">이 거래처 주문 상품이 없어요.</p>'}</div>`:
+   '<p class="smallnote">거래처를 선택하면 주문자별 해당 거래처 상품이 나타나요.</p>'}
+  <div class="supplier-bulk-controls"><strong data-supplier-bulk-chosen>0명 · 0개 상품 선택</strong>
+   <button type="button" class="btn sm secondary" data-action="supplier-bulk-clear">선택 해제</button></div>
   <form id="bulk-supplier-shipping-form">
-   <label class="label">도매업체 배송비 총액 (원)
-    <input type="number" name="bulk_supplier_total" min="0" max="1000000" step="1" inputmode="numeric" placeholder="예: 4000" required></label>
-   <div class="supplier-bulk-preview" data-supplier-bulk-preview>먼저 아래 주문자의 체크박스를 선택해 주세요.</div>
-   <button type="submit" class="btn block" data-supplier-bulk-apply disabled>선택한 사람들에게 배송비 일괄 적용</button>
+   <label class="label">이 거래처의 도매배송비 총액 (원)
+    <input type="number" name="bulk_supplier_total" min="0" max="1000000" step="1"
+     inputmode="numeric" placeholder="예: 4000" required></label>
+   <div class="supplier-bulk-preview" data-supplier-bulk-preview>먼저 거래처와 상품을 선택해 주세요.</div>
+   <button type="submit" class="btn block" data-supplier-bulk-apply disabled>체크한 구매자에게 거래처 배송비 배분</button>
   </form>
-  <p class="smallnote">나누어떨어지지 않는 금액은 일부 구매자가 1원만 더 부담해 <b>총 배분액이 정확히 일치</b>하게 나눠요. 이미 안내한 견적은 금액 변경 여부를 확인해 주세요.</p>
-  ${state.supplierBatches.length?`<div class="supplier-bulk-list"><h4>저장된 배송비 배분 · 입금 현황</h4>${history}</div>`:'<p class="smallnote">아직 일괄 배분한 내역이 없어요.</p>'}
+  <p class="smallnote">배송비는 선택한 거래처 상품의 <b>서로 다른 구매자 수</b>로 나누고, 남는 1원은 일부 구매자에게만 배분해 총액을 정확히 맞춰요. 각 고객 주문 총액에는 다른 거래처 분담금까지 합산돼요.</p>
+  ${state.supplierBatches.length?`<div class="supplier-bulk-list"><h4>거래처별 배송비 · 입금·발주 현황</h4>${history}</div>`:
+    '<p class="smallnote">아직 거래처별로 배분한 내역이 없어요.</p>'}
  </section>`;
 }
 

@@ -2727,15 +2727,16 @@ function supplierBatchPaymentState(batch){
    .filter(q=>q&&((q.id===rootId)||(q.bundle_parent_id===rootId)));
   const due=orders.reduce((s,q)=>s+totalDue(q),0);
   const net=orders.reduce((s,q)=>s+Number(q.amount_paid||0)-Number(q.amount_refunded||0),0);
+  // A bundled buyer may pay for all their orders in one transfer to the
+  // parent quote. Match the database rule: sum all of that buyer's net payments.
   const eligible=Boolean(root&&orders.length)&&orders.every(q=>
    q.status==='confirmed'&&readyQuote(q)&&!allSoldOut(q)&&
    !q.cancel_requested_at&&!q.delivery_change_requested_at&&
-   ['new','preparing'].includes(workflowStage(q))&&!q.supplier_ordered_at&&
-   Number(q.amount_paid||0)-Number(q.amount_refunded||0)>=totalDue(q));
+   ['new','preparing'].includes(workflowStage(q))&&!q.supplier_ordered_at)&&net>=due;
   const hasPending=orders.some(q=>q.status!=='confirmed');
   const isBlocked=orders.some(q=>q.status==='cancelled'||q.cancel_requested_at||q.delivery_change_requested_at);
   const missing=orders.some(q=>!readyQuote(q)||allSoldOut(q));
-  const unpaid=orders.reduce((sum,q)=>sum+Math.max(0,totalDue(q)-(Number(q.amount_paid||0)-Number(q.amount_refunded||0))),0);
+  const unpaid=Math.max(0,due-net);
   const reason=eligible?'입금 확인':hasPending?'최종 주문 대기':isBlocked?'취소·변경 확인 필요':
    missing?'상품 가격·배송비 확인 필요':unpaid>0?'미입금 '+money(unpaid):'진행 상태 확인 필요';
   return {root,orders,due,net,eligible,reason};
@@ -4054,7 +4055,7 @@ if(x.matches?.('[data-supplier-select]')){
 if(x.name==='extra_photos'&&x.closest('form#approve-form,form#product-form')){chooseAdminAdditionalPhotos(x);return;}
 if(x.id==='deliveryMethodEdit'){
  const panel=$('#courierFieldsEdit');if(panel){const show=x.value==='courier';panel.classList.toggle('hidden',!show);if(!show){const el=panel.querySelector('[data-postcode-panel]');if(el)el.classList.add('hidden');}for(const field of panel.querySelectorAll('input')){field.disabled=!show;field.required=show&&field.hasAttribute('data-courier-required');}}return;
-}if(x.id==='deliveryMethod'){const block=$('#courierFields');if(block){const courier=x.value==='courier';block.classList.toggle('hidden',!courier);if(!courier){const el=block.querySelector('[data-postcode-panel]');if(el)el.classList.add('hidden');}for(const input of block.querySelectorAll('input')){input.disabled=!courier;input.required=courier&&input.hasAttribute('data-courier-required');}}return;}if(x.id==='suggest-photo'){updateSuggestPhotoPreviews(x);return}if(x.id==='pickColor'){state.modal.color=x.value;const p=selectedProd(state.modal.id);$('#pickSize').innerHTML=(p.options[x.value]||[]).map(s=>`<option>${esc(s)}</option>`).join('')}else if(x.dataset.tab){state.tab=x.dataset.tab;render()}else if(x.dataset.filter){state.filter=x.dataset.filter;render()}else if(x.dataset.fulfillment){if(busy)return;busy=true;try{
+}if(x.id==='deliveryMethod'){const block=$('#courierFields');if(block){const courier=x.value==='courier';block.classList.toggle('hidden',!courier);if(!courier){const el=block.querySelector('[data-postcode-panel]');if(el)el.classList.add('hidden');}for(const input of block.querySelectorAll('input')){input.disabled=!courier;input.required=courier&&input.hasAttribute('data-courier-required');}}return;}if(x.id==='suggest-photo'){updateSuggestPhotoPreviews(x);return}if(x.id==='pickColor'){state.modal.color=x.value;const p=selectedProd(state.modal.id);$('#pickSize').innerHTML=(p.options[x.value]||[]).map(s=>`<option>${esc(s)}</option>`).join('')}else if(x.dataset.tab){state.tab=x.dataset.tab;render()}else if(x.dataset.filter){state.filter=x.dataset.filter;state.supplierBulkSelected.clear();render()}else if(x.dataset.fulfillment){if(busy)return;busy=true;try{
  const q=state.quotes.find(y=>y.items.some(i=>i.id===x.dataset.fulfillment));const item=q?.items.find(i=>i.id===x.dataset.fulfillment);
  if(x.value==='sold_out'&&item?.fulfillment!=='sold_out'){
   const amount=Number(item.unit_price||0)*item.quantity;
@@ -4077,7 +4078,7 @@ function input(e){
   return;
  }
  if(e.target.id==='admin-product-search'){state.adminProductSearch=e.target.value;updateAdminProductSearch();return;}if(e.target.id==='stat-search'){const query=e.target.value.trim().toLowerCase();for(const node of app.querySelectorAll('[data-stats-entry]'))node.classList.toggle('hidden',!!query&&!node.textContent.toLowerCase().includes(query));return;}if(e.target.id==='search'){state.search=e.target.value;const pos=e.target.selectionStart;render();const el=$('#search');if(el){el.focus();el.setSelectionRange(pos,pos)}}}
-app.addEventListener('click',e=>{const orderSummary=e.target.closest('.admin-order-fold > summary');if(orderSummary){const order=orderSummary.parentElement;state.orderCardsOpen[order.dataset.adminOrderId]=!order.open;return}const summary=e.target.closest('.admin-date-group > summary');if(summary){const group=summary.parentElement;state.dateGroupsOpen[group.dataset.orderDate]=!group.open;return}const tab=e.target.closest('[data-tab]'),filter=e.target.closest('[data-filter]');if(tab){state.tab=tab.dataset.tab;if(state.tab==='requests')state.requestStatusFilter='pending';render();return}if(filter){state.filter=filter.dataset.filter;render();return}click(e)});
+app.addEventListener('click',e=>{const orderSummary=e.target.closest('.admin-order-fold > summary');if(orderSummary){const order=orderSummary.parentElement;state.orderCardsOpen[order.dataset.adminOrderId]=!order.open;return}const summary=e.target.closest('.admin-date-group > summary');if(summary){const group=summary.parentElement;state.dateGroupsOpen[group.dataset.orderDate]=!group.open;return}const tab=e.target.closest('[data-tab]'),filter=e.target.closest('[data-filter]');if(tab){state.tab=tab.dataset.tab;if(state.tab==='requests')state.requestStatusFilter='pending';render();return}if(filter){state.filter=filter.dataset.filter;state.supplierBulkSelected.clear();render();return}click(e)});
 app.addEventListener('submit',submit);app.addEventListener('change',change);app.addEventListener('input',input);
 app.addEventListener('pointerdown',startAdminPhotoDrag,{passive:false});
 app.addEventListener('pointermove',moveAdminPhotoDrag,{passive:false});

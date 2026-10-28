@@ -3695,31 +3695,47 @@ if(a==='send-current-email'){
 }
 if(a==='supplier-bulk-clear'){
  state.supplierBulkSelected.clear();
- app.querySelectorAll('[data-supplier-select]').forEach(input=>{
-  input.checked=false;input.closest('.admin-order-check')?.classList.remove('is-checked');
- });
+ app.querySelectorAll('[data-supplier-item-select]').forEach(input=>input.checked=false);
+ app.querySelectorAll('[data-action="supplier-bulk-select-buyer"]').forEach(button=>button.textContent='이 사람 상품 모두 선택');
+ updateSupplierBulkPreview();
+ return;
+}
+if(a==='supplier-bulk-select-buyer'){
+ if(!state.admin||!state.supplierBatchesReady)throw Error('관리자 로그인 후 거래처 상품을 선택해 주세요.');
+ const customer=b.closest('.supplier-bulk-customer');
+ if(!customer)throw Error('선택할 구매자 상품을 찾지 못했어요.');
+ const checkboxes=[...customer.querySelectorAll('input[data-supplier-item-select]:not(:disabled)')];
+ const shouldSelect=checkboxes.some(input=>!input.checked);
+ for(const checkbox of checkboxes){
+  checkbox.checked=shouldSelect;
+  if(shouldSelect)state.supplierBulkSelected.add(checkbox.dataset.supplierItemSelect);
+  else state.supplierBulkSelected.delete(checkbox.dataset.supplierItemSelect);
+ }
+ b.textContent=shouldSelect?'선택 해제':'이 사람 상품 모두 선택';
  updateSupplierBulkPreview();return;
 }
 if(a==='supplier-bulk-cancel'){
- if(!state.admin||!state.supplierBatchesReady)throw Error('관리자 일괄 배분 화면에서만 사용할 수 있어요.');
+ if(!state.admin||!state.supplierBatchesReady)throw Error('관리자 배송비 배분 화면에서만 사용할 수 있어요.');
  const batch=state.supplierBatches.find(x=>x.id===id);
- if(!batch||batch.ordered_at)throw Error('취소 가능한 일괄 배분을 찾지 못했어요.');
- if(!window.confirm('이 배송비 일괄 배분을 취소하고 각 주문의 이전 도매배송비로 되돌릴까요?\n\n고객에게 이미 안내된 결제금액이 변경될 수 있어요. 입금·환불 차액도 확인해 주세요.'))return;
- const result=await rpc('gq_admin_cancel_supplier_shipping_batch_v47',{p_batch_id:id},true);
- if(result!==true)throw Error('일괄 배분 취소 결과를 확인하지 못했어요.');
- await loadAdmin();notif('배송비 배분을 취소하고 기존 금액으로 복구했어요.');
+ if(!batch||batch.ordered_at)throw Error('취소 가능한 거래처 배분을 찾지 못했어요.');
+ if(!window.confirm('‘'+batch.supplier+'’ 거래처의 배송비 배분을 취소할까요?\n다른 거래처의 배분과 배송비는 그대로 유지돼요.\n고객에게 이미 안내한 금액과 입금 차액은 확인해 주세요.'))return;
+ const result=await rpc('gq_admin_cancel_supplier_item_batch_v50',{p_batch_id:id},true);
+ if(result!==true)throw Error('거래처 배송비 배분 취소 결과가 올바르지 않아요.');
+ state.supplierBulkSelected.clear();
+ await loadAdmin();
+ notif('‘'+batch.supplier+'’ 배송비 배분을 취소했어요. 다른 거래처는 그대로예요.');
  return;
 }
 if(a==='supplier-bulk-ordered'){
- if(!state.admin||!state.supplierBatchesReady)throw Error('관리자 일괄 배분 화면에서만 사용할 수 있어요.');
+ if(!state.admin||!state.supplierBatchesReady)throw Error('관리자 배송비 배분 화면에서만 사용할 수 있어요.');
  const batch=state.supplierBatches.find(x=>x.id===id);
- if(!batch||batch.ordered_at)throw Error('발주 대기 중인 배분 내역을 찾지 못했어요.');
- if(!supplierBatchPaymentState(batch).canOrder)throw Error('모든 주문의 최종 확정과 입금 기록이 완료되어야 도매 발주 완료로 처리할 수 있어요.');
- if(!window.confirm('선택한 '+batch.people+'명 전원의 입금 기록을 확인했고, 실제 남대문 도매업체에 발주까지 완료했나요?\n\n확인하면 도매 발주 완료로 표시하고 주문을 상품 준비 중 단계로 바꿔요. 고객 수령·배송 완료는 아니에요.'))return;
+ if(!batch||batch.ordered_at)throw Error('발주 대기 중인 거래처 배분이 없어요.');
+ if(!supplierBatchPaymentState(batch).canOrder)throw Error('이 거래처에 포함된 주문의 최종 확정과 입금 기록을 먼저 완료해 주세요.');
+ if(!window.confirm('‘'+batch.supplier+'’ 거래처에 선택한 상품 '+batch.item_ids.length+'종을 실제로 발주 완료했나요?\n\n확인하면 선택된 이 거래처 상품만 발주 완료로 표시해요. 다른 거래처 상품이나 고객 배송 완료 상태는 변경하지 않아요.'))return;
  const result=await adminMarkSupplierBatchOrdered(id);
- if(!result?.ordered)throw Error('도매 발주 완료 처리 결과를 확인하지 못했어요.');
+ if(!result?.ordered)throw Error('거래처별 도매 발주 완료 처리 결과가 올바르지 않아요.');
  await loadAdmin();
- notif('전원 입금 확인 · 도매 발주 완료 '+Number(result.orders||0)+'건을 상품 준비 중으로 변경했어요.');
+ notif('‘'+batch.supplier+'’ 거래처 상품 '+Number(result.items||0)+'종을 도매 발주 완료 처리했어요.');
  return;
 }
 if(a==='date-open-all'||a==='date-close-all'){
@@ -3998,26 +4014,31 @@ else if(a==='suggest-product'){modalOpen('suggest')}else if(a==='approve-request
  await copy(link);notif('링크를 복사했어요. 카톡 나와의 채팅에 붙여넣어 보관해 주세요.');
 }else if(a==='copy-track'){await copy(trackLink(state.trackId,state.trackToken))}else if(a==='load-track'){refreshFullOrderPage();return;}else if(a==='copy-quote'){await copy(quoteText(state.quotes.find(q=>q.id===id)))}else if(a==='copy-customer-link'){const q=state.quotes.find(q=>q.id===id);await copy(trackLink(q.id,q.lookup_token))}else if(a==='publish-quote'){if(!window.confirm('가격 확인을 마쳤나요? 고객에게 견적을 보여줍니다.'))return;await adminPublish(id);await loadAdmin();notif('견적을 공개했어요')}else if(a==='confirm-quote'){if(!window.confirm('이 견적으로 최종 주문을 확정할까요?'))return;await confirmFinalQuote();notif('최종 주문이 확정됐어요!')}else if(a==='export-csv'){csv()}else if(a==='copy-vendors'){await copy(vendorText())}else if(a==='logout'){session=null;localStorage.removeItem(SESS);state.admin=false;state.productPrivate={};state.productPrivateReady=false;render()} }catch(ex){notif(errorText(ex))}}
 async function submit(e){const f=e.target;if(!f.dataset.sizeChartForm&&!f.dataset.customerEmail&&!['email-settings-form','hero-photo-form','reject-request-form','admin-pin-form','pin-register-form','pin-lookup-form','import-track-form','pick','request','store-form','product-form','login','suggest-form','approve-form','bundle-form','edit-delivery-form','bulk-supplier-shipping-form'].includes(f.id)&&!f.dataset.price&&!f.dataset.payment&&!f.dataset.shipping&&!f.dataset.supplierShipping&&!f.dataset.ship&&!f.dataset.bundleShip)return;e.preventDefault();if(busy)return;busy=true;const data=new FormData(f);try{if(f.id==='bulk-supplier-shipping-form'){
- if(!state.admin||!state.supplierBatchesReady)throw Error('관리자 일괄 배분 현황을 먼저 불러와 주세요.');
+ if(!state.admin||!state.supplierBatchesReady)throw Error('관리자 배송비 배분 현황을 먼저 불러와 주세요.');
  const value=String(data.get('bulk_supplier_total')??'').trim();
- if(!/^(0|[1-9][0-9]{0,6})$/.test(value)||Number(value)>1000000)throw Error('업체 배송비 총액은 0~100만원으로 입력해 주세요.');
- const total=Number(value),{roots,duplicate,invalid}=supplierBulkSelectedInfo();
- if(!roots.length||roots.length>100||duplicate||invalid)throw Error('도매배송비를 나눌 주문자를 확인해 주세요. 한 사람당 한 건만 체크할 수 있어요.');
- const base=Math.floor(total/roots.length),extra=total%roots.length;
- const byUuid=[...roots].sort((a,b)=>a.id.localeCompare(b.id));
- const allocations=new Map(byUuid.map((q,index)=>[q.id,base+(index<extra?1:0)]));
- const affected=roots.some(q=>['quoted','confirmed'].includes(q.status)&&supplierShippingShare(q)!==allocations.get(q.id));
- const amountNote=extra?`${extra}명은 ${money(base+1)}, 나머지 ${roots.length-extra}명은 ${money(base)}`:`1인당 ${money(base)}`;
- const message='선택한 '+roots.length+'명에게 도매 배송비 '+money(total)+'을(를) 나눠 적용할까요?\n'+amountNote+' (총액 정확히 일치)'+
-  '\n\n대상: '+roots.map(q=>q.buyer_name+' '+money(allocations.get(q.id))).join(', ')+
-  (affected?'\n\n이미 고객에게 안내한 견적금액이 변경될 수 있어요. 입금·환불 차액을 꼭 확인해 주세요.':'')+
-  '\n\n기존 배분에 넣은 주문은 다시 선택할 수 없어요.';
+ if(!/^(0|[1-9][0-9]{0,6})$/.test(value)||Number(value)>1000000)throw Error('거래처 배송비 총액은 0~100만원으로 입력해 주세요.');
+ const total=Number(value),{selected,buyerKeys,people,invalid}=supplierBulkSelectedInfo();
+ const store=state.stores.find(s=>s.id===state.supplierBulkStoreId);
+ if(!store||!selected.length||selected.length>300||people>100||invalid)throw Error('먼저 거래처를 선택하고 해당 거래처의 상품만 체크해 주세요.');
+ const base=Math.floor(total/people),remainder=total%people;
+ const allocations=new Map(buyerKeys.map((key,index)=>[key,base+(index<remainder?1:0)]));
+ const buyers=buyerKeys.map(key=>{
+  const customer=selected.find(({q})=>String(q.contact||'').replace(/\D/g,'')===key);
+  return (customer?.q.buyer_name||'구매자')+' '+money(allocations.get(key));
+ });
+ const changedQuotes=selected.some(({q})=>['quoted','confirmed'].includes(q.status));
+ const splitText=remainder?`${remainder}명은 ${money(base+1)}, 나머지 ${people-remainder}명은 ${money(base)}`:`1인당 ${money(base)}`;
+ const message='‘'+store.name+'’ 거래처 배송비 '+money(total)+'을(를) 분담할까요?\n'+
+  '선택 상품 '+selected.length+'종 · 구매자 '+people+'명\n'+splitText+
+  '\n\n'+buyers.join(', ')+
+  (changedQuotes?'\n\n기존 견적을 안내받은 구매자의 결제금액이 바뀔 수 있어요. 입금 차액을 확인해 주세요.':'')+
+  '\n\n다른 거래처 배송비는 변경되지 않아요.';
  if(!window.confirm(message))return;
- const result=await adminCreateSupplierBulkShipping(roots.map(q=>q.id),total);
- if(!result?.id)throw Error('일괄 배분 저장 결과를 확인하지 못했어요.');
+ const result=await adminCreateSupplierBulkShipping(selected.map(x=>x.item.id),total);
+ if(!result?.id)throw Error('거래처별 배송비 저장 결과를 확인하지 못했어요.');
  state.supplierBulkSelected.clear();
  await loadAdmin();
- notif('도매 배송비 '+money(total)+'을 '+result.people+'명에게 한 번에 배분했어요. 각 주문의 고객 결제금액에도 적용돼요.');
+ notif('‘'+result.supplier+'’ 거래처 배송비를 '+result.people+'명에게 나눴어요. 다른 거래처 분담금은 유지돼요.');
 }else if(f.dataset.customerEmail){
  const kind=String(f.dataset.customerEmail||''),id=String(f.dataset.id||'');
  if(!['quote','product_request'].includes(kind)||!id)throw Error('수정할 신청을 찾지 못했어요.');
@@ -4135,11 +4156,28 @@ else if(f.dataset.price){
 else if(f.dataset.payment){const paid=Number(data.get('paid')),refunded=Number(data.get('refunded'));if(!Number.isInteger(paid)||!Number.isInteger(refunded)||paid<0||refunded<0)throw Error('금액을 확인해 주세요');await adminPayment(f.dataset.payment,paid,refunded);await loadAdmin();notif('입금 기록 완료')}
 }catch(ex){notif(errorText(ex))}finally{busy=false}}
 async function change(e){const x=e.target;
-if(x.matches?.('[data-supplier-select]')){
- const id=String(x.dataset.supplierSelect||'');
- if(!state.admin||!state.supplierBatchesReady){x.checked=false;return;}
- if(x.checked)state.supplierBulkSelected.add(id);else state.supplierBulkSelected.delete(id);
- const tag=x.closest('.admin-order-check');if(tag)tag.classList.toggle('is-checked',x.checked);
+if(x.matches?.('[data-supplier-bulk-store]')){
+ state.supplierBulkStoreId=x.value;
+ state.supplierBulkSelected.clear();
+ const scrollY=window.scrollY;
+ render();
+ window.scrollTo({top:scrollY,behavior:'auto'});
+ return;
+}
+if(x.matches?.('[data-supplier-item-select]')){
+ const itemId=String(x.dataset.supplierItemSelect||'');
+ const entry=state.quotes.flatMap(q=>(q.items||[]).map(item=>({q,item})))
+  .find(({item})=>item.id===itemId);
+ if(!entry||!supplierBulkAvailableItem(entry.q,entry.item)||
+    supplierItemStore(entry.item)!==state.supplierBulkStoreId){
+  x.checked=false;updateSupplierBulkPreview();return;
+ }
+ if(x.checked)state.supplierBulkSelected.add(itemId);
+ else state.supplierBulkSelected.delete(itemId);
+ const buyer=x.closest('.supplier-bulk-customer');
+ const selectable=[...(buyer?.querySelectorAll('input[data-supplier-item-select]:not(:disabled)')||[])];
+ const button=buyer?.querySelector('[data-action="supplier-bulk-select-buyer"]');
+ if(button)button.textContent=selectable.length&&selectable.every(input=>input.checked)?'선택 해제':'이 사람 상품 모두 선택';
  updateSupplierBulkPreview();
  return;
 }

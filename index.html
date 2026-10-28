@@ -1301,7 +1301,6 @@ const DEMO='gonggu-quote-v3-demo',CART='gonggu-quote-v3-cart',SESS='gonggu-quote
 const read=(k,f)=>{try{return JSON.parse(localStorage.getItem(k))??f}catch{return f}};
 // Tracking links should never require localStorage or randomUUID support just to open.
 const customerKey=(()=>{
- if(new URLSearchParams(location.search).get('page')==='track')return '';
  const create=()=>{
   if(typeof crypto!=='undefined'&&typeof crypto.randomUUID==='function')return crypto.randomUUID();
   if(typeof crypto!=='undefined'&&typeof crypto.getRandomValues==='function'){

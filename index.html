@@ -1185,7 +1185,7 @@ const demo=read(DEMO,initDemo());
 const saveDemo=()=>localStorage.setItem(DEMO,JSON.stringify(demo));
 let session=read(SESS,null),busy=false,refreshing=null;
 const p=new URLSearchParams(location.search);
-const state={page:['admin','track'].includes(p.get('page'))?p.get('page'):'shop',tab:'quotes',stores:[],products:[],requests:[],quotes:[],cart:read(CART,[]),modal:null,search:'',shopCategory:'all',adminCategory:'all',trackId:p.get('id')||'',trackToken:p.get('token')||'',tracking:null,receipts:read(TRACK,[]),notice:'',filter:'all',admin:false,heroPhotoUrl:null,heroStoreId:null,dateGroupsOpen:{},orderCardsOpen:{},requestStatusFilter:'pending',adminCatalogView:'products',adminCatalogFilter:'all',adminProductSearch:'',productPrivate:{},productPrivateReady:false,emailSettings:null,emailSettingsReady:false,emailSettingsError:'',adminPinIds:new Set(),phoneLookupReady:null,pinLookupNotice:''};
+const state={page:['admin','track'].includes(p.get('page'))?p.get('page'):'shop',tab:'quotes',stores:[],products:[],requests:[],quotes:[],cart:read(CART,[]),modal:null,search:'',shopCategory:'all',adminCategory:'all',trackId:p.get('id')||'',trackToken:p.get('token')||'',tracking:null,receipts:read(TRACK,[]),notice:'',filter:'all',admin:false,heroPhotoUrl:null,heroStoreId:null,dateGroupsOpen:{},orderCardsOpen:{},supplierBulkSelected:new Set(),supplierBatches:[],supplierBatchesReady:false,supplierBatchesError:'',requestStatusFilter:'pending',adminCatalogView:'products',adminCatalogFilter:'all',adminProductSearch:'',productPrivate:{},productPrivateReady:false,emailSettings:null,emailSettingsReady:false,emailSettingsError:'',adminPinIds:new Set(),phoneLookupReady:null,pinLookupNotice:''};
 
 const PRODUCT_CATEGORIES=['양말','모자','아우터','상의','하의','스커트','원피스','바디수트','세트','악세서리','잡화'];
 const validProductCategory=x=>PRODUCT_CATEGORIES.includes(String(x||'').trim());
@@ -1613,7 +1613,61 @@ function renderAdminEmailEditor(kind,item){
   <p>이메일을 변경해도 과거 알림은 자동 발송되지 않아요. 이후 상태 변경부터 적용돼요.</p>
  </section>`;
 }
-async function loadAdmin(){if(!connected){state.admin=true;state.productPrivate={};state.productPrivateReady=false;state.stores=clone(demo.stores);state.products=clone(demo.products);state.requests=clone(demo.requests||[]);syncDemo();render();return}if(!session){state.admin=false;state.productPrivate={};state.productPrivateReady=false;render();return}try{const auth=await rpc('gq_is_admin',{},true);if(!auth)throw Error('관리자 권한이 없습니다');state.admin=true;await loadCatalog(true);const [qq,ii,rr]=await Promise.all([api('/rest/v1/gq_quotes?select=*&order=created_at.desc',{admin:true}),api('/rest/v1/gq_quote_items?select=*&order=created_at.asc',{admin:true}),api('/rest/v1/gq_product_requests?select=*&order=created_at.desc',{admin:true})]);state.quotes=qq.map(q=>({...q,items:ii.filter(i=>i.quote_id===q.id)}));state.requests=rr;await loadAdminProductPrivate();render();await Promise.all([loadAdminShipping(),loadAdminPinStatus(),loadAdminEmailSettings()]);render()}catch(e){state.admin=false;render();throw e}}
+async function loadAdminSupplierBatches(){
+ if(!connected||!state.admin){state.supplierBatches=[];state.supplierBatchesReady=false;return;}
+ try{
+  const data=await rpc('gq_admin_list_supplier_shipping_batches_v47',{},true);
+  if(!Array.isArray(data))throw Error('배송비 일괄 배분 내역을 불러오지 못했어요.');
+  state.supplierBatches=data.sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at)));
+  state.supplierBatchesReady=true;state.supplierBatchesError='';
+ }catch(error){
+  state.supplierBatches=[];state.supplierBatchesReady=false;
+  state.supplierBatchesError=errorText(error);
+  console.warn('도매 배송비 일괄 배분 현황 조회 실패',error);
+ }
+}
+function supplierBatchOfQuote(id){
+ return state.supplierBatches.find(batch=>Array.isArray(batch.quote_ids)&&batch.quote_ids.includes(id));
+}
+function supplierBulkRoots(){
+ return [...state.supplierBulkSelected].map(id=>state.quotes.find(q=>q.id===id)).filter(Boolean);
+}
+function supplierBulkSelectedInfo(){
+ const roots=supplierBulkRoots();
+ const phones=roots.map(q=>String(q.contact||'').replace(/\D/g,''));
+ return {roots,duplicate:phones.length!==new Set(phones).size,
+  invalid:roots.some(q=>q.status==='cancelled'||q.bundle_parent_id||q.supplier_ordered_at||supplierBatchOfQuote(q.id))};
+}
+function updateSupplierBulkPreview(){
+ const root=app.querySelector('#supplier-bulk-manager');
+ if(!root)return;
+ const output=root.querySelector('[data-supplier-bulk-preview]');
+ const submit=root.querySelector('[data-supplier-bulk-apply]');
+ const chosen=root.querySelector('[data-supplier-bulk-chosen]');
+ const totalInput=root.querySelector('[name="bulk_supplier_total"]');
+ const {roots,duplicate,invalid}=supplierBulkSelectedInfo();
+ const total=Number(totalInput?.value||0);
+ const validTotal=totalInput?.value!==''&&Number.isInteger(total)&&total>=0&&total<=1000000;
+ const people=roots.length;
+ const share=people&&validTotal?Math.ceil(total/people):0;
+ if(chosen)chosen.textContent=people+'명 선택';
+ if(output)output.textContent=duplicate?'같은 구매자의 주문이 중복 선택됐어요. 한 사람당 한 건만 체크해 주세요.':
+  invalid?'선택할 수 없는 주문이 포함돼 있어요. 배분 완료·취소·도매 발주 주문을 제외해 주세요.':
+  !people?'먼저 아래 주문자의 체크박스를 선택해 주세요.':
+  !validTotal?'업체 배송비 총액을 입력해 주세요.':
+  `${people}명 × ${money(share)} = 합계 ${money(share*people)}${share*people!==total?' · 원 단위 올림으로 '+money(share*people-total)+' 차이':''}`;
+ if(submit)submit.disabled=!state.supplierBatchesReady||!people||people>100||duplicate||invalid||!validTotal;
+}
+async function adminCreateSupplierBulkShipping(ids,total){
+ if(!state.admin||!state.supplierBatchesReady)throw Error('관리자 로그인 후 일괄 배분 기능을 이용해 주세요.');
+ if(!Array.isArray(ids)||ids.length<1||ids.length>100||!Number.isInteger(total)||total<0||total>1000000)throw Error('선택한 주문과 배송비 총액을 확인해 주세요.');
+ return rpc('gq_admin_create_supplier_shipping_batch_v47',{p_root_quote_ids:ids,p_total:total},true);
+}
+async function adminMarkSupplierBatchOrdered(id){
+ if(!state.admin)throw Error('관리자 권한이 필요해요.');
+ return rpc('gq_admin_mark_supplier_batch_ordered_v47',{p_batch_id:id},true);
+}
+async function loadAdmin(){if(!connected){state.admin=true;state.productPrivate={};state.productPrivateReady=false;state.stores=clone(demo.stores);state.products=clone(demo.products);state.requests=clone(demo.requests||[]);syncDemo();render();return}if(!session){state.admin=false;state.productPrivate={};state.productPrivateReady=false;render();return}try{const auth=await rpc('gq_is_admin',{},true);if(!auth)throw Error('관리자 권한이 없습니다');state.admin=true;await loadCatalog(true);const [qq,ii,rr]=await Promise.all([api('/rest/v1/gq_quotes?select=*&order=created_at.desc',{admin:true}),api('/rest/v1/gq_quote_items?select=*&order=created_at.asc',{admin:true}),api('/rest/v1/gq_product_requests?select=*&order=created_at.desc',{admin:true})]);state.quotes=qq.map(q=>({...q,items:ii.filter(i=>i.quote_id===q.id)}));state.requests=rr;await loadAdminProductPrivate();await loadAdminSupplierBatches();render();await Promise.all([loadAdminShipping(),loadAdminPinStatus(),loadAdminEmailSettings()]);render()}catch(e){state.admin=false;render();throw e}}
 async function loadPublic(){await loadCatalog(false);render()}
 async function saveHeroPhoto(file){
  if(!state.admin||!connected||!session)throw Error('관리자 로그인 후 사진을 변경해 주세요.');

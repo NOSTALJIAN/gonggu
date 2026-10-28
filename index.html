@@ -1093,6 +1093,25 @@ body:has(.overlay) .floating-actions{opacity:0;visibility:hidden;pointer-events:
 .supplier-size-card .btn{margin-top:8px}
 .supplier-size-new{border-top:1px solid #ddd;margin-top:20px;padding-top:16px}
 .supplier-size-new>strong{font-size:14px}
+
+/* Admin-only customer emails and Resend configuration. */
+.admin-customer-email-editor{margin:10px 0;padding:10px 12px;background:#fafafa;border:1px solid #e5e5e5;border-radius:7px}
+.admin-customer-email-form{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:end}
+.admin-customer-email-form .label{min-width:0;margin:0;font-size:11px}
+.admin-customer-email-form input{min-width:0;width:100%;min-height:40px;font-size:13px;box-sizing:border-box}
+.admin-customer-email-form .btn{min-height:40px;white-space:nowrap}
+.admin-customer-email-editor>p{font-size:10px;color:#777;line-height:1.6;margin:7px 0 0}
+.admin-email-resend{background:transparent;border:0;text-decoration:underline;padding:8px 0 0;color:#434343;font-size:11px;font-weight:720}
+.admin-notification-settings{margin-bottom:15px}
+.admin-notification-settings h3{font-size:16px;margin:0 0 8px}
+.admin-notification-settings>p{font-size:12px;line-height:1.7;color:#666}
+.admin-notification-settings a{font-size:11px;text-decoration:underline;color:#3b3b3b}
+.admin-mail-status{display:flex;flex-wrap:wrap;gap:7px 12px;align-items:center;margin:13px 0;padding:10px;background:#f7f7f7}
+.admin-mail-status strong{font-size:13px}
+.admin-mail-status span{font-size:11px;color:#777}
+.admin-mail-queue{display:flex;flex-wrap:wrap;gap:12px;margin:14px 0;font-size:11px;color:#555}
+.admin-mail-queue b{color:#111}
+@media(max-width:390px){.admin-customer-email-form{grid-template-columns:minmax(0,1fr)}.admin-customer-email-form .btn{width:100%}}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -2619,7 +2638,30 @@ function renderStoreSizeChartEditor(store){
   </form>
  </section>`;
 }
-function renderAdminSettings(){return `<div class="card hero-photo-settings"><h3>메인 사진 관리</h3><p class="smallnote">쇼핑몰 첫 화면의 큰 사진을 직접 변경할 수 있어요. 상품 대표사진과는 별개예요.</p><div class="hero-settings-preview">${state.heroPhotoUrl?`<img src="${esc(state.heroPhotoUrl)}" alt="현재 메인 사진">`:'<div class="hero-settings-placeholder">별도 메인 사진이 없어요.<br>현재는 등록된 상품 사진이 자동으로 표시돼요.</div>'}</div><form id="hero-photo-form"><label class="label">새 메인 사진 선택<input type="file" name="hero_photo" id="hero-photo-input" accept="image/*" required></label><p class="smallnote">세로형 사진을 추천해요. 원본이 커도 자동으로 크기를 줄여 저장해요.</p><button class="btn block" type="submit">메인 사진 변경하기</button></form>${state.heroPhotoUrl?'<button class="btn block secondary" style="margin-top:9px" type="button" data-action="reset-hero-photo">기존 자동 사진으로 되돌리기</button>':''}</div><div class="card"><h3>고객에게 보낼 주소</h3><p class="smallnote">상품 고르고 견적 요청을 보낼 수 있는 링크예요.</p><div class="info nooverflow">${esc(publicLink())}</div><button class="btn block" data-action="copy-shop-link">주문 링크 복사</button><div class="separator"></div><button class="btn block secondary" data-action="export-csv">주문 내역 CSV 저장</button>${connected?'<button class="btn block neutral" style="margin-top:9px" data-action="logout">관리자 로그아웃</button>':''}<p class="smallnote">가격·주문별 배송비·품절·상품 준비·입금 상태는 관리자 전용입니다. 아직 견적만 요청한 상품은 확정 주문 수량에 포함되지 않아요.</p></div>`}
+function renderEmailNotificationSettings(){
+ const s=state.emailSettings;
+ if(!state.emailSettingsReady)return `<section class="card admin-notification-settings"><h3>이메일 자동 알림 설정</h3><p class="smallnote">메일 발송 설정을 확인하지 못했어요. ${esc(state.emailSettingsError||'로그인 후 다시 확인해 주세요.')}</p><button class="btn sm secondary" type="button" data-action="reload-email-settings">설정 다시 불러오기</button></section>`;
+ return `<section class="card admin-notification-settings">
+  <h3>이메일 자동 알림 설정</h3>
+  <p>견적 완료, 상품 등록 완료·반려, 주문 확정·취소 및 배송 진행상태 변경 때 신청자의 이메일로 안내해요.</p>
+  <div class="admin-mail-status"><strong>${s.enabled?'자동 발송 켜짐':'자동 발송 꺼짐'}</strong>
+   <span>${s.configured?'메일 서비스 키 등록됨':'메일 서비스 키 미등록'}</span></div>
+  <form id="email-settings-form">
+   <label class="label">발신 이메일 주소 (Resend에서 인증한 도메인)
+    <input name="from_email" type="email" autocomplete="off" maxlength="254" value="${esc(s.from_email||'')}" placeholder="notice@yourdomain.com"></label>
+   <label class="label">Resend API 키 ${s.configured?'(이미 등록됨 · 변경할 때만 입력)':'(최초 등록 필요)'}
+    <input name="api_key" type="password" autocomplete="new-password" spellcheck="false" placeholder="re_..." value=""></label>
+   <label class="stageradio"><input name="enabled" type="checkbox" ${s.enabled?'checked':''}> 상태 변경 자동 이메일 발송 사용</label>
+   <button type="submit" class="btn block">이메일 발송 설정 저장</button>
+  </form>
+  <p class="smallnote">Resend에서 발송용 도메인을 먼저 인증하고 API 키를 발급받아 등록해 주세요. API 키는 서버의 암호화 저장소에만 보관되고 이 화면에는 다시 표시되지 않아요.</p>
+  <div class="row wrap"><a href="https://resend.com/domains" target="_blank" rel="noopener noreferrer">Resend 도메인 인증</a><a href="https://resend.com/api-keys" target="_blank" rel="noopener noreferrer">API 키 발급</a></div>
+  <div class="admin-mail-queue"><span>대기 중 <b>${Number(s.pending)||0}건</b></span><span>발송 서비스 접수 <b>${Number(s.sent)||0}건</b></span><span>오류 <b>${Number(s.failed)||0}건</b></span></div>
+  ${Number(s.failed)>0?`<button class="btn sm secondary" type="button" data-action="retry-failed-email">오류 메일 다시 시도</button>`:''}
+  <p class="smallnote">서버가 약 1분마다 발송을 처리해요. 접수 건수는 메일 서비스의 발송 요청 성공 기준이며 실제 수신함 도착 여부와 다를 수 있어요. 기존 신청자의 이메일을 수정해도 과거 알림은 자동 발송되지 않아요.</p>
+ </section>`;
+}
+function renderAdminSettings(){return `${renderEmailNotificationSettings()}<div class="card hero-photo-settings"><h3>메인 사진 관리</h3><p class="smallnote">쇼핑몰 첫 화면의 큰 사진을 직접 변경할 수 있어요. 상품 대표사진과는 별개예요.</p><div class="hero-settings-preview">${state.heroPhotoUrl?`<img src="${esc(state.heroPhotoUrl)}" alt="현재 메인 사진">`:'<div class="hero-settings-placeholder">별도 메인 사진이 없어요.<br>현재는 등록된 상품 사진이 자동으로 표시돼요.</div>'}</div><form id="hero-photo-form"><label class="label">새 메인 사진 선택<input type="file" name="hero_photo" id="hero-photo-input" accept="image/*" required></label><p class="smallnote">세로형 사진을 추천해요. 원본이 커도 자동으로 크기를 줄여 저장해요.</p><button class="btn block" type="submit">메인 사진 변경하기</button></form>${state.heroPhotoUrl?'<button class="btn block secondary" style="margin-top:9px" type="button" data-action="reset-hero-photo">기존 자동 사진으로 되돌리기</button>':''}</div><div class="card"><h3>고객에게 보낼 주소</h3><p class="smallnote">상품 고르고 견적 요청을 보낼 수 있는 링크예요.</p><div class="info nooverflow">${esc(publicLink())}</div><button class="btn block" data-action="copy-shop-link">주문 링크 복사</button><div class="separator"></div><button class="btn block secondary" data-action="export-csv">주문 내역 CSV 저장</button>${connected?'<button class="btn block neutral" style="margin-top:9px" data-action="logout">관리자 로그아웃</button>':''}<p class="smallnote">가격·주문별 배송비·품절·상품 준비·입금 상태는 관리자 전용입니다. 아직 견적만 요청한 상품은 확정 주문 수량에 포함되지 않아요.</p></div>`}
 function modal(){const m=state.modal;if(!m)return '';const wrap=(title,body,stickyProductSave=false)=>stickyProductSave?`<div class="overlay" id="overlay"><div class="sheet sheet-product-editor" role="dialog" aria-modal="true"><div class="sheethead"><h2>${title}</h2><button class="close" data-action="close">×</button></div><div class="sheet-product-scroll">${body}</div><div class="sheet-product-save"><button class="btn block" type="submit" form="product-form">상품 저장</button></div></div></div>`:`<div class="overlay" id="overlay"><div class="sheet" role="dialog" aria-modal="true"><div class="sheethead"><h2>${title}</h2><button class="close" data-action="close">×</button></div>${body}</div></div>`;
 if(m.type==='buyer-order-details'){
  if(!state.admin||state.page!=='admin')return '';

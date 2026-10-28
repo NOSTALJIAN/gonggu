@@ -2684,16 +2684,10 @@ function renderCollapsibleAdminOrder(group,section){
  const states=[...new Set(group.map(q=>q.status))];
  const stateText=states.length===1?statusLabel[states[0]]||states[0]:'상태 혼합';
  const stage=group.length===1&&root.status==='confirmed'?workflowLabel(root):'';
- const assigned=group.some(q=>supplierBatchOfQuote(q.id));
- const supplierOrdered=group.some(q=>q.supplier_ordered_at);
- const eligible=state.supplierBatchesReady&&!assigned&&!supplierOrdered&&root.status!=='cancelled'&&!root.bundle_parent_id&&!allSoldOut(root);
- const selected=eligible&&state.supplierBulkSelected.has(key);
- return `<div class="admin-order-select-row">
-  <label class="admin-order-check ${selected?'is-checked':''} ${!eligible?'is-disabled':''}" title="${eligible?'도매 배송비 일괄 배분에 포함':'취소·배분 완료·도매 발주 완료 주문은 선택할 수 없어요.'}">
-   <input type="checkbox" data-supplier-select="${esc(key)}" aria-label="${esc(root.buyer_name)} 도매배송비 배분 대상 선택" ${selected?'checked':''} ${eligible?'':'disabled'}>
-   <span>선택</span>
-  </label>
-  <details class="admin-order-fold ${pending?'has-pending':''}" data-admin-order-id="${esc(key)}" ${open?'open':''}>
+ const activeItems=group.flatMap(q=>q.items||[]).filter(i=>i.fulfillment!=='sold_out');
+ const assigned=activeItems.filter(i=>supplierItemBatch(i.id)).length;
+ const supplierOrdered=activeItems.filter(i=>i.supplier_ordered_at).length;
+ return `<details class="admin-order-fold ${pending?'has-pending':''}" data-admin-order-id="${esc(key)}" ${open?'open':''}>
    <summary class="admin-order-fold-heading">
     <span class="admin-order-fold-left">
      <strong>${esc(root.buyer_name||'주문자 미입력')} <span class="admin-order-fold-baby">아기: ${esc(root.baby_name||'미입력')}</span></strong>
@@ -2701,7 +2695,7 @@ function renderCollapsibleAdminOrder(group,section){
     </span>
     <span class="admin-order-fold-right">
      <span class="admin-order-fold-status">${esc(stateText)}${stage?' · '+esc(stage):''}</span>
-     ${supplierOrdered?'<span class="admin-order-fold-ordered">도매 발주 완료</span>':assigned?'<span class="admin-order-fold-batched">도매배송비 배분됨</span>':''}
+     ${supplierOrdered?`<span class="admin-order-fold-ordered">도매 발주 ${supplierOrdered}/${activeItems.length}종 완료</span>`:assigned?`<span class="admin-order-fold-batched">거래처별 배분 ${assigned}종</span>`:''}
      ${pending?`<span class="admin-order-fold-alert">가격 미입력 ${pending}종</span>`:attention?'<span class="admin-order-fold-alert">요청 확인 필요</span>':''}
     </span>
     <span class="admin-order-fold-chevron" aria-hidden="true"></span>
@@ -2709,8 +2703,7 @@ function renderCollapsibleAdminOrder(group,section){
    <div class="admin-order-fold-body">
     ${group.length>1?renderBundleCard(group):renderAdminQuoteCard(group[0])}
    </div>
-  </details>
- </div>`;
+ </details>`;
 }
 function renderAdminQuoteDateSection(visible,groups,section,defaultDoneOpen=false){
  if(!groups.length)return '';
@@ -3380,8 +3373,11 @@ function parseSupplierShippingValues(totalInput,peopleInput){
 }
 function renderSupplierShippingForm(q){
  if(!state.admin||state.page!=='admin')return '';
- const batch=supplierBatchOfQuote(q.id);
- if(batch)return `<div class="supplier-shipping-batched">도매배송비 일괄 배분 · 업체 배송비 ${money(batch.total)} ÷ ${batch.people}명 · 이 주문 분담금 ${money(supplierShippingShare(q))}</div>`;
+ const batches=supplierBatchesForQuote(q);
+ if(batches.length)return `<div class="supplier-shipping-batched"><b>거래처별 도매배송비</b>
+  ${batches.map(b=>`<div class="smallnote">· ${esc(b.supplier)} · ${b.people}명 분담 · ${b.ordered_at?'도매 발주 완료':'발주 대기'}</div>`).join('')}
+  <div class="smallnote">이 주문 도매배송비 합계 <b>${money(supplierShippingShare(q))}</b></div>
+  <p class="smallnote">다른 거래처 상품은 상단 배송비 배분에서 별도로 선택할 수 있어요.</p></div>`;
  const total=Number(q.supplier_shipping_total||0),people=Number(q.supplier_shipping_people||1);
  const disabled=q.status==='cancelled';
  return `<details class="supplier-shipping-optional"><summary>개별 도매배송비 조정 (예외적으로 직접 입력)</summary><form class="supplier-shipping-form" data-supplier-shipping="${esc(q.id)}">

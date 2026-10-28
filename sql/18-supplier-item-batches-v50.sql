@@ -46,6 +46,8 @@ revoke all on gq_private.gq_supplier_item_batch_payers_v50 from public,anon,auth
 revoke all on gq_private.gq_supplier_fee_baselines_v50 from public,anon,authenticated;
 
 
+-- Guarded status/fee procedures installed on production.
+
 -- gq_private.gq_recalculate_supplier_fee_v50(uuid)
 CREATE OR REPLACE FUNCTION gq_private.gq_recalculate_supplier_fee_v50(p_quote_id uuid)
  RETURNS void
@@ -205,7 +207,12 @@ begin
   insert into gq_private.gq_supplier_fee_baselines_v50(quote_id,original_amount)
    select q.id,q.supplier_shipping_share
    from public.gq_quotes q where q.id=v_quote_id
-   on conflict(quote_id) do nothing;
+   on conflict(quote_id) do update
+    set original_amount=excluded.original_amount
+    where not exists(
+     select 1 from gq_private.gq_supplier_item_batch_payers_v50 other
+     where other.charged_quote_id=excluded.quote_id
+    );
   insert into gq_private.gq_supplier_item_batch_payers_v50
    (batch_id,buyer_key,charged_quote_id,amount)
   values(v_batch_id,v_key,v_quote_id,v_amount);
@@ -389,3 +396,35 @@ begin
 end $function$;
 revoke all on function gq_admin_mark_supplier_item_batch_ordered_v50(uuid) from public,anon,authenticated;
 grant execute on function public.gq_admin_mark_supplier_item_batch_ordered_v50(uuid) to authenticated;
+
+-- gq_admin_set_supplier_shipping_v35(uuid,integer,integer)
+CREATE OR REPLACE FUNCTION public.gq_admin_set_supplier_shipping_v35(p_quote_id uuid, p_total integer, p_people integer)
+ RETURNS integer
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare v_share integer;
+begin
+ if auth.uid() is null or not public.gq_is_admin() then
+  raise exception '관리자만 도매 배송비를 설정할 수 있어요.' using errcode='42501';
+ end if;
+ if p_total is null or p_total<0 or p_total>1000000 or p_people is null
+    or p_people<1 or p_people>1000 then
+  raise exception '업체 배송비는 0~100만원, 분담 인원은 1~1000명으로 입력해 주세요.' using errcode='22023';
+ end if;
+ if exists (
+  select 1 from gq_private.gq_supplier_item_batch_payers_v50 payer
+  where payer.charged_quote_id=p_quote_id
+ ) then
+  raise exception '거래처별 도매배송비가 배분된 주문이에요. 배분 내역에서 관리하거나 취소 후 개별 수정해 주세요.'
+   using errcode='22023';
+ end if;
+ update public.gq_quotes set supplier_shipping_total=p_total,supplier_shipping_people=p_people
+ where id=p_quote_id and status<>'cancelled'
+ returning supplier_shipping_share into v_share;
+ if not found then raise exception '주문을 찾지 못했거나 취소된 주문입니다.' using errcode='22023'; end if;
+ return v_share;
+end $function$;
+revoke all on function gq_admin_set_supplier_shipping_v35(uuid,integer,integer) from public,anon,authenticated;
+grant execute on function public.gq_admin_set_supplier_shipping_v35(uuid,integer,integer) to authenticated;

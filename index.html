@@ -1692,13 +1692,15 @@ function updateSupplierBulkPreview(){
  const total=Number(totalInput?.value||0);
  const validTotal=totalInput?.value!==''&&Number.isInteger(total)&&total>=0&&total<=1000000;
  const people=roots.length;
- const share=people&&validTotal?Math.ceil(total/people):0;
+ const base=people&&validTotal?Math.floor(total/people):0;
+ const extra=people&&validTotal?total%people:0;
  if(chosen)chosen.textContent=people+'명 선택';
  if(output)output.textContent=duplicate?'같은 구매자의 주문이 중복 선택됐어요. 한 사람당 한 건만 체크해 주세요.':
   invalid?'선택할 수 없는 주문이 포함돼 있어요. 배분 완료·취소·도매 발주 주문을 제외해 주세요.':
   !people?'먼저 아래 주문자의 체크박스를 선택해 주세요.':
   !validTotal?'업체 배송비 총액을 입력해 주세요.':
-  `${people}명 × ${money(share)} = 합계 ${money(share*people)}${share*people!==total?' · 원 단위 올림으로 '+money(share*people-total)+' 차이':''}`;
+  (extra?`${extra}명 × ${money(base+1)} + ${people-extra}명 × ${money(base)}`:`${people}명 × ${money(base)}`)+
+  ' = 총 '+money(total)+' (1원도 남기지 않고 정확히 분담)';
  if(submit)submit.disabled=!state.supplierBatchesReady||!people||people>100||duplicate||invalid||!validTotal;
 }
 async function adminCreateSupplierBulkShipping(ids,total){
@@ -2749,12 +2751,14 @@ function renderSupplierBulkManager(){
  const history=state.supplierBatchesReady?
  state.supplierBatches.map((batch,index)=>{
   const checked=supplierBatchPaymentState(batch),ordered=Boolean(batch.ordered_at);
-  const share=Number(batch.share||0);
   const rootCount=Number(batch.people||0);
   const total=Number(batch.total||0);
+  const base=rootCount?Math.floor(total/rootCount):0;
+  const extra=rootCount?total%rootCount:0;
+  const shareText=extra?`${money(base)}~${money(base+1)}`:money(base);
   return `<details class="supplier-bulk-batch" ${!ordered&&index===0?'open':''}>
    <summary><span><strong>${ordered?'도매 발주 완료':'도매 발주 대기'} · ${fmtDate(batch.created_at)}</strong>
-    <small>${rootCount}명 · 업체 배송비 ${money(total)} · 1인 ${money(share)}</small></span>
+    <small>${rootCount}명 · 업체 배송비 ${money(total)} · 1인 ${shareText}</small></span>
     <em>${ordered?'완료':checked.paid+'/'+rootCount+'명 입금 확인'}</em></summary>
    <div class="supplier-bulk-batch-body">
     ${checked.people.map(p=>`<div class="supplier-bulk-person">
@@ -2780,7 +2784,7 @@ function renderSupplierBulkManager(){
    <div class="supplier-bulk-preview" data-supplier-bulk-preview>먼저 아래 주문자의 체크박스를 선택해 주세요.</div>
    <button type="submit" class="btn block" data-supplier-bulk-apply disabled>선택한 사람들에게 배송비 일괄 적용</button>
   </form>
-  <p class="smallnote">1원 단위 올림으로 나누기 때문에 나누어떨어지지 않으면 총 부과액이 몇 원 더 많을 수 있어요. 이미 안내한 견적은 금액 변경 여부를 확인해 주세요.</p>
+  <p class="smallnote">나누어떨어지지 않는 금액은 일부 구매자가 1원만 더 부담해 <b>총 배분액이 정확히 일치</b>하게 나눠요. 이미 안내한 견적은 금액 변경 여부를 확인해 주세요.</p>
   ${state.supplierBatches.length?`<div class="supplier-bulk-list"><h4>저장된 배송비 배분 · 입금 현황</h4>${history}</div>`:'<p class="smallnote">아직 일괄 배분한 내역이 없어요.</p>'}
  </section>`;
 }
@@ -3914,11 +3918,13 @@ async function submit(e){const f=e.target;if(!f.dataset.sizeChartForm&&!f.datase
  if(!/^(0|[1-9][0-9]{0,6})$/.test(value)||Number(value)>1000000)throw Error('업체 배송비 총액은 0~100만원으로 입력해 주세요.');
  const total=Number(value),{roots,duplicate,invalid}=supplierBulkSelectedInfo();
  if(!roots.length||roots.length>100||duplicate||invalid)throw Error('도매배송비를 나눌 주문자를 확인해 주세요. 한 사람당 한 건만 체크할 수 있어요.');
- const share=Math.ceil(total/roots.length);
- const affected=roots.some(q=>['quoted','confirmed'].includes(q.status)&&supplierShippingShare(q)!==share);
- const over=share*roots.length-total;
- const message='선택한 '+roots.length+'명에게 도매 배송비 '+money(total)+'을(를) 나눠 적용할까요?\n1인당 '+money(share)+(over?' · 올림으로 총 '+money(over)+' 차이':'')+
-  '\n\n대상: '+roots.map(q=>q.buyer_name).join(', ')+
+ const base=Math.floor(total/roots.length),extra=total%roots.length;
+ const byUuid=[...roots].sort((a,b)=>a.id.localeCompare(b.id));
+ const allocations=new Map(byUuid.map((q,index)=>[q.id,base+(index<extra?1:0)]));
+ const affected=roots.some(q=>['quoted','confirmed'].includes(q.status)&&supplierShippingShare(q)!==allocations.get(q.id));
+ const amountNote=extra?`${extra}명은 ${money(base+1)}, 나머지 ${roots.length-extra}명은 ${money(base)}`:`1인당 ${money(base)}`;
+ const message='선택한 '+roots.length+'명에게 도매 배송비 '+money(total)+'을(를) 나눠 적용할까요?\n'+amountNote+' (총액 정확히 일치)'+
+  '\n\n대상: '+roots.map(q=>q.buyer_name+' '+money(allocations.get(q.id))).join(', ')+
   (affected?'\n\n이미 고객에게 안내한 견적금액이 변경될 수 있어요. 입금·환불 차액을 꼭 확인해 주세요.':'')+
   '\n\n기존 배분에 넣은 주문은 다시 선택할 수 없어요.';
  if(!window.confirm(message))return;

@@ -2271,24 +2271,30 @@ ${due===0?'이미 입금이 기록된 주문입니다. 중복 송금하지 마�
 }
 function buyerRoundIntent(q){
  const intent=q.purchase_intent||'undecided';
- const picked=intent==='buy_now'?'이번 회차 구매 희망':intent==='hold_next'?'다음 회차 구매 보류':'아직 선택하지 않음';
- const status=intent==='buy_now'?'is-now':intent==='hold_next'?'is-later':'';
- return `<section class="purchase-round-card" aria-label="이번 회차 구매 선택">
-  <h3>이번 회차에 구매하실 건가요?</h3>
-  <p>견적 확인 후 구매할 회차를 선택해 주세요. 판매자에게 선택 내용이 전달되고, <strong>이번 회차 구매자만 도매배송비를 나눠 계산</strong>합니다.</p>
+ const chosen=intent==='buy_now'?'이번 회차 구매':intent==='next_round'?'다음 회차 구매':intent==='on_hold'?'구매 보류':'아직 선택하지 않음';
+ const freightReady=Boolean(q.supplier_shipping_ready)&&readyQuote(q);
+ return `<section class="purchase-round-card" aria-label="견적 이후 구매 회차 선택">
+  <h3>언제 구매하실 건가요?</h3>
+  <p>상품 견적을 확인하고 먼저 구매 시점을 선택해 주세요. <b>구매 의사를 받은 뒤 배송비를 계산</b>해 최종 결제금액을 안내합니다.</p>
   <div class="purchase-round-actions">
    <button type="button" data-action="set-purchase-intent" data-intent="buy_now" class="${intent==='buy_now'?'is-selected':''}" aria-pressed="${intent==='buy_now'}">이번 회차에 구매할게요</button>
-   <button type="button" data-action="set-purchase-intent" data-intent="hold_next" class="${intent==='hold_next'?'is-selected':''}" aria-pressed="${intent==='hold_next'}">다음 회차에 합쳐 살게요</button>
+   <button type="button" data-action="set-purchase-intent" data-intent="next_round" class="${intent==='next_round'?'is-selected':''}" aria-pressed="${intent==='next_round'}">다음 회차에 구매할게요</button>
+   <button type="button" data-action="set-purchase-intent" data-intent="on_hold" class="${intent==='on_hold'?'is-selected':''}" aria-pressed="${intent==='on_hold'}">일단 구매 보류할게요</button>
   </div>
-  <div class="purchase-round-status ${status}"><b>선택 상태: ${picked}</b>${intent==='undecided'?'<div>선택 전에는 이번 회차 배송비 배분 대상에 포함되지 않아요.</div>':intent==='hold_next'?'<div>이번 회차 주문에 포함되지 않아요. 다음에 구매할 때 ‘이번 회차에 구매할게요’를 다시 눌러야 해요. 자동 주문되지 않아요.</div>':'<div>판매자에게 구매 의사를 알렸어요. 아래에서 최종 주문까지 진행해 주세요.</div>'}</div>
-  ${intent==='buy_now'?`<div class="purchase-round-confirm"><button class="btn block" data-action="confirm-quote" ${!readyQuote(q)||q.cancel_requested_at?'disabled':''}>이번 회차 최종 주문 확정하기</button><p class="purchase-round-note">도매배송비 배분과 입금 정산에 따라 결제금액이 바뀔 수 있으니, 최신 금액을 확인한 뒤 입금해 주세요.</p></div>`:''}
+  <div class="purchase-round-status ${intent==='buy_now'?'is-now':intent==='undecided'?'':'is-later'}"><b>선택 상태: ${chosen}</b>
+   <div>${intent==='undecided'?'구매 시점을 선택해야 배송비 분담 인원을 계산할 수 있어요.':intent==='next_round'?'이번 회차 배송비 계산·발주에서 제외돼요. 다음 회차에 다시 선택해 주세요.':intent==='on_hold'?'구매를 보류했어요. 이번 배송비 계산에서 제외되고 선택은 나중에 변경할 수 있어요.':freightReady?'배송비와 최종 금액이 준비됐어요. 아래에서 주문을 확정해 주세요.':'구매 의사가 판매자에게 전달됐어요. 배송비 계산이 끝나면 최종 결제금액을 안내받아요.'}</div>
+  </div>
+  ${intent==='buy_now'?`<div class="purchase-round-confirm">${freightReady?
+   `<button type="button" class="btn block" data-action="confirm-quote" ${q.cancel_requested_at?'disabled':''}>최종 금액 확인 후 이번 회차 주문 확정</button>`:
+   '<div class="info">배송비 계산 대기 중 · 아직 주문 확정이나 송금을 하지 마세요.</div>'}
+   <p class="purchase-round-note">배송비가 확정된 다음 최종 결제금액을 확인해 주세요.</p></div>`:''}
  </section>`;
 }
 function intentBadge(q){
  const intent=q.status==='confirmed'?'buy_now':q.purchase_intent||'undecided';
  if(q.status==='cancelled'||q.status==='requested')return '';
- const label=intent==='buy_now'?(q.status==='confirmed'?'이번 구매 확정':'이번 회차 구매 희망'):intent==='hold_next'?'다음 회차 보류':'구매 회차 미선택';
- const color=intent==='buy_now'?'now':intent==='hold_next'?'later':'wait';
+ const label=intent==='buy_now'?(q.status==='confirmed'?'이번 구매 확정':'이번 회차 구매 희망'):intent==='next_round'?'다음 회차 구매':intent==='on_hold'?'구매 보류':'구매 회차 미선택';
+ const color=intent==='buy_now'?'now':['next_round','on_hold'].includes(intent)?'later':'wait';
  return `<span class="purchase-intent-chip ${color}">${label}</span>`;
 }
 function isRoundBuyer(q){return q.status==='confirmed'||(q.status==='quoted'&&q.purchase_intent==='buy_now')}
@@ -3417,23 +3423,25 @@ function renderProcurementSheet(){
  </section>`;
 }
 function renderAdminQuotes(){
- const qq=state.quotes.filter(q=>state.filter==='all'||(state.filter==='buy_now'?isRoundBuyer(q):state.filter==='hold_next'?q.status==='quoted'&&q.purchase_intent==='hold_next':state.filter==='undecided'?q.status==='quoted'&&(!q.purchase_intent||q.purchase_intent==='undecided'):state.filter==='cancel_requested'?!!q.cancel_requested_at&&q.status!=='cancelled':state.filter.startsWith('flow_')?q.status==='confirmed'&&workflowStage(q)===state.filter.slice(5):q.status===state.filter));
+ const qq=state.quotes.filter(q=>state.filter==='all'||(state.filter==='buy_now'?isRoundBuyer(q):state.filter==='next_round'?q.status==='quoted'&&q.purchase_intent==='next_round':state.filter==='on_hold'?q.status==='quoted'&&q.purchase_intent==='on_hold':state.filter==='undecided'?q.status==='quoted'&&(!q.purchase_intent||q.purchase_intent==='undecided'):state.filter==='cancel_requested'?!!q.cancel_requested_at&&q.status!=='cancelled':state.filter.startsWith('flow_')?q.status==='confirmed'&&workflowStage(q)===state.filter.slice(5):q.status===state.filter));
  const groups=bundledQuoteGroups(qq);
  const awaiting=groups.filter(quoteGroupNeedsPriceInput),priced=groups.filter(g=>!quoteGroupNeedsPriceInput(g));
  const unfinished=qq.reduce((n,q)=>n+(q.status==='cancelled'?0:q.items.filter(i=>i.unit_price==null&&i.fulfillment!=='sold_out').length),0);
  const dayCount=new Set(qq.map(q=>receivedDayKey(q.created_at))).size;
  const optionPending=state.optionRequests.filter(r=>r.status==='pending').length;
  const nNow=state.quotes.filter(isRoundBuyer).length;
- const nHold=state.quotes.filter(q=>q.status==='quoted'&&q.purchase_intent==='hold_next').length;
+ const nNext=state.quotes.filter(q=>q.status==='quoted'&&q.purchase_intent==='next_round').length;
+ const nHold=state.quotes.filter(q=>q.status==='quoted'&&q.purchase_intent==='on_hold').length;
  const nUndecided=state.quotes.filter(q=>q.status==='quoted'&&(!q.purchase_intent||q.purchase_intent==='undecided')).length;
  return `<div class="row between" id="admin-quote-results"><h2>견적 및 확정 주문</h2><button class="btn sm secondary" data-action="refresh">새로고침</button></div>
  <div class="admin-purchase-counts">
   ${optionPending?`<button type="button" data-action="show-pending-item-options">⚠️ 옵션 변경 요청 <b>${optionPending}건</b></button>`:''}
   <button type="button" data-filter="buy_now">이번 회차 구매 <b>${nNow}건</b></button>
-  <button type="button" data-filter="hold_next">다음 회차 보류 <b>${nHold}건</b></button>
+  <button type="button" data-filter="next_round">다음 회차 구매 <b>${nNext}건</b></button>
+  <button type="button" data-filter="on_hold">구매 보류 <b>${nHold}건</b></button>
   <button type="button" data-filter="undecided">미선택 <b>${nUndecided}건</b></button>
  </div>
- <div class="controls" style="margin-bottom:10px">${['all','buy_now','hold_next','undecided','cancel_requested','requested','quoted','confirmed','flow_new','flow_preparing','flow_pickup_ready','flow_shipped','flow_completed','flow_soldout_closed','cancelled'].map(s=>`<button class="tab ${state.filter===s?'active':''}" data-filter="${s}">${s==='all'?'전체':s==='buy_now'?'이번 회차 구매':s==='hold_next'?'다음 회차 보류':s==='undecided'?'미선택':s==='cancel_requested'?'취소 요청':s.startsWith('flow_')?workflowLabels[s.slice(5)]:statusLabel[s]}</button>`).join('')}</div>
+ <div class="controls" style="margin-bottom:10px">${['all','buy_now','next_round','on_hold','undecided','cancel_requested','requested','quoted','confirmed','flow_new','flow_preparing','flow_pickup_ready','flow_shipped','flow_completed','flow_soldout_closed','cancelled'].map(s=>`<button class="tab ${state.filter===s?'active':''}" data-filter="${s}">${s==='all'?'전체':s==='buy_now'?'이번 회차 구매':s==='next_round'?'다음 회차 구매':s==='on_hold'?'구매 보류':s==='undecided'?'미선택':s==='cancel_requested'?'취소 요청':s.startsWith('flow_')?workflowLabels[s.slice(5)]:statusLabel[s]}</button>`).join('')}</div>
  ${qq.length?`<div class="admin-date-toolbar"><div><strong>날짜별 주문</strong><span>${qq.length}건 · ${dayCount}일 · 가격 미입력 ${unfinished}종</span></div><div class="admin-date-actions"><button type="button" class="date-all-btn" data-action="date-open-all">전체 펼치기</button><button type="button" class="date-all-btn" data-action="date-close-all">전체 접기</button></div></div>
  <div class="admin-overall-prices"><h3>현재 목록 상품 총액 비교</h3>${adminPriceTotalMarkup(qq)}</div>
  ${state.filter==='buy_now'?renderProcurementSheet()+renderSupplierBulkManager():''}
@@ -3973,12 +3981,13 @@ async function submitBuyerOptionRequest(id,color,size,quantity){
  await reloadTracking();
 }
 async function setBuyerPurchaseIntent(intent){
- if(!state.tracking||state.tracking.status!=='quoted'||!['buy_now','hold_next'].includes(intent))throw Error('견적 안내를 받은 뒤 구매 회차를 선택해 주세요.');
+ if(!state.tracking||state.tracking.status!=='quoted'||!['buy_now','next_round','on_hold'].includes(intent))throw Error('견적 안내를 받은 뒤 구매 회차를 선택해 주세요.');
  if(!connected){const q=demo.quotes.find(x=>x.id===state.trackId&&x.lookup_token===state.trackToken);if(!q)throw Error('조회한 견적을 찾지 못했어요.');q.purchase_intent=intent;q.purchase_intent_at=now();saveDemo();}
  else await rpc('gq_set_purchase_intent_v60',{p_quote_id:state.trackId,p_lookup_token:state.trackToken,p_intent:intent});
  await reloadTracking();
 }
-async function confirmFinalQuote(){if(!state.tracking||state.tracking.status!=='quoted'||state.tracking.purchase_intent!=='buy_now')throw Error('먼저 ‘이번 회차에 구매할게요’를 선택해 주세요.');if(!connected){const q=demo.quotes.find(x=>x.id===state.trackId&&x.lookup_token===state.trackToken);if(!q||demo.items.some(i=>i.quote_id===q.id&&i.unit_price==null)||!hasShipping(q))throw Error('상품 가격과 배송비를 확인해 주세요');q.status='confirmed';q.purchase_intent='buy_now';q.purchase_intent_at=q.purchase_intent_at||now();saveDemo()}else await rpc('gq_confirm_quote',{p_quote_id:state.trackId,p_lookup_token:state.trackToken});await reloadTracking()}
+async function confirmFinalQuote(){if(!state.tracking||state.tracking.status!=='quoted'||state.tracking.purchase_intent!=='buy_now')throw Error('먼저 ‘이번 회차에 구매할게요’를 선택해 주세요.');
+ if(!state.tracking.supplier_shipping_ready||!readyQuote(state.tracking))throw Error('배송비 계산이 아직 끝나지 않았어요. 최종 금액 안내 후 주문해 주세요.');if(!connected){const q=demo.quotes.find(x=>x.id===state.trackId&&x.lookup_token===state.trackToken);if(!q||demo.items.some(i=>i.quote_id===q.id&&i.unit_price==null)||!hasShipping(q))throw Error('상품 가격과 배송비를 확인해 주세요');q.status='confirmed';q.purchase_intent='buy_now';q.purchase_intent_at=q.purchase_intent_at||now();saveDemo()}else await rpc('gq_confirm_quote',{p_quote_id:state.trackId,p_lookup_token:state.trackToken});await reloadTracking()}
 const deliveryPayload=(d)=>{
  const method=String(d.get('delivery_method')||'');if(!['pickup','courier'].includes(method))throw Error('수령방식을 선택해 주세요');
  const v=k=>String(d.get(k)||'').trim();const x={delivery_method:method,recipient_name:method==='courier'?v('recipient_name'):'',postal_code:method==='courier'?v('postal_code'):'',address_line1:method==='courier'?v('address_line1'):'',address_line2:method==='courier'?v('address_line2'):'',delivery_note:method==='courier'?v('delivery_note'):''};
@@ -4267,11 +4276,11 @@ function manualKoreanAddress(button){
 async function click(e){const pg=e.target.closest('[data-page]');if(pg){goto(pg.dataset.page);if(pg.classList.contains('brand-home'))window.scrollTo({top:0,behavior:'auto'});return}const b=e.target.closest('[data-action]');if(!b)return;const a=b.dataset.action,id=b.dataset.id;try{
 if(a==='set-purchase-intent'){
  const next=String(b.dataset.intent||'');
- if(!['buy_now','hold_next'].includes(next))throw Error('구매할 회차를 선택해 주세요.');
+ if(!['buy_now','next_round','on_hold'].includes(next))throw Error('구매할 회차를 선택해 주세요.');
  if((state.tracking?.purchase_intent||'undecided')===next){notif('이미 선택한 상태예요.');return;}
- if(!window.confirm(next==='buy_now'?'이번 회차에 구매할 예정이라고 판매자에게 알릴까요? 최종 주문은 다음 버튼에서 확정할 수 있어요.':'이번 회차 구매를 보류하고 다음에 합쳐 구매할까요? 이번 회차 배송비 계산에서 제외되고 자동 주문되지 않아요.'))return;
+ if(!window.confirm(next==='buy_now'?'이번 회차 구매 의사를 보내고 배송비 계산을 기다릴까요?':next==='next_round'?'다음 회차에 구매할까요? 이번 회차 배송비에서 제외돼요.':'구매를 보류할까요? 이번 회차 배송비·발주에서 제외돼요.'))return;
  await setBuyerPurchaseIntent(next);
- notif(next==='buy_now'?'이번 회차 구매 희망이 저장됐어요. 판매자에게 알림이 발송될 예정이에요.':'다음 회차 구매 보류가 저장됐어요. 판매자에게 알림이 발송될 예정이에요.');
+ notif(next==='buy_now'?'구매 의사가 전달됐어요. 배송비 계산 후 최종 금액을 안내받아요.':next==='next_round'?'다음 회차 구매로 저장했어요.':'구매 보류로 저장했어요.');
  return;
 }
 if(a==='show-pending-item-options'){

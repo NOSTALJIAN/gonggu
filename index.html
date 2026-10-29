@@ -3309,10 +3309,13 @@ function procurementRows(){
    const raw=info?.wholesale_price;
    const n=raw===undefined||raw===null||raw===''?null:Number(raw);
    const unit=n!==null&&Number.isFinite(n)&&n>=0?n:null;
-   const vendor=String(info?.supplier_name||'').trim()||String(item.store_name||'').trim()||'거래처 미확인';
+   const vendor=String(info?.supplier_name||'').trim()||'실제 도매업체 미등록';
    const issues=[];
    if(!state.productPrivateReady)issues.push('도매정보 로딩 전');
-   else if(unit===null)issues.push('도매가 미등록');
+   else {
+    if(!String(info?.supplier_name||'').trim())issues.push('실제 도매업체명 미등록');
+    if(unit===null)issues.push('도매가 미등록');
+   }
    if(!state.supplierBatchesReady)issues.push('배송비 배분 정보 확인 전');
    else if(!batch)issues.push('도매배송비 배분 전');
    else if(!supplierBatchPaymentState(batch).canOrder)issues.push('같은 거래처 배분 참여자 입금 확인 대기');

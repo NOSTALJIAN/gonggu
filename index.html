@@ -4284,10 +4284,10 @@ async function submit(e){const f=e.target;if(!f.dataset.sizeChartForm&&!f.datase
   if(color===item.color&&size===item.size&&quantity===item.quantity){notif('변경된 옵션이 없어요.');return;}
   const before=totalDue(q),after=before+Number(item.unit_price||0)*(quantity-item.quantity);
   if(['quoted','confirmed'].includes(q.status)){
-   const message='주문 옵션을 수정할까요?\\n기존: '+item.color+' / '+item.size+' ×'+item.quantity+
-     '개\\n변경: '+color+' / '+size+' ×'+quantity+'개'+
-     (item.unit_price!=null?'\\n고객 결제금액: '+money(before)+' → '+money(after):'')+
-     '\\n고객에게 변경 메일이 발송됩니다. 이미 입금한 금액과 차액도 확인해 주세요.';
+   const message='주문 옵션을 수정할까요?\n기존: '+item.color+' / '+item.size+' ×'+item.quantity+
+     '개\n변경: '+color+' / '+size+' ×'+quantity+'개'+
+     (item.unit_price!=null?'\n고객 결제금액: '+money(before)+' → '+money(after):'')+
+     '\n고객에게 변경 메일이 발송됩니다. 이미 입금한 금액과 차액도 확인해 주세요.';
    if(!window.confirm(message))return;
   }
   await adminOrderItemOptions(id,color,size,quantity);

@@ -1819,7 +1819,7 @@ function supplierBulkAvailableItem(q,item){
  const hasPending=state.supplierBatches.some(b=>b.store_id===storeId&&
   !b.ordered_at&&(b.payers||[]).some(p=>p.buyer_key===phone));
  return Boolean(state.supplierBatchesReady&&storeId&&phone.length>=8&&
-  q.status!=='cancelled'&&item.fulfillment!=='sold_out'&&
+  isRoundBuyer(q)&&item.fulfillment!=='sold_out'&&
   !q.supplier_ordered_at&&!item.supplier_ordered_at&&
   !supplierItemBatch(item.id)&&!hasPending);
 }
@@ -2773,7 +2773,7 @@ function groupedAdminQuoteItems(q,bundle=false){
 function renderBundleLedger(q,idx,root){
  const child=q.id!==root.id;
  return `<section class="bundle-ledger-row" data-bundle-ledger="${q.id}">
-  <div class="row between wrap bundle-ledger-head"><b>${child?'추가 주문':'대표 주문'} ${idx+1}</b><span class="tiny">${fmtDate(q.created_at)} · ${esc(statusLabel[q.status]||q.status)}</span></div>
+  <div class="row between wrap bundle-ledger-head"><b>${child?'추가 주문':'대표 주문'} ${idx+1} ${intentBadge(q)}</b><span class="tiny">${fmtDate(q.created_at)} · ${esc(statusLabel[q.status]||q.status)}</span></div>
   <div class="tiny">상품 ${q.items.reduce((n,i)=>n+Number(i.quantity||0),0)}개 · ${money(previewOrderSum(q))} · 배송비 ${shippingLabel(q)} · 주문금액 ${money(totalDue(q))}</div>
   ${renderAdminEmailEditor('quote',q)}
   ${q.cancel_requested_at&&q.status!=='cancelled'?`<div class="noticefail"><b>취소 요청이 있어요</b><div class="tiny">${esc(q.cancel_reason||'')}</div><div class="row wrap"><button class="btn sm danger" data-action="accept-cancel" data-id="${q.id}">취소 승인</button><button class="btn sm neutral" data-action="reject-cancel" data-id="${q.id}">반려</button></div></div>`:''}
@@ -2814,7 +2814,7 @@ function renderBundleCard(group){
  </div>`;
 }
 
-function renderAdminQuoteCard(q){return `<div class="card ordercard"><div class="row between"><div><h3>${esc(q.buyer_name)} <span class="chip purple">아기: ${esc(q.baby_name||'미입력')}</span></h3><button class="textbutton" data-action="edit-baby" data-id="${q.id}">아기 이름 수정</button><div class="quote-date">${fmtDate(q.created_at)} · ${esc(q.contact||'연락처 없음')}</div></div><div><span class="stagebadge">${statusLabel[q.status]}</span>${q.supplier_ordered_at?`<div class="workflow-stage" style="margin-top:5px">도매 발주 완료 · ${fmtDate(q.supplier_ordered_at)}</div>`:''}${q.status==='confirmed'?`<div class="workflow-stage" style="margin-top:5px">${workflowLabel(q)}</div>${workflowStage(q)==='shipped'&&isLotteShipment(q)?'<div class="tiny lotte-auto-chip">🚚 롯데 자동조회 대상</div>':''}`:''}</div></div><div class="tiny">메모: ${esc(q.note||'없음')}</div>${renderAdminEmailEditor('quote',q)}
+function renderAdminQuoteCard(q){return `<div class="card ordercard"><div class="row between"><div><h3>${esc(q.buyer_name)} <span class="chip purple">아기: ${esc(q.baby_name||'미입력')}</span></h3><button class="textbutton" data-action="edit-baby" data-id="${q.id}">아기 이름 수정</button><div class="quote-date">${fmtDate(q.created_at)} · ${esc(q.contact||'연락처 없음')}</div></div><div><span class="stagebadge">${statusLabel[q.status]}</span>${intentBadge(q)}${q.supplier_ordered_at?`<div class="workflow-stage" style="margin-top:5px">도매 발주 완료 · ${fmtDate(q.supplier_ordered_at)}</div>`:''}${q.status==='confirmed'?`<div class="workflow-stage" style="margin-top:5px">${workflowLabel(q)}</div>${workflowStage(q)==='shipped'&&isLotteShipment(q)?'<div class="tiny lotte-auto-chip">🚚 롯데 자동조회 대상</div>':''}`:''}</div></div><div class="tiny">메모: ${esc(q.note||'없음')}</div>${renderAdminEmailEditor('quote',q)}
 <div class="info" style="background:#fafaff"><b>수령: ${deliveryLabel(q)}</b>${q.delivery_method==='courier'?`<div class="tiny">받는 사람: ${esc(q.recipient_name||'미입력')} · ${esc(addressLabel(q))}${q.delivery_note?' · 배송메모: '+esc(q.delivery_note):''}</div>`:''}${isBundle(q)?'<div class="chip purple">묶음배송 · 추가 배송비 0원</div>':''}${state.quotes.some(x=>x.bundle_parent_id===q.id&&x.status!=='cancelled')?'<div class="chip purple">묶음배송 대표 주문</div>':''}</div>
 ${q.bundle_parent_id&&!state.quotes.some(x=>x.id===q.bundle_parent_id&&x.status!=='cancelled')?'<div class="noticefail"><b>묶음 대표 주문 연결 확인 필요</b><div>대표 주문이 없거나 취소되어 함께 표시할 수 없어요. 아래 묶음배송 변경·해제에서 다시 연결해 주세요.</div></div>':''}
 ${q.delivery_change_requested_at?`<div class="noticefail" style="margin-top:10px"><b>📦 구매자 수령방식 변경 요청</b><div class="smallnote">${fmtDate(q.delivery_change_requested_at)} · 변경 요청: ${q.requested_delivery_method==='pickup'?'직접수령':'택배수령'}</div>${q.requested_delivery_method==='courier'?`<div class="smallnote">${esc(q.requested_recipient_name||'')} · ${esc([q.requested_postal_code,q.requested_address_line1,q.requested_address_line2].filter(Boolean).join(' '))}</div>`:''}<div class="row wrap" style="margin-top:8px"><button class="btn sm" data-action="approve-delivery" data-id="${q.id}">변경 승인</button><button class="btn sm neutral" data-action="reject-delivery" data-id="${q.id}">반려</button></div><div class="smallnote">배송비를 한 번만 받는 묶음배송이라면 배송지와 결제 차액을 확인해 주세요.</div></div>`:''}
@@ -2938,7 +2938,7 @@ function renderCollapsibleAdminOrder(group,section){
      <span class="admin-order-fold-meta">${group.length>1?group.length+'건 묶음배송 · ':''}상품 ${uniqueItems}종 · 총 ${qty}개 · ${fmtDate(root.created_at)}</span>
     </span>
     <span class="admin-order-fold-right">
-     <span class="admin-order-fold-status">${esc(stateText)}${stage?' · '+esc(stage):''}</span>
+     <span class="admin-order-fold-status">${esc(stateText)}${stage?' · '+esc(stage):''}${group.length===1?intentBadge(root):''}</span>
      ${supplierOrdered?`<span class="admin-order-fold-ordered">도매 발주 ${supplierOrdered}/${activeItems.length}종 완료</span>`:assigned?`<span class="admin-order-fold-batched">거래처별 배분 ${assigned}종</span>`:''}
      ${pending?`<span class="admin-order-fold-alert">가격 미입력 ${pending}종</span>`:attention?'<span class="admin-order-fold-alert">요청 확인 필요</span>':''}
     </span>
@@ -3013,12 +3013,12 @@ function supplierBatchPaymentState(batch){
 }
 function renderSupplierBulkManager(historyOnly=false){
  if(!state.admin||state.page!=='admin')return '';
- const allStores=[...new Set(state.quotes.flatMap(q=>(q.items||[]).map(supplierItemStore)))].filter(Boolean);
+ const allStores=[...new Set(state.quotes.filter(isRoundBuyer).flatMap(q=>(q.items||[]).map(supplierItemStore)))].filter(Boolean);
  const stores=state.stores.filter(store=>allStores.includes(store.id))
   .sort((a,b)=>a.name.localeCompare(b.name,'ko'));
  const storeId=state.supplierBulkStoreId;
  const store=state.stores.find(s=>s.id===storeId);
- const entries=storeId?state.quotes.flatMap(q=>(q.items||[])
+ const entries=storeId?state.quotes.filter(isRoundBuyer).flatMap(q=>(q.items||[])
   .filter(item=>supplierItemStore(item)===storeId)
   .map(item=>({q,item}))):[];
  const groups=new Map();
@@ -3096,7 +3096,7 @@ function renderSupplierBulkManager(historyOnly=false){
  }
  return `<section class="card supplier-bulk-manager" id="supplier-bulk-manager">
   <div class="supplier-bulk-heading"><h3>거래처별 도매배송비 배분</h3><span>상품별 선택 · 인원별 분담</span></div>
-  <p class="smallnote">먼저 <b>남대문 거래처</b>를 선택하고, 해당 거래처의 상품을 체크해 주세요. 같은 사람이 이 거래처 상품을 여러 개 주문해도 배송비는 <b>한 명 몫</b>만 계산돼요. 다른 거래처 상품은 거래처를 바꿔서 별도로 배분해요.</p>
+  <p class="smallnote"><b>이번 회차 구매 희망·확정 주문자만</b> 배송비 배분 대상이에요. ‘다음 회차 보류’나 ‘미선택’ 주문은 제외됩니다. 거래처를 선택해 상품을 체크해 주세요. 같은 사람이 같은 거래처 상품을 여러 개 주문해도 배송비는 <b>한 명 몫</b>만 계산돼요.</p>
   ${!state.supplierBatchesReady?`<p class="noticefail">배분 현황을 불러오지 못했어요. ${esc(state.supplierBatchesError||'관리자 새로고침 후 확인해 주세요.')}</p>`:''}
   <label class="label">도매 거래처 선택
    <select data-supplier-bulk-store aria-label="배송비를 배분할 도매 거래처">
@@ -3127,16 +3127,24 @@ function renderSupplierBulkManager(historyOnly=false){
 }
 
 function renderAdminQuotes(){
- const qq=state.quotes.filter(q=>state.filter==='all'||(state.filter==='cancel_requested'?!!q.cancel_requested_at&&q.status!=='cancelled':state.filter.startsWith('flow_')?q.status==='confirmed'&&workflowStage(q)===state.filter.slice(5):q.status===state.filter));
+ const qq=state.quotes.filter(q=>state.filter==='all'||(state.filter==='buy_now'?isRoundBuyer(q):state.filter==='hold_next'?q.status==='quoted'&&q.purchase_intent==='hold_next':state.filter==='undecided'?q.status==='quoted'&&(!q.purchase_intent||q.purchase_intent==='undecided'):state.filter==='cancel_requested'?!!q.cancel_requested_at&&q.status!=='cancelled':state.filter.startsWith('flow_')?q.status==='confirmed'&&workflowStage(q)===state.filter.slice(5):q.status===state.filter));
  const groups=bundledQuoteGroups(qq);
  const awaiting=groups.filter(quoteGroupNeedsPriceInput),priced=groups.filter(g=>!quoteGroupNeedsPriceInput(g));
  const unfinished=qq.reduce((n,q)=>n+(q.status==='cancelled'?0:q.items.filter(i=>i.unit_price==null&&i.fulfillment!=='sold_out').length),0);
  const dayCount=new Set(qq.map(q=>receivedDayKey(q.created_at))).size;
+ const nNow=state.quotes.filter(isRoundBuyer).length;
+ const nHold=state.quotes.filter(q=>q.status==='quoted'&&q.purchase_intent==='hold_next').length;
+ const nUndecided=state.quotes.filter(q=>q.status==='quoted'&&(!q.purchase_intent||q.purchase_intent==='undecided')).length;
  return `<div class="row between" id="admin-quote-results"><h2>견적 및 확정 주문</h2><button class="btn sm secondary" data-action="refresh">새로고침</button></div>
- <div class="controls" style="margin-bottom:10px">${['all','cancel_requested','requested','quoted','confirmed','flow_new','flow_preparing','flow_pickup_ready','flow_shipped','flow_completed','flow_soldout_closed','cancelled'].map(s=>`<button class="tab ${state.filter===s?'active':''}" data-filter="${s}">${s==='all'?'전체':s==='cancel_requested'?'취소 요청':s.startsWith('flow_')?workflowLabels[s.slice(5)]:statusLabel[s]}</button>`).join('')}</div>
+ <div class="admin-purchase-counts">
+  <button type="button" data-filter="buy_now">이번 회차 구매 <b>${nNow}건</b></button>
+  <button type="button" data-filter="hold_next">다음 회차 보류 <b>${nHold}건</b></button>
+  <button type="button" data-filter="undecided">미선택 <b>${nUndecided}건</b></button>
+ </div>
+ <div class="controls" style="margin-bottom:10px">${['all','buy_now','hold_next','undecided','cancel_requested','requested','quoted','confirmed','flow_new','flow_preparing','flow_pickup_ready','flow_shipped','flow_completed','flow_soldout_closed','cancelled'].map(s=>`<button class="tab ${state.filter===s?'active':''}" data-filter="${s}">${s==='all'?'전체':s==='buy_now'?'이번 회차 구매':s==='hold_next'?'다음 회차 보류':s==='undecided'?'미선택':s==='cancel_requested'?'취소 요청':s.startsWith('flow_')?workflowLabels[s.slice(5)]:statusLabel[s]}</button>`).join('')}</div>
  ${qq.length?`<div class="admin-date-toolbar"><div><strong>날짜별 주문</strong><span>${qq.length}건 · ${dayCount}일 · 가격 미입력 ${unfinished}종</span></div><div class="admin-date-actions"><button type="button" class="date-all-btn" data-action="date-open-all">전체 펼치기</button><button type="button" class="date-all-btn" data-action="date-close-all">전체 접기</button></div></div>
  <div class="admin-overall-prices"><h3>현재 목록 상품 총액 비교</h3>${adminPriceTotalMarkup(qq)}</div>
- ${state.filter==='requested'?renderSupplierBulkManager():''}
+ ${state.filter==='buy_now'?renderSupplierBulkManager():''}
  ${renderAdminQuoteDateSection(qq,awaiting,'pending')}
  ${renderAdminQuoteDateSection(qq,priced,'saved',!awaiting.length)}
  <p class="admin-date-hint">주문자 이름을 누르면 해당 주문만 접거나 펼칠 수 있어요. 미입력 주문은 처음부터 펼쳐지고, 가격 저장 완료 주문은 접힌 상태로 시작해요.</p>`:'<div class="empty">해당 상태의 견적이 없어요.</div>'}`;

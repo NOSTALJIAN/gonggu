@@ -3710,6 +3710,18 @@ async function adminShipping(id,shipping){
  if(!connected){const saved=demo.quotes.find(q=>q.id===id);if(!saved)throw Error('견적을 찾을 수 없어요');saved.shipping_fee=shipping;saveDemo();return}
  await api('/rest/v1/gq_quotes?id=eq.'+encodeURIComponent(id),{method:'PATCH',admin:true,body:{shipping_fee:shipping}})
 }
+async function adminOrderItemOptions(id,color,size,quantity){
+ const q=state.quotes.find(order=>(order.items||[]).some(item=>item.id===id));
+ const item=q?.items.find(item=>item.id===id);
+ if(!state.admin||!q||!item||!canEditAdminOrderItem(q,item))throw Error('이 상품은 주문 옵션을 수정할 수 없어요.');
+ if(!Number.isInteger(quantity)||quantity<1||quantity>20||!color||!size)throw Error('색상·사이즈·수량을 확인해 주세요.');
+ if(!connected){
+  const row=demo.items.find(item=>item.id===id);
+  if(!row)throw Error('수정할 주문 상품을 찾지 못했어요.');
+  Object.assign(row,{color,size,quantity});saveDemo();return {updated:true};
+ }
+ return rpc('gq_admin_update_item_options_v59',{p_item_id:id,p_color:color,p_size:size,p_quantity:quantity},true);
+}
 async function adminItemPrice(id,price){
  const q=state.quotes.find(x=>x.items?.some(y=>y.id===id));
  const target=q?.items.find(i=>i.id===id);
@@ -4258,7 +4270,30 @@ else if(a==='suggest-product'){modalOpen('suggest')}else if(a==='approve-request
  }
  await copy(link);notif('링크를 복사했어요. 카톡 나와의 채팅에 붙여넣어 보관해 주세요.');
 }else if(a==='copy-track'){await copy(trackLink(state.trackId,state.trackToken))}else if(a==='load-track'){refreshFullOrderPage();return;}else if(a==='copy-quote'){await copy(quoteText(state.quotes.find(q=>q.id===id)))}else if(a==='copy-customer-link'){const q=state.quotes.find(q=>q.id===id);await copy(trackLink(q.id,q.lookup_token))}else if(a==='publish-quote'){if(!window.confirm('가격 확인을 마쳤나요? 고객에게 견적을 보여줍니다.'))return;await adminPublish(id);await loadAdmin();notif('견적을 공개했어요')}else if(a==='confirm-quote'){if(!window.confirm('이 견적으로 최종 주문을 확정할까요?'))return;await confirmFinalQuote();notif('최종 주문이 확정됐어요!')}else if(a==='export-csv'){csv()}else if(a==='copy-vendors'){await copy(vendorText())}else if(a==='logout'){session=null;localStorage.removeItem(SESS);state.admin=false;state.productPrivate={};state.productPrivateReady=false;render()} }catch(ex){notif(errorText(ex))}}
-async function submit(e){const f=e.target;if(!f.dataset.sizeChartForm&&!f.dataset.customerEmail&&!['gmail-settings-form','hero-photo-form','reject-request-form','admin-pin-form','pin-register-form','pin-lookup-form','import-track-form','pick','request','store-form','product-form','login','suggest-form','approve-form','bundle-form','edit-delivery-form','bulk-supplier-shipping-form'].includes(f.id)&&!f.dataset.price&&!f.dataset.payment&&!f.dataset.shipping&&!f.dataset.supplierShipping&&!f.dataset.ship&&!f.dataset.bundleShip)return;e.preventDefault();if(busy)return;busy=true;const data=new FormData(f);try{if(f.id==='bulk-supplier-shipping-form'){
+async function submit(e){const f=e.target;if(!f.dataset.sizeChartForm&&!f.dataset.customerEmail&&!['gmail-settings-form','hero-photo-form','reject-request-form','admin-pin-form','pin-register-form','pin-lookup-form','import-track-form','pick','request','store-form','product-form','login','suggest-form','approve-form','bundle-form','edit-delivery-form','bulk-supplier-shipping-form'].includes(f.id)&&!f.dataset.itemOptions&&!f.dataset.price&&!f.dataset.payment&&!f.dataset.shipping&&!f.dataset.supplierShipping&&!f.dataset.ship&&!f.dataset.bundleShip)return;e.preventDefault();if(busy)return;busy=true;const data=new FormData(f);try{if(f.dataset.itemOptions){
+  if(!state.admin||state.page!=='admin')throw Error('관리자 화면에서만 수정할 수 있어요.');
+  const id=f.dataset.itemOptions;
+  const q=state.quotes.find(order=>(order.items||[]).some(item=>item.id===id));
+  const item=q?.items.find(item=>item.id===id);
+  if(!q||!item||!canEditAdminOrderItem(q,item))throw Error('발주 전 주문 상품만 수정할 수 있어요.');
+  const color=String(data.get('color')||'').trim(),size=String(data.get('size')||'').trim();
+  const qtyText=String(data.get('quantity')||'').trim();
+  if(!/^(?:[1-9]|1[0-9]|20)$/.test(qtyText)||!color||!size||color.length>60||size.length>60)
+    throw Error('색상·사이즈와 수량(1~20개)을 확인해 주세요.');
+  const quantity=Number(qtyText);
+  if(color===item.color&&size===item.size&&quantity===item.quantity){notif('변경된 옵션이 없어요.');return;}
+  const before=totalDue(q),after=before+Number(item.unit_price||0)*(quantity-item.quantity);
+  if(['quoted','confirmed'].includes(q.status)){
+   const message='주문 옵션을 수정할까요?\\n기존: '+item.color+' / '+item.size+' ×'+item.quantity+
+     '개\\n변경: '+color+' / '+size+' ×'+quantity+'개'+
+     (item.unit_price!=null?'\\n고객 결제금액: '+money(before)+' → '+money(after):'')+
+     '\\n고객에게 변경 메일이 발송됩니다. 이미 입금한 금액과 차액도 확인해 주세요.';
+   if(!window.confirm(message))return;
+  }
+  await adminOrderItemOptions(id,color,size,quantity);
+  await loadAdmin();
+  notif('상품 옵션을 저장했어요.'+(['quoted','confirmed'].includes(q.status)?' 고객 주문조회에도 반영돼요.':''));
+ }else if(f.id==='bulk-supplier-shipping-form'){
  if(!state.admin||!state.supplierBatchesReady)throw Error('관리자 배송비 배분 현황을 먼저 불러와 주세요.');
  const value=String(data.get('bulk_supplier_total')??'').trim();
  if(!/^(0|[1-9][0-9]{0,6})$/.test(value)||Number(value)>1000000)throw Error('거래처 배송비 총액은 0~100만원으로 입력해 주세요.');

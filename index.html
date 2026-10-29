@@ -1175,6 +1175,16 @@ body:has(.overlay) .floating-actions{opacity:0;visibility:hidden;pointer-events:
 .admin-customer-email-form input{min-width:0;width:100%;min-height:40px;font-size:13px;box-sizing:border-box}
 .admin-customer-email-form .btn{min-height:40px;white-space:nowrap}
 .admin-customer-email-editor>p{font-size:10px;color:#777;line-height:1.6;margin:7px 0 0}
+/* Admin-only order option editing, collapsed by default. */
+.admin-order-option-details{margin:9px 0 12px;border:1px solid #e1e1e1;border-radius:7px;background:#fff}
+.admin-order-option-details>summary{cursor:pointer;padding:9px 11px;font-size:12px;font-weight:740;list-style:none;color:#444}
+.admin-order-option-details>summary::-webkit-details-marker{display:none}
+.admin-order-option-details>summary::after{content:" ▾";color:#888}
+.admin-order-option-details[open]>summary::after{content:" ▴"}
+.admin-order-option-form{padding:12px;border-top:1px solid #eee;display:grid;gap:12px}
+.admin-order-option-form label{font-size:12px;min-width:0}
+.admin-order-option-form input,.admin-order-option-form select{width:100%;box-sizing:border-box}
+.admin-order-option-note{color:#777;font-size:11px;line-height:1.55}
 .admin-email-resend{background:transparent;border:0;text-decoration:underline;padding:8px 0 0;color:#434343;font-size:11px;font-weight:720}
 /* Connected Gmail is a single collapsible status row; full settings remain accessible. */
 .admin-notification-settings.is-compact{padding:13px 16px}
@@ -2672,11 +2682,41 @@ function supplierItemProgress(i){
  if(batch)return '<span class="supplier-item-progress">거래처 배송비 배분 완료</span>';
  return '';
 }
+function canEditAdminOrderItem(q,i){
+ if(!state.admin||q.status==='cancelled'||q.supplier_ordered_at||i.supplier_ordered_at)return false;
+ if(['sold_out','received','delivered'].includes(i.fulfillment))return false;
+ if(q.status==='confirmed'&&!['new','preparing'].includes(workflowStage(q)))return false;
+ return !supplierItemBatch(i.id);
+}
+function adminOrderOptionEditor(q,item){
+ if(!canEditAdminOrderItem(q,item))return '';
+ const product=state.products.find(p=>p.id===item.product_id);
+ const options=product?.options&&typeof product.options==='object'?product.options:{};
+ const colors=[...new Set([item.color,...Object.keys(options)])].filter(Boolean);
+ const sizes=[...new Set([item.size,...(Array.isArray(options[item.color])?options[item.color]:[])])].filter(Boolean);
+ const hasOptions=Object.keys(options).length>0;
+ return `<details class="admin-order-option-details">
+ <summary>색상 · 사이즈 · 수량 수정</summary>
+ <form class="admin-order-option-form" data-item-options="${esc(item.id)}">
+ ${hasOptions?`
+ <label class="label">색상<select name="color" data-order-item-color required>
+ ${colors.map(c=>`<option value="${esc(c)}" ${c===item.color?'selected':''}>${esc(c)}</option>`).join('')}
+ </select></label>
+ <label class="label">사이즈<select name="size" data-order-item-size required>
+ ${sizes.map(z=>`<option value="${esc(z)}" ${z===item.size?'selected':''}>${esc(z)}</option>`).join('')}
+ </select></label>`:`
+ <label class="label">색상 (등록 옵션 없음)<input name="color" maxlength="60" value="${esc(item.color)}" required></label>
+ <label class="label">사이즈<input name="size" maxlength="60" value="${esc(item.size)}" required></label>`}
+ <label class="label">수량 (1~20개)<input name="quantity" type="number" min="1" max="20" step="1" inputmode="numeric" required value="${Number(item.quantity)}"></label>
+ <p class="admin-order-option-note">이 주문 상품만 변경돼요. 도매 발주·배송비 배분 전까지만 수정할 수 있어요. 이미 안내한 견적이라면 고객에게 이메일로 변경을 알려줘요.</p>
+ <button type="submit" class="btn block secondary">옵션 변경 저장</button>
+ </form></details>`;
+}
 function adminQuoteItemMarkup(q,i,bundle=false){
  const disabled=q.status==='cancelled'?'disabled':'';
  const priceForm=`<form class="controlinline" data-price="${esc(i.id)}"><input name="price" type="number" min="0" max="100000000" step="1" value="${i.unit_price??''}" placeholder="개당 가격" aria-label="개당 가격" ${disabled}><button class="btn sm secondary" type="submit" ${disabled}>${i.unit_price==null?'가격 저장':'가격 수정'}</button></form>`;
- if(bundle)return `<div class="bundle-price-item"><div class="tiny"><b>${esc(i.store_name)} · ${esc(i.product_name)}</b> · ${esc(i.color)} / ${esc(i.size)} · ${i.quantity}개</div>${privateQuoteItemInfo(i)}${supplierItemProgress(i)}${priceForm}</div>`;
- return `<div class="orderitem"><div class="row between"><div class="grow"><b>${esc(i.store_name)} · ${esc(i.product_name)}</b><div class="tiny">${esc(i.color)} / ${esc(i.size)} · ${i.quantity}개</div>${privateQuoteItemInfo(i)}${supplierItemProgress(i)}</div><span class="money">${i.unit_price==null?'가격 미정':money(i.unit_price*i.quantity)}</span></div><div class="row wrap" style="margin-top:8px">${priceForm}${q.status==='confirmed'?`<div style="min-width:0;flex:1">${workflowStage(q)==='new'?`<span class="workflow-stage">${itemStatusLabel(q,i)}</span>`:itemFulfillmentControl(q,i)}${workflowStage(q)==='new'?'<div class="workflow-item-help">먼저 상품 준비 시작을 눌러 주세요.</div>':''}</div>`:''}</div></div>`;
+ if(bundle)return `<div class="bundle-price-item"><div class="tiny"><b>${esc(i.store_name)} · ${esc(i.product_name)}</b> · ${esc(i.color)} / ${esc(i.size)} · ${i.quantity}개</div>${privateQuoteItemInfo(i)}${supplierItemProgress(i)}${priceForm}${adminOrderOptionEditor(q,i)}</div>`;
+ return `<div class="orderitem"><div class="row between"><div class="grow"><b>${esc(i.store_name)} · ${esc(i.product_name)}</b><div class="tiny">${esc(i.color)} / ${esc(i.size)} · ${i.quantity}개</div>${privateQuoteItemInfo(i)}${supplierItemProgress(i)}${adminOrderOptionEditor(q,i)}</div><span class="money">${i.unit_price==null?'가격 미정':money(i.unit_price*i.quantity)}</span></div><div class="row wrap" style="margin-top:8px">${priceForm}${q.status==='confirmed'?`<div style="min-width:0;flex:1">${workflowStage(q)==='new'?`<span class="workflow-stage">${itemStatusLabel(q,i)}</span>`:itemFulfillmentControl(q,i)}${workflowStage(q)==='new'?'<div class="workflow-item-help">먼저 상품 준비 시작을 눌러 주세요.</div>':''}</div>`:''}</div></div>`;
 }
 function groupedAdminQuoteItems(q,bundle=false){
  const missing=q.items.filter(i=>i.unit_price==null);

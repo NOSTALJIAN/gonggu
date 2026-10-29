@@ -3305,6 +3305,7 @@ function procurementRows(){
    else if(unit===null)issues.push('도매가 미등록');
    if(!state.supplierBatchesReady)issues.push('배송비 배분 정보 확인 전');
    else if(!batch)issues.push('도매배송비 배분 전');
+   else if(!supplierBatchPaymentState(batch).canOrder)issues.push('같은 거래처 배분 참여자 입금 확인 대기');
    if(!payment(q))issues.push('입금·금액 확인 필요');
    if(q.cancel_requested_at||q.delivery_change_requested_at)issues.push('취소·수령 변경 확인');
    if(!['new','preparing'].includes(workflowStage(q))||item.fulfillment==='delayed')issues.push('상품 진행 단계 확인');
@@ -3362,6 +3363,7 @@ function renderProcurementSheet(){
  if(!state.admin||state.page!=='admin')return '';
  const rows=procurementRows(),ready=rows.filter(r=>r.ready),review=rows.filter(r=>!r.ready);
  const qty=rows.reduce((n,r)=>n+r.qty,0),cost=rows.reduce((n,r)=>n+(r.unit===null?0:r.qty*r.unit),0);
+ const optionCount=list=>procurementGroups(list).reduce((n,v)=>n+v.products.length,0);
  const missing=rows.filter(r=>r.unit===null).reduce((n,r)=>n+r.qty,0);
  const hopeful=state.quotes.filter(q=>q.status==='quoted'&&q.purchase_intent==='buy_now');
  const suppliers=(list,kind)=>procurementGroups(list).map((v,index)=>`<details class="procurement-supplier" ${index<2?'open':''}>
@@ -3383,19 +3385,19 @@ function renderProcurementSheet(){
   <h3>이번 회차 · 도매처별 발주서</h3>
   <p class="procurement-sheet-intro">최종 확정 주문을 도매처별로 정리했어. 상품명·색상·사이즈·수량·도매가·판매가와 구매자를 볼 수 있어.</p>
   <div class="procurement-sheet-stats">
-   <div><small>확정 미발주 상품</small><b>${rows.length}종</b></div>
+   <div><small>확정 미발주 상품 옵션</small><b>${optionCount(rows)}종</b></div>
    <div><small>미발주 수량</small><b>${qty}개</b></div>
    <div><small>상품 도매가 합계</small><b>${money(cost)}</b></div>
   </div>
   ${missing?`<div class="procurement-sheet-warning">도매가 미등록 ${missing}개는 금액 합계에서 제외했어.</div>`:''}
   <div class="procurement-sheet-tools">
-   <button class="btn sm" data-action="copy-procurement-ready" type="button" ${ready.length?'':'disabled'}>발주 가능 상품 복사 (${ready.length}종)</button>
+   <button class="btn sm" data-action="copy-procurement-ready" type="button" ${ready.length?'':'disabled'}>발주 가능 상품 복사 (${optionCount(ready)}종)</button>
    <button class="btn sm secondary" data-action="copy-procurement-review" type="button" ${rows.length?'':'disabled'}>확정 주문 전체 복사 (검토용)</button>
   </div>
   <div class="procurement-sheet-warning">최종 확정 주문만 합산하며 구매 희망만 한 사람은 제외돼. 실제 발주 전 도매배송비 배분·입금·옵션을 확인해 줘. <b>복사만으로 발주 처리되지는 않아.</b></div>
-  <div class="procurement-phase"><h4>발주 가능 <small>${ready.length}종 · ${ready.reduce((n,r)=>n+r.qty,0)}개</small></h4>
+  <div class="procurement-phase"><h4>발주 가능 <small>${optionCount(ready)}종 · ${ready.reduce((n,r)=>n+r.qty,0)}개</small></h4>
    ${ready.length?suppliers(ready,'ready'):'<p class="procurement-sheet-intro">아직 배송비 배분·입금·옵션 확인을 마친 발주 가능 상품이 없어.</p>'}</div>
-  <div class="procurement-phase"><h4>발주 전 확인 필요 <small>${review.length}종 · ${review.reduce((n,r)=>n+r.qty,0)}개</small></h4>
+  <div class="procurement-phase"><h4>발주 전 확인 필요 <small>${optionCount(review)}종 · ${review.reduce((n,r)=>n+r.qty,0)}개</small></h4>
    ${review.length?suppliers(review,'review'):'<p class="procurement-sheet-intro">확인 대기 상품이 없어.</p>'}</div>
   ${hopeful.length?`<details class="procurement-sheet-extra"><summary>구매 희망 · 아직 최종 확정 전 ${hopeful.length}건 (발주 제외)</summary>${hopeful.map(q=>`<p>${esc(buyerLabel(q))} · ${q.items.reduce((n,i)=>n+(i.fulfillment==='sold_out'?0:Number(i.quantity||0)),0)}개</p>`).join('')}</details>`:''}
   <p class="procurement-sheet-intro">도매배송비는 매입 총액에 포함되지 않아. 이미 발주·입고·품절 처리된 상품은 중복 발주 방지를 위해 목록에서 제외했어.</p>

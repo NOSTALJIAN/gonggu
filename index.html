@@ -1195,6 +1195,29 @@ body:has(.overlay) .floating-actions{opacity:0;visibility:hidden;pointer-events:
 .purchase-intent-chip.later{color:#846134;background:#fcf5e8;border-color:#e8d5b9}
 .purchase-intent-chip.wait{color:#666}
 @media(max-width:400px){.purchase-round-actions{grid-template-columns:1fr}.admin-purchase-counts button{flex:1}}
+
+.option-request-card{border:1px solid #dedede;background:#fbfbfb;border-radius:10px;margin:12px 0;padding:12px}
+.option-request-card>summary{font-size:12px;font-weight:800;cursor:pointer;list-style:none}
+.option-request-card>summary::-webkit-details-marker{display:none}
+.option-request-card>summary::after{content:" ▾";color:#777}
+.option-request-card[open]>summary::after{content:" ▴"}
+.option-request-form{display:grid;gap:10px;margin-top:12px}
+.option-request-form label{font-size:12px}
+.option-request-form select,.option-request-form input{box-sizing:border-box;width:100%}
+.option-request-result{border-radius:8px;background:#f3f3f3;padding:10px 11px;font-size:12px;line-height:1.65;margin:10px 0}
+.option-request-result.pending{background:#fff4e5;color:#704c22}
+.option-request-result.approved{background:#ebf5ee;color:#315c40}
+.option-request-result.rejected{background:#f9eeee;color:#763d3d}
+.option-request-admin{padding:12px;margin:11px 0;border:1px solid #d9d9d9;border-radius:9px;background:#fff}
+.option-request-admin h4{font-size:13px;margin:0 0 7px}
+.option-request-admin p{font-size:12px;line-height:1.75;margin:4px 0}
+.wholesale-complete-card{padding:13px;margin:13px 0;border:1px solid #dfdfdf;border-radius:9px;background:#f9f9f9}
+.wholesale-complete-card>strong{font-size:13px}
+.wholesale-complete-card p{font-size:12px;color:#666;margin:7px 0;line-height:1.7}
+.wholesale-complete-card .btn{margin-top:10px}
+.wholesale-state-chip{display:inline-block;border-radius:6px;background:#f1f1f1;padding:4px 7px;font-size:11px;font-weight:800;margin:5px 0}
+.wholesale-state-chip.done{background:#e9f4ed;color:#275b3b}
+
 /* Admin-only order option editing, collapsed by default. */
 .admin-order-option-details{margin:9px 0 12px;border:1px solid #e1e1e1;border-radius:7px;background:#fff}
 .admin-order-option-details>summary{cursor:pointer;padding:9px 11px;font-size:12px;font-weight:740;list-style:none;color:#444}
@@ -1360,7 +1383,7 @@ const demo=read(DEMO,initDemo());
 const saveDemo=()=>localStorage.setItem(DEMO,JSON.stringify(demo));
 let session=read(SESS,null),busy=false,refreshing=null;
 const p=new URLSearchParams(location.search);
-const state={page:['admin','track'].includes(p.get('page'))?p.get('page'):'shop',tab:'quotes',stores:[],products:[],requests:[],quotes:[],cart:read(CART,[]),modal:null,search:'',shopCategory:'all',shopPage:1,adminCategory:'all',trackId:p.get('id')||'',trackToken:p.get('token')||'',tracking:null,receipts:read(TRACK,[]),notice:'',filter:'all',admin:false,heroPhotoUrl:null,heroStoreId:null,dateGroupsOpen:{},orderCardsOpen:{},supplierBulkSelected:new Set(),supplierBulkStoreId:'',supplierBatches:[],supplierBatchesReady:false,supplierBatchesError:'',requestStatusFilter:'pending',adminCatalogView:'products',adminCatalogFilter:'all',adminProductSearch:'',productPrivate:{},productPrivateReady:false,emailSettings:null,emailSettingsReady:false,emailSettingsError:'',adminPinIds:new Set(),phoneLookupReady:null,pinLookupNotice:''};
+const state={page:['admin','track'].includes(p.get('page'))?p.get('page'):'shop',tab:'quotes',stores:[],products:[],requests:[],quotes:[],cart:read(CART,[]),modal:null,search:'',shopCategory:'all',shopPage:1,adminCategory:'all',trackId:p.get('id')||'',trackToken:p.get('token')||'',tracking:null,receipts:read(TRACK,[]),notice:'',filter:'all',admin:false,heroPhotoUrl:null,heroStoreId:null,dateGroupsOpen:{},orderCardsOpen:{},supplierBulkSelected:new Set(),supplierBulkStoreId:'',supplierBatches:[],supplierBatchesReady:false,supplierBatchesError:'',optionRequests:[],optionRequestsReady:false,optionRequestsError:'',requestStatusFilter:'pending',adminCatalogView:'products',adminCatalogFilter:'all',adminProductSearch:'',productPrivate:{},productPrivateReady:false,emailSettings:null,emailSettingsReady:false,emailSettingsError:'',adminPinIds:new Set(),phoneLookupReady:null,pinLookupNotice:''};
 
 const PRODUCT_CATEGORIES=['양말','모자','아우터','상의','하의','스커트','원피스','바디수트','세트','악세서리','잡화'];
 const validProductCategory=x=>PRODUCT_CATEGORIES.includes(String(x||'').trim());
@@ -1896,7 +1919,18 @@ async function adminMarkSupplierBatchOrdered(id){
  if(!state.admin)throw Error('관리자 권한이 필요해요.');
  return rpc('gq_admin_mark_supplier_item_batch_ordered_v50',{p_batch_id:id},true);
 }
-async function loadAdmin(){if(!connected){state.admin=true;state.productPrivate={};state.productPrivateReady=false;state.stores=clone(demo.stores);state.products=clone(demo.products);state.requests=clone(demo.requests||[]);syncDemo();render();return}if(!session){state.admin=false;state.productPrivate={};state.productPrivateReady=false;render();return}try{const auth=await rpc('gq_is_admin',{},true);if(!auth)throw Error('관리자 권한이 없습니다');state.admin=true;await loadCatalog(true);const [qq,ii,rr]=await Promise.all([api('/rest/v1/gq_quotes?select=*&order=created_at.desc',{admin:true}),api('/rest/v1/gq_quote_items?select=*&order=created_at.asc',{admin:true}),api('/rest/v1/gq_product_requests?select=*&order=created_at.desc',{admin:true})]);state.quotes=qq.map(q=>({...q,items:ii.filter(i=>i.quote_id===q.id)}));state.requests=rr;await loadAdminProductPrivate();await loadAdminSupplierBatches();render();await Promise.all([loadAdminShipping(),loadAdminPinStatus(),loadAdminEmailSettings()]);render()}catch(e){state.admin=false;render();throw e}}
+async function loadAdminOptionRequests(){
+ if(!connected||!state.admin){state.optionRequests=[];state.optionRequestsReady=false;return;}
+ try{
+  const requests=await rpc('gq_admin_list_item_option_requests_v61',{},true);
+  if(!Array.isArray(requests))throw Error('옵션 변경 요청을 읽지 못했어요.');
+  state.optionRequests=requests;state.optionRequestsReady=true;state.optionRequestsError='';
+ }catch(error){
+  state.optionRequests=[];state.optionRequestsReady=false;state.optionRequestsError=errorText(error);
+  console.warn('고객 옵션 요청 조회 오류',error);
+ }
+}
+async function loadAdmin(){if(!connected){state.admin=true;state.productPrivate={};state.productPrivateReady=false;state.stores=clone(demo.stores);state.products=clone(demo.products);state.requests=clone(demo.requests||[]);syncDemo();render();return}if(!session){state.admin=false;state.productPrivate={};state.productPrivateReady=false;render();return}try{const auth=await rpc('gq_is_admin',{},true);if(!auth)throw Error('관리자 권한이 없습니다');state.admin=true;await loadCatalog(true);const [qq,ii,rr]=await Promise.all([api('/rest/v1/gq_quotes?select=*&order=created_at.desc',{admin:true}),api('/rest/v1/gq_quote_items?select=*&order=created_at.asc',{admin:true}),api('/rest/v1/gq_product_requests?select=*&order=created_at.desc',{admin:true})]);state.quotes=qq.map(q=>({...q,items:ii.filter(i=>i.quote_id===q.id)}));state.requests=rr;await loadAdminProductPrivate();await loadAdminSupplierBatches();render();await Promise.all([loadAdminShipping(),loadAdminPinStatus(),loadAdminEmailSettings(),loadAdminOptionRequests()]);render()}catch(e){state.admin=false;render();throw e}}
 async function loadPublic(){await loadCatalog(false);render()}
 async function saveHeroPhoto(file){
  if(!state.admin||!connected||!session)throw Error('관리자 로그인 후 사진을 변경해 주세요.');
@@ -2215,7 +2249,46 @@ function intentBadge(q){
  return `<span class="purchase-intent-chip ${color}">${label}</span>`;
 }
 function isRoundBuyer(q){return q.status==='confirmed'||(q.status==='quoted'&&q.purchase_intent==='buy_now')}
-function renderTrack(){const q=state.tracking;return `<section class="content"><div class="page-intro"><span class="page-intro-kicker">미니예나 · 주문조회</span><h1>내 주문조회</h1><p>견적과 배송 진행 상황을 확인하세요.</p></div>${steps(!q?1:q.status==='requested'?1:q.status==='quoted'?2:3)}${!state.trackId||!state.trackToken?'<div class="empty">견적 내역에서 확인할 요청을 선택해 주세요.</div>':!q?'<div class="card">견적을 불러오는 중이거나 요청서를 찾지 못했어요.<div class="space"></div><button class="btn secondary" data-action="load-track">다시 불러오기</button></div>':`<div class="card"><div class="row between"><h2 style="margin:0">${esc(q.buyer_name)}님 견적</h2><span class="stagebadge">${statusLabel[q.status]}</span></div><div class="smallnote">아기 이름(태명): ${esc(q.baby_name||'미입력 (이전 견적)')} · 접수 ${fmtDate(q.created_at)} · 견적번호 ${q.id.slice(0,8).toUpperCase()}</div><details class="track-pin-box"><summary>다른 브라우저용 조회 비밀번호 등록 · 변경</summary><p>이 주문의 조회 비밀번호를 설정하면 이름·휴대폰 번호·비밀번호로 다른 브라우저에서도 찾을 수 있어요. 이전 주문도 같은 번호로 설정하면 함께 조회돼요.</p><form id="pin-register-form"><label class="label">숫자 6자리 비밀번호<input name="lookup_pin" type="password" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" autocomplete="off" required placeholder="비밀번호 6자리"></label><label class="label">비밀번호 한 번 더<input name="lookup_pin_confirm" type="password" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" autocomplete="off" required placeholder="비밀번호 확인"></label><button class="btn block secondary" type="submit">조회 비밀번호 저장</button></form></details><div class="track-link-banner"><b>주문조회 링크를 꼭 보관해 주세요</b><p>카카오톡·네이버·사파리에서 같은 주문을 확인할 수 있어요. 카톡 ‘나와의 채팅’에 보내 두면 편해요.</p><div class="track-link-buttons"><button class="btn sm" type="button" data-action="share-track">주문조회 링크 공유</button><button class="btn sm secondary" type="button" data-action="copy-track">링크 복사</button></div><small>링크를 가진 사람은 주문 정보를 볼 수 있어요. 단체 채팅방에 보내지 마세요.</small></div><div class="info" style="background:#fff;border-color:#dedbf4"><b>수령방식: ${deliveryLabel(q)}</b>${q.delivery_method==='courier'?`<div class="smallnote" style="margin-top:4px">받는 사람: ${esc(q.recipient_name||q.buyer_name||'')} · 주소: ${esc(addressLabel(q))}${q.delivery_note?` · 요청사항: ${esc(q.delivery_note)}`:''}</div>`:''}${isBundle(q)?'<div class="smallnote">묶음배송 적용 · 이 주문의 추가 배송비는 0원이에요.</div>':''}</div>${q.delivery_change_requested_at?`<div class="noticefail" style="margin-top:9px"><b>수령방식 변경 요청 대기 중</b><div class="smallnote">요청 내용: ${q.requested_delivery_method==='pickup'?'직접수령':'택배수령'}${q.requested_delivery_method==='courier'?' · '+esc(q.requested_address_line1||''):''}</div>관리자가 승인하기 전까지 현재 수령방식과 결제금액이 유지돼요.</div>`:''}${q.delivery_change_rejected_at&&!q.delivery_change_requested_at?'<div class="noticefail">이전 수령방식 변경 요청이 반려되었어요. 필요하면 다시 요청해 주세요.</div>':''}${canChangeDelivery(q)?`<button class="btn block secondary" style="margin:12px 0 4px" data-action="edit-delivery">수령방식·주소 수정${q.delivery_change_requested_at?' (요청 수정)':''}</button>`:''}<div class="separator"></div>${q.items.map(i=>`<div class="cartline"><div class="row between"><b>${esc(i.store_name)} · ${esc(i.product_name)}</b><span>${i.quantity}개</span></div><div class="sub">${esc(i.color)} / ${esc(i.size)}</div><div class="money">${i.unit_price==null?'가격 안내 전':money(i.unit_price*i.quantity)}${i.unit_price!=null?` <span class="tiny">(${money(i.unit_price)} × ${i.quantity})</span>`:''}</div>${q.status==='confirmed'?`<div class="tiny">상태: ${itemStatusLabel(q,i)}</div>`:''}</div>`).join('')}<div class="separator"></div><div class="sumline"><span>상품 합계</span><b>${unknown(q)?'가격 확인 중':money(previewOrderSum(q))}</b></div><div class="sumline"><span>배송비 (고객 수령)</span><b>${q.status==='requested'?'견적 안내 전':shippingLabel(q)}</b></div><div class="sumline"><span>도매 배송비 분담금</span><b>${q.status==='requested'?'견적 안내 전':supplierShippingLabel(q)}</b></div><div class="sumline total"><span>최종 결제금액</span><b>${q.status==='requested'||!readyQuote(q)?'견적 확인 중':money(totalDue(q))}</b></div>${confirmedPaymentWidget(q)}${q.status==='requested'?'<div class="info">운영자가 가격을 확인 중이에요. 견적이 올라오면 이 화면에서 확인한 뒤 최종 주문해 주세요.</div>':q.status==='quoted'?`${buyerRoundIntent(q)}`:q.status==='confirmed'?`<div class="info"><b>📦 주문 진행: ${workflowLabel(q)}</b>${trackingInfo(q)?`<div class="smallnote" style="margin-top:5px">택배사·운송장: ${esc(trackingInfo(q))}</div>${renderShipment(q)}${isLotteShipment(q)?'<div class="smallnote" style="margin-top:4px">롯데택배 배송조회 연결 · 배송 완료 확인 시 자동 반영 (조회 지연 가능)</div>':''}`:''}${q.delivery_method==='courier'&&!trackingInfo(q)?'<div class="smallnote">이 주문에 등록된 송장번호가 아직 없어요. 묶음배송이라면 운영자에게 송장 등록 상태를 확인해 주세요.</div>':''}${q.items.some(i=>i.fulfillment==='sold_out')?`<div class="smallnote" style="margin-top:5px">품절된 상품은 결제금액에서 제외되었어요. 실제 환불은 판매자에게 확인해 주세요.${allSoldOut(q)?' 전부 품절되어 배송비도 제외돼요.':''}</div>`:''}<div class="smallnote">수령 진행 상황은 이 링크에서 새로고침하여 확인할 수 있어요.</div></div><div class="tiny">입금 확인: ${money(q.amount_paid||0)} / 환불 완료: ${money(q.amount_refunded||0)}</div>`:'<div class="noticefail">취소된 견적입니다.</div>'}${q.amount_changed_at&&['quoted','confirmed'].includes(q.status)?`<div class="noticefail" style="margin:10px 0"><b>견적 금액이 수정되었어요</b><div>관리자가 상품 가격 또는 배송비를 변경했어요. 최신 결제금액을 확인하고, 이미 결제했다면 차액·환불 여부를 판매자에게 확인해 주세요.</div><div class="smallnote">변경 ${fmtDate(q.amount_changed_at)}</div></div>`:''}${q.cancel_requested_at&&q.status!=='cancelled'?`<div class="noticefail"><b>취소 요청 접수됨</b><div>관리자가 확인 후 취소 여부를 처리해요. 최종 주문은 잠시 진행하지 말아 주세요.</div>${q.cancel_reason?`<div class="tiny">요청 사유: ${esc(q.cancel_reason)}</div>`:''}</div>`:q.cancel_rejected_at&&q.status!=='cancelled'?'<div class="noticefail">관리자가 이전 취소 요청을 반려했어요. 여전히 취소가 필요하면 다시 요청할 수 있어요.</div>':''}
+function buyerWholesaleStatus(q){
+ if(q.status!=='confirmed')return '';
+ const active=(q.items||[]).filter(i=>i.fulfillment!=='sold_out');
+ const done=active.filter(i=>i.supplier_ordered_at).length;
+ const complete=Boolean(q.supplier_ordered_at)||(active.length>0&&done===active.length);
+ return `<div class="wholesale-state-chip ${complete?'done':''}">${complete?'✅ 이번 회차 도매주문 완료':done>0?`거래처별 도매주문 진행 중 (${done}/${active.length})`:'이번 회차 도매주문 전 · 옵션 변경 요청 가능'}</div>`;
+}
+function buyerOptionRequest(q,i){
+ if(q.status!=='confirmed')return '';
+ const req=i.option_request;
+ const closed=Boolean(q.supplier_ordered_at||i.supplier_ordered_at||
+  ['sold_out','received','delivered'].includes(i.fulfillment)||!['new','preparing'].includes(q.workflow_stage||'new'));
+ const recent=req?.status==='pending'?'<b>변경 요청 검토 중</b>':
+   req?.status==='approved'?'<b>이전 변경 요청 승인 완료</b>':
+   req?.status==='rejected'?'<b>이전 변경 요청 반려</b>':'';
+ const result=req?`<div class="option-request-result ${esc(req.status)}">${recent}<div>요청한 옵션: ${esc(req.requested_color)} / ${esc(req.requested_size)} · ${Number(req.requested_quantity)}개</div>${req.decision_note?`<div>안내: ${esc(req.decision_note)}</div>`:''}</div>`:'';
+ if(closed)return `<div class="tiny" style="margin:7px 0">✅ 이 상품은 도매주문 완료 또는 입고 처리되어 옵션 변경 요청이 마감됐어요.</div>${result}`;
+ if(req?.status==='pending')return result+'<div class="tiny">판매자가 승인하거나 반려하면 결과가 표시돼요. 승인 전까지 원래 옵션이 유지돼요.</div>';
+ const rawOptions=i.product_options&&typeof i.product_options==='object'?i.product_options:{};
+ const colors=[...new Set([i.color,...Object.keys(rawOptions)])].filter(Boolean);
+ const sizes=[...new Set([i.size,...(Array.isArray(rawOptions[i.color])?rawOptions[i.color]:[])])].filter(Boolean);
+ const dropdown=Object.keys(rawOptions).length>0;
+ return `<details class="option-request-card">
+  <summary>색상 · 사이즈 · 수량 변경 요청</summary>
+  ${result}
+  <form class="option-request-form" data-buyer-option-request="${esc(i.id)}">
+   ${dropdown?`<label class="label">색상<select name="color" data-buyer-option-color required>
+    ${colors.map(c=>`<option value="${esc(c)}" ${c===i.color?'selected':''}>${esc(c)}</option>`).join('')}
+    </select></label>
+    <label class="label">사이즈<select name="size" data-buyer-option-size required>
+    ${sizes.map(z=>`<option value="${esc(z)}" ${z===i.size?'selected':''}>${esc(z)}</option>`).join('')}</select></label>`:
+    `<label class="label">색상<input name="color" maxlength="60" required value="${esc(i.color)}"></label>
+    <label class="label">사이즈<input name="size" maxlength="60" required value="${esc(i.size)}"></label>`}
+   <label class="label">수량<input name="quantity" type="number" min="1" max="20" step="1" required value="${Number(i.quantity)}"></label>
+   <p class="smallnote">관리자 승인 후에만 주문 옵션과 결제금액이 변경돼요. 도매주문 완료 전까지 요청할 수 있어요.</p>
+   <button class="btn block secondary" type="submit">변경 요청 보내기</button>
+  </form>
+ </details>`;
+}
+function renderTrack(){const q=state.tracking;return `<section class="content"><div class="page-intro"><span class="page-intro-kicker">미니예나 · 주문조회</span><h1>내 주문조회</h1><p>견적과 배송 진행 상황을 확인하세요.</p></div>${steps(!q?1:q.status==='requested'?1:q.status==='quoted'?2:3)}${!state.trackId||!state.trackToken?'<div class="empty">견적 내역에서 확인할 요청을 선택해 주세요.</div>':!q?'<div class="card">견적을 불러오는 중이거나 요청서를 찾지 못했어요.<div class="space"></div><button class="btn secondary" data-action="load-track">다시 불러오기</button></div>':`<div class="card"><div class="row between"><h2 style="margin:0">${esc(q.buyer_name)}님 견적</h2><span class="stagebadge">${statusLabel[q.status]}</span></div><div class="smallnote">아기 이름(태명): ${esc(q.baby_name||'미입력 (이전 견적)')} · 접수 ${fmtDate(q.created_at)} · 견적번호 ${q.id.slice(0,8).toUpperCase()}</div><details class="track-pin-box"><summary>다른 브라우저용 조회 비밀번호 등록 · 변경</summary><p>이 주문의 조회 비밀번호를 설정하면 이름·휴대폰 번호·비밀번호로 다른 브라우저에서도 찾을 수 있어요. 이전 주문도 같은 번호로 설정하면 함께 조회돼요.</p><form id="pin-register-form"><label class="label">숫자 6자리 비밀번호<input name="lookup_pin" type="password" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" autocomplete="off" required placeholder="비밀번호 6자리"></label><label class="label">비밀번호 한 번 더<input name="lookup_pin_confirm" type="password" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" autocomplete="off" required placeholder="비밀번호 확인"></label><button class="btn block secondary" type="submit">조회 비밀번호 저장</button></form></details><div class="track-link-banner"><b>주문조회 링크를 꼭 보관해 주세요</b><p>카카오톡·네이버·사파리에서 같은 주문을 확인할 수 있어요. 카톡 ‘나와의 채팅’에 보내 두면 편해요.</p><div class="track-link-buttons"><button class="btn sm" type="button" data-action="share-track">주문조회 링크 공유</button><button class="btn sm secondary" type="button" data-action="copy-track">링크 복사</button></div><small>링크를 가진 사람은 주문 정보를 볼 수 있어요. 단체 채팅방에 보내지 마세요.</small></div><div class="info" style="background:#fff;border-color:#dedbf4"><b>수령방식: ${deliveryLabel(q)}</b>${q.delivery_method==='courier'?`<div class="smallnote" style="margin-top:4px">받는 사람: ${esc(q.recipient_name||q.buyer_name||'')} · 주소: ${esc(addressLabel(q))}${q.delivery_note?` · 요청사항: ${esc(q.delivery_note)}`:''}</div>`:''}${isBundle(q)?'<div class="smallnote">묶음배송 적용 · 이 주문의 추가 배송비는 0원이에요.</div>':''}</div>${q.delivery_change_requested_at?`<div class="noticefail" style="margin-top:9px"><b>수령방식 변경 요청 대기 중</b><div class="smallnote">요청 내용: ${q.requested_delivery_method==='pickup'?'직접수령':'택배수령'}${q.requested_delivery_method==='courier'?' · '+esc(q.requested_address_line1||''):''}</div>관리자가 승인하기 전까지 현재 수령방식과 결제금액이 유지돼요.</div>`:''}${q.delivery_change_rejected_at&&!q.delivery_change_requested_at?'<div class="noticefail">이전 수령방식 변경 요청이 반려되었어요. 필요하면 다시 요청해 주세요.</div>':''}${canChangeDelivery(q)?`<button class="btn block secondary" style="margin:12px 0 4px" data-action="edit-delivery">수령방식·주소 수정${q.delivery_change_requested_at?' (요청 수정)':''}</button>`:''}<div class="separator"></div>${q.items.map(i=>`<div class="cartline"><div class="row between"><b>${esc(i.store_name)} · ${esc(i.product_name)}</b><span>${i.quantity}개</span></div><div class="sub">${esc(i.color)} / ${esc(i.size)}</div><div class="money">${i.unit_price==null?'가격 안내 전':money(i.unit_price*i.quantity)}${i.unit_price!=null?` <span class="tiny">(${money(i.unit_price)} × ${i.quantity})</span>`:''}</div>${q.status==='confirmed'?`<div class="tiny">상태: ${itemStatusLabel(q,i)}</div>${buyerOptionRequest(q,i)}`:''}</div>`).join('')}<div class="separator"></div><div class="sumline"><span>상품 합계</span><b>${unknown(q)?'가격 확인 중':money(previewOrderSum(q))}</b></div><div class="sumline"><span>배송비 (고객 수령)</span><b>${q.status==='requested'?'견적 안내 전':shippingLabel(q)}</b></div><div class="sumline"><span>도매 배송비 분담금</span><b>${q.status==='requested'?'견적 안내 전':supplierShippingLabel(q)}</b></div><div class="sumline total"><span>최종 결제금액</span><b>${q.status==='requested'||!readyQuote(q)?'견적 확인 중':money(totalDue(q))}</b></div>${confirmedPaymentWidget(q)}${buyerWholesaleStatus(q)}${q.status==='requested'?'<div class="info">운영자가 가격을 확인 중이에요. 견적이 올라오면 이 화면에서 확인한 뒤 최종 주문해 주세요.</div>':q.status==='quoted'?`${buyerRoundIntent(q)}`:q.status==='confirmed'?`<div class="info"><b>📦 주문 진행: ${workflowLabel(q)}</b>${trackingInfo(q)?`<div class="smallnote" style="margin-top:5px">택배사·운송장: ${esc(trackingInfo(q))}</div>${renderShipment(q)}${isLotteShipment(q)?'<div class="smallnote" style="margin-top:4px">롯데택배 배송조회 연결 · 배송 완료 확인 시 자동 반영 (조회 지연 가능)</div>':''}`:''}${q.delivery_method==='courier'&&!trackingInfo(q)?'<div class="smallnote">이 주문에 등록된 송장번호가 아직 없어요. 묶음배송이라면 운영자에게 송장 등록 상태를 확인해 주세요.</div>':''}${q.items.some(i=>i.fulfillment==='sold_out')?`<div class="smallnote" style="margin-top:5px">품절된 상품은 결제금액에서 제외되었어요. 실제 환불은 판매자에게 확인해 주세요.${allSoldOut(q)?' 전부 품절되어 배송비도 제외돼요.':''}</div>`:''}<div class="smallnote">수령 진행 상황은 이 링크에서 새로고침하여 확인할 수 있어요.</div></div><div class="tiny">입금 확인: ${money(q.amount_paid||0)} / 환불 완료: ${money(q.amount_refunded||0)}</div>`:'<div class="noticefail">취소된 견적입니다.</div>'}${q.amount_changed_at&&['quoted','confirmed'].includes(q.status)?`<div class="noticefail" style="margin:10px 0"><b>견적 금액이 수정되었어요</b><div>관리자가 상품 가격 또는 배송비를 변경했어요. 최신 결제금액을 확인하고, 이미 결제했다면 차액·환불 여부를 판매자에게 확인해 주세요.</div><div class="smallnote">변경 ${fmtDate(q.amount_changed_at)}</div></div>`:''}${q.cancel_requested_at&&q.status!=='cancelled'?`<div class="noticefail"><b>취소 요청 접수됨</b><div>관리자가 확인 후 취소 여부를 처리해요. 최종 주문은 잠시 진행하지 말아 주세요.</div>${q.cancel_reason?`<div class="tiny">요청 사유: ${esc(q.cancel_reason)}</div>`:''}</div>`:q.cancel_rejected_at&&q.status!=='cancelled'?'<div class="noticefail">관리자가 이전 취소 요청을 반려했어요. 여전히 취소가 필요하면 다시 요청할 수 있어요.</div>':''}
 ${canRequestCancel(q)?`<button class="btn block outline" style="margin-top:12px" data-action="request-cancel">취소 요청하기</button>`:''}
 <button class="btn block neutral" style="margin-top:12px" data-action="copy-track">견적 확인 링크 복사</button><button class="btn block secondary" style="margin-top:7px" data-action="load-track">새로고침</button></div>`}</section>`}
 function renderAdmin(){if(connected&&!state.admin)return `<section class="content"><div class="card loginbox"><h2>관리자 로그인</h2><p class="sub">상품·가격·배송비·품절·입금은 관리자만 변경해요.</p><form id="login"><label class="label">이메일<input required name="email" type="email" autocomplete="email"></label><label class="label">비밀번호<input required name="password" type="password" autocomplete="current-password"></label><button class="btn block" type="submit">로그인</button></form></div></section>`;
@@ -3672,6 +3745,14 @@ async function reloadTracking(){if(!state.trackId||!state.trackToken)return;let 
  rpc('gq_read_quote',{p_quote_id:state.trackId,p_lookup_token:state.trackToken}),
  new Promise((_,reject)=>setTimeout(()=>reject(Error('주문조회 서버 응답이 늦어지고 있어요. 아래 새로고침을 눌러 다시 시도해 주세요.')),14000))
 ]);if(!q)throw Error('견적을 찾을 수 없어요');state.tracking=q;rememberAccessibleOrder(q);render();if(connected&&q.delivery_method==='courier'&&isLotteShipment(q)){const payload=await optionalShippingRPC('gq_lotte_tracking_for_quote_v25',{p_quote_id:state.trackId,p_lookup_token:state.trackToken});if(state.tracking===q){applyShippingDetails(q,v25TrackingSnapshot(payload,q.tracking_number));render()}}}
+async function submitBuyerOptionRequest(id,color,size,quantity){
+ if(!state.tracking||state.tracking.status!=='confirmed')throw Error('최종 구매 확정 이후에 변경 요청할 수 있어요.');
+ if(!connected)throw Error('실제 주문에서만 사용할 수 있어요.');
+ await rpc('gq_request_item_option_change_v61',{
+  p_quote_id:state.trackId,p_lookup_token:state.trackToken,p_item_id:id,
+  p_color:color,p_size:size,p_quantity:quantity});
+ await reloadTracking();
+}
 async function setBuyerPurchaseIntent(intent){
  if(!state.tracking||state.tracking.status!=='quoted'||!['buy_now','hold_next'].includes(intent))throw Error('견적 안내를 받은 뒤 구매 회차를 선택해 주세요.');
  if(!connected){const q=demo.quotes.find(x=>x.id===state.trackId&&x.lookup_token===state.trackToken);if(!q)throw Error('조회한 견적을 찾지 못했어요.');q.purchase_intent=intent;q.purchase_intent_at=now();saveDemo();}
@@ -4336,7 +4417,17 @@ else if(a==='suggest-product'){modalOpen('suggest')}else if(a==='approve-request
  }
  await copy(link);notif('링크를 복사했어요. 카톡 나와의 채팅에 붙여넣어 보관해 주세요.');
 }else if(a==='copy-track'){await copy(trackLink(state.trackId,state.trackToken))}else if(a==='load-track'){refreshFullOrderPage();return;}else if(a==='copy-quote'){await copy(quoteText(state.quotes.find(q=>q.id===id)))}else if(a==='copy-customer-link'){const q=state.quotes.find(q=>q.id===id);await copy(trackLink(q.id,q.lookup_token))}else if(a==='publish-quote'){if(!window.confirm('가격 확인을 마쳤나요? 고객에게 견적을 보여줍니다.'))return;await adminPublish(id);await loadAdmin();notif('견적을 공개했어요')}else if(a==='confirm-quote'){if(!window.confirm('이 견적으로 최종 주문을 확정할까요?'))return;await confirmFinalQuote();notif('최종 주문이 확정됐어요!')}else if(a==='export-csv'){csv()}else if(a==='copy-vendors'){await copy(vendorText())}else if(a==='logout'){session=null;localStorage.removeItem(SESS);state.admin=false;state.productPrivate={};state.productPrivateReady=false;render()} }catch(ex){notif(errorText(ex))}}
-async function submit(e){const f=e.target;if(!f.dataset.sizeChartForm&&!f.dataset.customerEmail&&!['gmail-settings-form','hero-photo-form','reject-request-form','admin-pin-form','pin-register-form','pin-lookup-form','import-track-form','pick','request','store-form','product-form','login','suggest-form','approve-form','bundle-form','edit-delivery-form','bulk-supplier-shipping-form'].includes(f.id)&&!f.dataset.itemOptions&&!f.dataset.price&&!f.dataset.payment&&!f.dataset.shipping&&!f.dataset.supplierShipping&&!f.dataset.ship&&!f.dataset.bundleShip)return;e.preventDefault();if(busy)return;busy=true;const data=new FormData(f);try{if(f.dataset.itemOptions){
+async function submit(e){const f=e.target;if(!f.dataset.sizeChartForm&&!f.dataset.customerEmail&&!['gmail-settings-form','hero-photo-form','reject-request-form','admin-pin-form','pin-register-form','pin-lookup-form','import-track-form','pick','request','store-form','product-form','login','suggest-form','approve-form','bundle-form','edit-delivery-form','bulk-supplier-shipping-form'].includes(f.id)&&!f.dataset.itemOptions&&!f.dataset.buyerOptionRequest&&!f.dataset.price&&!f.dataset.payment&&!f.dataset.shipping&&!f.dataset.supplierShipping&&!f.dataset.ship&&!f.dataset.bundleShip)return;e.preventDefault();if(busy)return;busy=true;const data=new FormData(f);try{if(f.dataset.buyerOptionRequest){
+  const id=f.dataset.buyerOptionRequest;
+  const item=state.tracking?.items?.find(i=>i.id===id);
+  if(!item)throw Error('변경할 주문 상품이 없어요.');
+  const color=String(data.get('color')||'').trim(),size=String(data.get('size')||'').trim();
+  const quantity=Number(data.get('quantity'));
+  if(!Number.isInteger(quantity)||quantity<1||quantity>20||!color||!size)throw Error('색상·사이즈와 수량을 확인해 주세요.');
+  if(!window.confirm('변경 요청을 판매자에게 보낼까요? 승인 전에는 기존 주문이 유지돼요.'))return;
+  await submitBuyerOptionRequest(id,color,size,quantity);
+  notif('옵션 변경 요청을 보냈어요. 판매자가 확인하면 결과가 표시돼요.');
+ }else if(f.dataset.itemOptions){
   if(!state.admin||state.page!=='admin')throw Error('관리자 화면에서만 수정할 수 있어요.');
   const id=f.dataset.itemOptions;
   const q=state.quotes.find(order=>(order.items||[]).some(item=>item.id===id));
@@ -4541,7 +4632,17 @@ if(x.matches?.('[data-supplier-item-select]')){
  return;
 }
 if(x.name==='extra_photos'&&x.closest('form#approve-form,form#product-form')){chooseAdminAdditionalPhotos(x);return;}
-if(x.matches('select[data-order-item-color]')){
+if(x.matches('select[data-buyer-option-color]')){
+  const form=x.closest('form[data-buyer-option-request]');
+  const item=state.tracking?.items?.find(i=>i.id===form?.dataset.buyerOptionRequest);
+  const raw=item?.product_options?.[x.value];
+  const sizes=Array.isArray(raw)?[...raw]:[];
+  if(x.value===item?.color&&!sizes.includes(item.size))sizes.unshift(item.size);
+  const target=form?.querySelector('[data-buyer-option-size]');
+  if(target)target.innerHTML=sizes.map(z=>`<option value="${esc(z)}">${esc(z)}</option>`).join('');
+  return;
+ }
+ if(x.matches('select[data-order-item-color]')){
   const form=x.closest('form[data-item-options]');
   const id=form?.dataset.itemOptions;
   const q=state.quotes.find(order=>(order.items||[]).some(item=>item.id===id));

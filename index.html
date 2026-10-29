@@ -1858,9 +1858,18 @@ async function loadAdminSupplierBatches(){
   console.warn('거래처별 배송비 배분 조회 실패',error);
  }
 }
+// Wholesale shipping uses only the real supplier entered in admin-private product fields.
+function privateSupplierKey(name){return String(name||'').trim().toLocaleLowerCase('ko-KR');}
 function supplierItemStore(item){
- const product=state.products.find(p=>p.id===item.product_id);
- return product?.store_id||state.stores.find(store=>store.name===item.store_name)?.id||'';
+ if(!state.admin||!state.productPrivateReady||!item?.product_id)return '';
+ return privateSupplierKey(state.productPrivate[item.product_id]?.supplier_name);
+}
+function privateSupplierDisplay(key){
+ const meta=Object.values(state.productPrivate||{}).find(x=>privateSupplierKey(x?.supplier_name)===key);
+ return String(meta?.supplier_name||'').trim();
+}
+function supplierBatchPrivateKey(batch){
+ return String(batch?.private_supplier_key||'').trim().toLocaleLowerCase('ko-KR');
 }
 function supplierItemBatch(itemId){
  return state.supplierBatches.find(b=>Array.isArray(b.item_ids)&&b.item_ids.includes(itemId));
@@ -1873,7 +1882,7 @@ function supplierBatchesForQuote(q){
 function supplierBulkAvailableItem(q,item){
  const storeId=supplierItemStore(item);
  const phone=String(q.contact||'').replace(/\D/g,'');
- const hasPending=state.supplierBatches.some(b=>b.store_id===storeId&&
+ const hasPending=state.supplierBatches.some(b=>supplierBatchPrivateKey(b)===storeId&&
   !b.ordered_at&&(b.payers||[]).some(p=>p.buyer_key===phone));
  return Boolean(state.supplierBatchesReady&&storeId&&phone.length>=8&&
   isRoundBuyer(q)&&item.fulfillment!=='sold_out'&&
@@ -3162,10 +3171,10 @@ function supplierBatchPaymentState(batch){
 function renderSupplierBulkManager(historyOnly=false){
  if(!state.admin||state.page!=='admin')return '';
  const allStores=[...new Set(state.quotes.filter(isRoundBuyer).flatMap(q=>(q.items||[]).map(supplierItemStore)))].filter(Boolean);
- const stores=state.stores.filter(store=>allStores.includes(store.id))
+ const stores=allStores.map(id=>({id,name:privateSupplierDisplay(id)})).filter(x=>x.name)
   .sort((a,b)=>a.name.localeCompare(b.name,'ko'));
  const storeId=state.supplierBulkStoreId;
- const store=state.stores.find(s=>s.id===storeId);
+ const store=stores.find(s=>s.id===storeId);
  const entries=storeId?state.quotes.filter(isRoundBuyer).flatMap(q=>(q.items||[])
   .filter(item=>supplierItemStore(item)===storeId)
   .map(item=>({q,item}))):[];
@@ -3180,7 +3189,7 @@ function renderSupplierBulkManager(historyOnly=false){
   const first=rows[0].q;
   const eligible=rows.filter(({q,item})=>supplierBulkAvailableItem(q,item));
   const selected=eligible.filter(({item})=>state.supplierBulkSelected.has(item.id));
-  const existingPending=state.supplierBatches.some(b=>b.store_id===storeId&&
+  const existingPending=state.supplierBatches.some(b=>supplierBatchPrivateKey(b)===storeId&&
    !b.ordered_at&&(b.payers||[]).some(p=>p.buyer_key===key));
   const statuses=rows.map(({q,item})=>{
    const assigned=supplierItemBatch(item.id);
@@ -3244,10 +3253,11 @@ function renderSupplierBulkManager(historyOnly=false){
  }
  return `<section class="card supplier-bulk-manager" id="supplier-bulk-manager">
   <div class="supplier-bulk-heading"><h3>거래처별 도매배송비 배분</h3><span>상품별 선택 · 인원별 분담</span></div>
-  <p class="smallnote"><b>이번 회차 구매 희망·확정 주문자만</b> 배송비 배분 대상이에요. ‘다음 회차 보류’나 ‘미선택’ 주문은 제외됩니다. 거래처를 선택해 상품을 체크해 주세요. 같은 사람이 같은 거래처 상품을 여러 개 주문해도 배송비는 <b>한 명 몫</b>만 계산돼요.</p>
+  <p class="smallnote"><b>상품 등록에서 입력한 실제 도매업체명(비공개)</b>만 사용해요. 구매자에게 보이는 가게명은 사용하지 않아요. 실제 업체가 같으면 고객용 가게명이 달라도 함께 묶고, 한 구매자는 해당 업체 배송비를 한 번만 부담해요. ‘다음 회차 보류’·‘미선택’은 제외돼요.</p>
+  ${!state.productPrivateReady?'<p class="noticefail">비공개 도매업체명 정보를 불러오지 못했어요. 새로고침 후 확인해 주세요.</p>':''}
   ${!state.supplierBatchesReady?`<p class="noticefail">배분 현황을 불러오지 못했어요. ${esc(state.supplierBatchesError||'관리자 새로고침 후 확인해 주세요.')}</p>`:''}
-  <label class="label">도매 거래처 선택
-   <select data-supplier-bulk-store aria-label="배송비를 배분할 도매 거래처">
+  <label class="label">실제 도매업체 선택 (관리자 전용)
+   <select data-supplier-bulk-store aria-label="배송비를 배분할 실제 비공개 도매업체">
     <option value="">거래처를 선택해 주세요</option>
     ${stores.map(s=>`<option value="${esc(s.id)}" ${storeId===s.id?'selected':''}>${esc(s.name)}</option>`).join('')}
    </select>
@@ -4722,8 +4732,8 @@ async function submit(e){const f=e.target;if(!f.dataset.sizeChartForm&&!f.datase
  const total=Number(value),{selected,buyerKeys,people,invalid}=supplierBulkSelectedInfo();
  const existing=supplierBulkExistingManualFees(selected);
  if(existing.buyers>0&&!data.has('keep_existing'))throw Error('기존 도매배송비 중복 부과 여부를 확인하고 체크해 주세요.');
- const store=state.stores.find(s=>s.id===state.supplierBulkStoreId);
- if(!store||!selected.length||selected.length>300||people>100||invalid)throw Error('먼저 거래처를 선택하고 해당 거래처의 상품만 체크해 주세요.');
+ const supplierName=privateSupplierDisplay(state.supplierBulkStoreId);
+ if(!state.productPrivateReady||!supplierName||!selected.length||selected.length>300||people>100||invalid)throw Error('실제 도매업체를 선택하고 해당 도매업체 상품만 체크해 주세요.');
  const base=Math.floor(total/people),remainder=total%people;
  const allocations=new Map(buyerKeys.map((key,index)=>[key,base+(index<remainder?1:0)]));
  const buyers=buyerKeys.map(key=>{
@@ -4732,7 +4742,7 @@ async function submit(e){const f=e.target;if(!f.dataset.sizeChartForm&&!f.datase
  });
  const changedQuotes=selected.some(({q})=>['quoted','confirmed'].includes(q.status));
  const splitText=remainder?`${remainder}명은 ${money(base+1)}, 나머지 ${people-remainder}명은 ${money(base)}`:`1인당 ${money(base)}`;
- const message='‘'+store.name+'’ 거래처 배송비 '+money(total)+'을(를) 분담할까요?\n'+
+ const message='‘'+supplierName+'’ 실제 도매업체 배송비 '+money(total)+'을(를) 분담할까요?\n'+
   '선택 상품 '+selected.length+'종 · 구매자 '+people+'명\n'+splitText+
   '\n\n'+buyers.join(', ')+
   (changedQuotes?'\n\n기존 견적을 안내받은 구매자의 결제금액이 바뀔 수 있어요. 입금 차액을 확인해 주세요.':'')+

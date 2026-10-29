@@ -4475,6 +4475,19 @@ if(x.matches?.('[data-supplier-item-select]')){
  return;
 }
 if(x.name==='extra_photos'&&x.closest('form#approve-form,form#product-form')){chooseAdminAdditionalPhotos(x);return;}
+if(x.matches('select[data-order-item-color]')){
+  const form=x.closest('form[data-item-options]');
+  const id=form?.dataset.itemOptions;
+  const q=state.quotes.find(order=>(order.items||[]).some(item=>item.id===id));
+  const item=q?.items.find(item=>item.id===id);
+  const product=state.products.find(product=>product.id===item?.product_id);
+  const raw=product?.options?.[x.value];
+  const sizes=Array.isArray(raw)?[...raw]:[];
+  if(item&&x.value===item.color&&!sizes.includes(item.size))sizes.unshift(item.size);
+  const target=form?.querySelector('[data-order-item-size]');
+  if(target)target.innerHTML=sizes.map(z=>`<option value="${esc(z)}">${esc(z)}</option>`).join('');
+  return;
+}
 if(x.id==='deliveryMethodEdit'){
  const panel=$('#courierFieldsEdit');if(panel){const show=x.value==='courier';panel.classList.toggle('hidden',!show);if(!show){const el=panel.querySelector('[data-postcode-panel]');if(el)el.classList.add('hidden');}for(const field of panel.querySelectorAll('input')){field.disabled=!show;field.required=show&&field.hasAttribute('data-courier-required');}}return;
 }if(x.id==='deliveryMethod'){const block=$('#courierFields');if(block){const courier=x.value==='courier';block.classList.toggle('hidden',!courier);if(!courier){const el=block.querySelector('[data-postcode-panel]');if(el)el.classList.add('hidden');}for(const input of block.querySelectorAll('input')){input.disabled=!courier;input.required=courier&&input.hasAttribute('data-courier-required');}}return;}if(x.id==='suggest-photo'){updateSuggestPhotoPreviews(x);return}if(x.id==='pickColor'){state.modal.color=x.value;const p=selectedProd(state.modal.id);$('#pickSize').innerHTML=(p.options[x.value]||[]).map(s=>`<option>${esc(s)}</option>`).join('')}else if(x.dataset.tab){state.tab=x.dataset.tab;render()}else if(x.dataset.filter){state.filter=x.dataset.filter;state.supplierBulkSelected.clear();render()}else if(x.dataset.fulfillment){if(busy)return;busy=true;try{

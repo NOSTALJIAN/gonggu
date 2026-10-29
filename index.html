@@ -2887,12 +2887,51 @@ function renderBundleCard(group){
  </div>`;
 }
 
+function pendingItemOptionRequests(q){return (state.optionRequests||[]).filter(r=>r.quote_id===q.id&&r.status==='pending')}
+function renderAdminItemOptionRequests(q){
+ const reqs=pendingItemOptionRequests(q);
+ if(!state.optionRequestsReady)return `<div class="noticefail">옵션 변경 요청 확인 실패: ${esc(state.optionRequestsError||'관리자 새로고침으로 확인해 주세요.')}. 도매 발주 전 요청을 확인해 주세요.</div>`;
+ if(!reqs.length)return '';
+ return `<div class="option-request-admin-list"><h4>⚠️ 고객 옵션 변경 요청 ${reqs.length}건 · 확인 필요</h4>
+  ${reqs.map(r=>{
+   const item=q.items.find(i=>i.id===r.item_id);
+   return `<section class="option-request-admin">
+    <h4>${esc(item?.store_name||'거래처')} · ${esc(item?.product_name||'상품')}</h4>
+    <p>기존: ${esc(r.old_color)} / ${esc(r.old_size)} · ${Number(r.old_quantity)}개</p>
+    <p><b>요청: ${esc(r.requested_color)} / ${esc(r.requested_size)} · ${Number(r.requested_quantity)}개</b></p>
+    ${item?.unit_price!=null&&r.requested_quantity!==r.old_quantity?`<p>상품금액: ${money(item.unit_price*r.old_quantity)} → ${money(item.unit_price*r.requested_quantity)} (배송비 제외)</p>`:''}
+    <small class="smallnote">접수: ${fmtDate(r.requested_at)} · 승인 후에만 변경 반영</small>
+    <div class="row wrap" style="margin-top:9px">
+      <button type="button" class="btn sm" data-action="admin-approve-item-options" data-id="${esc(r.id)}">옵션 변경 승인</button>
+      <button type="button" class="btn sm neutral" data-action="admin-reject-item-options" data-id="${esc(r.id)}">요청 반려</button>
+    </div>
+   </section>`;
+  }).join('')}
+ </div>`;
+}
+function renderWholesaleCompletionAdmin(q){
+ if(q.status!=='confirmed')return '';
+ const active=(q.items||[]).filter(i=>i.fulfillment!=='sold_out');
+ const done=active.filter(i=>i.supplier_ordered_at).length;
+ const complete=Boolean(q.supplier_ordered_at)||(active.length>0&&done===active.length);
+ const assignedPending=active.some(i=>state.supplierBatches.some(b=>
+  !b.ordered_at&&(b.item_ids||[]).includes(i.id)));
+ const pending=pendingItemOptionRequests(q);
+ return `<div class="wholesale-complete-card">
+  <strong>📦 이번 회차 도매주문</strong>
+  <div class="wholesale-state-chip ${complete?'done':''}">${complete?'도매주문 완료 · 옵션 변경 마감':done>0?`도매주문 진행 중 ${done}/${active.length}종`:'도매주문 전 · 옵션 변경 요청 가능'}</div>
+  ${complete?`<p>완료일: ${fmtDate(q.supplier_ordered_at||active.find(i=>i.supplier_ordered_at)?.supplier_ordered_at)}</p>`:
+    `<p>실제로 남대문 거래처에 발주한 후 완료 처리해 주세요. 완료하면 고객의 옵션 변경 요청이 마감돼요.</p>
+    <button type="button" class="btn sm secondary" data-action="admin-complete-wholesale" data-id="${esc(q.id)}" ${pending.length||!state.optionRequestsReady||assignedPending?'disabled':''}>이번 회차 도매주문 완료 처리</button>
+    ${pending.length?'<p>미처리 옵션 변경 요청을 먼저 승인·반려해야 해요.</p>':assignedPending?'<p>거래처별 배송비 배분을 사용 중이에요. 먼저 ‘거래처별 배송비 · 입금·발주 현황’에서 거래처 발주 완료를 처리해 주세요.</p>':''}`}
+ </div>`;
+}
 function renderAdminQuoteCard(q){return `<div class="card ordercard"><div class="row between"><div><h3>${esc(q.buyer_name)} <span class="chip purple">아기: ${esc(q.baby_name||'미입력')}</span></h3><button class="textbutton" data-action="edit-baby" data-id="${q.id}">아기 이름 수정</button><div class="quote-date">${fmtDate(q.created_at)} · ${esc(q.contact||'연락처 없음')}</div></div><div><span class="stagebadge">${statusLabel[q.status]}</span>${intentBadge(q)}${q.supplier_ordered_at?`<div class="workflow-stage" style="margin-top:5px">도매 발주 완료 · ${fmtDate(q.supplier_ordered_at)}</div>`:''}${q.status==='confirmed'?`<div class="workflow-stage" style="margin-top:5px">${workflowLabel(q)}</div>${workflowStage(q)==='shipped'&&isLotteShipment(q)?'<div class="tiny lotte-auto-chip">🚚 롯데 자동조회 대상</div>':''}`:''}</div></div><div class="tiny">메모: ${esc(q.note||'없음')}</div>${renderAdminEmailEditor('quote',q)}
 <div class="info" style="background:#fafaff"><b>수령: ${deliveryLabel(q)}</b>${q.delivery_method==='courier'?`<div class="tiny">받는 사람: ${esc(q.recipient_name||'미입력')} · ${esc(addressLabel(q))}${q.delivery_note?' · 배송메모: '+esc(q.delivery_note):''}</div>`:''}${isBundle(q)?'<div class="chip purple">묶음배송 · 추가 배송비 0원</div>':''}${state.quotes.some(x=>x.bundle_parent_id===q.id&&x.status!=='cancelled')?'<div class="chip purple">묶음배송 대표 주문</div>':''}</div>
 ${q.bundle_parent_id&&!state.quotes.some(x=>x.id===q.bundle_parent_id&&x.status!=='cancelled')?'<div class="noticefail"><b>묶음 대표 주문 연결 확인 필요</b><div>대표 주문이 없거나 취소되어 함께 표시할 수 없어요. 아래 묶음배송 변경·해제에서 다시 연결해 주세요.</div></div>':''}
 ${q.delivery_change_requested_at?`<div class="noticefail" style="margin-top:10px"><b>📦 구매자 수령방식 변경 요청</b><div class="smallnote">${fmtDate(q.delivery_change_requested_at)} · 변경 요청: ${q.requested_delivery_method==='pickup'?'직접수령':'택배수령'}</div>${q.requested_delivery_method==='courier'?`<div class="smallnote">${esc(q.requested_recipient_name||'')} · ${esc([q.requested_postal_code,q.requested_address_line1,q.requested_address_line2].filter(Boolean).join(' '))}</div>`:''}<div class="row wrap" style="margin-top:8px"><button class="btn sm" data-action="approve-delivery" data-id="${q.id}">변경 승인</button><button class="btn sm neutral" data-action="reject-delivery" data-id="${q.id}">반려</button></div><div class="smallnote">배송비를 한 번만 받는 묶음배송이라면 배송지와 결제 차액을 확인해 주세요.</div></div>`:''}
 ${q.cancel_requested_at&&q.status!=='cancelled'?`<div class="noticefail" style="margin-top:10px"><b>⚠️ 구매자 취소 요청</b><div class="tiny">${fmtDate(q.cancel_requested_at)} · 사유: ${esc(q.cancel_reason||'사유 미입력')}</div><div class="row wrap" style="margin-top:8px"><button class="btn sm danger" data-action="accept-cancel" data-id="${q.id}">취소 승인</button><button class="btn sm neutral" data-action="reject-cancel" data-id="${q.id}">취소 요청 반려</button></div></div>`:q.cancel_rejected_at&&q.status!=='cancelled'?'<div class="tiny" style="margin-top:7px">이전 취소 요청 반려됨</div>':''}
-${groupedAdminQuoteItems(q)}${adminPriceTotalMarkup([q],true)}${adminWorkflow(q)}${q.delivery_method==='pickup'?'<div class="info">직접수령: 배송비 0원 (자동 적용)</div>':`<form data-shipping="${q.id}" class="row wrap shipping-form"><label class="label" style="min-width:0;flex:1">이 주문의 배송비 (원, 무료면 0)<input name="shipping" type="number" min="0" max="1000000" step="1" required placeholder="배송비 입력 / 무료는 0" value="${hasShipping(q)?q.shipping_fee:''}" ${q.status==='cancelled'||isBundle(q)?'disabled':''}></label><button type="submit" class="btn sm secondary" ${q.status==='cancelled'||isBundle(q)?'disabled':''}>배송비 저장</button></form>`}${renderSupplierShippingForm(q)}<div class="sumline"><span>총 ${q.items.reduce((n,i)=>n+i.quantity,0)}개 · 상품금액</span><strong>${unknown(q)?'가격 미정 '+unknown(q)+'개':money(previewOrderSum(q))}</strong></div><div class="sumline"><span>배송비 (고객 수령)</span><strong>${shippingLabel(q)}</strong></div><div class="sumline"><span>도매 배송비 분담금</span><strong>${supplierShippingLabel(q)}</strong></div><div class="sumline total"><span>고객 결제금액</span><strong>${readyQuote(q)?money(totalDue(q)):'견적 작성 중'}</strong></div>${q.status==='requested'?`<button class="btn block" data-action="publish-quote" data-id="${q.id}" ${!readyQuote(q)?'disabled':''}>${unknown(q)?'상품 가격을 먼저 입력해 주세요':!hasShipping(q)?'배송비를 먼저 입력해 주세요':'견적 안내 완료 처리'}</button>`:''}${q.status==='quoted'?'<div class="info">고객이 확인 후 ‘최종 주문’ 버튼을 눌러야 확정돼요.</div>':''}${q.status==='confirmed'?`<div class="noticefail" style="margin-top:10px"><b>확정 주문 금액 수정 가능 (관리자)</b><div>금액을 수정하면 구매자에게 변경 내역이 표시돼요. 고객에게 직접 안내하고, 기존 입금액과 차액·환불 여부를 확인하세요.</div>${q.amount_changed_at?`<div class="tiny" style="margin-top:5px">최근 금액 변경: ${fmtDate(q.amount_changed_at)}</div>`:''}</div>`:''}${['confirmed','cancelled'].includes(q.status)?`<form data-payment="${q.id}" class="two"><div><label class="label">입금받은 총액<input name="paid" type="number" min="0" value="${q.amount_paid||0}"></label></div><div><label class="label">환불해 준 총액<input name="refunded" type="number" min="0" value="${q.amount_refunded||0}"></label></div><button type="submit" class="btn secondary" style="grid-column:span 2">입금·환불 기록 저장</button></form><div class="smallnote">현재까지 실제 받은 금액과 이미 돌려준 금액의 누적 합계예요. 입금을 안 받았다면 0원으로 두세요.</div><div class="tiny">현재 미입금액: ${readyQuote(q)?money(balanceDue(q)):'배송비 미설정 — 총액 확인 필요'}</div>${q.status==='confirmed'&&refundDue(q)>0?`<div class="noticefail">실제 환불이 추가로 필요한 금액: <b>${money(refundDue(q))}</b> · 환불 송금 후 누적 환불액을 입력하세요.</div>`:''}${isBundle(q)&&q.status==='confirmed'?'<div class="noticefail">이미 확정된 주문을 묶으면 결제금액이 줄어들 수 있어요. 고객에게 차액을 안내하고 필요하면 환불 금액을 기록해 주세요.</div>':''}`:''}<div class="row wrap" style="margin-top:10px"><button class="btn sm neutral" data-action="copy-quote" data-id="${q.id}">견적 내용 복사</button><button class="btn sm neutral" data-action="copy-customer-link" data-id="${q.id}">고객 확인 링크 복사</button>${adminPinButton(q)}${q.status==='quoted'?`<button class="btn sm secondary" data-action="copy-quote-notice" data-id="${q.id}">💌 견적 안내문 복사</button>`:''}${q.status==='confirmed'?`<button class="btn sm secondary" data-action="copy-payment-notice" data-id="${esc(q.id)}">입금 안내문 복사</button>`:''}${q.status!=='cancelled'&&q.delivery_method!=='pickup'?`<button class="btn sm ${isBundle(q)?'outline':'secondary'}" data-action="bundle-order" data-id="${q.id}">${isBundle(q)?'묶음배송 변경·해제':'묶음배송 설정'}</button>`:''}<button class="btn sm danger" data-action="delete-order" data-id="${q.id}" aria-label="${esc(q.buyer_name)} 주문 영구 삭제">영구 삭제</button></div></div>`;}
+${renderAdminItemOptionRequests(q)}${groupedAdminQuoteItems(q)}${adminPriceTotalMarkup([q],true)}${adminWorkflow(q)}${renderWholesaleCompletionAdmin(q)}${q.delivery_method==='pickup'?'<div class="info">직접수령: 배송비 0원 (자동 적용)</div>':`<form data-shipping="${q.id}" class="row wrap shipping-form"><label class="label" style="min-width:0;flex:1">이 주문의 배송비 (원, 무료면 0)<input name="shipping" type="number" min="0" max="1000000" step="1" required placeholder="배송비 입력 / 무료는 0" value="${hasShipping(q)?q.shipping_fee:''}" ${q.status==='cancelled'||isBundle(q)?'disabled':''}></label><button type="submit" class="btn sm secondary" ${q.status==='cancelled'||isBundle(q)?'disabled':''}>배송비 저장</button></form>`}${renderSupplierShippingForm(q)}<div class="sumline"><span>총 ${q.items.reduce((n,i)=>n+i.quantity,0)}개 · 상품금액</span><strong>${unknown(q)?'가격 미정 '+unknown(q)+'개':money(previewOrderSum(q))}</strong></div><div class="sumline"><span>배송비 (고객 수령)</span><strong>${shippingLabel(q)}</strong></div><div class="sumline"><span>도매 배송비 분담금</span><strong>${supplierShippingLabel(q)}</strong></div><div class="sumline total"><span>고객 결제금액</span><strong>${readyQuote(q)?money(totalDue(q)):'견적 작성 중'}</strong></div>${q.status==='requested'?`<button class="btn block" data-action="publish-quote" data-id="${q.id}" ${!readyQuote(q)?'disabled':''}>${unknown(q)?'상품 가격을 먼저 입력해 주세요':!hasShipping(q)?'배송비를 먼저 입력해 주세요':'견적 안내 완료 처리'}</button>`:''}${q.status==='quoted'?'<div class="info">고객이 확인 후 ‘최종 주문’ 버튼을 눌러야 확정돼요.</div>':''}${q.status==='confirmed'?`<div class="noticefail" style="margin-top:10px"><b>확정 주문 금액 수정 가능 (관리자)</b><div>금액을 수정하면 구매자에게 변경 내역이 표시돼요. 고객에게 직접 안내하고, 기존 입금액과 차액·환불 여부를 확인하세요.</div>${q.amount_changed_at?`<div class="tiny" style="margin-top:5px">최근 금액 변경: ${fmtDate(q.amount_changed_at)}</div>`:''}</div>`:''}${['confirmed','cancelled'].includes(q.status)?`<form data-payment="${q.id}" class="two"><div><label class="label">입금받은 총액<input name="paid" type="number" min="0" value="${q.amount_paid||0}"></label></div><div><label class="label">환불해 준 총액<input name="refunded" type="number" min="0" value="${q.amount_refunded||0}"></label></div><button type="submit" class="btn secondary" style="grid-column:span 2">입금·환불 기록 저장</button></form><div class="smallnote">현재까지 실제 받은 금액과 이미 돌려준 금액의 누적 합계예요. 입금을 안 받았다면 0원으로 두세요.</div><div class="tiny">현재 미입금액: ${readyQuote(q)?money(balanceDue(q)):'배송비 미설정 — 총액 확인 필요'}</div>${q.status==='confirmed'&&refundDue(q)>0?`<div class="noticefail">실제 환불이 추가로 필요한 금액: <b>${money(refundDue(q))}</b> · 환불 송금 후 누적 환불액을 입력하세요.</div>`:''}${isBundle(q)&&q.status==='confirmed'?'<div class="noticefail">이미 확정된 주문을 묶으면 결제금액이 줄어들 수 있어요. 고객에게 차액을 안내하고 필요하면 환불 금액을 기록해 주세요.</div>':''}`:''}<div class="row wrap" style="margin-top:10px"><button class="btn sm neutral" data-action="copy-quote" data-id="${q.id}">견적 내용 복사</button><button class="btn sm neutral" data-action="copy-customer-link" data-id="${q.id}">고객 확인 링크 복사</button>${adminPinButton(q)}${q.status==='quoted'?`<button class="btn sm secondary" data-action="copy-quote-notice" data-id="${q.id}">💌 견적 안내문 복사</button>`:''}${q.status==='confirmed'?`<button class="btn sm secondary" data-action="copy-payment-notice" data-id="${esc(q.id)}">입금 안내문 복사</button>`:''}${q.status!=='cancelled'&&q.delivery_method!=='pickup'?`<button class="btn sm ${isBundle(q)?'outline':'secondary'}" data-action="bundle-order" data-id="${q.id}">${isBundle(q)?'묶음배송 변경·해제':'묶음배송 설정'}</button>`:''}<button class="btn sm danger" data-action="delete-order" data-id="${q.id}" aria-label="${esc(q.buyer_name)} 주문 영구 삭제">영구 삭제</button></div></div>`;}
 
 function receivedDayKey(value){
  const date=new Date(value);
@@ -3011,7 +3050,7 @@ function renderCollapsibleAdminOrder(group,section){
      <span class="admin-order-fold-meta">${group.length>1?group.length+'건 묶음배송 · ':''}상품 ${uniqueItems}종 · 총 ${qty}개 · ${fmtDate(root.created_at)}</span>
     </span>
     <span class="admin-order-fold-right">
-     <span class="admin-order-fold-status">${esc(stateText)}${stage?' · '+esc(stage):''}${group.length===1?intentBadge(root):''}</span>
+     <span class="admin-order-fold-status">${esc(stateText)}${stage?' · '+esc(stage):''}${group.length===1?intentBadge(root):''}${group.some(q=>pendingItemOptionRequests(q).length)?'<span class="admin-order-fold-alert">옵션 변경 요청 확인</span>':''}</span>
      ${supplierOrdered?`<span class="admin-order-fold-ordered">도매 발주 ${supplierOrdered}/${activeItems.length}종 완료</span>`:assigned?`<span class="admin-order-fold-batched">거래처별 배분 ${assigned}종</span>`:''}
      ${pending?`<span class="admin-order-fold-alert">가격 미입력 ${pending}종</span>`:attention?'<span class="admin-order-fold-alert">요청 확인 필요</span>':''}
     </span>
@@ -4053,6 +4092,37 @@ if(a==='set-purchase-intent'){
  if(!window.confirm(next==='buy_now'?'이번 회차에 구매할 예정이라고 판매자에게 알릴까요? 최종 주문은 다음 버튼에서 확정할 수 있어요.':'이번 회차 구매를 보류하고 다음에 합쳐 구매할까요? 이번 회차 배송비 계산에서 제외되고 자동 주문되지 않아요.'))return;
  await setBuyerPurchaseIntent(next);
  notif(next==='buy_now'?'이번 회차 구매 희망이 저장됐어요. 판매자에게 알림이 발송될 예정이에요.':'다음 회차 구매 보류가 저장됐어요. 판매자에게 알림이 발송될 예정이에요.');
+ return;
+}
+if(a==='admin-approve-item-options'||a==='admin-reject-item-options'){
+ if(!state.admin)throw Error('관리자만 옵션 변경 요청을 처리할 수 있어요.');
+ const req=state.optionRequests.find(r=>r.id===id&&r.status==='pending');
+ const q=state.quotes.find(q=>q.id===req?.quote_id),item=q?.items.find(i=>i.id===req?.item_id);
+ if(!req||!q||!item)throw Error('요청 정보가 오래됐어요. 관리자 새로고침을 눌러 주세요.');
+ const approve=a==='admin-approve-item-options';
+ const oldTotal=totalDue(q),newTotal=oldTotal+(Number(item.unit_price)||0)*(Number(req.requested_quantity)-Number(item.quantity));
+ const desc=`${q.buyer_name} · ${item.product_name}\n${item.color} / ${item.size} ×${item.quantity} → ${req.requested_color} / ${req.requested_size} ×${req.requested_quantity}`;
+ if(approve&&!window.confirm(`상품 옵션 변경을 승인할까요?\n${desc}\n결제금액: ${money(oldTotal)} → ${money(newTotal)}\n입금·환불 차액을 확인해 주세요.`))return;
+ let note='';
+ if(!approve){
+  const typed=window.prompt(`요청을 반려할까요?\n${desc}\n\n고객에게 전달할 사유를 입력해 주세요. (선택)`,'');
+  if(typed===null)return;
+  note=typed.slice(0,300);
+  if(!window.confirm('정말 반려하고 고객에게 안내할까요?'))return;
+ }
+ await rpc('gq_admin_decide_item_option_request_v61',{p_request_id:id,p_approve:approve,p_note:note},true);
+ await loadAdmin();
+ notif(approve?'옵션 변경을 승인하고 주문에 반영했어요. 고객에게 이메일이 발송돼요.':'옵션 변경을 반려했어요. 고객에게 이메일이 발송돼요.');
+ return;
+}
+if(a==='admin-complete-wholesale'){
+ if(!state.admin)throw Error('관리자만 도매주문 완료를 처리할 수 있어요.');
+ const q=state.quotes.find(q=>q.id===id);
+ if(!q||q.status!=='confirmed')throw Error('최종 구매가 확정된 주문만 완료 처리할 수 있어요.');
+ if(!window.confirm(`${q.buyer_name}님 주문을 실제로 도매 발주 완료했나요?\n완료 처리 후 구매자 옵션 변경 요청이 마감돼요. 되돌리기는 지원하지 않아요.`))return;
+ await rpc('gq_admin_mark_quote_wholesale_ordered_v61',{p_quote_id:id},true);
+ await loadAdmin();
+ notif('이번 회차 도매주문 완료 처리했어요. 고객 옵션 변경 요청이 마감됐어요.');
  return;
 }
 if(a==='reload-app'){refreshFullOrderPage();return;}

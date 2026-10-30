@@ -5472,7 +5472,7 @@ if(a==='select-product-store'){
  closeProductStoreSearch(form);
  if(id==='__new_store__'){
   const nameField=form.querySelector('[name="new_store_name"]');
-  if(nameField){nameField.value=typed&&typed!==state.stores.find(st=>st.id===state.stores[0]?.id)?.name?typed:'';nameField.focus();}
+  if(nameField){nameField.value=typed&&!state.stores.some(st=>st.name.trim().toLocaleLowerCase('ko-KR')===typed.toLocaleLowerCase('ko-KR'))?typed:'';nameField.focus();}
  }else input.blur();
  return;
 }

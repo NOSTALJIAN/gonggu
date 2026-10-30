@@ -1446,20 +1446,35 @@ body:has(.overlay) .floating-actions{opacity:0;visibility:hidden;pointer-events:
  .shoplist .shop-catalog-card .shop-catalog-colors{font-size:10px}
 }
 
-/* Five numbered page buttons + compact accessible direct-page entry. */
-.shop-catalog-pagination{justify-content:center;gap:5px;margin:24px 0 8px}
-.shop-catalog-pagination button{min-width:36px;min-height:38px;padding:7px 8px}
-.shop-catalog-pagination .page-control{min-width:49px;padding-inline:8px}
-.shop-page-jump{display:flex;justify-content:center;align-items:center;gap:12px;flex-wrap:wrap;margin:4px 0 15px}
-.shop-page-jump .shop-catalog-pagination-status{margin:0;font-size:11px;white-space:nowrap}
-.shop-page-jump form{display:flex;align-items:center;gap:7px;margin:0}
-.shop-page-jump label{font-size:11px;color:#666;white-space:nowrap}
-.shop-page-jump input{box-sizing:border-box;width:58px;min-width:0;height:36px;padding:5px 6px;text-align:center;border:1px solid #ccc;border-radius:5px;background:#fff;color:#111;font-size:16px}
-.shop-page-jump button{height:36px;min-width:47px;border:1px solid #111;border-radius:5px;background:#fff;color:#111;font-size:12px;font-weight:750;padding:6px 10px}
+/* Minimal mobile pagination: five pages + small direct jump, no repeated labels. */
+.shop-catalog-pagination{display:flex;justify-content:center;align-items:center;flex-wrap:nowrap;gap:5px;margin:22px 0 10px;padding:0}
+.shop-catalog-pagination button{
+ flex:0 0 auto;min-width:35px;width:35px;height:35px;min-height:35px;padding:4px;
+ border:0;border-radius:8px;background:transparent;color:#444;
+ font-size:13px;font-weight:750;
+}
+.shop-catalog-pagination button[aria-current="page"]{background:#171717;color:#fff;border:0}
+.shop-catalog-pagination .page-control{min-width:35px;padding:0;font-size:24px;font-weight:400;line-height:1;color:#555}
+.shop-catalog-pagination button:disabled{opacity:.24}
+.shop-page-jump{
+ width:max-content;max-width:calc(100% - 24px);margin:0 auto 23px;
+ display:flex;align-items:center;justify-content:center;gap:12px;
+ padding:5px 8px 5px 12px;border:1px solid #ececec;border-radius:9px;background:#fafafa;
+}
+.shop-page-jump .shop-catalog-pagination-status{margin:0;color:#777;font-size:11px;white-space:nowrap}
+.shop-page-jump form{display:flex;align-items:center;gap:6px;margin:0}
+.shop-page-jump input{
+ box-sizing:border-box;width:63px;min-width:0;height:31px;padding:4px 5px;
+ border:1px solid #dedede;border-radius:6px;text-align:center;background:#fff;color:#171717;font-size:16px;
+}
+.shop-page-jump button{
+ min-width:53px;height:31px;padding:4px 8px;border:0;border-radius:6px;
+ background:#252525;color:#fff;font-size:11px;font-weight:750;white-space:nowrap;
+}
 @media(max-width:380px){
- .shop-catalog-pagination{gap:4px}
- .shop-catalog-pagination button{min-width:31px;min-height:35px;padding:6px}
- .shop-catalog-pagination .page-control{min-width:43px;padding-inline:6px}
+ .shop-catalog-pagination{gap:3px}
+ .shop-catalog-pagination button{min-width:32px;width:32px;min-height:33px;height:33px;padding:3px}
+ .shop-catalog-pagination .page-control{min-width:32px}
  .shop-page-jump{gap:9px}
 }
 
@@ -2475,16 +2490,15 @@ function renderShop(){
  <div class="shop-search-wrap"><input id="search" type="search" placeholder="상품명·가게명·카테고리 검색" value="${esc(state.search)}" aria-label="상품 검색"></div>
  <div class="shoplist">${products.length?`<div class="shop-catalog-count">${activeCategory==='all'?'전체 상품':activeCategory==='uncategorized'?'미분류 상품':activeCategory} · 총 ${products.length}개 · 최신 등록순 · ${firstNumber}~${lastNumber}개 표시</div><div class="shop-catalog-grid">${pageProducts.map(({p,store})=>`<article class="shop-catalog-card ${p.is_sold_out?'shop-soldout-card':''}"><button class="shop-catalog-photo shop-photo-button" type="button" data-action="product-photos" data-id="${esc(p.id)}" aria-label="${esc(p.name)} 상품 사진 보기">${img(p)}</button>${p.is_sold_out?'<span class="shop-soldout-label">품절</span>':''}<div class="shop-catalog-store">${esc(store.name)} <span class="shop-catalog-category">${esc(categoryLabel(p))}</span></div><button class="producttitle catalog-title-link" type="button" data-action="pick-product" data-id="${esc(p.id)}" aria-label="${esc(p.name)} 상품 옵션 보기" title="${esc(p.name)}">${esc(p.name)}</button><div class="shop-catalog-colors">${Object.keys(p.options||{}).map(esc).join(' · ')||'색상 옵션 확인'}</div>${hasProductEstimate(p)?estimatedProductPrice(p):'<div class="product-estimate product-estimate-card shop-catalog-no-estimate"><span class="product-estimate-label">가격</span><strong>견적 문의</strong></div>'}<button class="btn block shop-catalog-select" type="button" data-action="pick-product" data-id="${esc(p.id)}" ${p.is_sold_out?'disabled':''}>${p.is_sold_out?'품절':'옵션 선택 ↗'}</button></article>`).join('')}</div>
  ${shopPageCount>1?`<nav class="shop-catalog-pagination" aria-label="상품 페이지 이동">
-  <button type="button" class="page-control" data-action="shop-page" data-page-number="${shopPage-1}" ${shopPage===1?'disabled':''} aria-label="이전 상품 페이지">이전</button>
+  <button type="button" class="page-control" data-action="shop-page" data-page-number="${shopPage-1}" ${shopPage===1?'disabled':''} aria-label="이전 상품 페이지" title="이전 페이지">‹</button>
   ${visibleShopPages.map(n=>`<button type="button" data-action="shop-page" data-page-number="${n}" ${n===shopPage?'aria-current="page"':''} aria-label="${n}페이지">${n}</button>`).join('')}
-  <button type="button" class="page-control" data-action="shop-page" data-page-number="${shopPage+1}" ${shopPage===shopPageCount?'disabled':''} aria-label="다음 상품 페이지">다음</button>
+  <button type="button" class="page-control" data-action="shop-page" data-page-number="${shopPage+1}" ${shopPage===shopPageCount?'disabled':''} aria-label="다음 상품 페이지" title="다음 페이지">›</button>
  </nav>
  <div class="shop-page-jump">
-  <span class="shop-catalog-pagination-status">${shopPage} / ${shopPageCount} 페이지</span>
+  <span class="shop-catalog-pagination-status" aria-label="전체 ${shopPageCount}페이지 중 현재 ${shopPage}페이지">${shopPage} / ${shopPageCount}</span>
   <form id="shop-page-jump-form" aria-label="원하는 상품 페이지 바로 이동">
-   <label for="shop-page-jump-input">바로 이동</label>
-   <input id="shop-page-jump-input" name="page" type="number" inputmode="numeric" min="1" max="${shopPageCount}" step="1" placeholder="번호" required aria-label="이동할 페이지 번호">
-   <button type="submit">이동</button>
+   <input id="shop-page-jump-input" name="page" type="number" inputmode="numeric" min="1" max="${shopPageCount}" step="1" placeholder="페이지" required aria-label="이동할 페이지 번호">
+   <button type="submit" aria-label="입력한 페이지로 이동">이동 ↗</button>
   </form>
  </div>`:''}`:'<div class="empty">조건에 맞는 상품이 없어요. 다른 카테고리나 검색어를 선택해 주세요.</div>'}</div>
  </section>`;

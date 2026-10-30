@@ -1922,6 +1922,11 @@ details[open]>summary>.admin-quote-extra-chevron{transform:rotate(180deg)}
 
 /* MINIYENA site-wide text: use Pretendard for native controls and code snippets too. */
 html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
+/* Mobile catalog: omit duplicate direct page-jump row; numbered pagination remains. */
+@media(max-width:719px){
+ .shop-content .shop-page-jump{display:none}
+ .shop-content .shop-catalog-pagination{margin:20px 0 14px}
+}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">

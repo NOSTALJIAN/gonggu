@@ -459,7 +459,7 @@ input:focus,select:focus,textarea:focus{border-color:#111;box-shadow:0 0 0 1px #
 .shop-editorial-art:after{content:"";display:none}
 .shop-editorial-copy{position:absolute;z-index:2;left:0;bottom:0;display:flex;align-items:flex-start;justify-content:flex-end;gap:13px;padding:0 22px 31px;color:#fff;max-width:100%}
 .shop-editorial-label{font-size:10px;font-weight:780;color:#e5e5e5;letter-spacing:.19em;line-height:1.4}
-.shop-editorial h1{color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;font-size:clamp(32px,8.3vw,57px);font-weight:900;line-height:1.22;letter-spacing:-.075em;margin:0;word-break:keep-all}
+.shop-editorial h1{color:#fff;font-family:"Apple SD Gothic Neo",-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;font-size:clamp(29px,6.8vw,45px);font-weight:700;line-height:1.26;letter-spacing:-.035em;margin:0;word-break:keep-all}
 .shop-editorial p{font-size:12px;line-height:1.7;color:#eee;font-weight:520;margin-top:3px}
 .shop-editorial-link{background:#fff;color:#111;border:0;border-radius:0;padding:13px 18px;font-size:11px;font-weight:850;letter-spacing:.035em;text-decoration:none;margin-top:7px}
 .shop-editorial-link:hover{background:#e4e4e4;color:#111}
@@ -537,7 +537,7 @@ input:focus,select:focus,textarea:focus{border-color:#111;box-shadow:0 0 0 1px #
 /* Show the actual customer promise immediately, while keeping MINIYENA monochrome. */
 .shop-editorial-label{display:inline-flex;align-items:center;width:max-content;max-width:100%;padding:7px 10px;border:1px solid #ffffffa8;color:#fff;font-size:10px;font-weight:850;letter-spacing:-.015em;background:#0005}
 .shop-editorial-copy{gap:15px}
-.shop-editorial h1{line-height:1.24;letter-spacing:-.07em;text-shadow:0 1px 3px #0003}
+.shop-editorial h1{line-height:1.27;letter-spacing:-.035em;text-shadow:0 1px 3px #0003}
 .shop-editorial p{font-size:12px;color:#f4f4f4;max-width:310px}
 .shop-benefits strong{font-size:11px}
 @media(max-width:519px){.shop-editorial h1{font-size:clamp(30px,8.6vw,42px)}}
@@ -1402,7 +1402,7 @@ body:has(.overlay) .floating-actions{opacity:0;visibility:hidden;pointer-events:
   background:linear-gradient(0deg,rgba(0,0,0,.62) 0%,rgba(0,0,0,.28) 30%,transparent 72%);
  }
  .shop-content .shop-editorial-copy{padding:0 19px 19px;gap:8px}
- .shop-content .shop-editorial h1{font-size:clamp(25px,7.2vw,33px);line-height:1.13;letter-spacing:-.06em}
+ .shop-content .shop-editorial h1{font-size:clamp(26px,7.3vw,32px);font-weight:700;line-height:1.28;letter-spacing:-.035em}
  .shop-content .shop-editorial p{font-size:11px;line-height:1.45;margin:0;max-width:100%}
  .shop-content .shop-editorial-link{padding:9px 13px;font-size:11px;margin-top:3px}
  .shop-content .shop-section-head{margin:0 0 14px;align-items:center}
@@ -2892,7 +2892,7 @@ function renderShop(){
  const banner=currentHeroPhotoUrl();
  return `<section class="content shop-content">
  <div class="shop-editorial"><div class="shop-editorial-visual ${banner?'has-photo':''}">${banner?`<img src="${esc(banner)}" alt="미니예나 메인 사진" loading="eager">`:'<div class="shop-editorial-art" aria-hidden="true"></div>'}</div>
- <div class="shop-editorial-copy"><h1>남대문 · 수입 아동복 공동구매</h1><p>견적 요청 후 주문 가능한 공동구매몰이에요.</p></div></div>
+ <div class="shop-editorial-copy"><h1>남대문 · 수입<br>아동복 공동구매</h1><p>견적 요청 후 주문 가능한 공동구매몰이에요.</p></div></div>
  <div class="shop-section-head" id="catalog"><div><h2>전체 상품</h2></div></div>
  <div class="shop-actions"><button type="button" data-action="suggest-product">+ 상품 등록 신청</button><button type="button" data-action="my-quotes">내 견적 · 주문조회 ↗</button></div>
  <div class="shop-category-list" role="group" aria-label="상품 카테고리별 보기">

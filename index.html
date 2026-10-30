@@ -1824,6 +1824,23 @@ details[open]>summary>.admin-quote-extra-chevron{transform:rotate(180deg)}
 .admin-workspace-content .buyer-order-preview-more{font-size:11px;line-height:1.5;color:#777;margin:7px 0 0}
 .admin-workspace-content .stat-order-open .stat-order-more{font-size:11px;margin-top:9px;color:#333}
 
+
+/* Completed wholesale sheet starts folded and stays unobtrusive until opened. */
+#completed-procurement-sheet{
+ border:1px solid #dedede;
+ border-radius:9px;
+ padding:9px 13px;
+ margin:12px 0 16px;
+}
+#completed-procurement-sheet>summary{
+ padding:6px 0;
+ min-height:48px;
+ line-height:1.4;
+}
+#completed-procurement-sheet>summary b{font-size:14px;font-weight:800}
+#completed-procurement-sheet>summary small{font-size:11px;line-height:1.5;margin-top:4px;color:#777}
+#completed-procurement-sheet>summary::after{font-size:11px;margin-top:5px}
+#completed-procurement-sheet[open]{padding-bottom:14px}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -4265,8 +4282,8 @@ function renderCompletedProcurementSheet(){
  const totalQty=rows.reduce((n,r)=>n+r.qty,0);
  const totalAmount=rows.reduce((n,r)=>n+(r.unit===null?0:r.qty*r.unit),0);
  const missingQty=rows.reduce((n,r)=>n+(r.unit===null?r.qty:0),0);
- return `<details class="procurement-sheet compact-fold" id="completed-procurement-sheet" open>
-  <summary><b>도매 발주완료 · 가게별 발주서 다시 복사</b><small>${brands.length}개 남대문 가게 · ${rows.length}개 품목 · ${totalQty}개</small></summary>
+ return `<details class="procurement-sheet compact-fold" id="completed-procurement-sheet" data-fold-key="completed-procurement">
+  <summary><b>발주 완료 · 가게별 발주서</b><small>${brands.length}개 가게 · ${totalQty}개 · 매입 합계 ${money(totalAmount)}${missingQty?' (미등록 단가 제외)':''}</small></summary>
   <p class="procurement-sheet-intro">발주완료된 상품을 고객에게 보이는 남대문 가게(브랜드) 이름별로 분류해요. 실제 도매처가 같아도 브랜드별로 나뉘고, 이후 추가된 이번 회차 주문은 섞이지 않아요. 단가는 관리자 전용 도매가예요.</p>
   ${rows.length?`<div class="procurement-sheet-subtotal"><span>전체 수량 ${totalQty}개</span><strong>전체 매입 총액 ${money(totalAmount)}${missingQty?' (단가 미등록 '+missingQty+'개 제외 · 부분 합계)':''}</strong></div><div class="procurement-sheet-tools">
    <button class="btn sm" type="button" data-action="copy-completed-procurement-all">가게별 전체 발주서 복사 (${totalQty}개)</button>

@@ -1513,39 +1513,6 @@ body:has(.overlay) .floating-actions{opacity:0;visibility:hidden;pointer-events:
  .shoplist .shop-catalog-card .shop-catalog-colors{font-size:10px}
 }
 
-/* MINIYENA catalog option buttons: compact, soft secondary actions instead of heavy full-width outlines. */
-.shop-content .shoplist .shop-catalog-card .shop-catalog-select{
- align-self:flex-end;
- display:inline-flex;
- justify-content:center;
- align-items:center;
- width:auto;
- max-width:100%;
- min-height:35px;
- height:auto;
- margin-top:7px;
- padding:7px 11px;
- border:1px solid #e9e9e9;
- border-radius:5px;
- background:#f7f7f7;
- color:#3d3d3d;
- font-size:11px;
- font-weight:620;
- line-height:1.4;
- letter-spacing:-.015em;
- box-shadow:none;
-}
-.shop-content .shoplist .shop-catalog-card .shop-catalog-select:not(:disabled):hover{
- background:#efefef;
- border-color:#dadada;
- color:#111;
-}
-.shop-content .shoplist .shop-catalog-card .shop-catalog-select:disabled{
- background:#fafafa!important;
- border-color:#efefef!important;
- color:#aaa!important;
-}
-
 /* Minimal mobile pagination: five pages + small direct jump, no repeated labels. */
 .shop-catalog-pagination{display:flex;justify-content:center;align-items:center;flex-wrap:nowrap;gap:5px;margin:22px 0 10px;padding:0}
 .shop-catalog-pagination button{
@@ -3007,7 +2974,7 @@ function renderShop(){
  ${categoryFilterKeys.filter(k=>k==='all'||categoryCounts[k]>0||k===activeCategory).map(k=>`<button type="button" class="shop-category-tab ${activeCategory===k?'active':''}" data-action="shop-category" data-category="${k}" aria-pressed="${activeCategory===k}">${k==='all'?'전체':k==='uncategorized'?'미분류':k}<span>${categoryCounts[k]}</span></button>`).join('')}
  </div>
  <div class="shop-search-wrap"><input id="search" type="search" placeholder="상품명·가게명·카테고리 검색" value="${esc(state.search)}" aria-label="상품 검색"></div>
- <div class="shoplist">${products.length?`<div class="shop-catalog-count">${activeCategory==='all'?'전체 상품':activeCategory==='uncategorized'?'미분류 상품':activeCategory} · 총 ${products.length}개 · 최신 등록순 · ${firstNumber}~${lastNumber}개 표시</div><div class="shop-catalog-grid">${pageProducts.map(({p,store})=>`<article class="shop-catalog-card ${p.is_sold_out?'shop-soldout-card':''}"><button class="shop-catalog-photo shop-photo-button" type="button" data-action="product-photos" data-id="${esc(p.id)}" aria-label="${esc(p.name)} 상품 사진 보기">${img(p)}</button>${p.is_sold_out?'<span class="shop-soldout-label">품절</span>':''}<div class="shop-catalog-store">${esc(store.name)} <span class="shop-catalog-category">${esc(categoryLabel(p))}</span></div><button class="producttitle catalog-title-link" type="button" data-action="pick-product" data-id="${esc(p.id)}" aria-label="${esc(p.name)} 상품 옵션 보기" title="${esc(p.name)}">${esc(p.name)}</button><div class="shop-catalog-colors">${Object.keys(p.options||{}).map(esc).join(' · ')||'색상 옵션 확인'}</div>${hasProductEstimate(p)?estimatedProductPrice(p):'<div class="product-estimate product-estimate-card shop-catalog-no-estimate"><span class="product-estimate-label">가격</span><strong>견적 문의</strong></div>'}<button class="btn block shop-catalog-select" type="button" data-action="pick-product" data-id="${esc(p.id)}" ${p.is_sold_out?'disabled':''}>${p.is_sold_out?'품절':'옵션 선택 ↗'}</button></article>`).join('')}</div>
+ <div class="shoplist">${products.length?`<div class="shop-catalog-count">${activeCategory==='all'?'전체 상품':activeCategory==='uncategorized'?'미분류 상품':activeCategory} · 총 ${products.length}개 · 최신 등록순 · ${firstNumber}~${lastNumber}개 표시</div><div class="shop-catalog-grid">${pageProducts.map(({p,store})=>`<article class="shop-catalog-card ${p.is_sold_out?'shop-soldout-card':''}"><button class="shop-catalog-photo shop-photo-button" type="button" data-action="${p.is_sold_out?'product-photos':'pick-product'}" data-id="${esc(p.id)}" aria-label="${esc(p.name)} ${p.is_sold_out?'상품 사진 보기':'상품 옵션 보기'}">${img(p)}</button>${p.is_sold_out?'<span class="shop-soldout-label">품절</span>':''}<div class="shop-catalog-store">${esc(store.name)} <span class="shop-catalog-category">${esc(categoryLabel(p))}</span></div><button class="producttitle catalog-title-link" type="button" data-action="${p.is_sold_out?'product-photos':'pick-product'}" data-id="${esc(p.id)}" aria-label="${esc(p.name)} ${p.is_sold_out?'상품 사진 보기':'상품 옵션 보기'}" title="${esc(p.name)}">${esc(p.name)}</button><div class="shop-catalog-colors">${Object.keys(p.options||{}).map(esc).join(' · ')||'색상 옵션 확인'}</div>${hasProductEstimate(p)?estimatedProductPrice(p):'<div class="product-estimate product-estimate-card shop-catalog-no-estimate"><span class="product-estimate-label">가격</span><strong>견적 문의</strong></div>'}</article>`).join('')}</div>
  ${shopPageCount>1?`<nav class="shop-catalog-pagination" aria-label="상품 페이지 이동">
   <button type="button" class="page-control" data-action="shop-page" data-page-number="${shopPage-1}" ${shopPage===1?'disabled':''} aria-label="이전 상품 페이지" title="이전 페이지">‹</button>
   ${visibleShopPages.map(n=>`<button type="button" data-action="shop-page" data-page-number="${n}" ${n===shopPage?'aria-current="page"':''} aria-label="${n}페이지">${n}</button>`).join('')}

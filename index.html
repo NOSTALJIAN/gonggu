@@ -1415,6 +1415,36 @@ body:has(.overlay) .floating-actions{opacity:0;visibility:hidden;pointer-events:
  .hero.is-shop-header .logo{font-size:24px}
  .shop-content .shop-editorial{height:clamp(290px,44svh,370px)}
 }
+
+/* Mobile product-grid declutter: keep all ordering actions but remove repeated
+   instructions and reserved empty card height. */
+.shoplist .shop-catalog-card{gap:5px}
+.shoplist .shop-catalog-card .product-estimate-card{
+ min-height:0;align-content:initial;margin:9px 0 3px;padding:8px 0 0;
+ border-top:1px solid #eaeaea;gap:4px;
+}
+.shoplist .shop-catalog-card .product-estimate-label{color:#888;font-size:11px}
+.shoplist .shop-catalog-card .product-estimate strong{font-size:15px;color:#111;font-weight:850;line-height:1.35}
+.shoplist .shop-catalog-card .shop-catalog-no-estimate strong{font-size:12px;font-weight:700;color:#666}
+.shoplist .shop-catalog-card .shop-catalog-select{
+ margin-top:7px;min-height:36px;padding:8px 6px;font-size:12px;
+}
+.shop-catalog-pagination{flex-wrap:nowrap;gap:6px;margin:25px 0 7px;padding:0}
+.shop-catalog-pagination button{flex:0 0 auto;min-width:38px;min-height:38px;padding:7px 9px;font-size:12px}
+.shop-catalog-pagination .page-control{min-width:52px;padding-inline:10px}
+.shop-catalog-pagination-status{margin:0 0 10px;color:#888;font-size:11px}
+@media(max-width:380px){
+ .shop-catalog-pagination{gap:5px}
+ .shop-catalog-pagination button{min-width:34px;padding:6px 7px}
+ .shop-catalog-pagination .page-control{min-width:47px;padding:6px 8px}
+}
+@media(max-width:519px){
+ .shoplist .shop-catalog-grid{row-gap:23px;column-gap:11px}
+ .shoplist .shop-catalog-card{gap:4px}
+ .shoplist .shop-catalog-card .shop-catalog-store{margin-top:6px}
+ .shoplist .shop-catalog-card .producttitle.catalog-title-link{font-size:12px}
+ .shoplist .shop-catalog-card .shop-catalog-colors{font-size:10px}
+}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -2384,6 +2414,10 @@ function renderShop(){
  const firstNumber=products.length?(shopPage-1)*shopPageSize+1:0;
  const lastNumber=Math.min(products.length,shopPage*shopPageSize);
  const categoryCounts=Object.fromEntries(categoryFilterKeys.map(k=>[k,catalogue.filter(({p})=>matchesCategory(p,k)).length]));
+ // Limit visible page controls to three numbers on mobile; retain every page via previous/next.
+ const shopPageWindow=Math.min(3,shopPageCount);
+ const shopPageFirst=Math.max(1,Math.min(shopPage-1,shopPageCount-shopPageWindow+1));
+ const visibleShopPages=Array.from({length:shopPageWindow},(_,i)=>shopPageFirst+i);
  const banner=currentHeroPhotoUrl();
  return `<section class="content shop-content">
  <div class="shop-editorial"><div class="shop-editorial-visual ${banner?'has-photo':''}">${banner?`<img src="${esc(banner)}" alt="미니예나 메인 사진" loading="eager">`:'<div class="shop-editorial-art" aria-hidden="true"></div>'}</div>
@@ -2394,13 +2428,12 @@ function renderShop(){
  ${categoryFilterKeys.filter(k=>k==='all'||categoryCounts[k]>0||k===activeCategory).map(k=>`<button type="button" class="shop-category-tab ${activeCategory===k?'active':''}" data-action="shop-category" data-category="${k}" aria-pressed="${activeCategory===k}">${k==='all'?'전체':k==='uncategorized'?'미분류':k}<span>${categoryCounts[k]}</span></button>`).join('')}
  </div>
  <div class="shop-search-wrap"><input id="search" type="search" placeholder="상품명·가게명·카테고리 검색" value="${esc(state.search)}" aria-label="상품 검색"></div>
- <div class="shoplist">${products.length?`<div class="shop-catalog-count">${activeCategory==='all'?'전체 상품':activeCategory==='uncategorized'?'미분류 상품':activeCategory} · 총 ${products.length}개 · 최신 등록순 · ${firstNumber}~${lastNumber}개 표시</div><div class="shop-catalog-grid">${pageProducts.map(({p,store})=>`<article class="shop-catalog-card ${p.is_sold_out?'shop-soldout-card':''}"><button class="shop-catalog-photo shop-photo-button" type="button" data-action="product-photos" data-id="${esc(p.id)}" aria-label="${esc(p.name)} 상품 사진 보기">${img(p)}</button>${p.is_sold_out?'<span class="shop-soldout-label">품절</span>':''}<div class="shop-catalog-store">${esc(store.name)} <span class="shop-catalog-category">${esc(categoryLabel(p))}</span></div><button class="producttitle catalog-title-link" type="button" data-action="pick-product" data-id="${esc(p.id)}" aria-label="${esc(p.name)} 상품 옵션 보기" title="${esc(p.name)}">${esc(p.name)}</button><div class="shop-catalog-colors">${Object.keys(p.options||{}).map(esc).join(' · ')||'색상 옵션 확인'}</div>${estimatedProductPrice(p)}<div class="shop-catalog-quote">${p.is_sold_out?'현재 품절 · 주문 불가':hasProductEstimate(p)?'실제 결제금액은 견적에서 확정':'견적 후 가격 안내'}</div><button class="btn block shop-catalog-select" type="button" data-action="pick-product" data-id="${esc(p.id)}" ${p.is_sold_out?'disabled':''}>${p.is_sold_out?'품절':'옵션 선택 ↗'}</button></article>`).join('')}</div>
+ <div class="shoplist">${products.length?`<div class="shop-catalog-count">${activeCategory==='all'?'전체 상품':activeCategory==='uncategorized'?'미분류 상품':activeCategory} · 총 ${products.length}개 · 최신 등록순 · ${firstNumber}~${lastNumber}개 표시</div><div class="shop-catalog-grid">${pageProducts.map(({p,store})=>`<article class="shop-catalog-card ${p.is_sold_out?'shop-soldout-card':''}"><button class="shop-catalog-photo shop-photo-button" type="button" data-action="product-photos" data-id="${esc(p.id)}" aria-label="${esc(p.name)} 상품 사진 보기">${img(p)}</button>${p.is_sold_out?'<span class="shop-soldout-label">품절</span>':''}<div class="shop-catalog-store">${esc(store.name)} <span class="shop-catalog-category">${esc(categoryLabel(p))}</span></div><button class="producttitle catalog-title-link" type="button" data-action="pick-product" data-id="${esc(p.id)}" aria-label="${esc(p.name)} 상품 옵션 보기" title="${esc(p.name)}">${esc(p.name)}</button><div class="shop-catalog-colors">${Object.keys(p.options||{}).map(esc).join(' · ')||'색상 옵션 확인'}</div>${hasProductEstimate(p)?estimatedProductPrice(p):'<div class="product-estimate product-estimate-card shop-catalog-no-estimate"><span class="product-estimate-label">가격</span><strong>견적 문의</strong></div>'}<button class="btn block shop-catalog-select" type="button" data-action="pick-product" data-id="${esc(p.id)}" ${p.is_sold_out?'disabled':''}>${p.is_sold_out?'품절':'옵션 선택 ↗'}</button></article>`).join('')}</div>
  ${shopPageCount>1?`<nav class="shop-catalog-pagination" aria-label="상품 페이지 이동">
   <button type="button" class="page-control" data-action="shop-page" data-page-number="${shopPage-1}" ${shopPage===1?'disabled':''} aria-label="이전 상품 페이지">이전</button>
-  ${Array.from({length:shopPageCount},(_,i)=>i+1).map(n=>`<button type="button" data-action="shop-page" data-page-number="${n}" ${n===shopPage?'aria-current="page"':''} aria-label="${n}페이지">${n}</button>`).join('')}
+  ${visibleShopPages.map(n=>`<button type="button" data-action="shop-page" data-page-number="${n}" ${n===shopPage?'aria-current="page"':''} aria-label="${n}페이지">${n}</button>`).join('')}
   <button type="button" class="page-control" data-action="shop-page" data-page-number="${shopPage+1}" ${shopPage===shopPageCount?'disabled':''} aria-label="다음 상품 페이지">다음</button>
- </nav><p class="shop-catalog-pagination-status">${shopPage} / ${shopPageCount} 페이지 · 페이지당 10개</p>`:''}`:'<div class="empty">조건에 맞는 상품이 없어요. 다른 카테고리나 검색어를 선택해 주세요.</div>'}</div>
- <div class="shop-footer-note"><b>MINIYENA</b>남대문 아동복 초저가 공동구매.<br>상품을 골라 견적을 요청하면 확인 후 가격을 안내해 드려요.</div>
+ </nav><p class="shop-catalog-pagination-status">${shopPage} / ${shopPageCount} 페이지</p>`:''}`:'<div class="empty">조건에 맞는 상품이 없어요. 다른 카테고리나 검색어를 선택해 주세요.</div>'}</div>
  </section>`;
 }
 /* MINIYENA final-order bank transfer instructions (never pre-confirmation). */

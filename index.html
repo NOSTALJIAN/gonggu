@@ -2701,7 +2701,9 @@ function renderAdminProducts(){
  ];
  const activeFilter=filters.some(f=>f.key===state.adminCatalogFilter)?state.adminCatalogFilter:'all';
  const activeCategory=categoryFilterKeys.includes(state.adminCategory)?state.adminCategory:'all';
- const shown=all.filter(p=>matchesCategory(p,activeCategory)&&(activeFilter==='all'||(activeFilter==='shown'&&isVisible(p))||(activeFilter==='hidden'&&!isVisible(p))||(activeFilter==='soldout'&&p.is_sold_out)||(activeFilter==='available'&&!p.is_sold_out)));
+ // Match the customer catalog: newest upload first, even when status/category/search filters are active.
+ const shown=all.filter(p=>matchesCategory(p,activeCategory)&&(activeFilter==='all'||(activeFilter==='shown'&&isVisible(p))||(activeFilter==='hidden'&&!isVisible(p))||(activeFilter==='soldout'&&p.is_sold_out)||(activeFilter==='available'&&!p.is_sold_out)))
+  .sort((a,b)=>(Date.parse(b.created_at)||0)-(Date.parse(a.created_at)||0)||String(b.id).localeCompare(String(a.id)));
  const searchQuery=String(state.adminProductSearch||'').trim().toLocaleLowerCase('ko-KR');
  const matchingCount=shown.filter(p=>!searchQuery||adminProductSearchText(p).includes(searchQuery)).length;
  const storesView=state.adminCatalogView==='stores';
@@ -2719,7 +2721,7 @@ function renderAdminProducts(){
     </div>
    </details>
   `:`
-   <div class="sectiontitle admin-catalog-section-title"><div><h2>가게별 상품</h2><div class="sub">상품 수정 없이 품절과 전시 여부를 바꿀 수 있어요.</div></div><button class="btn sm" data-action="add-product" ${!state.stores.length?'disabled':''}>+ 상품</button></div>
+   <div class="sectiontitle admin-catalog-section-title"><div><h2>가게별 상품</h2><div class="sub">최신 업로드순 · 상품 수정 없이 품절과 전시 여부를 바꿀 수 있어요.</div></div><button class="btn sm" data-action="add-product" ${!state.stores.length?'disabled':''}>+ 상품</button></div>
    <div class="product-manage-summary">전체 ${all.length}개 · 전시 중 ${visibleCount}개 · 미전시 ${hiddenCount}개 · 품절 ${soldCount}개</div>
    <div class="admin-product-search-box">
     <label for="admin-product-search" class="admin-product-search-label">상품 검색</label>

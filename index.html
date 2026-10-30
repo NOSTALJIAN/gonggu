@@ -1746,6 +1746,35 @@ details[open]>summary>.admin-quote-extra-chevron{transform:rotate(180deg)}
  .admin-workspace-overview{max-width:460px}
  .admin-workspace-content .admin-main-tabs{gap:24px}
 }
+
+/* Product-order drilldown: store > product > option > buyers. */
+.product-stats-note{font-size:12px;color:#777;line-height:1.6;margin:6px 0 13px}
+.product-stats-stores{display:grid;gap:10px}
+.product-stats-store,.product-stats-product,.product-stats-option{min-width:0;background:#fff}
+.product-stats-store{border:1px solid #dedede;border-radius:10px;overflow:hidden}
+.product-stats-store>summary,.product-stats-product>summary,.product-stats-option>summary{cursor:pointer;list-style:none;position:relative;display:flex;align-items:flex-start;gap:5px;flex-direction:column;padding-right:36px}
+.product-stats-store summary::-webkit-details-marker,.product-stats-product summary::-webkit-details-marker,.product-stats-option summary::-webkit-details-marker{display:none}
+.product-stats-store>summary::after,.product-stats-product>summary::after,.product-stats-option>summary::after{content:'⌄';position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:19px;color:#6c6c6c}
+.product-stats-store[open]>summary::after,.product-stats-product[open]>summary::after,.product-stats-option[open]>summary::after{content:'⌃'}
+.product-stats-store>summary{padding:16px 36px 16px 15px;min-height:75px}
+.product-stats-store-name{font-size:16px;font-weight:800;color:#171717;overflow-wrap:anywhere}
+.product-stats-store-name::before{content:'🏬';margin-right:7px;font-size:14px}
+.product-stats-store-count,.product-stats-product>summary>span{font-size:12px;color:#777;line-height:1.5}
+.product-stats-products{background:#fafafa;border-top:1px solid #eaeaea;padding:9px;display:grid;gap:7px}
+.product-stats-product{border:1px solid #e6e6e6;border-radius:8px;overflow:hidden}
+.product-stats-product>summary{padding:13px 35px 13px 12px}
+.product-stats-product>summary>strong{font-size:14px;line-height:1.4;overflow-wrap:anywhere}
+.product-stats-options{border-top:1px solid #eee;padding:7px 10px 9px;background:#fff;display:grid;gap:4px}
+.product-stats-option{border-bottom:1px solid #eee}
+.product-stats-option:last-child{border-bottom:0}
+.product-stats-option>summary{padding:11px 30px 11px 2px;gap:3px}
+.product-stats-option>summary::after{right:3px;font-size:17px}
+.product-stats-option-name{font-size:13px;font-weight:750;color:#222}
+.product-stats-option-count{font-size:12px;color:#777}
+.product-stats-option-count b{color:#222}
+.product-stats-option-body{padding:3px 3px 11px}
+.product-stats-buyer-heading{font-size:12px;font-weight:750;padding:11px 0 5px;color:#444}
+.product-stats-option-body .stat-detail{padding:8px 0}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -4273,7 +4302,54 @@ function renderBuyerOrderDetail(q){
  </div>`;
 }
 function renderBuyerStats(){const groups=customerGroups();const confirmed=groups.reduce((s,g)=>s+g.spent,0);return `<div class="sectiontitle"><div><h2>구매자별 구매 내역</h2><div class="sub">아기 이름까지 구분 · 확정 주문에 대해서만 구매금액 합산</div></div><button class="btn sm secondary" data-action="refresh">새로고침</button></div><div class="three" style="margin-bottom:13px"><div class="tile"><small>구분된 구매자</small><strong>${groups.length}명</strong></div><div class="tile"><small>확정 주문</small><strong>${groups.reduce((s,g)=>s+g.confirmed,0)}건</strong></div><div class="tile"><small>확정 주문금액</small><strong style="font-size:14px">${money(confirmed)}</strong></div></div><div class="identity-warning">동명이인 방지를 위해 주문자 이름 + 아기 이름 + 연락처(입력한 경우) 또는 같은 기기의 식별번호로 구분해요. 회원 계정이 없어 다른 기기에서 연락처도 입력하지 않으면 같은 사람인지 자동으로 확인할 수 없어요. 아기 이름이 없는 옛 주문은 개별로 표시돼요.</div><input id="stat-search" type="search" placeholder="주문자·아기 이름·연락처 검색"><div class="statlist">${groups.map(g=>`<div class="statcard" data-stats-entry><div class="row between"><div><b>${esc(g.name)} <span class="chip purple">${esc(g.baby||'아기 이름 미입력')}</span></b><div class="tiny">${esc(g.contact||'연락처 미입력')} · 확정 ${g.confirmed}건 / 견적 중 ${g.pending}건 / 취소 ${g.cancelled}건</div></div><strong>${money(g.spent)}</strong></div><div class="substats" style="margin-top:9px"><span>확정 수량 ${g.units}개</span><span>환불 차감 수령액 ${money(g.netPaid)}</span><span>전체 요청 ${g.orders.length}건</span></div><details><summary class="stats-summary"><span>견적·주문 건별 보기</span><span class="tiny">펼치기 ▾</span></summary>${g.orders.map(q=>`<button type="button" class="stat-detail stat-order-open" data-action="buyer-order-details" data-id="${esc(q.id)}" aria-label="${esc(q.buyer_name)}님 ${esc(statusLabel[q.status]||'주문')} ${esc(fmtDate(q.created_at))} 상세정보 열기"><div class="row between"><b>${esc(statusLabel[q.status])} · ${fmtDate(q.created_at)}</b><span>${q.status==='confirmed'?money(totalDue(q)):'총액 집계 제외'}</span></div><div class="tiny">${q.items.map(i=>esc(i.product_name)+' '+esc(i.color)+'/'+esc(i.size)+' ×'+i.quantity).join(' · ')} · ${deliveryLabel(q)}${isBundle(q)?' · 묶음배송':''}</div><span class="stat-order-more">주문 상세정보 보기 <span aria-hidden="true">→</span></span></button>`).join('')}</details></div>`).join('')||'<div class="empty">아직 견적 요청이 없어요.</div>'}</div>`}
-function renderProductStats(){const groups=productBuyerGroups();return `<div class="sectiontitle"><div><h2>상품별 누가 주문했나요?</h2><div class="sub">가게·상품·컬러·사이즈별 주문자, 확정 수량과 견적 대기 수량 별도</div></div><button class="btn sm secondary" data-action="refresh">새로고침</button></div><div class="identity-warning">발주해야 할 수량은 ‘확정’ 수량만 확인해 주세요. 품절·취소는 제외하고 상품 준비 중인 수량도 포함돼요.</div><input id="stat-search" type="search" placeholder="가게·상품·컬러·주문자·아기 이름 검색"><div class="statlist">${groups.map(g=>`<div class="statcard" data-stats-entry><div class="smallnote">🏬 ${esc(g.store)}</div><h3 style="margin:3px 0 3px;font-size:15px">${esc(g.product)}</h3><div class="tiny">${esc(g.color)} / ${esc(g.size)}</div><div class="substats" style="margin-top:9px"><span>확정 ${g.confirmedQty}개</span><span>견적 중 ${g.pendingQty}개</span><span>확정 주문자 ${new Set(g.confirmed.map(x=>buyerIdentity(x.q))).size}명</span></div><details ${g.confirmed.length?'open':''}><summary class="stats-summary">확정 주문자 ${g.confirmed.length}건</summary>${g.confirmed.map(({q,qty,subtotal})=>`<div class="stat-detail"><div class="row between"><b>${esc(buyerLabel(q))}</b><strong>${qty}개</strong></div><div class="tiny">${fmtDate(q.created_at)} · ${subtotal==null?'금액 미정':money(subtotal)} ${q.cancel_requested_at?'· 취소 요청 중':''}</div></div>`).join('')||'<div class="tiny">확정 주문이 없어요.</div>'}</details>${g.pending.length?`<details><summary class="stats-summary">견적 요청·안내 중 ${g.pending.length}건 (미확정)</summary>${g.pending.map(({q,qty})=>`<div class="stat-detail"><div class="row between"><span>${esc(buyerLabel(q))} · ${esc(statusLabel[q.status])}</span><b>${qty}개</b></div></div>`).join('')}</details>`:''}</div>`).join('')||'<div class="empty">아직 상품 주문 데이터가 없어요.</div>'}</div>`}
+function productStatsStoreGroups(){
+ const byStore=new Map();
+ for(const variant of productBuyerGroups()){
+  const storeName=String(variant.store||'가게 미입력').trim()||'가게 미입력';
+  const productName=String(variant.product||'상품명 미입력').trim()||'상품명 미입력';
+  let store=byStore.get(storeName);
+  if(!store){
+   store={name:storeName,products:new Map(),confirmedQty:0,pendingQty:0};
+   byStore.set(storeName,store);
+  }
+  let product=store.products.get(productName);
+  if(!product){
+   product={name:productName,variants:[],confirmedQty:0,pendingQty:0};
+   store.products.set(productName,product);
+  }
+  product.variants.push(variant);
+  product.confirmedQty+=variant.confirmedQty;
+  product.pendingQty+=variant.pendingQty;
+  store.confirmedQty+=variant.confirmedQty;
+  store.pendingQty+=variant.pendingQty;
+ }
+ return [...byStore.values()].sort((a,b)=>a.name.localeCompare(b.name,'ko')).map(store=>({
+  ...store,products:[...store.products.values()].sort((a,b)=>a.name.localeCompare(b.name,'ko'))
+ }));
+}
+function renderProductStats(){
+ const stores=productStatsStoreGroups();
+ const optionMarkup=g=>`<details class="product-stats-option" data-stats-entry>
+  <summary><span class="product-stats-option-name">${esc(g.color||'색상 미입력')} / ${esc(g.size||'사이즈 미입력')}</span><span class="product-stats-option-count">확정 <b>${g.confirmedQty}</b> · 견적 중 ${g.pendingQty}</span></summary>
+  <div class="product-stats-option-body">
+   <div class="product-stats-buyer-heading">확정 주문자 ${new Set(g.confirmed.map(x=>buyerIdentity(x.q))).size}명 · ${g.confirmedQty}개</div>
+   ${g.confirmed.map(({q,qty,subtotal})=>`<div class="stat-detail"><div class="row between"><b>${esc(buyerLabel(q))}</b><strong>${qty}개</strong></div><div class="tiny">${fmtDate(q.created_at)} · ${subtotal==null?'금액 미정':money(subtotal)} ${q.cancel_requested_at?'· 취소 요청 중':''}</div></div>`).join('')||'<div class="tiny">확정 주문이 없어요.</div>'}
+   ${g.pending.length?`<div class="product-stats-buyer-heading">견적 중 · 미확정 ${g.pending.length}건</div>
+   ${g.pending.map(({q,qty})=>`<div class="stat-detail"><div class="row between"><span>${esc(buyerLabel(q))} · ${esc(statusLabel[q.status])}</span><strong>${qty}개</strong></div></div>`).join('')}`:''}
+  </div>
+ </details>`;
+ const productMarkup=product=>`<details class="product-stats-product" data-stats-product data-stats-product-name="${esc(product.name)}">
+  <summary><strong>${esc(product.name)}</strong><span>${product.variants.length}개 옵션 · 확정 ${product.confirmedQty} · 견적 중 ${product.pendingQty}</span></summary>
+  <div class="product-stats-options">${product.variants.map(optionMarkup).join('')}</div>
+ </details>`;
+ return `<div class="sectiontitle"><div><h2>상품별 누가 주문했나요?</h2><div class="sub">가게를 펼쳐 상품별·옵션별 수량과 주문자를 확인해요.</div></div></div>
+ <p class="product-stats-note">발주 수량은 확정 주문만 확인해 주세요. 품절·취소는 제외하고, 상품 준비 중인 수량은 포함돼요.</p>
+ <input id="stat-search" type="search" placeholder="가게·상품·옵션·주문자·아기 이름 검색" aria-label="상품별 주문 검색">
+ <div class="product-stats-stores">${stores.map((store,index)=>`<details class="product-stats-store" data-stats-store data-stats-store-name="${esc(store.name)}" ${index===0?'open':''}>
+   <summary><span class="product-stats-store-name">${esc(store.name)}</span><span class="product-stats-store-count">상품 ${store.products.length}종 · 확정 ${store.confirmedQty}개 · 견적 중 ${store.pendingQty}개</span></summary>
+   <div class="product-stats-products">${store.products.map(productMarkup).join('')}</div>
+  </details>`).join('')||'<div class="empty">아직 상품 주문 데이터가 없어요.</div>'}</div>`;
+}
 function vendorGroups(){const g=new Map();for(const q of state.quotes.filter(q=>q.status==='confirmed'))for(const i of q.items){if(i.fulfillment==='sold_out')continue;const key=JSON.stringify([i.store_name,i.product_name,i.color,i.size]);let x=g.get(key);if(!x){x={store:i.store_name,product:i.product_name,color:i.color,size:i.size,qty:0,people:new Set()};g.set(key,x)}x.qty+=i.quantity;x.people.add(buyerLabel(q))}return [...g.values()].sort((a,b)=>a.store.localeCompare(b.store,'ko')||a.product.localeCompare(b.product,'ko'))}
 function vendorText(){
  if(!state.admin||state.page!=='admin')throw Error('관리자만 발주 목록을 복사할 수 있어요.');
@@ -5899,7 +5975,31 @@ function input(e){
   }catch{if(output)output.textContent='금액과 인원을 확인해 주세요.'}
   return;
  }
- if(e.target.id==='admin-product-search'){state.adminProductSearch=e.target.value;updateAdminProductSearch();return;}if(e.target.id==='stat-search'){const query=e.target.value.trim().toLowerCase();for(const node of app.querySelectorAll('[data-stats-entry]'))node.classList.toggle('hidden',!!query&&!node.textContent.toLowerCase().includes(query));return;}if(e.target.id==='search'){state.search=e.target.value;state.shopPage=1;const pos=e.target.selectionStart;render();const el=$('#search');if(el){el.focus();el.setSelectionRange(pos,pos)}}}
+ if(e.target.id==='admin-product-search'){state.adminProductSearch=e.target.value;updateAdminProductSearch();return;}if(e.target.id==='stat-search'){
+  const query=e.target.value.trim().toLowerCase();
+  if(state.tab==='items'){
+   for(const store of app.querySelectorAll('[data-stats-store]')){
+    const storeMatch=!!query&&(store.dataset.statsStoreName||'').toLowerCase().includes(query);
+    let storeVisible=false;
+    for(const product of store.querySelectorAll('[data-stats-product]')){
+     const productMatch=storeMatch||!!query&&(product.dataset.statsProductName||'').toLowerCase().includes(query);
+     let productVisible=false;
+     for(const variant of product.querySelectorAll('[data-stats-entry]')){
+      const variantMatch=!query||productMatch||variant.textContent.toLowerCase().includes(query);
+      variant.classList.toggle('hidden',!variantMatch);
+      if(variantMatch){productVisible=true;if(query&&!productMatch)variant.open=true;}
+     }
+     product.classList.toggle('hidden',!productVisible);
+     if(productVisible){storeVisible=true;if(query)product.open=true;}
+    }
+    store.classList.toggle('hidden',!storeVisible);
+    if(query&&storeVisible)store.open=true;
+   }
+  }else{
+   for(const node of app.querySelectorAll('[data-stats-entry]'))node.classList.toggle('hidden',!!query&&!node.textContent.toLowerCase().includes(query));
+  }
+  return;
+ }if(e.target.id==='search'){state.search=e.target.value;state.shopPage=1;const pos=e.target.selectionStart;render();const el=$('#search');if(el){el.focus();el.setSelectionRange(pos,pos)}}}
 app.addEventListener('click',e=>{const orderSummary=e.target.closest('.admin-order-fold > summary');if(orderSummary){const order=orderSummary.parentElement;state.orderCardsOpen[order.dataset.adminOrderId]=!order.open;return}const summary=e.target.closest('.admin-date-group > summary');if(summary){const group=summary.parentElement;state.dateGroupsOpen[group.dataset.orderDate]=!group.open;return}const tab=e.target.closest('[data-tab]'),filter=e.target.closest('[data-filter]');if(tab){state.tab=tab.dataset.tab;if(state.tab==='requests')state.requestStatusFilter='pending';render();return}if(filter){state.filter=filter.dataset.filter;state.supplierBulkSelected.clear();render();return}click(e)});
 app.addEventListener('submit',submit);app.addEventListener('change',change);app.addEventListener('input',input);
 app.addEventListener('pointerdown',startAdminPhotoDrag,{passive:false});

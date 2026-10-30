@@ -1808,6 +1808,7 @@ async function refreshStoreSizeChartEditor(){
  const sheet=app.querySelector('#overlay .sheet'),scroll=sheet?.scrollTop||0;
  const oldName=app.querySelector('#store-form [name="name"]')?.value;
  const oldActive=app.querySelector('#store-form [name="active"]')?.checked;
+ const oldSizes=app.querySelector('#store-form [name="default_sizes"]')?.value;
  await loadCatalog(true);
  if(state.modal?.type!=='store')return;
  render();
@@ -1816,6 +1817,7 @@ async function refreshStoreSizeChartEditor(){
  const newActive=app.querySelector('#store-form [name="active"]');
  if(newName&&oldName!==undefined)newName.value=oldName;
  if(newActive&&oldActive!==undefined)newActive.checked=oldActive;
+ const newSizes=app.querySelector('#store-form [name="default_sizes"]');if(newSizes&&oldSizes!==undefined)newSizes.value=oldSizes;
 }
 async function loadAdminEmailSettings(){
  if(!state.admin||!connected){state.emailSettings=null;state.emailSettingsReady=false;return;}
@@ -3659,7 +3661,7 @@ if(m.type==='reject-request'){
  <label class="label">추가 설명 (기타 선택 시 필수)<textarea name="detail" maxlength="300" rows="3" placeholder="고객에게 전달할 내용을 입력해 주세요"></textarea></label>
  <button class="btn block danger" type="submit">사유 저장하고 반려하기</button></form>`);
 }
-if(m.type==='approve'){const r=state.requests.find(x=>x.id===m.id);if(!r)return '';return wrap('상품 등록 검토 및 승인',`<div class="info">신청자가 올린 사진과 내가 추가한 사진을 한곳에서 정리하고 순서를 바꿀 수 있어요. ×로 제외해도 신청 원본은 남아요.</div><form id="approve-form">${renderAdminPhotoWorkspace()}<label class="label">남대문 도매업체 이름<input name="store" maxlength="100" required value="${esc(r.store_name)}"></label><label class="label">상품명<input name="name" maxlength="100" required value="${esc(r.product_name)}"></label>${productCategoryInput(r.category,true)}${bulkOptionsBuilder()}<label class="label">완성된 색상별 옵션 (확인·수정 가능)<textarea name="options" required rows="5" placeholder="위에서 색상과 사이즈를 입력하고 일괄 적용을 눌러 주세요."></textarea></label><div class="filehelp">색상별 사이즈가 다르면 여기서 해당 줄만 수정할 수 있어요.</div>${privateProductFields(null)}<label class="stageradio" style="margin:15px 0"><input type="checkbox" name="published" checked> 승인 후 상품을 바로 공개</label><label class="stageradio"><input type="checkbox" name="is_sold_out"> 품절 상태로 등록 (고객에게 품절 표시)</label><button class="btn block" type="submit">사진 순서대로 상품 등록·승인</button></form>`)}
+if(m.type==='approve'){const r=state.requests.find(x=>x.id===m.id);if(!r)return '';return wrap('상품 등록 검토 및 승인',`<div class="info">신청자가 올린 사진과 내가 추가한 사진을 한곳에서 정리하고 순서를 바꿀 수 있어요. ×로 제외해도 신청 원본은 남아요.</div><form id="approve-form">${renderAdminPhotoWorkspace()}<label class="label">고객에게 보이는 거래처(가게)<input name="store" data-store-defaults maxlength="100" required value="${esc(r.store_name)}"></label><label class="label">상품명<input name="name" maxlength="100" required value="${esc(r.product_name)}"></label>${productCategoryInput(r.category,true)}${bulkOptionsBuilder(state.stores.find(st=>st.name.trim().toLowerCase()===r.store_name.trim().toLowerCase())?.id)}<label class="label">완성된 색상별 옵션 (확인·수정 가능)<textarea name="options" required rows="5" placeholder="위에서 색상과 사이즈를 입력하고 일괄 적용을 눌러 주세요."></textarea></label><div class="filehelp">색상별 사이즈가 다르면 여기서 해당 줄만 수정할 수 있어요.</div>${privateProductFields(null)}<label class="stageradio" style="margin:15px 0"><input type="checkbox" name="published" checked> 승인 후 상품을 바로 공개</label><label class="stageradio"><input type="checkbox" name="is_sold_out"> 품절 상태로 등록 (고객에게 품절 표시)</label><button class="btn block" type="submit">사진 순서대로 상품 등록·승인</button></form>`)}
 if(m.type==='pick'){const p=selectedProd(m.id);if(!p||p.is_sold_out||!p.published||!state.stores.some(st=>st.id===p.store_id&&st.active))return wrap('품절 또는 판매 종료','<div class="noticefail">이 상품은 현재 주문할 수 없어요. 다른 상품을 선택해 주세요.</div>');const colors=Object.keys(p.options||{}),color=colors.includes(m.color)?m.color:colors[0],sizes=p.options[color]||[];return wrap('옵션 선택',`<div class="smallnote">${esc(storeName(p.store_id))}</div><h3>${esc(p.name)}</h3>${productGallery(p)}${estimatedProductPrice(p,true)}${productSizeChart(p)}<form id="pick"><label class="label">컬러<select name="color" id="pickColor">${colors.map(c=>`<option ${c===color?'selected':''}>${esc(c)}</option>`).join('')}</select></label><label class="label">사이즈<select name="size" id="pickSize">${sizes.map(s=>`<option>${esc(s)}</option>`).join('')}</select></label><label class="label">수량<input type="number" name="qty" value="1" min="1" max="20" required></label><button class="btn block" type="submit">장바구니 담기</button></form>`)}
 if(m.type==='product-photos'){
  const p=selectedProd(m.id);
@@ -3690,8 +3692,8 @@ if(m.type==='cart'){return wrap('견적 요청 장바구니',`<div class="cart-r
 <summary>주문자·수령 정보 입력 <span class="cart-review-expand">펼쳐서 입력하기 ↓</span></summary>
 <div class="cart-review-checkout-form"><div class="smallnote">견적만 요청하는 단계예요. 최종 주문은 견적 확인 후 별도로 진행돼요.</div><form id="request"><label class="label">주문자 이름<input name="name" maxlength="40" required placeholder="예: 지현"></label><label class="label">아기 이름 또는 태명 (필수)<input name="baby" maxlength="40" required placeholder="예: 예나, 토리"></label><label class="label">휴대폰 번호 (필수 · 주문조회용)<input name="contact" type="tel" inputmode="tel" autocomplete="tel-national" maxlength="15" required placeholder="예: 010-0000-0000"></label><label class="label">이메일 주소 (필수 · 견적 및 주문 상태 안내)<input name="email" type="email" inputmode="email" autocomplete="email" maxlength="254" required placeholder="example@gmail.com"></label><p class="smallnote">견적 접수, 견적 완료와 이후 주문 진행 상태를 기존 Gmail 주소로 안내해요. Gmail 연동이 완료된 후 실제 발송돼요.</p><label class="label">주문조회 비밀번호 (숫자 6자리 · 필수)<input name="lookup_pin" type="password" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" autocomplete="off" required placeholder="6자리 숫자"></label><label class="label">주문조회 비밀번호 확인<input name="lookup_pin_confirm" type="password" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" autocomplete="off" required placeholder="다시 입력"></label><p class="smallnote">문자 발송은 없어요. 다른 브라우저에서 이름·휴대폰 번호와 이 비밀번호로 주문을 찾을 수 있어요. 다음 주문에도 같은 비밀번호를 사용하면 한꺼번에 조회돼요.</p><div class="separator"></div><label class="label">수령방식 (필수)<select name="delivery_method" id="deliveryMethod" required><option value="">수령방식을 선택해 주세요</option><option value="pickup">직접수령 (배송비 없음)</option><option value="courier">택배수령</option></select></label><div id="courierFields" class="hidden delivery-fields"><div class="info">택배로 받을 경우 아래 주소로 배송돼요. 묶음배송은 이후 관리자가 같은 구매자의 주문을 확인하고 설정해요.</div><label class="label">받는 사람<input name="recipient_name" maxlength="80" autocomplete="name" data-courier-required placeholder="받는 사람 이름" disabled></label><div class="address-tools"><button class="btn secondary" type="button" data-action="search-address">🔎 주소 검색</button><button class="textbutton address-manual" type="button" data-action="manual-address">주소 직접 입력</button></div><div class="postcode-search hidden" data-postcode-panel><div class="row between"><b>우편번호·주소 찾기</b><button type="button" class="btn sm neutral" data-action="close-address-search">닫기</button></div><div class="address-search-hint">도로명이나 건물 이름을 검색하고 주소를 선택해 주세요.</div><div class="postcode-mount" data-postcode-mount></div></div><label class="label">우편번호 (5자리)<input name="postal_code" readonly data-address-postal inputmode="numeric" maxlength="5" pattern="[0-9]{5}" data-courier-required placeholder="예: 34123" disabled></label><label class="label">주소<input name="address_line1" readonly data-address-primary maxlength="250" data-courier-required placeholder="도로명주소 또는 지번주소" disabled></label><label class="label">상세주소 (선택)<input name="address_line2" maxlength="250" placeholder="동·호수 등" disabled></label><label class="label">배송 요청사항 (선택)<input name="delivery_note" maxlength="200" placeholder="예: 문 앞에 놓아주세요" disabled></label></div><label class="label">요청 메모 (선택)<textarea name="note" maxlength="300" placeholder="거래처에 확인할 내용"></textarea></label><div class="info">지금은 <b>가격만 문의하는 견적 요청</b>이에요. 아직 주문이 확정되지 않아요. 제출 후 나오는 <b>고유 견적 링크를 꼭 보관</b>해 주세요. 같은 이름으로 다시 요청해도 자동으로 합쳐지지 않아요.</div><button class="btn block" type="submit">전체 ${cartCount()}개 견적 요청하기</button></form></div>
 </details></div>`:''}`)}
-if(m.type==='store'){const s=state.stores.find(x=>x.id===m.id);return wrap(s?'가게 수정':'가게 등록',`<form id="store-form"><label class="label">남대문 가게 이름<input name="name" maxlength="100" required value="${esc(s?.name||'')}" placeholder="예: 동대문상회"></label><label class="stageradio"><input type="checkbox" name="active" ${s?.active===false?'':'checked'}> 주문자 화면에 표시</label><button class="btn block" type="submit">가게 저장</button></form>${s?renderStoreSizeChartEditor(s):''}`)}
-if(m.type==='product'){const pr=selectedProd(m.id);let lines=Object.entries(pr?.options||{}).map(([c,sz])=>c+': '+sz.join(', ')).join('\n');return wrap(pr?'상품 수정':'상품 등록',`<form id="product-form"><label class="label">거래처(가게)<select name="store" required>${state.stores.map(st=>`<option value="${st.id}" ${pr?.store_id===st.id?'selected':''}>${esc(st.name)}</option>`).join('')}</select></label><label class="label">옷 이름<input name="name" maxlength="100" required value="${esc(pr?.name||'')}" placeholder="예: 하트호피 전신슈트"></label>${productCategoryInput(pr?.category,!pr||Boolean(pr.category))}${renderAdminPhotoWorkspace()}${bulkOptionsBuilder()}<label class="label">완성된 색상별 옵션 (확인·수정 가능)</label><textarea name="options" required rows="6" placeholder="색상과 사이즈 입력 후 일괄 적용을 눌러 주세요.">${esc(lines)}</textarea><p class="help">색상별 사이즈가 다르면 아래에서 그 줄만 수정하면 돼요.</p>${privateProductFields(pr?.id)}<label class="stageradio" style="margin:15px 0"><input type="checkbox" name="published" ${pr?.published===false?'':'checked'}> 주문자 화면에 공개</label><label class="stageradio"><input type="checkbox" name="is_sold_out" ${pr?.is_sold_out?'checked':''}> 품절 표시 (전시해도 주문 불가)</label></form>`,true)}
+if(m.type==='store'){const s=state.stores.find(x=>x.id===m.id);return wrap(s?'가게 수정':'가게 등록',`<form id="store-form"><label class="label">남대문 가게 이름<input name="name" maxlength="100" required value="${esc(s?.name||'')}" placeholder="예: 동대문상회"></label><label class="stageradio"><input type="checkbox" name="active" ${s?.active===false?'':'checked'}> 주문자 화면에 표시</label><label class="label" style="margin-top:14px">기본 사이즈 (한 줄에 하나)<textarea name="default_sizes" rows="5" placeholder="S&#10;M&#10;L">${esc((s?storeDefaultSizes(s.id):[]).join('\n'))}</textarea></label><p class="smallnote">새 상품 등록 시 자동으로 불러와요. 기존 상품과 주문 옵션은 변경하지 않아요.</p><button class="btn block" type="submit">가게 저장</button></form>${s?renderStoreSizeChartEditor(s):''}`)}
+if(m.type==='product'){const pr=selectedProd(m.id);let lines=Object.entries(pr?.options||{}).map(([c,sz])=>c+': '+sz.join(', ')).join('\n');return wrap(pr?'상품 수정':'상품 등록',`<form id="product-form"><label class="label">거래처(가게)<select name="store" data-store-defaults required>${state.stores.map(st=>`<option value="${st.id}" ${pr?.store_id===st.id?'selected':''}>${esc(st.name)}</option>`).join('')}</select></label><label class="label">옷 이름<input name="name" maxlength="100" required value="${esc(pr?.name||'')}" placeholder="예: 하트호피 전신슈트"></label>${productCategoryInput(pr?.category,!pr||Boolean(pr.category))}${renderAdminPhotoWorkspace()}${bulkOptionsBuilder(pr?.store_id||state.stores[0]?.id)}<label class="label">완성된 색상별 옵션 (확인·수정 가능)</label><textarea name="options" required rows="6" placeholder="색상과 사이즈 입력 후 일괄 적용을 눌러 주세요.">${esc(lines)}</textarea><p class="help">색상별 사이즈가 다르면 아래에서 그 줄만 수정하면 돼요.</p>${privateProductFields(pr?.id)}<label class="stageradio" style="margin:15px 0"><input type="checkbox" name="published" ${pr?.published===false?'':'checked'}> 주문자 화면에 공개</label><label class="stageradio"><input type="checkbox" name="is_sold_out" ${pr?.is_sold_out?'checked':''}> 품절 표시 (전시해도 주문 불가)</label></form>`,true)}
 if(m.type==='bundle'){const child=state.quotes.find(x=>x.id===m.id);if(!child)return '';const candidates=state.quotes.filter(x=>x.id!==child.id&&buyerIdentity(x)===buyerIdentity(child)&&x.status!=='cancelled'&&['quoted','confirmed'].includes(x.status)&&x.bundle_parent_id==null&&hasShipping(x)&&x.delivery_method!=='pickup'&&!state.quotes.some(y=>y.bundle_parent_id===child.id));return wrap('묶음배송 설정',`<div class="info">동일 구매자의 택배 주문을 함께 보내면 <b>연결된 추가 주문의 배송비는 0원</b>으로 계산돼요. 대표 주문에 기존 배송비가 남습니다.</div><div class="card"><b>${esc(buyerLabel(child))}</b><div class="smallnote">현재 주문: ${fmtDate(child.created_at)} · ${money(totalDue(child))}</div><div class="smallnote">수령: ${deliveryLabel(child)} · ${esc(addressLabel(child))}</div></div>${child.delivery_method==='pickup'?'<div class="noticefail">직접수령은 묶음배송할 수 없어요.</div>':`<form id="bundle-form"><label class="label">이 주문과 함께 보낼 대표 주문<select name="parent_id"><option value="">${child.bundle_parent_id?'묶음배송 해제 (각각 배송비 청구)':'묶음배송하지 않음'}</option>${candidates.map(q=>`<option value="${q.id}" ${child.bundle_parent_id===q.id?'selected':''}>${esc(q.buyer_name)} · ${fmtDate(q.created_at)} · ${esc(q.items.map(i=>i.product_name).slice(0,2).join(', '))}</option>`).join('')}</select></label>${!candidates.length?'<div class="noticefail">같은 구매자이고 배송비가 설정된 다른 견적/확정 주문이 없어요. 대표 주문이 없으면 아직 묶을 수 없어요.</div>':''}<div class="noticefail">이미 확정된 주문은 금액 차이가 발생할 수 있어요. 주소가 같은지 먼저 확인하고, 입금 완료라면 환불도 직접 확인해 주세요. 배송비 변경 안내는 주문자의 견적 확인 화면에 반영됩니다.</div><button class="btn block" type="submit">묶음배송 설정 저장</button></form>`}`)}
 
 if(m.type==='admin-pin'){
@@ -3869,11 +3871,47 @@ function composeBulkOptions(existingText,colorsInput,sizesInput){
  parseOptions(text);
  return {text,colors:colors.length,sizes:sizes.length};
 }
-function bulkOptionsBuilder(){
+function storeDefaultSizes(storeId){
+ const store=state.stores.find(st=>st.id===storeId);
+ if(Array.isArray(store?.default_sizes))return [...store.default_sizes];
+ const profiles=new Map();
+ for(const product of state.products.filter(p=>p.store_id===storeId)){
+  const options=Object.values(product.options||{}).filter(Array.isArray);
+  if(!options.length)continue;
+  const sizes=options[0];
+  if(!sizes.length||!options.every(list=>JSON.stringify(list)===JSON.stringify(sizes)))continue;
+  const key=JSON.stringify(sizes);
+  profiles.set(key,(profiles.get(key)||0)+1);
+ }
+ const best=[...profiles].sort((a,b)=>b[1]-a[1])[0];
+ return best?JSON.parse(best[0]):[];
+}
+function optionFormStore(form){
+ const value=String(form?.querySelector('[name="store"]')?.value||'').trim();
+ return state.stores.find(st=>form?.id==='product-form'?st.id===value:st.name.trim().toLowerCase()===value.toLowerCase());
+}
+function validateStoreSizes(text){
+ const sizes=splitBulkOptionNames(text);
+ if(sizes.length>50||sizes.some(size=>size.length>30||size.includes(':')))throw Error('사이즈는 50개 이하, 각 30자 이하로 입력해 주세요.');
+ return sizes;
+}
+function loadStoreSizesIntoForm(form){
+ const store=optionFormStore(form),editor=form?.querySelector('[data-bulk-editor="sizes"]');
+ if(!editor)return;
+ const sizes=store?storeDefaultSizes(store.id):[];
+ editor.textContent=sizes.join('\n');
+ const note=form.querySelector('[data-store-sizes-note]');
+ if(note)note.textContent=store?(sizes.length?'‘'+store.name+'’ '+(Array.isArray(store.default_sizes)?'저장된 기본 사이즈':'기존 상품에서 가장 많이 쓰는 사이즈')+'를 불러왔어요. 이 상품만 다르면 위 사이즈를 수정하세요.':'이 가게의 기본 사이즈를 입력하고 저장해 주세요.'):'고객에게 보이는 가게를 선택하거나 먼저 등록해 주세요.';
+}
+function bulkOptionsBuilder(storeId=null){
+ const defaults=storeId?storeDefaultSizes(storeId):[];
+ const store=state.stores.find(st=>st.id===storeId);
  return `<div class="bulk-option-builder">
  <div class="bulk-option-heading"><b>색상·사이즈 한 번에 입력</b><span>색상마다 사이즈가 같다면 한 번만 적으세요.</span></div>
  <label class="label">색상 여러 개 <span class="bulk-option-enter-hint">엔터로 구분</span><div class="bulk-option-textbox" data-bulk-editor="colors" role="textbox" aria-multiline="true" aria-label="색상 한 줄에 하나씩 입력" contenteditable="plaintext-only" spellcheck="true" autocorrect="on" autocapitalize="off" lang="ko" data-placeholder="핑크 · 블루 · 머스타드 · 자주 (엔터로 구분)"></div></label>
- <label class="label">공통 사이즈 <span class="bulk-option-enter-hint">엔터로 구분</span><div class="bulk-option-textbox" data-bulk-editor="sizes" role="textbox" aria-multiline="true" aria-label="사이즈 한 줄에 하나씩 입력" contenteditable="plaintext-only" spellcheck="true" autocorrect="on" autocapitalize="off" lang="ko" data-placeholder="1호 · 2호 (엔터로 구분)"></div></label>
+ <label class="label">공통 사이즈 <span class="bulk-option-enter-hint">엔터로 구분</span><div class="bulk-option-textbox" data-bulk-editor="sizes" role="textbox" aria-multiline="true" aria-label="사이즈 한 줄에 하나씩 입력" contenteditable="plaintext-only" spellcheck="true" autocorrect="on" autocapitalize="off" lang="ko" data-placeholder="1호 · 2호 (엔터로 구분)">${esc(defaults.join('\n'))}</div></label>
+ <p class="smallnote" data-store-sizes-note>${store?esc(store.name)+' · '+(Array.isArray(store.default_sizes)?'저장된 기본 사이즈':defaults.length?'기존 상품에서 자주 쓰는 사이즈':'기본 사이즈 미등록'):'가게를 선택하면 기본 사이즈를 불러와요.'} · 이 상품만 다르면 위에서 수정해 주세요.</p>
+ <div class="row wrap"><button class="btn sm secondary" type="button" data-action="save-store-default-sizes">이 사이즈를 가게 기본값으로 저장</button><button class="btn sm neutral" type="button" data-action="load-store-default-sizes">가게 기본 사이즈 다시 불러오기</button></div>
  <button type="button" class="btn block bulk-option-apply" data-action="bulk-options-apply">선택한 색상에 사이즈 일괄 적용</button>
  <div class="smallnote">색상과 사이즈를 한 줄에 하나씩 적고 엔터로 구분해 주세요. 쉼표로 구분해도 돼요. 기존에 없는 색상은 추가되고, 이미 있는 색상은 해당 사이즈만 변경돼요.</div>
  </div>`;
@@ -4579,6 +4617,22 @@ if(a==='admin-photo-remove'||a==='admin-photo-move'){
  else moveAdminPhoto(index,Number(b.dataset.direction),form);
  return;
 }
+if(a==='save-store-default-sizes'||a==='load-store-default-sizes'){
+ if(!state.admin)throw Error('관리자만 가게 기본 사이즈를 설정할 수 있어요.');
+ const form=b.closest('form'),store=optionFormStore(form);
+ if(!store)throw Error('고객에게 보이는 가게를 먼저 등록하거나 선택해 주세요.');
+ if(a==='load-store-default-sizes'){loadStoreSizesIntoForm(form);return;}
+ const sizes=validateStoreSizes(form.querySelector('[data-bulk-editor="sizes"]')?.innerText||'');
+ if(!sizes.length)throw Error('기본 사이즈를 입력해 주세요.');
+ b.disabled=true;
+ try{
+  await putStore({default_sizes:sizes},store.id);
+  store.default_sizes=[...sizes];
+  loadStoreSizesIntoForm(form);
+  notif('‘'+store.name+'’ 기본 사이즈를 저장했어요. 다음 상품부터 자동으로 불러와요.');
+ }finally{b.disabled=false;}
+ return;
+}
 if(a==='bulk-options-apply'){
  const form=b.closest('form');
  if(!form||!['approve-form','product-form'].includes(form.id))throw Error('상품 등록 화면에서만 옵션을 한 번에 입력할 수 있어요.');
@@ -4953,7 +5007,7 @@ else if(f.id==='request'){if(state.cart.some(c=>{const p=selectedProd(c.product_
  const delivery={delivery_method:method,recipient_name:String(data.get('recipient_name')||'').trim(),postal_code:String(data.get('postal_code')||'').trim(),address_line1:String(data.get('address_line1')||'').trim(),address_line2:String(data.get('address_line2')||'').trim(),delivery_note:String(data.get('delivery_note')||'').trim()};
  if(method==='courier'&&(!delivery.recipient_name||!/^[0-9]{5}$/.test(delivery.postal_code)||delivery.address_line1.length<4))throw Error('택배 받는 사람, 우편번호 5자리와 주소를 정확히 입력해 주세요');
  const r=await requestQuote(name,baby,contact,note,delivery,lookupPin,email);state.receipts.unshift({id:r.id,token:r.token,name,baby,date:now()});saveTracks();state.cart=[];saveCart();await openTracking(r.id,r.token);notif('견적 요청 완료! 주문조회 링크를 카톡 나와의 채팅에 보관해 주세요.')}
-else if(f.id==='store-form'){const name=String(data.get('name')).trim();await putStore({name,active:data.has('active')},state.modal.id);state.modal=null;await loadAdmin();notif('가게를 저장했어요')}
+else if(f.id==='store-form'){const name=String(data.get('name')).trim();await putStore({name,active:data.has('active'),default_sizes:validateStoreSizes(data.get('default_sizes'))},state.modal.id);state.modal=null;await loadAdmin();notif('가게를 저장했어요')}
 else if(f.id==='product-form'){
  const old=selectedProd(state.modal?.id);
  if(!state.admin||!state.productPrivateReady)throw Error('관리자 인증 및 도매 정보 연결을 확인해 주세요.');
@@ -5013,6 +5067,7 @@ else if(f.dataset.price){
 else if(f.dataset.payment){const paid=Number(data.get('paid')),refunded=Number(data.get('refunded'));if(!Number.isInteger(paid)||!Number.isInteger(refunded)||paid<0||refunded<0)throw Error('금액을 확인해 주세요');await adminPayment(f.dataset.payment,paid,refunded);await loadAdmin();notif('입금 기록 완료')}
 }catch(ex){notif(errorText(ex))}finally{busy=false}}
 async function change(e){const x=e.target;
+if(x.matches?.('[data-store-defaults]')){loadStoreSizesIntoForm(x.closest('form'));return;}
 if(x.matches?.('#bulk-supplier-shipping-form [name="existing_mode"]')){
  updateSupplierBulkPreview();return;
 }

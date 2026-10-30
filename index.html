@@ -2556,7 +2556,24 @@ const buyerIdentity=q=>{
  if(q.customer_key)return 'device:'+a+'|'+b+'|'+q.customer_key;
  return 'unique:'+q.id;
 };
-function customerGroups(){const m=new Map();for(const q of state.quotes){const id=buyerIdentity(q);let x=m.get(id);if(!x){x={key:id,name:q.buyer_name,baby:q.baby_name||'',contact:q.contact||'',orders:[],spent:0,netPaid:0,units:0,confirmed:0,pending:0,cancelled:0};m.set(id,x)}x.orders.push(q);x.netPaid+=(Number(q.amount_paid)||0)-(Number(q.amount_refunded)||0);if(q.status==='confirmed'){x.confirmed++;x.spent+=totalDue(q);x.units+=(q.items||[]).filter(i=>i.fulfillment!=='sold_out').reduce((a,i)=>a+i.quantity,0)}else if(q.status==='requested'||q.status==='quoted')x.pending++;else if(q.status==='cancelled')x.cancelled++}return [...m.values()].sort((a,b)=>b.spent-a.spent||a.name.localeCompare(b.name,'ko'))}
+function customerGroups(){
+ const groups=new Map();
+ for(const q of state.quotes){
+  if(q.status!=='confirmed')continue;
+  const id=buyerIdentity(q);
+  let entry=groups.get(id);
+  if(!entry){
+   entry={key:id,name:q.buyer_name,baby:q.baby_name||'',contact:q.contact||'',orders:[],spent:0,netPaid:0,units:0,confirmed:0};
+   groups.set(id,entry);
+  }
+  entry.orders.push(q);
+  entry.confirmed++;
+  entry.spent+=totalDue(q);
+  entry.netPaid+=(Number(q.amount_paid)||0)-(Number(q.amount_refunded)||0);
+  entry.units+=(q.items||[]).filter(i=>i.fulfillment!=='sold_out').reduce((total,i)=>total+(Number(i.quantity)||0),0);
+ }
+ return [...groups.values()].sort((a,b)=>b.spent-a.spent||a.name.localeCompare(b.name,'ko'));
+}
 function productBuyerGroups(){const m=new Map();for(const q of state.quotes.filter(q=>q.status!=='cancelled'))for(const i of q.items||[]){if(i.fulfillment==='sold_out')continue;const id=JSON.stringify([i.product_id||null,i.store_name,i.product_name,i.color,i.size]);let x=m.get(id);if(!x){x={store:i.store_name,product:i.product_name,color:i.color,size:i.size,confirmed:[],pending:[],confirmedQty:0,pendingQty:0};m.set(id,x)}const row={q,qty:i.quantity,subtotal:i.unit_price==null?null:i.quantity*Number(i.unit_price)};if(q.status==='confirmed'){x.confirmed.push(row);x.confirmedQty+=i.quantity}else if(q.status==='requested'||q.status==='quoted'){x.pending.push(row);x.pendingQty+=i.quantity}}return [...m.values()].sort((a,b)=>a.store.localeCompare(b.store,'ko')||a.product.localeCompare(b.product,'ko')||a.color.localeCompare(b.color,'ko')||a.size.localeCompare(b.size,'ko'))}
 
 const demoNotice=()=>!connected?'<div class="noticebar"><b>⚠️ 현재 체험 모드</b>견적 요청과 주문 확정은 이 아이폰 안에서만 저장돼요. 여러 사람이 실제로 주문하려면 <b>Supabase 연결이 먼저 필요</b>해요. 체험 중 만든 주문은 공유되지 않습니다.</div>':'';
@@ -4301,7 +4318,38 @@ function renderBuyerOrderDetail(q){
   <p class="smallnote buyer-order-detail-footnote">주문 접수 시 저장된 품목명·색상·사이즈·수량을 보여줘요. 가격·입금·배송 상태는 관리자가 이후 수정했다면 현재 저장된 값으로 표시돼요. 삭제한 상품의 사진이나 상품 페이지는 복원되지 않아요.</p>
  </div>`;
 }
-function renderBuyerStats(){const groups=customerGroups();const confirmed=groups.reduce((s,g)=>s+g.spent,0);return `<div class="sectiontitle"><div><h2>구매자별 구매 내역</h2><div class="sub">아기 이름까지 구분 · 확정 주문에 대해서만 구매금액 합산</div></div><button class="btn sm secondary" data-action="refresh">새로고침</button></div><div class="three" style="margin-bottom:13px"><div class="tile"><small>구분된 구매자</small><strong>${groups.length}명</strong></div><div class="tile"><small>확정 주문</small><strong>${groups.reduce((s,g)=>s+g.confirmed,0)}건</strong></div><div class="tile"><small>확정 주문금액</small><strong style="font-size:14px">${money(confirmed)}</strong></div></div><div class="identity-warning">동명이인 방지를 위해 주문자 이름 + 아기 이름 + 연락처(입력한 경우) 또는 같은 기기의 식별번호로 구분해요. 회원 계정이 없어 다른 기기에서 연락처도 입력하지 않으면 같은 사람인지 자동으로 확인할 수 없어요. 아기 이름이 없는 옛 주문은 개별로 표시돼요.</div><input id="stat-search" type="search" placeholder="주문자·아기 이름·연락처 검색"><div class="statlist">${groups.map(g=>`<div class="statcard" data-stats-entry><div class="row between"><div><b>${esc(g.name)} <span class="chip purple">${esc(g.baby||'아기 이름 미입력')}</span></b><div class="tiny">${esc(g.contact||'연락처 미입력')} · 확정 ${g.confirmed}건 / 견적 중 ${g.pending}건 / 취소 ${g.cancelled}건</div></div><strong>${money(g.spent)}</strong></div><div class="substats" style="margin-top:9px"><span>확정 수량 ${g.units}개</span><span>환불 차감 수령액 ${money(g.netPaid)}</span><span>전체 요청 ${g.orders.length}건</span></div><details><summary class="stats-summary"><span>견적·주문 건별 보기</span><span class="tiny">펼치기 ▾</span></summary>${g.orders.map(q=>`<button type="button" class="stat-detail stat-order-open" data-action="buyer-order-details" data-id="${esc(q.id)}" aria-label="${esc(q.buyer_name)}님 ${esc(statusLabel[q.status]||'주문')} ${esc(fmtDate(q.created_at))} 상세정보 열기"><div class="row between"><b>${esc(statusLabel[q.status])} · ${fmtDate(q.created_at)}</b><span>${q.status==='confirmed'?money(totalDue(q)):'총액 집계 제외'}</span></div><div class="tiny">${q.items.map(i=>esc(i.product_name)+' '+esc(i.color)+'/'+esc(i.size)+' ×'+i.quantity).join(' · ')} · ${deliveryLabel(q)}${isBundle(q)?' · 묶음배송':''}</div><span class="stat-order-more">주문 상세정보 보기 <span aria-hidden="true">→</span></span></button>`).join('')}</details></div>`).join('')||'<div class="empty">아직 견적 요청이 없어요.</div>'}</div>`}
+function renderBuyerStats(){
+ const groups=customerGroups();
+ const confirmedAmount=groups.reduce((sum,g)=>sum+g.spent,0);
+ const orderCount=groups.reduce((sum,g)=>sum+g.confirmed,0);
+ return `<div class="sectiontitle"><div><h2>확정 구매자</h2><div class="sub">최종 확정된 주문이 있는 구매자만 표시해요.</div></div></div>
+ <div class="three" style="margin-bottom:13px">
+  <div class="tile"><small>확정 구매자</small><strong>${groups.length}명</strong></div>
+  <div class="tile"><small>확정 주문</small><strong>${orderCount}건</strong></div>
+  <div class="tile"><small>확정 주문금액</small><strong style="font-size:14px">${money(confirmedAmount)}</strong></div>
+ </div>
+ <input id="stat-search" type="search" placeholder="확정 구매자·아기 이름·연락처 검색">
+ <div class="statlist">${groups.map(g=>`<div class="statcard" data-stats-entry>
+  <div class="row between">
+   <div><b>${esc(g.name)} <span class="chip purple">${esc(g.baby||'아기 이름 미입력')}</span></b>
+    <div class="tiny">${esc(g.contact||'연락처 미입력')} · 확정 주문 ${g.confirmed}건</div>
+   </div>
+   <strong>${money(g.spent)}</strong>
+  </div>
+  <div class="substats" style="margin-top:9px">
+   <span>확정 수량 ${g.units}개</span>
+   <span>환불 차감 수령액 ${money(g.netPaid)}</span>
+  </div>
+  <details>
+   <summary class="stats-summary"><span>확정 주문 내역 보기</span><span class="tiny">펼치기 ▾</span></summary>
+   ${g.orders.map(q=>`<button type="button" class="stat-detail stat-order-open" data-action="buyer-order-details" data-id="${esc(q.id)}" aria-label="${esc(q.buyer_name)}님 확정 주문 ${esc(fmtDate(q.created_at))} 상세정보 열기">
+    <div class="row between"><b>확정 · ${fmtDate(q.created_at)}</b><span>${money(totalDue(q))}</span></div>
+    <div class="tiny">${(q.items||[]).map(i=>esc(i.product_name)+' '+esc(i.color)+'/'+esc(i.size)+' ×'+i.quantity).join(' · ')} · ${deliveryLabel(q)}${isBundle(q)?' · 묶음배송':''}</div>
+    <span class="stat-order-more">주문 상세정보 보기 <span aria-hidden="true">→</span></span>
+   </button>`).join('')}
+  </details>
+ </div>`).join('')||'<div class="empty">아직 확정된 구매자가 없어요.</div>'}</div>`;
+}
 function productStatsStoreGroups(){
  const byStore=new Map();
  for(const variant of productBuyerGroups()){

@@ -1333,6 +1333,10 @@ body:has(.overlay) .floating-actions{opacity:0;visibility:hidden;pointer-events:
 .supplier-bulk-existing-confirm{display:flex;gap:9px;align-items:flex-start;font-size:12px;font-weight:750;line-height:1.65;margin:9px 0 13px}
 .supplier-bulk-existing-confirm input{appearance:auto;flex:0 0 21px;width:21px;height:21px;margin:0;accent-color:#222}
 .supplier-bulk-existing-warning[hidden],.supplier-bulk-existing-confirm[hidden]{display:none}
+.supplier-bulk-mode-options{display:grid;gap:10px;border:1px solid #dfb88a;background:#fffaf5;padding:12px}
+.supplier-bulk-mode-options strong{font-size:12px}
+.supplier-bulk-mode-options label{display:flex;gap:9px;align-items:flex-start;font-size:12px;line-height:1.5;cursor:pointer}
+.supplier-bulk-mode-options input[type="radio"]{appearance:auto;flex:0 0 19px;width:19px;height:19px;margin:1px 0 0;accent-color:#222}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -1932,13 +1936,13 @@ function updateSupplierBulkPreview(){
  const {selected,people,invalid}=supplierBulkSelectedInfo();
  const existing=supplierBulkExistingManualFees(selected);
  const warning=root.querySelector('[data-supplier-existing-warning]');
- const confirmLabel=root.querySelector('[data-supplier-existing-confirm]');
- const confirmInput=root.querySelector('[name="keep_existing"]');
+ const modeChoices=root.querySelector('[data-supplier-existing-modes]');
+ const mode=root.querySelector('input[name="existing_mode"]:checked')?.value||'replace';
  if(warning){
   warning.hidden=existing.buyers===0;
-  warning.textContent=`선택한 구매자 ${existing.buyers}명의 주문에 기존 개별 도매배송비 ${money(existing.total)}이(가) 있어요. 새 거래처 배송비는 이 금액에 추가돼요. 중복 청구가 아니라면 아래 확인을 체크해 주세요. 기존 금액을 없애려면 먼저 해당 주문의 개별 도매배송비를 수정해 주세요.`;
+  warning.textContent=`선택한 ${existing.buyers}명의 주문에 기존 개별 도매배송비 ${money(existing.total)}이(가) 있어요. 아래에서 기존 금액을 대체하거나 새 금액을 추가할 수 있어요.`;
  }
- if(confirmLabel)confirmLabel.hidden=existing.buyers===0;
+ if(modeChoices)modeChoices.hidden=existing.buyers===0;
  const total=Number(totalInput?.value||0);
  const validTotal=totalInput?.value!==''&&Number.isInteger(total)&&total>=0&&total<=1000000;
  const base=people&&validTotal?Math.floor(total/people):0;
@@ -1949,16 +1953,19 @@ function updateSupplierBulkPreview(){
   !selected.length?'이 거래처의 상품을 체크해 주세요. 같은 사람의 여러 상품은 한 명으로 계산해요.':
   !validTotal?'이 거래처의 도매배송비 총액을 입력해 주세요.':
   (extra?`${extra}명 × ${money(base+1)} + ${people-extra}명 × ${money(base)}`:`${people}명 × ${money(base)}`)+
-  ' = '+money(total)+' · 같은 거래처 구매자는 1명으로 계산';
+  ' = '+money(total)+' · 같은 거래처 구매자는 1명으로 계산'+
+   (existing.buyers?mode==='replace'
+      ?' · 기존 '+money(existing.total)+'을 빼고 새 금액으로 대체'
+      :' · 기존 '+money(existing.total)+'에 새 배분금액 추가':'');
  if(submit)submit.disabled=!state.supplierBatchesReady||!selected.length||
-  selected.length>300||people>100||invalid||!validTotal||
-  (existing.buyers>0&&!confirmInput?.checked);
+  selected.length>300||people>100||invalid||!validTotal;
 }
-async function adminCreateSupplierBulkShipping(ids,total){
+async function adminCreateSupplierBulkShipping(ids,total,mode='replace'){
  if(!state.admin||!state.supplierBatchesReady)throw Error('관리자 로그인 후 배송비를 배분해 주세요.');
  if(!Array.isArray(ids)||ids.length<1||ids.length>300||
    !Number.isInteger(total)||total<0||total>1000000)throw Error('선택한 거래처 상품과 도매배송비를 확인해 주세요.');
- return rpc('gq_admin_create_supplier_item_batch_v50',{p_item_ids:ids,p_total:total},true);
+ if(!['replace','add'].includes(mode))throw Error('기존 금액 처리 방식을 선택해 주세요.');
+ return rpc('gq_admin_create_supplier_item_batch_v66',{p_item_ids:ids,p_total:total,p_existing_mode:mode},true);
 }
 async function adminMarkSupplierBatchOrdered(id){
  if(!state.admin)throw Error('관리자 권한이 필요해요.');
@@ -3281,9 +3288,11 @@ function renderSupplierBulkManager(historyOnly=false){
      inputmode="numeric" placeholder="예: 4000" required></label>
    <div class="supplier-bulk-preview" data-supplier-bulk-preview>먼저 거래처와 상품을 선택해 주세요.</div>
    <p class="supplier-bulk-existing-warning" data-supplier-existing-warning hidden></p>
-   <label class="supplier-bulk-existing-confirm" data-supplier-existing-confirm hidden>
-    <input type="checkbox" name="keep_existing" value="yes">기존에 입력한 도매배송비를 유지하고 새 거래처 배송비를 추가하는 것을 확인했어요.
-   </label>
+   <div class="supplier-bulk-existing-confirm supplier-bulk-mode-options" data-supplier-existing-modes hidden>
+    <strong>기존에 입력한 배송비 처리</strong>
+    <label><input type="radio" name="existing_mode" value="replace" checked> <span><b>기존 금액 대체 (추천)</b> · 이전 개별 배송비를 없애고 이번 배분금액으로 설정</span></label>
+    <label><input type="radio" name="existing_mode" value="add"> <span><b>기존 금액에 추가</b> · 기존 개별 배송비에 이번 배분금액을 더하기</span></label>
+   </div>
    <button type="submit" class="btn block" data-supplier-bulk-apply disabled>체크한 구매자에게 거래처 배송비 배분</button>
   </form>
   <p class="smallnote">배송비는 선택한 거래처 상품의 <b>서로 다른 구매자 수</b>로 나누고, 남는 1원은 일부 구매자에게만 배분해 총액을 정확히 맞춰요. 각 고객 주문 총액에는 다른 거래처 분담금까지 합산돼요.</p>
@@ -4768,7 +4777,8 @@ async function submit(e){const f=e.target;if(!f.dataset.sizeChartForm&&!f.datase
  if(!/^(0|[1-9][0-9]{0,6})$/.test(value)||Number(value)>1000000)throw Error('거래처 배송비 총액은 0~100만원으로 입력해 주세요.');
  const total=Number(value),{selected,buyerKeys,people,invalid}=supplierBulkSelectedInfo();
  const existing=supplierBulkExistingManualFees(selected);
- if(existing.buyers>0&&!data.has('keep_existing'))throw Error('기존 도매배송비 중복 부과 여부를 확인하고 체크해 주세요.');
+ const mode=String(data.get('existing_mode')||'replace');
+ if(!['replace','add'].includes(mode))throw Error('기존 금액 처리 방식을 선택해 주세요.');
  const supplierName=privateSupplierDisplay(state.supplierBulkStoreId);
  if(!state.productPrivateReady||!supplierName||!selected.length||selected.length>300||people>100||invalid)throw Error('실제 도매업체를 선택하고 해당 도매업체 상품만 체크해 주세요.');
  const base=Math.floor(total/people),remainder=total%people;
@@ -4783,14 +4793,16 @@ async function submit(e){const f=e.target;if(!f.dataset.sizeChartForm&&!f.datase
   '선택 상품 '+selected.length+'종 · 구매자 '+people+'명\n'+splitText+
   '\n\n'+buyers.join(', ')+
   (changedQuotes?'\n\n기존 견적을 안내받은 구매자의 결제금액이 바뀔 수 있어요. 입금 차액을 확인해 주세요.':'')+
-  (existing.buyers?'\n\n주의: 기존 개별 도매배송비 '+money(existing.total)+'은 유지되고 새 금액이 추가됩니다.':'')+
+  (existing.buyers?mode==='replace'
+    ?'\n\n기존 개별 배송비 '+money(existing.total)+'을 대체하고 새 배분금액만 적용합니다.'
+    :'\n\n기존 개별 배송비 '+money(existing.total)+'에 새 배분금액을 추가합니다.':'')+
   '\n\n다른 거래처 배송비는 변경되지 않아요.';
  if(!window.confirm(message))return;
- const result=await adminCreateSupplierBulkShipping(selected.map(x=>x.item.id),total);
+ const result=await adminCreateSupplierBulkShipping(selected.map(x=>x.item.id),total,mode);
  if(!result?.id)throw Error('거래처별 배송비 저장 결과를 확인하지 못했어요.');
  state.supplierBulkSelected.clear();
  await loadAdmin();
- notif('‘'+result.supplier+'’ 거래처 배송비를 '+result.people+'명에게 나눴어요. 다른 거래처 분담금은 유지돼요.');
+ notif('‘'+result.supplier+'’ 배송비를 '+result.people+'명에게 배분했어요. '+(mode==='replace'?'기존 개별 배송비는 대체했어요.':'기존 개별 배송비에 추가했어요.')+' 다른 거래처 배분은 유지돼요.');
 }else if(f.dataset.customerEmail){
  const kind=String(f.dataset.customerEmail||''),id=String(f.dataset.id||'');
  if(!['quote','product_request'].includes(kind)||!id)throw Error('수정할 신청을 찾지 못했어요.');
@@ -4915,7 +4927,7 @@ else if(f.dataset.price){
 else if(f.dataset.payment){const paid=Number(data.get('paid')),refunded=Number(data.get('refunded'));if(!Number.isInteger(paid)||!Number.isInteger(refunded)||paid<0||refunded<0)throw Error('금액을 확인해 주세요');await adminPayment(f.dataset.payment,paid,refunded);await loadAdmin();notif('입금 기록 완료')}
 }catch(ex){notif(errorText(ex))}finally{busy=false}}
 async function change(e){const x=e.target;
-if(x.matches?.('#bulk-supplier-shipping-form [name="keep_existing"]')){
+if(x.matches?.('#bulk-supplier-shipping-form [name="existing_mode"]')){
  updateSupplierBulkPreview();return;
 }
 if(x.matches?.('[data-supplier-bulk-store]')){

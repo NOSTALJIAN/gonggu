@@ -4170,7 +4170,7 @@ function renderCompletedProcurementSheet(){
  </details>`;
 }
 function isOtherRoundQuote(q){
- return isWholesaleCompleted(q)||(q.status==='quoted'&&['next_round','on_hold','undecided'].includes(q.purchase_intent||'undecided'));
+ return q.status==='quoted'&&['next_round','on_hold','undecided'].includes(q.purchase_intent||'undecided');
 }
 function renderAdminQuotes(){
  const qq=state.quotes.filter(q=>state.filter==='all'||(state.filter==='other'?isOtherRoundQuote(q):state.filter==='buy_now'?isRoundBuyer(q):state.filter==='wholesale_completed'?isWholesaleCompleted(q):state.filter==='next_round'?q.status==='quoted'&&q.purchase_intent==='next_round':state.filter==='on_hold'?q.status==='quoted'&&q.purchase_intent==='on_hold':state.filter==='undecided'?q.status==='quoted'&&(!q.purchase_intent||q.purchase_intent==='undecided'):state.filter==='cancel_requested'?!!q.cancel_requested_at&&q.status!=='cancelled':state.filter.startsWith('flow_')?q.status==='confirmed'&&workflowStage(q)===state.filter.slice(5):q.status===state.filter));
@@ -4184,15 +4184,16 @@ function renderAdminQuotes(){
  const nNext=state.quotes.filter(q=>q.status==='quoted'&&q.purchase_intent==='next_round').length;
  const nHold=state.quotes.filter(q=>q.status==='quoted'&&q.purchase_intent==='on_hold').length;
  const nUndecided=state.quotes.filter(q=>q.status==='quoted'&&(!q.purchase_intent||q.purchase_intent==='undecided')).length;
- const nOther=nOrdered+nNext+nHold+nUndecided;
+ const nOther=nNext+nHold+nUndecided;
  const nCancelRequested=state.quotes.filter(q=>!!q.cancel_requested_at&&q.status!=='cancelled').length;
  const primaryFilters=[
   ['all','전체',state.quotes.length],
   ['buy_now','이번 회차',nNow],
+  ['wholesale_completed','발주 완료',nOrdered],
   ['other','그 외 주문',nOther],
   ['cancel_requested','취소 요청',nCancelRequested]
  ];
- const secondaryKeys=['wholesale_completed','next_round','on_hold','undecided','requested','quoted','confirmed','flow_new','flow_preparing','flow_pickup_ready','flow_shipped','flow_completed','flow_soldout_closed','cancelled'];
+ const secondaryKeys=['next_round','on_hold','undecided','requested','quoted','confirmed','flow_new','flow_preparing','flow_pickup_ready','flow_shipped','flow_completed','flow_soldout_closed','cancelled'];
  const secondaryLabel=key=>({wholesale_completed:'발주 완료',next_round:'다음 회차',on_hold:'구매 보류',undecided:'미선택'})[key]||(key.startsWith('flow_')?workflowLabels[key.slice(5)]:statusLabel[key]||key);
  const isSecondary=secondaryKeys.includes(state.filter);
  return `<section class="admin-quote-workspace">

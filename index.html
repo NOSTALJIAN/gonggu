@@ -1386,6 +1386,35 @@ body:has(.overlay) .floating-actions{opacity:0;visibility:hidden;pointer-events:
 .admin-cancelled-reason{border:1px solid #d9d9d9;background:#f8f8f8;color:#333;padding:11px 12px;margin:11px 0;font-size:12px;line-height:1.65}
 .admin-cancelled-reason>b{display:block;font-size:12px;font-weight:800;margin-bottom:5px}
 .admin-cancelled-reason-text{white-space:pre-wrap;overflow-wrap:anywhere}
+
+/* Compact storefront landing: reduce repeated navigation/copy and expose products sooner.
+   Admin and order flows retain their existing header and controls. */
+@media (max-width:719px){
+ .hero.is-shop-header{padding:calc(env(safe-area-inset-top) + 12px) 16px 13px}
+ .hero.is-shop-header .headrow{min-height:36px}
+ .hero.is-shop-header .logo{font-size:27px}
+ .hero.is-shop-header .header-nav{display:none}
+ .shop-content .shop-editorial{
+  min-height:0;height:clamp(310px,46svh,410px);margin:0 -14px 18px;
+ }
+ .shop-content .shop-editorial-visual img{object-position:center 40%;filter:saturate(.94) contrast(1.01)}
+ .shop-content .shop-editorial-visual.has-photo:before{
+  background:linear-gradient(0deg,rgba(0,0,0,.62) 0%,rgba(0,0,0,.28) 30%,transparent 72%);
+ }
+ .shop-content .shop-editorial-copy{padding:0 19px 19px;gap:8px}
+ .shop-content .shop-editorial h1{font-size:clamp(25px,7.2vw,33px);line-height:1.13;letter-spacing:-.06em}
+ .shop-content .shop-editorial p{font-size:11px;line-height:1.45;margin:0;max-width:100%}
+ .shop-content .shop-editorial-link{padding:9px 13px;font-size:11px;margin-top:3px}
+ .shop-content .shop-section-head{margin:0 0 14px;align-items:center}
+ .shop-content .shop-section-head h2{font-size:24px}
+ /* These two actions already exist in the mobile bottom navigation. */
+ .shop-content .shop-actions{display:none}
+ .shop-content .shop-category-list{margin-top:0}
+}
+@media (max-width:355px){
+ .hero.is-shop-header .logo{font-size:24px}
+ .shop-content .shop-editorial{height:clamp(290px,44svh,370px)}
+}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -2247,7 +2276,7 @@ const img=(p,cls='product-cover')=>p?.image_url?`<img class="${cls}" src="${esc(
 async function showRequestImages(){if(!connected||!state.admin)return;const nodes=[...document.querySelectorAll('[data-request-photo]')];if(!nodes.length)return;const token=await getToken();for(const el of nodes){const path=el.dataset.requestPhoto;if(!path)continue;if(requestImageCache.has(path)){const saved=await requestImageCache.get(path);if(el.isConnected&&saved)el.src=saved;continue}const task=(async()=>{try{const resp=await fetch(url+'/storage/v1/object/authenticated/'+PHOTO_PRIVATE+'/'+path.split('/').map(encodeURIComponent).join('/'),{headers:{apikey:key,Authorization:'Bearer '+token}});if(!resp.ok)throw Error('사진 조회 실패');return URL.createObjectURL(await resp.blob())}catch(e){console.error('신청 사진 표시 오류',e);return null}})();requestImageCache.set(path,task);const value=await task;if(el.isConnected&&value)el.src=value;}}
 function header(){
  const admin=state.page==='admin';
- return `<header class="hero"><div class="headrow">
+ return `<header class="hero ${admin?'is-admin-header':'is-shop-header'}"><div class="headrow">
  <div class="brand-lockup"><div class="brand-text"><button class="logo brand-home" type="button" data-page="shop" aria-label="미니예나 첫 화면으로 이동">MINIYENA</button></div></div>
  <div class="header-actions"><button class="heroaction" data-page="${admin?'shop':'admin'}" type="button">${admin?'쇼핑몰 ↗':'관리자 ↗'}</button></div></div>
  <nav class="header-nav" aria-label="사이트 메뉴">
@@ -2358,9 +2387,8 @@ function renderShop(){
  const banner=currentHeroPhotoUrl();
  return `<section class="content shop-content">
  <div class="shop-editorial"><div class="shop-editorial-visual ${banner?'has-photo':''}">${banner?`<img src="${esc(banner)}" alt="미니예나 메인 사진" loading="eager">`:'<div class="shop-editorial-art" aria-hidden="true"></div>'}</div>
- <div class="shop-editorial-copy"><span class="shop-editorial-label">남대문 아동복 · 초저가 공동구매</span><h1>남대문 아동복<br>초저가 쇼핑</h1><p>남아·여아 아동복을 부담 없이 골라보세요.<br>가격은 견적 요청 후 안내해 드려요.</p><a class="shop-editorial-link" href="#catalog">상품 둘러보기 ↗</a></div></div>
- <p class="shop-kicker">남대문 아동복 · 초저가 셀렉션</p>
- <div class="shop-section-head" id="catalog"><div><h2>전체 상품</h2><small>남대문 아동복을 초저가로 만나보세요</small></div><span class="sub">상품 둘러보기</span></div>
+ <div class="shop-editorial-copy"><h1>아기옷, 미니예나</h1><p>가격은 견적 요청 후 안내해 드려요.</p><a class="shop-editorial-link" href="#catalog">상품 보기 ↗</a></div></div>
+ <div class="shop-section-head" id="catalog"><div><h2>전체 상품</h2></div></div>
  <div class="shop-actions"><button type="button" data-action="suggest-product">+ 상품 등록 신청</button><button type="button" data-action="my-quotes">내 견적 · 주문조회 ↗</button></div>
  <div class="shop-category-list" role="group" aria-label="상품 카테고리별 보기">
  ${categoryFilterKeys.filter(k=>k==='all'||categoryCounts[k]>0||k===activeCategory).map(k=>`<button type="button" class="shop-category-tab ${activeCategory===k?'active':''}" data-action="shop-category" data-category="${k}" aria-pressed="${activeCategory===k}">${k==='all'?'전체':k==='uncategorized'?'미분류':k}<span>${categoryCounts[k]}</span></button>`).join('')}

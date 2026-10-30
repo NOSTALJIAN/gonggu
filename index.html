@@ -3241,7 +3241,7 @@ function renderSupplierBulkManager(historyOnly=false){
    <details class="compact-fold" data-fold-key="fee-${esc(storeId)}-${esc(key)}"><summary>도매배송비 직접 입력 · 주문별</summary>
     ${[...new Map(rows.map(({q})=>[q.id,q])).values()].map(q=>supplierBatchesForQuote(q).length
      ?`<p class="smallnote">${esc(q.id.slice(0,8))} · ${money(supplierShippingShare(q))} — 배분 내역에서 취소 후 수정해 주세요.</p>`
-     :`<form data-supplier-shipping="${esc(q.id)}" class="manual-freight-form"><label class="label">${esc(q.buyer_name)} · ${esc(q.id.slice(0,8))} · 이 주문 도매배송비 (원)<input name="supplier_total" type="number" min="0" max="1000000" step="1" required inputmode="numeric" value="${supplierShippingShare(q)}"></label><input name="supplier_people" type="hidden" value="1"><button class="btn sm secondary" type="submit">입력 금액으로 저장</button><p class="smallnote">0원도 가능 · 이 주문 전체의 개별 도매배송비를 대체해요.</p></form>`).join('')}
+     :`<form data-supplier-shipping="${esc(q.id)}" class="manual-freight-form"><label class="label">${esc(q.buyer_name)} · ${esc(q.id.slice(0,8))} · 이 주문 도매배송비 (원)<input name="supplier_total" type="number" min="0" max="1000000" step="1" required inputmode="numeric" value="${supplierShippingShare(q)}"></label><input name="supplier_people" type="hidden" value="1"><button class="btn sm secondary" type="submit">입력 금액으로 배송비 확정</button><p class="smallnote">0원도 가능 · 저장하면 이 주문의 배송비 확정이 완료돼요. 총액 배분은 다시 하지 않아도 돼요.</p></form>`).join('')}
    </details>
   </div>`;
  }).join('');
@@ -3347,8 +3347,8 @@ function procurementRows(){
     if(unit===null)issues.push('도매가 미등록');
    }
    if(!state.supplierBatchesReady)issues.push('배송비 배분 정보 확인 전');
-   else if(!batch)issues.push('도매배송비 배분 전');
-   else if(!supplierBatchPaymentState(batch).canOrder)issues.push('같은 거래처 배분 참여자 입금 확인 대기');
+   else if(!batch&&!q.supplier_shipping_manual_confirmed_at)issues.push('도매배송비 미확정');
+   else if(batch&&!supplierBatchPaymentState(batch).canOrder)issues.push('같은 거래처 배분 참여자 입금 확인 대기');
    if(!payment(q))issues.push('입금·금액 확인 필요');
    if(q.cancel_requested_at||q.delivery_change_requested_at)issues.push('취소·수령 변경 확인');
    if(!['new','preparing'].includes(workflowStage(q))||item.fulfillment==='delayed')issues.push('상품 진행 단계 확인');
@@ -4061,7 +4061,7 @@ function parseSupplierShippingValues(totalInput,peopleInput){
  return {total,people,share:Math.ceil(total/people)};
 }
 function adminFreightReady(q){
- if(q.status==='confirmed')return true;
+ if(q.status==='confirmed'||q.supplier_shipping_manual_confirmed_at)return true;
  const live=(q.items||[]).filter(i=>i.fulfillment!=='sold_out');
  return Boolean(state.supplierBatchesReady&&live.length&&live.every(i=>supplierItemBatch(i.id))&&readyQuote(q));
 }
@@ -4094,7 +4094,7 @@ async function adminSupplierShipping(id,total,people){
  if(!connected){
   const row=demo.quotes.find(x=>x.id===id);
   if(!row)throw Error('견적을 찾지 못했어요.');
-  Object.assign(row,{supplier_shipping_total:values.total,supplier_shipping_people:values.people,supplier_shipping_share:values.share});
+  Object.assign(row,{supplier_shipping_total:values.total,supplier_shipping_people:values.people,supplier_shipping_share:values.share,supplier_shipping_manual_confirmed_at:now()});
   saveDemo();return values.share;
  }
  const saved=await rpc('gq_admin_set_supplier_shipping_v35',{p_quote_id:id,p_total:values.total,p_people:values.people},true);
@@ -4910,7 +4910,7 @@ else if(f.dataset.supplierShipping){
  }
  await adminSupplierShipping(q.id,values.total,values.people);
  await loadAdmin();
- notif('도매 배송비 분담금을 저장했어요.');
+ notif('입력한 금액으로 배송비를 확정했어요. 별도 배분 없이 발주 확인에 반영돼요.');
 }
 else if(f.dataset.shipping){const val=String(data.get('shipping')??'').trim();if(!/^\d{1,7}$/.test(val))throw Error('배송비를 숫자로 입력해 주세요. 무료는 0원이에요');const q=state.quotes.find(x=>x.id===f.dataset.shipping),nextFee=Number(val);if(q?.status==='confirmed'&&Number(q.shipping_fee??0)!==nextFee){const oldTotal=totalDue(q),newTotal=oldTotal+nextFee-Number(q.shipping_fee??0);if(!window.confirm(`확정 주문의 배송비를 ${money(q.shipping_fee)} → ${money(nextFee)}으로 바꿀까요?\n결제금액: ${money(oldTotal)} → ${money(newTotal)}\n구매자에게 안내하고 입금·환불 차액을 꼭 확인하세요.`))return}await adminShipping(f.dataset.shipping,nextFee);await loadAdmin();notif('배송비를 수정했어요. 고객에게 변경 금액을 안내해 주세요')}
 else if(f.dataset.price){

@@ -1486,6 +1486,51 @@ body:has(.overlay) .floating-actions{opacity:0;visibility:hidden;pointer-events:
 .product-public-note{margin:14px 0;padding:14px 15px;border:1px solid #e4e4e4;background:#fafafa;color:#222}
 .product-public-note strong{display:block;font-size:13px;font-weight:800;letter-spacing:-.02em;margin-bottom:7px}
 .product-public-note-body{font-size:13px;line-height:1.75;white-space:pre-wrap;overflow-wrap:anywhere;word-break:keep-all}
+
+/* Admin catalog: compact rows; expand individual items only for variants and management. */
+.admin-product-card{padding:12px 13px;margin-bottom:9px;border:1px solid #e5e5e5;border-radius:9px;box-shadow:none}
+.admin-product-main{display:grid;grid-template-columns:64px minmax(0,1fr) auto;gap:11px;align-items:start;min-width:0}
+.admin-product-thumb-wrap{width:64px;height:64px;overflow:hidden;border-radius:5px;background:#f3f3f3}
+.admin-product-thumb-wrap .product-thumb{display:block;width:64px;height:64px;object-fit:cover;border-radius:5px;margin:0}
+.admin-product-no-photo{height:64px;display:grid;place-items:center;font-size:25px}
+.admin-product-primary{min-width:0}
+.admin-product-store{font-size:11px;line-height:1.35;color:#858585;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.admin-product-name{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin:3px 0 5px;font-size:14px;line-height:1.38;font-weight:770;overflow-wrap:anywhere}
+.admin-product-brief{display:flex;gap:5px 9px;align-items:center;flex-wrap:wrap;font-size:10px;line-height:1.4}
+.admin-product-cost{font-weight:700;color:#454545;white-space:nowrap}
+.admin-product-status{color:#777;white-space:nowrap}
+.admin-product-status::before{content:"";display:inline-block;vertical-align:2px;width:5px;height:5px;border-radius:50%;background:#aaa;margin-right:4px}
+.admin-product-status.is-shown::before,.admin-product-status.is-on-sale::before{background:#3d9c7f}
+.admin-product-status.is-soldout::before{background:#bd5265}
+.admin-product-edit.btn{min-height:33px;padding:5px 9px;font-size:11px;border-radius:5px;white-space:nowrap}
+.admin-product-detail-fold{margin-top:10px;border-top:1px solid #eee}
+.admin-product-detail-fold>summary{display:flex;align-items:center;justify-content:space-between;gap:9px;list-style:none;padding:9px 0 1px;color:#888;font-size:11px;font-weight:630;cursor:pointer}
+.admin-product-detail-fold>summary::-webkit-details-marker{display:none}
+.admin-product-detail-label{color:#414141;font-weight:750;white-space:nowrap}
+.admin-product-caret{display:inline-block;font-size:16px;line-height:1;margin-left:3px;transition:transform .15s}
+.admin-product-detail-fold[open] .admin-product-caret{transform:rotate(180deg)}
+.admin-product-detail-body{padding-top:13px}
+.admin-product-option-list{background:#fafafa;border:1px solid #eaeaea;border-radius:6px;padding:3px 11px;max-height:260px;overflow:auto}
+.admin-product-option-row{display:grid;grid-template-columns:minmax(0,105px) minmax(0,1fr);gap:10px;align-items:baseline;padding:8px 0;border-bottom:1px solid #eee;font-size:12px;line-height:1.55;color:#555}
+.admin-product-option-row:last-child{border-bottom:0}
+.admin-product-option-row strong{font-size:12px;color:#282828;overflow-wrap:anywhere}
+.admin-product-option-row span{overflow-wrap:anywhere}
+.admin-product-detail-body .admin-private-product-summary{border-radius:6px;padding:10px 11px;margin:10px 0;background:#fafafa;border-color:#eee}
+.admin-product-note-preview{margin-top:10px;padding:10px 11px;background:#fafafa;border:1px solid #eee;border-radius:6px;font-size:12px;line-height:1.6}
+.admin-product-note-preview b{display:block;margin-bottom:5px;color:#444}
+.admin-product-note-preview div{white-space:pre-wrap;overflow-wrap:anywhere}
+.admin-product-detail-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.admin-product-detail-actions .btn{min-width:0;min-height:36px;font-size:12px;padding:7px 5px}
+.admin-product-detail-warning{font-size:11px;line-height:1.5;color:#a27335;margin:9px 0}
+.admin-product-more-actions{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:10px}
+.admin-product-more-actions .btn{min-height:34px;font-size:11px;padding:6px 9px}
+@media(max-width:365px){
+ .admin-product-card{padding:10px}
+ .admin-product-main{grid-template-columns:56px minmax(0,1fr) auto;gap:8px}
+ .admin-product-thumb-wrap,.admin-product-thumb-wrap .product-thumb,.admin-product-no-photo{width:56px;height:56px}
+ .admin-product-brief{gap:4px 6px;font-size:9px}
+ .admin-product-edit.btn{padding:5px 7px}
+}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -2989,13 +3034,41 @@ function renderAdminProducts(){
    ${shown.map(p=>{
     const storeActive=state.stores.some(st=>st.id===p.store_id&&st.active);
     const visibleToCustomer=p.published&&storeActive;
-    return `<div class="card admin-product-card" data-admin-product-card data-product-search="${esc(adminProductSearchText(p))}" ${searchQuery&&!adminProductSearchText(p).includes(searchQuery)?'hidden':''}><div class="row between"><div class="row"><span>${p.image_url?img(p,'product-thumb'):'🧸'}</span><div><div class="tiny">${esc(storeName(p.store_id))} · ${esc(categoryLabel(p))}</div><b>${esc(p.name)}</b></div></div><div class="admin-product-top-actions"><button class="btn sm secondary" data-action="edit-product" data-id="${esc(p.id)}">상품 수정</button><button type="button" class="btn sm admin-product-delete" data-action="delete-product" data-id="${esc(p.id)}" aria-label="${esc(p.name)} 상품 삭제">삭제</button></div></div>
-    <div class="form-options">${Object.entries(p.options||{}).map(([c,ss])=>`<div><b>${esc(c)}</b> : ${ss.map(esc).join(', ')}</div>`).join('')}</div>
-    ${privateProductSummary(p.id)}
-    <div class="row wrap product-manage-status"><span class="chip ${visibleToCustomer?'green':'orange'}">${visibleToCustomer?'고객 전시 중':p.published?'가게 숨김으로 미노출':'전시 숨김'}</span><span class="chip ${p.is_sold_out?'red':'green'}">${p.is_sold_out?'품절':'판매 가능'}</span></div>
-    <div class="product-manage-controls"><button type="button" class="btn sm ${p.is_sold_out?'secondary':'outline'}" data-action="toggle-product-soldout" data-id="${esc(p.id)}">${p.is_sold_out?'품절 해제':'품절 표시'}</button><button type="button" class="btn sm ${p.published?'secondary':'outline'}" data-action="toggle-product-display" data-id="${esc(p.id)}">${p.published?'전시 숨기기':'전시하기'}</button></div>
-    ${p.published&&!storeActive?'<div class="smallnote">가게가 숨김 상태라 상품을 공개해도 고객에게는 보이지 않아요.</div>':''}
-    ${visibleToCustomer&&!p.is_sold_out?`<div class="row wrap" style="margin-top:10px"><button class="btn sm secondary" data-action="copy-product-notice" data-id="${esc(p.id)}">📣 상품 안내문 복사</button></div>`:''}
+    const cost=wholesalePrice(p);
+    const source=state.productPrivate?.[p.id]?.source_type;
+    const colors=Object.entries(p.options||{});
+    const variantCount=colors.reduce((sum,[,sizes])=>sum+(Array.isArray(sizes)?sizes.length:0),0);
+    return `<div class="card admin-product-card" data-admin-product-card data-product-search="${esc(adminProductSearchText(p))}" ${searchQuery&&!adminProductSearchText(p).includes(searchQuery)?'hidden':''}>
+      <div class="admin-product-main">
+       <div class="admin-product-thumb-wrap">${p.image_url?img(p,'product-thumb'):'<div class="admin-product-no-photo">🧸</div>'}</div>
+       <div class="admin-product-primary">
+        <div class="admin-product-store">${esc(storeName(p.store_id))} · ${esc(categoryLabel(p))}</div>
+        <b class="admin-product-name" title="${esc(p.name)}">${esc(p.name)}</b>
+        <div class="admin-product-brief">
+         <span class="admin-product-cost">🔒 ${source==='1688'?'사입원가':'도매가'} ${cost===null?'미입력':money(cost)}</span>
+         <span class="admin-product-status ${visibleToCustomer?'is-shown':'is-hidden'}">${visibleToCustomer?'전시 중':p.published?'가게 숨김':'미전시'}</span>
+         <span class="admin-product-status ${p.is_sold_out?'is-soldout':'is-on-sale'}">${p.is_sold_out?'품절':'판매 가능'}</span>
+        </div>
+       </div>
+       <button type="button" class="btn sm secondary admin-product-edit" data-action="edit-product" data-id="${esc(p.id)}" aria-label="${esc(p.name)} 상품 수정">수정</button>
+      </div>
+      <details class="admin-product-detail-fold" data-fold-key="admin-product-${esc(p.id)}">
+       <summary><span>옵션 ${colors.length}색 · ${variantCount}개 ${p.product_note?'· 안내 있음':''}</span><span class="admin-product-detail-label">상세관리 <span class="admin-product-caret">⌄</span></span></summary>
+       <div class="admin-product-detail-body">
+        <div class="admin-product-option-list">${colors.length?colors.map(([color,sizes])=>`<div class="admin-product-option-row"><strong>${esc(color)}</strong><span>${(Array.isArray(sizes)?sizes:[]).map(esc).join(' · ')}</span></div>`).join(''):'<div class="tiny">등록된 옵션이 없어요.</div>'}</div>
+        ${p.product_note?`<div class="admin-product-note-preview"><b>상품 안내 · 사이즈팁</b><div>${esc(p.product_note)}</div></div>`:''}
+        ${privateProductSummary(p.id)}
+        <div class="admin-product-detail-actions">
+         <button type="button" class="btn sm ${p.is_sold_out?'secondary':'outline'}" data-action="toggle-product-soldout" data-id="${esc(p.id)}">${p.is_sold_out?'품절 해제':'품절 표시'}</button>
+         <button type="button" class="btn sm ${p.published?'secondary':'outline'}" data-action="toggle-product-display" data-id="${esc(p.id)}">${p.published?'전시 숨기기':'전시하기'}</button>
+        </div>
+        ${p.published&&!storeActive?'<p class="admin-product-detail-warning">가게가 숨김 상태라 고객에게 보이지 않아요.</p>':''}
+        <div class="admin-product-more-actions">
+         ${visibleToCustomer&&!p.is_sold_out?`<button type="button" class="btn sm secondary" data-action="copy-product-notice" data-id="${esc(p.id)}">📣 안내문 복사</button>`:'<span></span>'}
+         <button type="button" class="btn sm admin-product-delete" data-action="delete-product" data-id="${esc(p.id)}" aria-label="${esc(p.name)} 상품 삭제">상품 삭제</button>
+        </div>
+       </div>
+      </details>
     </div>`}).join('')}
     <div id="admin-product-search-empty" class="empty ${matchingCount?'hidden':''}">${searchQuery?'검색 결과가 없어요. 검색어나 상품 상태 필터를 변경해 주세요.':'이 필터에 해당하는 상품이 없어요.'}</div>
   `}

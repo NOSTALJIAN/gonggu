@@ -3388,17 +3388,30 @@ function procurementGroups(rows){
 function procurementCopyText(readyOnly=false,vendorName=null){
  const rows=procurementRows().filter(r=>(!readyOnly||r.ready)&&(vendorName===null||r.vendor===vendorName));
  if(!rows.length)throw Error('복사할 상품이 없어요.');
- const chunks=[readyOnly?'[미니예나] 입금·배송비 확인 완료 발주서':'[미니예나] 최종 확정 주문 검토 목록',
- '도매배송비 별도 / 발주 완료·품절·입고완료 제외'];
- if(!readyOnly)chunks.push('주의: 배송비 배분·입금 미확인 상품이 포함될 수 있어요.');
- for(const vendor of procurementGroups(rows)){
-  chunks.push('', '■ 도매처 '+vendor.name);
-  for(const p of vendor.products){
-   chunks.push('- '+p.name+' / '+p.color+' / '+p.size+' / '+p.qty+'개 / 도매단가 '+(p.unit===null?'미등록':money(p.unit))+' / 도매금액 '+(p.unit===null?'미등록':money(p.cost))+' / 판매금액 '+money(p.sale));
-   if(p.issues.size)chunks.push('  확인: '+[...p.issues].join(', '));
-   chunks.push('  주문자 '+p.people.join(', '));
+ const vendors=new Map();
+ for(const r of rows){
+  if(!vendors.has(r.vendor))vendors.set(r.vendor,new Map());
+  const products=vendors.get(r.vendor),i=r.item;
+  const key=i.product_id||i.product_name;
+  if(!products.has(key))products.set(key,{name:i.product_name,options:new Map()});
+  const product=products.get(key),optionKey=JSON.stringify([i.color,i.size]);
+  if(!product.options.has(optionKey))product.options.set(optionKey,{color:i.color,size:i.size,qty:0});
+  product.options.get(optionKey).qty+=r.qty;
+ }
+ const chunks=[];
+ for(const [vendor,products] of vendors){
+  if(chunks.length)chunks.push('');
+  if(vendorName===null)chunks.push(vendor);
+  let total=0;
+  for(const product of products.values()){
+   if(chunks.length&&chunks[chunks.length-1]!=='')chunks.push('');
+   chunks.push(product.name);
+   for(const option of product.options.values()){
+    chunks.push(option.color+' / '+option.size+' / '+option.qty+'개');
+    total+=option.qty;
+   }
   }
-  chunks.push('도매처 합계 '+vendor.qty+'개 · 매입 '+money(vendor.cost)+(vendor.missing?' (원가 미등록 '+vendor.missing+'개 제외)':''));
+  chunks.push('','총 '+total+'개');
  }
  return chunks.join('\n');
 }

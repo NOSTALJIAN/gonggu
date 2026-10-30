@@ -3565,7 +3565,7 @@ function procurementGroups(rows){
 }
 /* Vendor-ready Kakao message: always send PUBLIC brand, product, variant, quantity,
    and ADMIN-PRIVATE WHOLESALE UNIT COST, never the customer sale price. */
-function formatWholesaleOrderCopy(rows,groupBySupplier=true,groupTitle='도매처'){
+function formatWholesaleOrderCopy(rows,groupBySupplier=true,groupTitle='도매처',includeTotals=false){
  if(!rows.length)throw Error('복사할 발주 상품이 없어요.');
  const suppliers=new Map();
  for(const r of rows){
@@ -3583,13 +3583,26 @@ function formatWholesaleOrderCopy(rows,groupBySupplier=true,groupTitle='도매�
   details.get(key).qty+=Number(r.qty)||0;
  }
  const output=[];
+ let totalAmount=0,totalQty=0,unpricedQty=0;
  for(const [supplier,records] of suppliers){
   if(output.length)output.push('');
   if(groupBySupplier)output.push(groupTitle+': '+supplier);
   output.push('브랜드 | 품명 | 색상 | 사이즈 | 수량 | 단가');
   const lines=[...records.values()].sort((a,b)=>a.brand.localeCompare(b.brand,'ko')||a.name.localeCompare(b.name,'ko')||a.color.localeCompare(b.color,'ko')||a.size.localeCompare(b.size,'ko')||(a.unit??0)-(b.unit??0));
   for(const row of lines)output.push([row.brand,row.name,row.color,row.size,row.qty+'개',row.unit===null?'단가 미등록':money(row.unit)].join(' | '));
-  output.push('총 '+lines.reduce((n,row)=>n+row.qty,0)+'개');
+  const groupQty=lines.reduce((n,row)=>n+row.qty,0);
+  output.push('총 '+groupQty+'개');
+  if(includeTotals){
+   const groupAmount=lines.reduce((n,row)=>n+(row.unit===null?0:row.qty*row.unit),0);
+   const groupUnpriced=lines.reduce((n,row)=>n+(row.unit===null?row.qty:0),0);
+   totalAmount+=groupAmount;
+   totalQty+=groupQty;
+   unpricedQty+=groupUnpriced;
+   output.push('매입 총액: '+money(groupAmount)+(groupUnpriced?' (단가 미등록 '+groupUnpriced+'개 제외 · 부분 합계)':''));
+  }
+ }
+ if(includeTotals&&groupBySupplier&&suppliers.size>1){
+  output.push('','전체 수량: '+totalQty+'개','전체 매입 총액: '+money(totalAmount)+(unpricedQty?' (단가 미등록 '+unpricedQty+'개 제외 · 부분 합계)':''));
  }
  return output.join('\n');
 }
@@ -3697,16 +3710,19 @@ function renderCompletedProcurementSheet(){
  const rows=completedProcurementRows();
  const brands=procurementGroups(rows);
  const totalQty=rows.reduce((n,r)=>n+r.qty,0);
+ const totalAmount=rows.reduce((n,r)=>n+(r.unit===null?0:r.qty*r.unit),0);
+ const missingQty=rows.reduce((n,r)=>n+(r.unit===null?r.qty:0),0);
  return `<details class="procurement-sheet compact-fold" id="completed-procurement-sheet" open>
   <summary><b>도매 발주완료 · 가게별 발주서 다시 복사</b><small>${brands.length}개 남대문 가게 · ${rows.length}개 품목 · ${totalQty}개</small></summary>
   <p class="procurement-sheet-intro">발주완료된 상품을 고객에게 보이는 남대문 가게(브랜드) 이름별로 분류해요. 실제 도매처가 같아도 브랜드별로 나뉘고, 이후 추가된 이번 회차 주문은 섞이지 않아요. 단가는 관리자 전용 도매가예요.</p>
-  ${rows.length?`<div class="procurement-sheet-tools">
+  ${rows.length?`<div class="procurement-sheet-subtotal"><span>전체 수량 ${totalQty}개</span><strong>전체 매입 총액 ${money(totalAmount)}${missingQty?' (단가 미등록 '+missingQty+'개 제외 · 부분 합계)':''}</strong></div><div class="procurement-sheet-tools">
    <button class="btn sm" type="button" data-action="copy-completed-procurement-all">가게별 전체 발주서 복사 (${totalQty}개)</button>
   </div>
   ${brands.map(v=>`<div class="procurement-supplier">
    <div class="procurement-supplier-content">
     <div class="row between wrap"><strong>남대문 가게 · ${esc(v.name)}</strong><span class="tiny">총 ${v.qty}개 · ${v.products.length}개 옵션</span></div>
     <div class="smallnote">${v.products.map(p=>esc(p.name)+' · '+esc(p.color)+'/'+esc(p.size)+' ×'+p.qty).join(' / ')}</div>
+    <div class="procurement-sheet-subtotal"><span>가게 매입 총액</span><strong>${money(v.cost)}${v.missing?' (단가 미등록 '+v.missing+'개 제외 · 부분 합계)':''}</strong></div>
     <button class="btn sm secondary procurement-supplier-copy" type="button" data-action="copy-completed-procurement-vendor" data-supplier="${esc(v.name)}">이 가게 발주완료 발주서 복사</button>
    </div>
   </div>`).join('')}`:'<div class="empty">발주완료 내역이 없어요.</div>'}
@@ -4724,7 +4740,7 @@ if(a==='copy-completed-procurement-all'||a==='copy-completed-procurement-vendor'
  const brand=a==='copy-completed-procurement-vendor'?String(b.dataset.supplier||''):null;
  const rows=completedProcurementRows().filter(r=>brand===null||r.vendor===brand);
  if(!rows.length)throw Error('다시 복사할 발주완료 상품이 없어요.');
- await copy(formatWholesaleOrderCopy(rows,true,'브랜드'));
+ await copy(formatWholesaleOrderCopy(rows,true,'브랜드',true));
  notif('남대문 가게별 발주완료 발주서를 다시 복사했어요.');
  return;
 }

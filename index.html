@@ -3563,35 +3563,39 @@ function procurementGroups(rows){
   ...v,products:[...v.products.values()].sort((a,b)=>a.name.localeCompare(b.name,'ko')||a.color.localeCompare(b.color,'ko')||a.size.localeCompare(b.size,'ko'))
  }));
 }
+/* Vendor-ready Kakao message: always send PUBLIC brand, product, variant, quantity,
+   and ADMIN-PRIVATE WHOLESALE UNIT COST, never the customer sale price. */
+function formatWholesaleOrderCopy(rows,groupBySupplier=true){
+ if(!rows.length)throw Error('복사할 발주 상품이 없어요.');
+ const suppliers=new Map();
+ for(const r of rows){
+  const supplier=String(r.vendor||'실제 도매업체 미등록').trim();
+  if(!suppliers.has(supplier))suppliers.set(supplier,new Map());
+  const details=suppliers.get(supplier);
+  // store_name is the brand recorded on the buyer's order (public-facing Namdaemun store).
+  const brand=String(r.item?.store_name||'브랜드 미등록').trim();
+  const name=String(r.item?.product_name||'상품명 미등록').trim();
+  const color=String(r.item?.color||'색상 미등록').trim();
+  const size=String(r.item?.size||'사이즈 미등록').trim();
+  const unit=r.unit===null||r.unit===undefined||!Number.isFinite(Number(r.unit))?null:Number(r.unit);
+  const key=JSON.stringify([brand,name,color,size,unit]);
+  if(!details.has(key))details.set(key,{brand,name,color,size,unit,qty:0});
+  details.get(key).qty+=Number(r.qty)||0;
+ }
+ const output=[];
+ for(const [supplier,records] of suppliers){
+  if(output.length)output.push('');
+  if(groupBySupplier)output.push('도매처: '+supplier);
+  output.push('브랜드 | 품명 | 색상 | 사이즈 | 수량 | 단가');
+  const lines=[...records.values()].sort((a,b)=>a.brand.localeCompare(b.brand,'ko')||a.name.localeCompare(b.name,'ko')||a.color.localeCompare(b.color,'ko')||a.size.localeCompare(b.size,'ko')||(a.unit??0)-(b.unit??0));
+  for(const row of lines)output.push([row.brand,row.name,row.color,row.size,row.qty+'개',row.unit===null?'단가 미등록':money(row.unit)].join(' | '));
+  output.push('총 '+lines.reduce((n,row)=>n+row.qty,0)+'개');
+ }
+ return output.join('\n');
+}
 function procurementCopyText(readyOnly=false,vendorName=null){
  const rows=procurementRows().filter(r=>(!readyOnly||r.ready)&&(vendorName===null||r.vendor===vendorName));
- if(!rows.length)throw Error('복사할 상품이 없어요.');
- const vendors=new Map();
- for(const r of rows){
-  if(!vendors.has(r.vendor))vendors.set(r.vendor,new Map());
-  const products=vendors.get(r.vendor),i=r.item;
-  const key=i.product_id||i.product_name;
-  if(!products.has(key))products.set(key,{name:i.product_name,options:new Map()});
-  const product=products.get(key),optionKey=JSON.stringify([i.color,i.size]);
-  if(!product.options.has(optionKey))product.options.set(optionKey,{color:i.color,size:i.size,qty:0});
-  product.options.get(optionKey).qty+=r.qty;
- }
- const chunks=[];
- for(const [vendor,products] of vendors){
-  if(chunks.length)chunks.push('');
-  if(vendorName===null)chunks.push(vendor);
-  let total=0;
-  for(const product of products.values()){
-   if(chunks.length&&chunks[chunks.length-1]!=='')chunks.push('');
-   chunks.push(product.name);
-   for(const option of product.options.values()){
-    chunks.push(option.color+' / '+option.size+' / '+option.qty+'개');
-    total+=option.qty;
-   }
-  }
-  chunks.push('','총 '+total+'개');
- }
- return chunks.join('\n');
+ return formatWholesaleOrderCopy(rows,true);
 }
 function wholesaleRoundCompletionPlan(){
  const rows=procurementRows(),quotes=new Map();
@@ -3641,7 +3645,7 @@ function renderProcurementSheet(){
  </details>`).join('');
  return `<details id="procurement-sheet" class="procurement-sheet compact-fold" data-fold-key="procurement">
   <summary><b>이번 회차 · 도매처별 발주서</b><small>${optionCount(rows)}종 · ${qty}개 · 도매가 ${money(cost)}</small></summary>
-  <p class="procurement-sheet-intro">최종 확정 주문을 도매처별로 정리했어. 상품명·색상·사이즈·수량·도매가·판매가와 구매자를 볼 수 있어.</p>
+  <p class="procurement-sheet-intro">최종 확정 주문을 실제 도매처별로 정리했어. 발주 메시지를 복사하면 브랜드(고객용 남대문 가게명) → 품명 → 색상 → 사이즈 → 수량 → 도매 단가 순서로 전송할 수 있어.</p>
   <div class="procurement-sheet-stats">
    <div><small>확정 미발주 상품 옵션</small><b>${optionCount(rows)}종</b></div>
    <div><small>미발주 수량</small><b>${qty}개</b></div>
@@ -3740,7 +3744,20 @@ function renderBuyerOrderDetail(q){
 function renderBuyerStats(){const groups=customerGroups();const confirmed=groups.reduce((s,g)=>s+g.spent,0);return `<div class="sectiontitle"><div><h2>구매자별 구매 내역</h2><div class="sub">아기 이름까지 구분 · 확정 주문에 대해서만 구매금액 합산</div></div><button class="btn sm secondary" data-action="refresh">새로고침</button></div><div class="three" style="margin-bottom:13px"><div class="tile"><small>구분된 구매자</small><strong>${groups.length}명</strong></div><div class="tile"><small>확정 주문</small><strong>${groups.reduce((s,g)=>s+g.confirmed,0)}건</strong></div><div class="tile"><small>확정 주문금액</small><strong style="font-size:14px">${money(confirmed)}</strong></div></div><div class="identity-warning">동명이인 방지를 위해 주문자 이름 + 아기 이름 + 연락처(입력한 경우) 또는 같은 기기의 식별번호로 구분해요. 회원 계정이 없어 다른 기기에서 연락처도 입력하지 않으면 같은 사람인지 자동으로 확인할 수 없어요. 아기 이름이 없는 옛 주문은 개별로 표시돼요.</div><input id="stat-search" type="search" placeholder="주문자·아기 이름·연락처 검색"><div class="statlist">${groups.map(g=>`<div class="statcard" data-stats-entry><div class="row between"><div><b>${esc(g.name)} <span class="chip purple">${esc(g.baby||'아기 이름 미입력')}</span></b><div class="tiny">${esc(g.contact||'연락처 미입력')} · 확정 ${g.confirmed}건 / 견적 중 ${g.pending}건 / 취소 ${g.cancelled}건</div></div><strong>${money(g.spent)}</strong></div><div class="substats" style="margin-top:9px"><span>확정 수량 ${g.units}개</span><span>환불 차감 수령액 ${money(g.netPaid)}</span><span>전체 요청 ${g.orders.length}건</span></div><details><summary class="stats-summary"><span>견적·주문 건별 보기</span><span class="tiny">펼치기 ▾</span></summary>${g.orders.map(q=>`<button type="button" class="stat-detail stat-order-open" data-action="buyer-order-details" data-id="${esc(q.id)}" aria-label="${esc(q.buyer_name)}님 ${esc(statusLabel[q.status]||'주문')} ${esc(fmtDate(q.created_at))} 상세정보 열기"><div class="row between"><b>${esc(statusLabel[q.status])} · ${fmtDate(q.created_at)}</b><span>${q.status==='confirmed'?money(totalDue(q)):'총액 집계 제외'}</span></div><div class="tiny">${q.items.map(i=>esc(i.product_name)+' '+esc(i.color)+'/'+esc(i.size)+' ×'+i.quantity).join(' · ')} · ${deliveryLabel(q)}${isBundle(q)?' · 묶음배송':''}</div><span class="stat-order-more">주문 상세정보 보기 <span aria-hidden="true">→</span></span></button>`).join('')}</details></div>`).join('')||'<div class="empty">아직 견적 요청이 없어요.</div>'}</div>`}
 function renderProductStats(){const groups=productBuyerGroups();return `<div class="sectiontitle"><div><h2>상품별 누가 주문했나요?</h2><div class="sub">가게·상품·컬러·사이즈별 주문자, 확정 수량과 견적 대기 수량 별도</div></div><button class="btn sm secondary" data-action="refresh">새로고침</button></div><div class="identity-warning">발주해야 할 수량은 ‘확정’ 수량만 확인해 주세요. 품절·취소는 제외하고 상품 준비 중인 수량도 포함돼요.</div><input id="stat-search" type="search" placeholder="가게·상품·컬러·주문자·아기 이름 검색"><div class="statlist">${groups.map(g=>`<div class="statcard" data-stats-entry><div class="smallnote">🏬 ${esc(g.store)}</div><h3 style="margin:3px 0 3px;font-size:15px">${esc(g.product)}</h3><div class="tiny">${esc(g.color)} / ${esc(g.size)}</div><div class="substats" style="margin-top:9px"><span>확정 ${g.confirmedQty}개</span><span>견적 중 ${g.pendingQty}개</span><span>확정 주문자 ${new Set(g.confirmed.map(x=>buyerIdentity(x.q))).size}명</span></div><details ${g.confirmed.length?'open':''}><summary class="stats-summary">확정 주문자 ${g.confirmed.length}건</summary>${g.confirmed.map(({q,qty,subtotal})=>`<div class="stat-detail"><div class="row between"><b>${esc(buyerLabel(q))}</b><strong>${qty}개</strong></div><div class="tiny">${fmtDate(q.created_at)} · ${subtotal==null?'금액 미정':money(subtotal)} ${q.cancel_requested_at?'· 취소 요청 중':''}</div></div>`).join('')||'<div class="tiny">확정 주문이 없어요.</div>'}</details>${g.pending.length?`<details><summary class="stats-summary">견적 요청·안내 중 ${g.pending.length}건 (미확정)</summary>${g.pending.map(({q,qty})=>`<div class="stat-detail"><div class="row between"><span>${esc(buyerLabel(q))} · ${esc(statusLabel[q.status])}</span><b>${qty}개</b></div></div>`).join('')}</details>`:''}</div>`).join('')||'<div class="empty">아직 상품 주문 데이터가 없어요.</div>'}</div>`}
 function vendorGroups(){const g=new Map();for(const q of state.quotes.filter(q=>q.status==='confirmed'))for(const i of q.items){if(i.fulfillment==='sold_out')continue;const key=JSON.stringify([i.store_name,i.product_name,i.color,i.size]);let x=g.get(key);if(!x){x={store:i.store_name,product:i.product_name,color:i.color,size:i.size,qty:0,people:new Set()};g.set(key,x)}x.qty+=i.quantity;x.people.add(buyerLabel(q))}return [...g.values()].sort((a,b)=>a.store.localeCompare(b.store,'ko')||a.product.localeCompare(b.product,'ko'))}
-function vendorText(){return vendorGroups().map(x=>`${x.store} / ${x.product} / ${x.color} / ${x.size} ×${x.qty}`).join('\n')||'확정된 발주 내역이 없어요'}
+function vendorText(){
+ if(!state.admin||state.page!=='admin')throw Error('관리자만 발주 목록을 복사할 수 있어요.');
+ const rows=[];
+ for(const q of state.quotes.filter(q=>q.status==='confirmed')){
+  for(const item of q.items||[]){
+   if(item.fulfillment==='sold_out')continue;
+   const raw=state.productPrivateReady?state.productPrivate[item.product_id]?.wholesale_price:null;
+   const unit=raw===null||raw===undefined||raw===''?null:Number(raw);
+   rows.push({vendor:'전체 확정 주문',item,qty:Number(item.quantity)||0,unit:Number.isFinite(unit)?unit:null});
+  }
+ }
+ if(!rows.length)return '확정된 발주 내역이 없어요';
+ return formatWholesaleOrderCopy(rows,false);
+}
 function renderVendorSummary(){const groups=vendorGroups(),stores=[...new Set(groups.map(g=>g.store))];return `${renderSupplierBulkManager(true)}<div class="sectiontitle"><div><h2>가게별 확정 발주</h2><div class="sub">최종 주문만 합산 · 품절 제외 · 상품 준비 중 포함</div></div><button class="btn sm secondary" data-action="copy-vendors">전체 복사</button></div>${stores.map(name=>{const a=groups.filter(g=>g.store===name);return `<div class="card"><h3>🏬 ${esc(name)}</h3>${a.map(x=>`<div class="line"><div class="row between"><div><b>${esc(x.product)}</b><div class="tiny">${esc(x.color)} / ${esc(x.size)} · ${esc([...x.people].join(', '))}</div></div><strong>${x.qty}개</strong></div></div>`).join('')}<div class="sumline total"><span>이 가게 발주 수량</span><strong>${a.reduce((s,i)=>s+i.qty,0)}개</strong></div></div>`}).join('')||'<div class="empty">아직 확정된 주문이 없어요.</div>'}`}
 function renderStoreSizeChartEditor(store){
  const paths=Array.isArray(store?.size_chart_paths)?store.size_chart_paths:[];

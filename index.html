@@ -1337,6 +1337,13 @@ body:has(.overlay) .floating-actions{opacity:0;visibility:hidden;pointer-events:
 .supplier-bulk-mode-options strong{font-size:12px}
 .supplier-bulk-mode-options label{display:flex;gap:9px;align-items:flex-start;font-size:12px;line-height:1.5;cursor:pointer}
 .supplier-bulk-mode-options input[type="radio"]{appearance:auto;flex:0 0 19px;width:19px;height:19px;margin:1px 0 0;accent-color:#222}
+/* Compact admin panels retain expansion when the page re-renders. */
+.compact-fold>summary{cursor:pointer;min-height:44px;padding:10px 0;font-weight:750;list-style:none}
+.compact-fold>summary::-webkit-details-marker{display:none}
+.compact-fold>summary::after,.procurement-supplier>summary::after{content:'펼치기 ▾';display:block;font-size:11px;color:#666;margin-top:5px}
+.compact-fold[open]>summary::after,.procurement-supplier[open]>summary::after{content:'접기 ▴'}
+.compact-fold>summary small{display:block;font-size:12px;font-weight:400;color:#666;margin-top:5px}
+.manual-freight-form{padding:10px 0;border-top:1px solid #eee}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -1924,7 +1931,7 @@ function supplierBulkExistingManualFees(selected){
   const manual=Math.max(0,supplierShippingShare(q)-recorded);
   if(manual>0)flagged.push({q,manual});
  }
- return {buyers:flagged.length,total:flagged.reduce((sum,p)=>sum+p.manual,0)};
+ return {flagged,buyers:flagged.length,total:flagged.reduce((sum,p)=>sum+p.manual,0)};
 }
 function updateSupplierBulkPreview(){
  const root=app.querySelector('#supplier-bulk-manager');
@@ -1940,7 +1947,7 @@ function updateSupplierBulkPreview(){
  const mode=root.querySelector('input[name="existing_mode"]:checked')?.value||'replace';
  if(warning){
   warning.hidden=existing.buyers===0;
-  warning.textContent=`선택한 ${existing.buyers}명의 주문에 기존 개별 도매배송비 ${money(existing.total)}이(가) 있어요. 아래에서 기존 금액을 대체하거나 새 금액을 추가할 수 있어요.`;
+  warning.textContent=`저장된 개별 도매배송비 합계 ${money(existing.total)} (${existing.flagged.map(({q,manual})=>q.buyer_name+': '+money(manual)).join(', ')}). 기본요금이 아니에요. 구매자별 직접 입력에서 수정하거나 아래 새 배분금액으로 대체할 수 있어요.`;
  }
  if(modeChoices)modeChoices.hidden=existing.buyers===0;
  const total=Number(totalInput?.value||0);
@@ -2171,7 +2178,8 @@ async function miniEnablePush(){
  if(!result.client.User.PushSubscription.optedIn)throw Error('알림 허용이 완료되지 않았어요. 권한 상태를 확인해 주세요.');
  miniPushStatus();
 }
-function render(){cancelAdminPhotoDrag();app.innerHTML=`<main class="shell">${header()}${demoNotice()}${state.page==='admin'?renderAdmin():state.page==='track'?renderTrack():renderShop()}${shopBottomNav()}<div class="floating-actions" aria-label="화면 바로가기"><button class="floating-refresh" type="button" data-action="reload-app" aria-label="최신 화면으로 새로고침" title="새로고침"><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8.1 8.1 0 0 0-15.5-2"/><path d="M4 4v5h5"/><path d="M4 13a8.1 8.1 0 0 0 15.5 2"/><path d="M20 20v-5h-5"/></svg><span>새로고침</span></button><button class="back-to-top" type="button" data-action="scroll-top" aria-label="맨 위로 이동" aria-hidden="true" tabindex="-1"><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 13 7-7 7 7M12 6v12"/></svg><span>위로</span></button></div></main>${renderModal()}`;updateScrollTop();updateProcurementSchedule();if(state.admin){updateSupplierBulkPreview();queueMicrotask(()=>showRequestImages().catch(console.error));queueMicrotask(()=>miniPushStatus().catch(console.warn));}}
+const adminFoldState=new Map();
+function render(){app.querySelectorAll("details[data-fold-key]").forEach(el=>adminFoldState.set(el.dataset.foldKey,el.open));cancelAdminPhotoDrag();app.innerHTML=`<main class="shell">${header()}${demoNotice()}${state.page==='admin'?renderAdmin():state.page==='track'?renderTrack():renderShop()}${shopBottomNav()}<div class="floating-actions" aria-label="화면 바로가기"><button class="floating-refresh" type="button" data-action="reload-app" aria-label="최신 화면으로 새로고침" title="새로고침"><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8.1 8.1 0 0 0-15.5-2"/><path d="M4 4v5h5"/><path d="M4 13a8.1 8.1 0 0 0 15.5 2"/><path d="M20 20v-5h-5"/></svg><span>새로고침</span></button><button class="back-to-top" type="button" data-action="scroll-top" aria-label="맨 위로 이동" aria-hidden="true" tabindex="-1"><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 13 7-7 7 7M12 6v12"/></svg><span>위로</span></button></div></main>${renderModal()}`;app.querySelectorAll("details[data-fold-key]").forEach(el=>{el.open=adminFoldState.get(el.dataset.foldKey)===true});updateScrollTop();updateProcurementSchedule();if(state.admin){updateSupplierBulkPreview();queueMicrotask(()=>showRequestImages().catch(console.error));queueMicrotask(()=>miniPushStatus().catch(console.warn));}}
 function updateScrollTop(){const btn=app.querySelector('.back-to-top');if(!btn)return;const visible=window.scrollY>440&&!state.modal;btn.classList.toggle('is-visible',visible);btn.tabIndex=visible?0:-1;btn.setAttribute('aria-hidden',String(!visible));}
 const steps=idx=>`<div class="quote-step">${['① 상품 담기','② 견적 요청','③ 가격 확인','④ 최종 주문'].map((x,i)=>`<span class="${i===idx?'current':''}">${x}</span>${i<3?'<i></i>':''}`).join('')}</div>`;
 
@@ -3229,7 +3237,12 @@ function renderSupplierBulkManager(historyOnly=false){
     </button>
    </div>
    ${existingPending?'<p class="smallnote">이 거래처 배송비를 이미 배분한 구매자예요. 상품을 추가하려면 기존 미발주 배분을 취소하고 함께 선택해 주세요.</p>':''}
-   ${statuses}
+   <details class="compact-fold" data-fold-key="buyer-${esc(storeId)}-${esc(key)}"><summary>상품 ${rows.length}종 · 선택/펼치기</summary>${statuses}</details>
+   <details class="compact-fold" data-fold-key="fee-${esc(storeId)}-${esc(key)}"><summary>도매배송비 직접 입력 · 주문별</summary>
+    ${[...new Map(rows.map(({q})=>[q.id,q])).values()].map(q=>supplierBatchesForQuote(q).length
+     ?`<p class="smallnote">${esc(q.id.slice(0,8))} · ${money(supplierShippingShare(q))} — 배분 내역에서 취소 후 수정해 주세요.</p>`
+     :`<form data-supplier-shipping="${esc(q.id)}" class="manual-freight-form"><label class="label">${esc(q.buyer_name)} · ${esc(q.id.slice(0,8))} · 이 주문 도매배송비 (원)<input name="supplier_total" type="number" min="0" max="1000000" step="1" required inputmode="numeric" value="${supplierShippingShare(q)}"></label><input name="supplier_people" type="hidden" value="1"><button class="btn sm secondary" type="submit">입력 금액으로 저장</button><p class="smallnote">0원도 가능 · 이 주문 전체의 개별 도매배송비를 대체해요.</p></form>`).join('')}
+   </details>
   </div>`;
  }).join('');
  const history=state.supplierBatchesReady?state.supplierBatches.map((batch,index)=>{
@@ -3266,8 +3279,8 @@ function renderSupplierBulkManager(historyOnly=false){
    <div class="supplier-bulk-list" style="margin-top:14px">${history}</div>
   </details>`;
  }
- return `<section class="card supplier-bulk-manager" id="supplier-bulk-manager">
-  <div class="supplier-bulk-heading"><h3>거래처별 도매배송비 배분</h3><span>상품별 선택 · 인원별 분담</span></div>
+ return `<details class="card supplier-bulk-manager compact-fold" id="supplier-bulk-manager" data-fold-key="freight">
+  <summary><b>거래처별 도매배송비 배분</b><small>총액 배분 · 구매자별 직접 입력</small></summary>
   <p class="smallnote"><b>상품 등록에서 입력한 실제 도매업체명(비공개)</b>만 사용해요. 구매자에게 보이는 가게명은 사용하지 않아요. 실제 업체가 같으면 고객용 가게명이 달라도 함께 묶고, 한 구매자는 해당 업체 배송비를 한 번만 부담해요. ‘다음 회차 보류’·‘미선택’은 제외돼요.</p>
   ${!state.productPrivateReady?'<p class="noticefail">비공개 도매업체명 정보를 불러오지 못했어요. 새로고침 후 확인해 주세요.</p>':''}
   ${!state.supplierBatchesReady?`<p class="noticefail">배분 현황을 불러오지 못했어요. ${esc(state.supplierBatchesError||'관리자 새로고침 후 확인해 주세요.')}</p>`:''}
@@ -3289,7 +3302,7 @@ function renderSupplierBulkManager(historyOnly=false){
    <div class="supplier-bulk-preview" data-supplier-bulk-preview>먼저 거래처와 상품을 선택해 주세요.</div>
    <p class="supplier-bulk-existing-warning" data-supplier-existing-warning hidden></p>
    <div class="supplier-bulk-existing-confirm supplier-bulk-mode-options" data-supplier-existing-modes hidden>
-    <strong>기존에 입력한 배송비 처리</strong>
+    <strong>기존에 저장된 배송비 처리</strong>
     <label><input type="radio" name="existing_mode" value="replace" checked> <span><b>기존 금액 대체 (추천)</b> · 이전 개별 배송비를 없애고 이번 배분금액으로 설정</span></label>
     <label><input type="radio" name="existing_mode" value="add"> <span><b>기존 금액에 추가</b> · 기존 개별 배송비에 이번 배분금액을 더하기</span></label>
    </div>
@@ -3298,7 +3311,7 @@ function renderSupplierBulkManager(historyOnly=false){
   <p class="smallnote">배송비는 선택한 거래처 상품의 <b>서로 다른 구매자 수</b>로 나누고, 남는 1원은 일부 구매자에게만 배분해 총액을 정확히 맞춰요. 각 고객 주문 총액에는 다른 거래처 분담금까지 합산돼요.</p>
   ${state.supplierBatches.length?`<div class="supplier-bulk-list"><h4>거래처별 배송비 · 입금·발주 현황</h4>${history}</div>`:
     '<p class="smallnote">아직 거래처별로 배분한 내역이 없어요.</p>'}
- </section>`;
+ </details>`;
 }
 
 
@@ -3396,7 +3409,7 @@ function renderProcurementSheet(){
  const optionCount=list=>procurementGroups(list).reduce((n,v)=>n+v.products.length,0);
  const missing=rows.filter(r=>r.unit===null).reduce((n,r)=>n+r.qty,0);
  const hopeful=state.quotes.filter(q=>q.status==='quoted'&&q.purchase_intent==='buy_now');
- const suppliers=(list,kind)=>procurementGroups(list).map((v,index)=>`<details class="procurement-supplier" ${index<2?'open':''}>
+ const suppliers=(list,kind)=>procurementGroups(list).map((v,index)=>`<details class="procurement-supplier" data-fold-key="vendor-${kind}-${esc(v.name)}">
   <summary><strong>도매처 · ${esc(v.name)}</strong><small>상품 옵션 ${v.products.length}종 · 총 ${v.qty}개 · 도매가 합계 ${money(v.cost)}${v.missing?' (미등록 '+v.missing+'개 제외)':''}</small></summary>
   <div class="procurement-supplier-content">
    ${v.products.map(x=>`<div class="procurement-sheet-product">
@@ -3411,8 +3424,8 @@ function renderProcurementSheet(){
    <button class="btn sm secondary procurement-supplier-copy" type="button" data-action="copy-procurement-vendor" data-supplier="${esc(v.name)}" data-copy-kind="${kind}">${kind==='ready'?'이 도매처 발주서 복사':'이 도매처 검토 목록 복사'}</button>
   </div>
  </details>`).join('');
- return `<section id="procurement-sheet" class="procurement-sheet" aria-label="이번 회차 도매처별 발주서">
-  <h3>이번 회차 · 도매처별 발주서</h3>
+ return `<details id="procurement-sheet" class="procurement-sheet compact-fold" data-fold-key="procurement">
+  <summary><b>이번 회차 · 도매처별 발주서</b><small>${optionCount(rows)}종 · ${qty}개 · 도매가 ${money(cost)}</small></summary>
   <p class="procurement-sheet-intro">최종 확정 주문을 도매처별로 정리했어. 상품명·색상·사이즈·수량·도매가·판매가와 구매자를 볼 수 있어.</p>
   <div class="procurement-sheet-stats">
    <div><small>확정 미발주 상품 옵션</small><b>${optionCount(rows)}종</b></div>
@@ -3431,7 +3444,7 @@ function renderProcurementSheet(){
    ${review.length?suppliers(review,'review'):'<p class="procurement-sheet-intro">확인 대기 상품이 없어.</p>'}</div>
   ${hopeful.length?`<details class="procurement-sheet-extra"><summary>구매 희망 · 아직 최종 확정 전 ${hopeful.length}건 (발주 제외)</summary>${hopeful.map(q=>`<p>${esc(buyerLabel(q))} · ${q.items.reduce((n,i)=>n+(i.fulfillment==='sold_out'?0:Number(i.quantity||0)),0)}개</p>`).join('')}</details>`:''}
   <p class="procurement-sheet-intro">도매배송비는 매입 총액에 포함되지 않아. 이미 발주·입고·품절 처리된 상품은 중복 발주 방지를 위해 목록에서 제외했어.</p>
- </section>`;
+ </details>`;
 }
 function renderAdminQuotes(){
  const qq=state.quotes.filter(q=>state.filter==='all'||(state.filter==='buy_now'?isRoundBuyer(q):state.filter==='next_round'?q.status==='quoted'&&q.purchase_intent==='next_round':state.filter==='on_hold'?q.status==='quoted'&&q.purchase_intent==='on_hold':state.filter==='undecided'?q.status==='quoted'&&(!q.purchase_intent||q.purchase_intent==='undecided'):state.filter==='cancel_requested'?!!q.cancel_requested_at&&q.status!=='cancelled':state.filter.startsWith('flow_')?q.status==='confirmed'&&workflowStage(q)===state.filter.slice(5):q.status===state.filter));
@@ -5040,3 +5053,4 @@ window.addEventListener('popstate',()=>{const pp=new URLSearchParams(location.se
 </script>
 </body>
 </html>
+

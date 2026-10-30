@@ -3683,7 +3683,9 @@ function completedProcurementRows(){
    const raw=meta?.wholesale_price;
    const n=raw===null||raw===undefined||raw===''?null:Number(raw);
    rows.push({q,item,qty,vendor:String(meta?.supplier_name||'').trim()||'실제 도매업체 미등록',
-    unit:n!==null&&Number.isFinite(n)&&n>=0?n:null});
+    unit:n!==null&&Number.isFinite(n)&&n>=0?n:null,
+    retail:item.unit_price===null||item.unit_price===undefined?null:Number(item.unit_price),
+    issues:[]});
   }
  }
  return rows;

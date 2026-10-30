@@ -3565,7 +3565,7 @@ function procurementGroups(rows){
 }
 /* Vendor-ready Kakao message: always send PUBLIC brand, product, variant, quantity,
    and ADMIN-PRIVATE WHOLESALE UNIT COST, never the customer sale price. */
-function formatWholesaleOrderCopy(rows,groupBySupplier=true,groupTitle='도매처',includeTotals=false){
+function formatWholesaleOrderCopy(rows,groupBySupplier=true,groupTitle='도매처',includeTotals=false,showOverallTotal=false){
  if(!rows.length)throw Error('복사할 발주 상품이 없어요.');
  const suppliers=new Map();
  for(const r of rows){
@@ -3601,7 +3601,7 @@ function formatWholesaleOrderCopy(rows,groupBySupplier=true,groupTitle='도매�
    output.push('매입 총액: '+money(groupAmount)+(groupUnpriced?' (단가 미등록 '+groupUnpriced+'개 제외 · 부분 합계)':''));
   }
  }
- if(includeTotals&&groupBySupplier&&suppliers.size>1){
+ if(includeTotals&&showOverallTotal){
   output.push('','전체 수량: '+totalQty+'개','전체 매입 총액: '+money(totalAmount)+(unpricedQty?' (단가 미등록 '+unpricedQty+'개 제외 · 부분 합계)':''));
  }
  return output.join('\n');
@@ -4740,7 +4740,7 @@ if(a==='copy-completed-procurement-all'||a==='copy-completed-procurement-vendor'
  const brand=a==='copy-completed-procurement-vendor'?String(b.dataset.supplier||''):null;
  const rows=completedProcurementRows().filter(r=>brand===null||r.vendor===brand);
  if(!rows.length)throw Error('다시 복사할 발주완료 상품이 없어요.');
- await copy(formatWholesaleOrderCopy(rows,true,'브랜드',true));
+ await copy(formatWholesaleOrderCopy(rows,true,'브랜드',true,brand===null));
  notif('남대문 가게별 발주완료 발주서를 다시 복사했어요.');
  return;
 }

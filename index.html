@@ -1513,6 +1513,39 @@ body:has(.overlay) .floating-actions{opacity:0;visibility:hidden;pointer-events:
  .shoplist .shop-catalog-card .shop-catalog-colors{font-size:10px}
 }
 
+/* MINIYENA catalog option buttons: compact, soft secondary actions instead of heavy full-width outlines. */
+.shop-content .shoplist .shop-catalog-card .shop-catalog-select{
+ align-self:flex-end;
+ display:inline-flex;
+ justify-content:center;
+ align-items:center;
+ width:auto;
+ max-width:100%;
+ min-height:35px;
+ height:auto;
+ margin-top:7px;
+ padding:7px 11px;
+ border:1px solid #e9e9e9;
+ border-radius:5px;
+ background:#f7f7f7;
+ color:#3d3d3d;
+ font-size:11px;
+ font-weight:620;
+ line-height:1.4;
+ letter-spacing:-.015em;
+ box-shadow:none;
+}
+.shop-content .shoplist .shop-catalog-card .shop-catalog-select:not(:disabled):hover{
+ background:#efefef;
+ border-color:#dadada;
+ color:#111;
+}
+.shop-content .shoplist .shop-catalog-card .shop-catalog-select:disabled{
+ background:#fafafa!important;
+ border-color:#efefef!important;
+ color:#aaa!important;
+}
+
 /* Minimal mobile pagination: five pages + small direct jump, no repeated labels. */
 .shop-catalog-pagination{display:flex;justify-content:center;align-items:center;flex-wrap:nowrap;gap:5px;margin:22px 0 10px;padding:0}
 .shop-catalog-pagination button{

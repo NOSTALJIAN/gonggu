@@ -3667,6 +3667,47 @@ function renderProcurementSheet(){
   <p class="procurement-sheet-intro">도매배송비는 매입 총액에 포함되지 않아. 이미 발주·입고·품절 처리된 상품은 중복 발주 방지를 위해 목록에서 제외했어.</p>
  </details>`;
 }
+
+/* Archived supplier order copy: read completed quotes rather than the live
+   procurement queue, so new orders can never be merged into historical copies. */
+function completedProcurementRows(){
+ if(!state.admin||state.page!=='admin')return [];
+ const rows=[];
+ for(const q of state.quotes.filter(isWholesaleCompleted)){
+  for(const item of q.items||[]){
+   const ordered=Boolean(q.supplier_ordered_at||item.supplier_ordered_at||['received','delivered'].includes(item.fulfillment));
+   if(!ordered)continue;
+   const qty=Number(item.quantity)||0;
+   if(qty<=0)continue;
+   const meta=state.productPrivateReady?state.productPrivate[item.product_id]:null;
+   const raw=meta?.wholesale_price;
+   const n=raw===null||raw===undefined||raw===''?null:Number(raw);
+   rows.push({q,item,qty,vendor:String(meta?.supplier_name||'').trim()||'실제 도매업체 미등록',
+    unit:n!==null&&Number.isFinite(n)&&n>=0?n:null});
+  }
+ }
+ return rows;
+}
+function renderCompletedProcurementSheet(){
+ if(!state.admin||state.page!=='admin')return '';
+ const rows=completedProcurementRows();
+ const suppliers=procurementGroups(rows);
+ const totalQty=rows.reduce((n,r)=>n+r.qty,0);
+ return `<details class="procurement-sheet compact-fold" id="completed-procurement-sheet" open>
+  <summary><b>도매 발주완료 · 발주서 다시 복사</b><small>${suppliers.length}개 도매처 · ${rows.length}개 품목 · ${totalQty}개</small></summary>
+  <p class="procurement-sheet-intro">완료된 발주 내역만 따로 보여줘요. 이후 추가된 이번 회차 주문은 섞이지 않아요. 단가는 관리자에 현재 저장된 비공개 도매가 기준이에요.</p>
+  ${rows.length?`<div class="procurement-sheet-tools">
+   <button class="btn sm" type="button" data-action="copy-completed-procurement-all">발주완료 전체 발주서 복사 (${totalQty}개)</button>
+  </div>
+  ${suppliers.map(v=>`<div class="procurement-supplier">
+   <div class="procurement-supplier-content">
+    <div class="row between wrap"><strong>도매처 · ${esc(v.name)}</strong><span class="tiny">총 ${v.qty}개 · ${v.products.length}개 옵션</span></div>
+    <div class="smallnote">${v.products.map(p=>esc(p.name)+' · '+esc(p.color)+'/'+esc(p.size)+' ×'+p.qty).join(' / ')}</div>
+    <button class="btn sm secondary procurement-supplier-copy" type="button" data-action="copy-completed-procurement-vendor" data-supplier="${esc(v.name)}">이 도매처 발주완료 발주서 복사</button>
+   </div>
+  </div>`).join('')}`:'<div class="empty">발주완료 내역이 없어요.</div>'}
+ </details>`;
+}
 function renderAdminQuotes(){
  const qq=state.quotes.filter(q=>state.filter==='all'||(state.filter==='buy_now'?isRoundBuyer(q):state.filter==='wholesale_completed'?isWholesaleCompleted(q):state.filter==='next_round'?q.status==='quoted'&&q.purchase_intent==='next_round':state.filter==='on_hold'?q.status==='quoted'&&q.purchase_intent==='on_hold':state.filter==='undecided'?q.status==='quoted'&&(!q.purchase_intent||q.purchase_intent==='undecided'):state.filter==='cancel_requested'?!!q.cancel_requested_at&&q.status!=='cancelled':state.filter.startsWith('flow_')?q.status==='confirmed'&&workflowStage(q)===state.filter.slice(5):q.status===state.filter));
  const groups=['buy_now','wholesale_completed'].includes(state.filter)?qq.map(q=>[q]):bundledQuoteGroups(qq);
@@ -3693,7 +3734,7 @@ function renderAdminQuotes(){
  ${state.filter==='buy_now'?'<div class="smallnote">아직 도매 발주하지 않은 주문만 표시해요. 발주 완료 처리하면 완료 탭으로 자동 이동해요.</div>':state.filter==='wholesale_completed'?'<div class="info">도매 발주를 마친 주문이에요. 이후 입고·배송·수령 상태는 여기에서 관리해요. 새로 이번 회차 구매를 선택한 주문과 합산되지 않아요.</div>':''}
  ${qq.length?`<div class="admin-date-toolbar"><div><strong>날짜별 주문</strong><span>${qq.length}건 · ${dayCount}일 · 가격 미입력 ${unfinished}종</span></div><div class="admin-date-actions"><button type="button" class="date-all-btn" data-action="date-open-all">전체 펼치기</button><button type="button" class="date-all-btn" data-action="date-close-all">전체 접기</button></div></div>
  <div class="admin-overall-prices"><h3>현재 목록 상품 총액 비교</h3>${adminPriceTotalMarkup(qq)}</div>
- ${state.filter==='buy_now'?renderProcurementSheet()+renderSupplierBulkManager():''}
+ ${state.filter==='buy_now'?renderProcurementSheet()+renderSupplierBulkManager():state.filter==='wholesale_completed'?renderCompletedProcurementSheet():''}
  ${renderAdminQuoteDateSection(qq,awaiting,'pending')}
  ${renderAdminQuoteDateSection(qq,priced,'saved',!awaiting.length)}
  <p class="admin-date-hint">주문자 이름을 누르면 해당 주문만 접거나 펼칠 수 있어요. 미입력 주문은 처음부터 펼쳐지고, 가격 저장 완료 주문은 접힌 상태로 시작해요.</p>`:'<div class="empty">해당 상태의 견적이 없어요.</div>'}`;
@@ -4671,6 +4712,16 @@ if(a==='admin-complete-wholesale'){
  await rpc('gq_admin_mark_quote_wholesale_ordered_v61',{p_quote_id:id},true);
  await loadAdmin();
  notif('이번 회차 도매주문 완료 처리했어요. 고객 옵션 변경 요청이 마감됐어요.');
+ return;
+}
+if(a==='copy-completed-procurement-all'||a==='copy-completed-procurement-vendor'){
+ if(!state.admin||state.page!=='admin'||state.tab!=='quotes'||state.filter!=='wholesale_completed')
+  throw Error('관리자 발주 완료 목록에서 발주서를 복사해 주세요.');
+ const vendor=a==='copy-completed-procurement-vendor'?String(b.dataset.supplier||''):null;
+ const rows=completedProcurementRows().filter(r=>vendor===null||r.vendor===vendor);
+ if(!rows.length)throw Error('다시 복사할 발주완료 상품이 없어요.');
+ await copy(formatWholesaleOrderCopy(rows,true));
+ notif('발주완료 발주서를 다시 복사했어요.');
  return;
 }
 if(a==='copy-procurement-ready'||a==='copy-procurement-review'||a==='copy-procurement-vendor'){

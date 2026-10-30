@@ -4122,10 +4122,7 @@ function renderAdminQuotes(){
  const secondaryLabel=key=>key.startsWith('flow_')?workflowLabels[key.slice(5)]:statusLabel[key]||key;
  const isSecondary=secondaryKeys.includes(state.filter);
  return `<section class="admin-quote-workspace">
-  <div class="admin-quote-head" id="admin-quote-results">
-   <h2>견적·주문 관리</h2>
-   <button class="btn sm secondary" data-action="refresh">새로고침</button>
-  </div>
+  <div class="admin-quote-anchor" id="admin-quote-results"></div>
   ${optionPending?`<button class="admin-quote-attention" type="button" data-action="show-pending-item-options">옵션 변경 요청 <b>${optionPending}건</b> 확인하기 ↗</button>`:''}
   <nav class="admin-quote-primary-filters" aria-label="구매 회차별 주문 필터">
    ${primaryFilters.map(([key,label,count])=>`<button type="button" class="admin-quote-quick-tab ${state.filter===key?'active':''}" data-filter="${key}" aria-pressed="${state.filter===key}">${label}<span>${count}</span></button>`).join('')}
@@ -4144,13 +4141,13 @@ function renderAdminQuotes(){
     <button type="button" class="date-all-btn" data-action="date-close-all">모두 접기</button>
    </div>
   </div>
+  ${state.filter==='buy_now'?renderProcurementSheet()+renderSupplierBulkManager():state.filter==='wholesale_completed'?renderCompletedProcurementSheet():''}
+  ${renderAdminQuoteDateSection(qq,awaiting,'pending')}
+  ${renderAdminQuoteDateSection(qq,priced,'saved',!awaiting.length)}
   <details class="admin-quote-price-fold" data-fold-key="quote-amount-comparison">
    <summary>상품 금액 비교 <span class="admin-quote-extra-chevron">⌄</span></summary>
    ${adminPriceTotalMarkup(qq)}
-  </details>
-  ${state.filter==='buy_now'?renderProcurementSheet()+renderSupplierBulkManager():state.filter==='wholesale_completed'?renderCompletedProcurementSheet():''}
-  ${renderAdminQuoteDateSection(qq,awaiting,'pending')}
-  ${renderAdminQuoteDateSection(qq,priced,'saved',!awaiting.length)}`:'<div class="empty">해당 상태의 견적이 없어요.</div>'}
+  </details>`:'<div class="empty">해당 상태의 견적이 없어요.</div>'}
   <details class="admin-quote-guide">
    <summary>주문 처리 순서 안내 <span class="admin-quote-extra-chevron">⌄</span></summary>
    <p>① 판매가 입력 및 견적 안내 → ② 고객 회차 선택 → ③ 이번 회차 배송비 계산 → ④ 결제금액 안내 후 최종 주문 확정</p>

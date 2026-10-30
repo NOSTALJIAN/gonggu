@@ -1375,6 +1375,11 @@ body:has(.overlay) .floating-actions{opacity:0;visibility:hidden;pointer-events:
  min-height:47px;align-content:flex-start;
 }
 .shoplist .shop-catalog-card .shop-catalog-select{margin-top:auto}
+/* Admin catalog: compact sorting dropdown for mobile and desktop. */
+.admin-product-sortbar{display:flex;justify-content:flex-end;align-items:center;gap:10px;margin:12px 0 8px}
+.admin-product-sortbar label{font-size:12px;font-weight:750;color:#444;white-space:nowrap}
+.admin-product-sortbar select{width:auto;min-width:148px;max-width:60%;min-height:41px;padding:8px 30px 8px 11px;font-size:13px;font-weight:750;border:1px solid #ccc;border-radius:6px;background:#fff;color:#111}
+.admin-product-sortnote{font-size:11px;color:#777;margin:0 0 9px;line-height:1.5}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -1459,7 +1464,7 @@ const demo=read(DEMO,initDemo());
 const saveDemo=()=>localStorage.setItem(DEMO,JSON.stringify(demo));
 let session=read(SESS,null),busy=false,refreshing=null;
 const p=new URLSearchParams(location.search);
-const state={page:['admin','track'].includes(p.get('page'))?p.get('page'):'shop',tab:'quotes',stores:[],products:[],requests:[],quotes:[],cart:read(CART,[]),modal:null,search:'',shopCategory:'all',shopPage:1,adminCategory:'all',trackId:p.get('id')||'',trackToken:p.get('token')||'',tracking:null,receipts:read(TRACK,[]),notice:'',filter:'all',admin:false,heroPhotoUrl:null,heroStoreId:null,dateGroupsOpen:{},orderCardsOpen:{},supplierBulkSelected:new Set(),supplierBulkStoreId:'',supplierBatches:[],supplierBatchesReady:false,supplierBatchesError:'',optionRequests:[],optionRequestsReady:false,optionRequestsError:'',requestStatusFilter:'pending',adminCatalogView:'products',adminCatalogFilter:'all',adminProductSearch:'',productPrivate:{},productPrivateReady:false,emailSettings:null,emailSettingsReady:false,emailSettingsError:'',adminPinIds:new Set(),phoneLookupReady:null,pinLookupNotice:''};
+const state={page:['admin','track'].includes(p.get('page'))?p.get('page'):'shop',tab:'quotes',stores:[],products:[],requests:[],quotes:[],cart:read(CART,[]),modal:null,search:'',shopCategory:'all',shopPage:1,adminCategory:'all',trackId:p.get('id')||'',trackToken:p.get('token')||'',tracking:null,receipts:read(TRACK,[]),notice:'',filter:'all',admin:false,heroPhotoUrl:null,heroStoreId:null,dateGroupsOpen:{},orderCardsOpen:{},supplierBulkSelected:new Set(),supplierBulkStoreId:'',supplierBatches:[],supplierBatchesReady:false,supplierBatchesError:'',optionRequests:[],optionRequestsReady:false,optionRequestsError:'',requestStatusFilter:'pending',adminCatalogView:'products',adminCatalogFilter:'all',adminProductSort:'newest',adminProductSearch:'',productPrivate:{},productPrivateReady:false,emailSettings:null,emailSettingsReady:false,emailSettingsError:'',adminPinIds:new Set(),phoneLookupReady:null,pinLookupNotice:''};
 
 const PRODUCT_CATEGORIES=['양말','모자','아우터','상의','하의','스커트','원피스','바디수트','세트','악세서리','잡화'];
 const validProductCategory=x=>PRODUCT_CATEGORIES.includes(String(x||'').trim());
@@ -2701,9 +2706,26 @@ function renderAdminProducts(){
  ];
  const activeFilter=filters.some(f=>f.key===state.adminCatalogFilter)?state.adminCatalogFilter:'all';
  const activeCategory=categoryFilterKeys.includes(state.adminCategory)?state.adminCategory:'all';
- // Match the customer catalog: newest upload first, even when status/category/search filters are active.
+ // Sorting applies after the existing filters and leaves the source product list unchanged.
+ const sortOptions=[['newest','최신순'],['oldest','오래된순'],['price-high','가격 높은순'],['price-low','가격 낮은순']];
+ const sortKey=sortOptions.some(([key])=>key===state.adminProductSort)?state.adminProductSort:'newest';
+ const newestFirst=(a,b)=>(Date.parse(b.created_at)||0)-(Date.parse(a.created_at)||0)||String(b.id).localeCompare(String(a.id));
+ const wholesalePrice=p=>{
+  const raw=state.productPrivateReady?state.productPrivate?.[p.id]?.wholesale_price:null;
+  if(raw===null||raw===undefined||raw==='')return null;
+  const n=Number(raw);
+  return Number.isFinite(n)&&n>0?n:null;
+ };
  const shown=all.filter(p=>matchesCategory(p,activeCategory)&&(activeFilter==='all'||(activeFilter==='shown'&&isVisible(p))||(activeFilter==='hidden'&&!isVisible(p))||(activeFilter==='soldout'&&p.is_sold_out)||(activeFilter==='available'&&!p.is_sold_out)))
-  .sort((a,b)=>(Date.parse(b.created_at)||0)-(Date.parse(a.created_at)||0)||String(b.id).localeCompare(String(a.id)));
+  .sort((a,b)=>{
+   if(sortKey==='newest')return newestFirst(a,b);
+   if(sortKey==='oldest')return -newestFirst(a,b);
+   const aPrice=wholesalePrice(a),bPrice=wholesalePrice(b);
+   if(aPrice===null&&bPrice!==null)return 1;
+   if(bPrice===null&&aPrice!==null)return -1;
+   if(aPrice!==null&&bPrice!==null&&aPrice!==bPrice)return sortKey==='price-high'?bPrice-aPrice:aPrice-bPrice;
+   return newestFirst(a,b);
+  });
  const searchQuery=String(state.adminProductSearch||'').trim().toLocaleLowerCase('ko-KR');
  const matchingCount=shown.filter(p=>!searchQuery||adminProductSearchText(p).includes(searchQuery)).length;
  const storesView=state.adminCatalogView==='stores';
@@ -2721,7 +2743,7 @@ function renderAdminProducts(){
     </div>
    </details>
   `:`
-   <div class="sectiontitle admin-catalog-section-title"><div><h2>가게별 상품</h2><div class="sub">최신 업로드순 · 상품 수정 없이 품절과 전시 여부를 바꿀 수 있어요.</div></div><button class="btn sm" data-action="add-product" ${!state.stores.length?'disabled':''}>+ 상품</button></div>
+   <div class="sectiontitle admin-catalog-section-title"><div><h2>가게별 상품</h2><div class="sub">상품 수정 없이 품절과 전시 여부를 바꿀 수 있어요.</div></div><button class="btn sm" data-action="add-product" ${!state.stores.length?'disabled':''}>+ 상품</button></div>
    <div class="product-manage-summary">전체 ${all.length}개 · 전시 중 ${visibleCount}개 · 미전시 ${hiddenCount}개 · 품절 ${soldCount}개</div>
    <div class="admin-product-search-box">
     <label for="admin-product-search" class="admin-product-search-label">상품 검색</label>
@@ -2737,6 +2759,13 @@ function renderAdminProducts(){
    <div class="admin-category-list" role="group" aria-label="관리자 상품 카테고리 필터">
     ${categoryFilterKeys.map(k=>`<button type="button" class="admin-category-tab ${activeCategory===k?'active':''}" data-action="admin-category" data-category="${k}" aria-pressed="${activeCategory===k}">${k==='all'?'전체':k==='uncategorized'?'미분류':k} <span>${all.filter(p=>matchesCategory(p,k)).length}</span></button>`).join('')}
    </div>
+   <div class="admin-product-sortbar">
+    <label for="admin-product-sort">보기 옵션</label>
+    <select id="admin-product-sort" aria-label="상품 정렬 순서">
+     ${sortOptions.map(([key,label])=>`<option value="${key}" ${sortKey===key?'selected':''}>${label}</option>`).join('')}
+    </select>
+   </div>
+   ${sortKey.startsWith('price-')?'<div class="admin-product-sortnote">가격 기준: 관리자 전용 도매가 · 도매가 없는 상품은 마지막에 표시돼요.</div>':''}
    <div class="admin-product-filter-result" aria-live="polite">${filters.find(f=>f.key===activeFilter).label} · <strong id="admin-product-result-count">${matchingCount}</strong>개 상품${activeFilter==='hidden'?'<span>거래처가 숨겨져 미노출되는 상품도 포함돼요.</span>':''}</div>
    ${shown.map(p=>{
     const storeActive=state.stores.some(st=>st.id===p.store_id&&st.active);
@@ -5100,6 +5129,15 @@ else if(f.dataset.price){
 else if(f.dataset.payment){const paid=Number(data.get('paid')),refunded=Number(data.get('refunded'));if(!Number.isInteger(paid)||!Number.isInteger(refunded)||paid<0||refunded<0)throw Error('금액을 확인해 주세요');await adminPayment(f.dataset.payment,paid,refunded);await loadAdmin();notif('입금 기록 완료')}
 }catch(ex){notif(errorText(ex))}finally{busy=false}}
 async function change(e){const x=e.target;
+if(x.id==='admin-product-sort'){
+ if(!state.admin||state.page!=='admin'||state.tab!=='products')return;
+ const allowed=['newest','oldest','price-high','price-low'];
+ state.adminProductSort=allowed.includes(x.value)?x.value:'newest';
+ const scrollY=window.scrollY;
+ render();
+ window.scrollTo({top:scrollY,behavior:'auto'});
+ return;
+}
 if(x.matches?.('[data-store-defaults]')){loadStoreSizesIntoForm(x.closest('form'));return;}
 if(x.matches?.('#bulk-supplier-shipping-form [name="existing_mode"]')){
  updateSupplierBulkPreview();return;

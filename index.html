@@ -4188,7 +4188,7 @@ function renderAdminQuotes(){
  const nCancelRequested=state.quotes.filter(q=>!!q.cancel_requested_at&&q.status!=='cancelled').length;
  const primaryFilters=[
   ['all','전체',state.quotes.length],
-  ['buy_now','이번 회차',nNow],
+  ['buy_now','발주 예정',nNow],
   ['wholesale_completed','발주 완료',nOrdered],
   ['other','구매 미확정',nOther],
   ['cancel_requested','취소 요청',nCancelRequested]

@@ -1380,6 +1380,8 @@ body:has(.overlay) .floating-actions{opacity:0;visibility:hidden;pointer-events:
 .admin-product-sortbar label{font-size:12px;font-weight:750;color:#444;white-space:nowrap}
 .admin-product-sortbar select{width:auto;min-width:148px;max-width:60%;min-height:41px;padding:8px 30px 8px 11px;font-size:13px;font-weight:750;border:1px solid #ccc;border-radius:6px;background:#fff;color:#111}
 .admin-product-sortnote{font-size:11px;color:#777;margin:0 0 9px;line-height:1.5}
+.private-sourcing-preview{border:1px solid #e4e4e4;background:#f8f8f8;color:#222;padding:11px 12px;margin:10px 0;font-size:12px;line-height:1.7;overflow-wrap:anywhere}
+.private-product-fields [data-sourcing-domestic],.private-product-fields [data-sourcing-1688]{margin:12px 0 6px}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -1741,9 +1743,9 @@ async function loadAdminProductPrivate(){
   state.productPrivate={};state.productPrivateReady=false;return;
  }
  try{
-  const rows=await api('/rest/v1/gq_product_private_costs_v32?select=product_id,supplier_name,wholesale_price',{admin:true});
+  const rows=await api('/rest/v1/gq_product_private_costs_v32?select=product_id,supplier_name,wholesale_price,source_type,yuan_price',{admin:true});
   if(!Array.isArray(rows))throw Error('비공개 도매 정보를 확인하지 못했어요.');
-  state.productPrivate=Object.fromEntries(rows.map(r=>[r.product_id,{supplier_name:r.supplier_name||'',wholesale_price:r.wholesale_price}]));
+  state.productPrivate=Object.fromEntries(rows.map(r=>[r.product_id,{supplier_name:r.supplier_name||'',wholesale_price:r.wholesale_price,source_type:r.source_type||'namdaemun',yuan_price:r.yuan_price}]));
   state.productPrivateReady=true;
  }catch(error){
   state.productPrivate={};state.productPrivateReady=false;
@@ -1752,29 +1754,72 @@ async function loadAdminProductPrivate(){
 }
 function parsePrivateProductInputs(data){
  const supplier=String(data.get('private_supplier')||'').trim();
+ const source=String(data.get('private_source')||'namdaemun');
+ if(!['namdaemun','1688'].includes(source))throw Error('사입 경로를 선택해 주세요.');
+ if(supplier.length>150)throw Error('비공개 거래처명은 150자 이내로 입력해 주세요.');
+ if(source==='1688'){
+  const raw=String(data.get('private_yuan')??'').trim();
+  if(!/^(?:0|[1-9][0-9]{0,5})(?:\.[0-9]{1,2})?$/.test(raw)||Number(raw)<=0||Number(raw)>100000)
+   throw Error('1688 위안 가격은 0보다 크고 100,000위안 이하, 소수 둘째 자리까지 입력해 주세요.');
+  return {p_supplier_name:supplier,p_source_type:'1688',p_wholesale_price:null,p_yuan_price:Number(raw)};
+ }
  const raw=String(data.get('private_cost')??'').trim();
- if(supplier.length>150)throw Error('비공개 도매업체명은 150자 이내로 입력해 주세요.');
- if(raw!==''&&!/^(0|[1-9][0-9]{0,8})$/.test(raw))throw Error('도매가는 숫자로 입력해 주세요. 0원도 가능해요.');
+ if(raw!==''&&!/^(0|[1-9][0-9]{0,8})$/.test(raw))throw Error('남대문 도매가는 원화 숫자로 입력해 주세요.');
  const price=raw===''?null:Number(raw);
  if(price!==null&&price>100000000)throw Error('도매가는 1억원 이내로 입력해 주세요.');
- return {p_supplier_name:supplier,p_wholesale_price:price};
+ return {p_supplier_name:supplier,p_source_type:'namdaemun',p_wholesale_price:price,p_yuan_price:null};
 }
 async function savePrivateProduct(productId,info){
  if(!state.admin||!connected||!state.productPrivateReady)throw Error('관리자 전용 도매 정보 서버 연결을 확인한 뒤 다시 시도해 주세요.');
- const answer=await rpc('gq_save_product_private_v32',{p_product_id:productId,...info},true);
- if(answer!==true)throw Error('도매가와 도매업체명 저장 결과를 확인하지 못했어요.');
- state.productPrivate[productId]={supplier_name:info.p_supplier_name,wholesale_price:info.p_wholesale_price};
+ const answer=await rpc('gq_save_product_sourcing_v59',{p_product_id:productId,...info},true);
+ if(answer!==true)throw Error('사입 가격 정보를 저장하지 못했어요.');
+ const yuan=info.p_source_type==='1688'?info.p_yuan_price:null;
+ const wholesale=yuan!==null?Math.round(yuan*350):info.p_wholesale_price;
+ state.productPrivate[productId]={supplier_name:info.p_supplier_name,source_type:info.p_source_type,yuan_price:yuan,wholesale_price:wholesale};
+ const product=state.products.find(x=>x.id===productId);
+ if(product)product.estimated_price=yuan!==null?Math.round(yuan*500):wholesale>0?Math.round(wholesale*1.3/1000)*1000:null;
+}
+function sourcingPreviewText(source,rawDomestic,rawYuan){
+ if(source==='1688'){
+  const yuan=Number(rawYuan);
+  if(!String(rawYuan).trim()||!Number.isFinite(yuan)||yuan<=0)return '위안(¥) 가격을 입력하면 예상 사입원가와 고객 예상가를 계산해요.';
+  return '1688 ¥'+yuan.toLocaleString('ko-KR')+' · 예상 사입원가 약 '+money(Math.round(yuan*350))+' (×350) · 고객 예상가 약 '+money(Math.round(yuan*500))+' (×500)';
+ }
+ const wholesale=Number(rawDomestic);
+ if(!String(rawDomestic).trim()||!Number.isFinite(wholesale)||wholesale<=0)return '도매가를 입력하면 고객 예상가를 계산해요.';
+ return '도매가 '+money(wholesale)+' · 고객 예상가 약 '+money(Math.round(wholesale*1.3/1000)*1000)+' (×1.3, 1,000원 단위 반올림)';
+}
+function updatePrivateSourcingForm(form){
+ if(!form)return;
+ const source=form.querySelector('[name="private_source"]')?.value||'namdaemun';
+ form.querySelector('[data-sourcing-domestic]')?.classList.toggle('hidden',source==='1688');
+ form.querySelector('[data-sourcing-1688]')?.classList.toggle('hidden',source!=='1688');
+ const preview=form.querySelector('[data-sourcing-preview]');
+ if(preview)preview.textContent=sourcingPreviewText(source,form.querySelector('[name="private_cost"]')?.value||'',form.querySelector('[name="private_yuan"]')?.value||'');
 }
 function privateProductFields(existingId){
  const meta=state.productPrivate[existingId]||{};
- return `<section class="private-product-fields" aria-label="관리자 전용 도매 정보">
-  <div class="private-product-heading"><span aria-hidden="true">🔒</span><strong>관리자 전용 · 비공개 도매 정보</strong></div>
-  <p>구매자에게 보이는 가게 이름·견적 금액과 별도로 저장돼요. 고객 화면이나 주문조회에는 공개되지 않아요.</p>
+ const source=meta.source_type==='1688'?'1688':'namdaemun';
+ const domestic=meta.wholesale_price==null?'':meta.wholesale_price;
+ const yuan=meta.yuan_price==null?'':meta.yuan_price;
+ return `<section class="private-product-fields" aria-label="관리자 전용 사입 정보">
+  <div class="private-product-heading"><span aria-hidden="true">🔒</span><strong>관리자 전용 · 비공개 사입 정보</strong></div>
+  <p>남대문과 중국 1688 상품을 구분해 등록해요. 거래처·위안 가격·사입원가는 구매자에게 보이지 않아요.</p>
   ${!state.productPrivateReady?'<div class="noticefail">비공개 도매 정보 서버를 불러오지 못했어요. 다시 로그인하거나 새로고침해 주세요.</div>':''}
-  <label class="label">실제 도매업체명 (비공개)<input name="private_supplier" maxlength="150" autocomplete="off" value="${esc(meta.supplier_name||'')}" placeholder="예: 실제 거래처 업체명"></label>
-  <label class="label">도매가 (원 · 비공개)<input name="private_cost" type="number" inputmode="numeric" min="0" max="100000000" step="1" value="${meta.wholesale_price==null?'':meta.wholesale_price}" placeholder="예: 12500"></label>
-  <div class="smallnote">미입력 시 예상가가 표시되지 않아요. 도매 원가는 관리자만 볼 수 있고, 고객에게는 도매가 × 1.3을 1,000원 단위로 반올림한 예상가만 공개돼요. 정확한 최종 판매가는 견적에서 확정합니다.</div>
-  <div class="smallnote">사이즈표는 관리자 → 상품 관리 → 거래처 관리 → 해당 가게 수정에서 등록해 주세요. 남대문 가게 기준으로 연결돼요.</div>
+  <label class="label">사입 경로
+   <select name="private_source" data-private-source aria-label="사입 경로"><option value="namdaemun" ${source==='namdaemun'?'selected':''}>남대문 (원화)</option><option value="1688" ${source==='1688'?'selected':''}>중국 1688 (위안화)</option></select>
+  </label>
+  <label class="label">실제 사입 거래처 (비공개)<input name="private_supplier" maxlength="150" autocomplete="off" value="${esc(meta.supplier_name||'')}" placeholder="남대문 거래처 또는 1688 판매처"></label>
+  <div data-sourcing-domestic class="${source==='1688'?'hidden':''}">
+   <label class="label">남대문 도매가 (원 · 비공개)<input name="private_cost" type="number" inputmode="numeric" min="0" max="100000000" step="1" value="${source==='namdaemun'?domestic:''}" placeholder="예: 12500"></label>
+   <div class="smallnote">남대문: 도매가 × 1.3, 1,000원 단위 반올림한 예상가를 고객에게 표시해요.</div>
+  </div>
+  <div data-sourcing-1688 class="${source==='1688'?'':'hidden'}">
+   <label class="label">1688 상품 가격 (위안 ¥ · 비공개)<input name="private_yuan" type="number" inputmode="decimal" min="0.01" max="100000" step="0.01" value="${yuan}" placeholder="예: 12.5"></label>
+   <div class="smallnote">예상 사입원가 = 위안 × 350원 (운송·수수료 포함 대략치) · 고객 예상가 = 위안 × 500원. 실제 사입비는 별도 정산해야 해요.</div>
+  </div>
+  <div class="private-sourcing-preview" data-sourcing-preview>${esc(sourcingPreviewText(source,source==='namdaemun'?domestic:'',yuan))}</div>
+  <div class="smallnote">예상가는 참고용이며 고객 실제 결제금액은 견적에서 확정해요. 사이즈표는 공개 가게별로 관리해요.</div>
  </section>`;
 }
 // Administrator-only cost information. Never include in buyer-facing quote payloads,
@@ -5174,6 +5219,7 @@ if(x.id==='admin-product-sort'){
  window.scrollTo({top:scrollY,behavior:'auto'});
  return;
 }
+if(x.matches?.('[data-private-source]')){updatePrivateSourcingForm(x.closest('form'));return;}
 if(x.matches?.('[data-store-defaults]')){loadStoreSizesIntoForm(x.closest('form'));return;}
 if(x.matches?.('#bulk-supplier-shipping-form [name="existing_mode"]')){
  updateSupplierBulkPreview();return;
@@ -5238,6 +5284,7 @@ if(x.id==='deliveryMethodEdit'){
  await adminFulfillment(x.dataset.fulfillment,x.value);await loadAdmin();notif('상품 상태를 변경했어요.');
 }catch(ex){notif(errorText(ex));x.value=state.quotes.find(y=>y.items.some(i=>i.id===x.dataset.fulfillment))?.items.find(i=>i.id===x.dataset.fulfillment)?.fulfillment==='delayed'?'ordered':(state.quotes.find(y=>y.items.some(i=>i.id===x.dataset.fulfillment))?.items.find(i=>i.id===x.dataset.fulfillment)?.fulfillment||'ordered')}finally{busy=false}}}
 function input(e){
+ if(['private_yuan','private_cost'].includes(e.target.name)&&e.target.closest('#product-form,#approve-form')){updatePrivateSourcingForm(e.target.closest('form'));return;}
  if(e.target.closest?.('#bulk-supplier-shipping-form')){
   updateSupplierBulkPreview();return;
  }

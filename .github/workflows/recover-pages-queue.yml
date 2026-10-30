@@ -1,0 +1,17 @@
+name: Recover blocked Pages queue (one-time)
+on:
+  push:
+    paths:
+      - .github/workflows/recover-pages-queue.yml
+permissions:
+  actions: write
+jobs:
+  release-old-run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Cancel stale generated Pages workflow run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api --method POST "repos/${{ github.repository }}/actions/runs/41096555471/cancel"

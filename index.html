@@ -1857,6 +1857,13 @@ details[open]>summary>.admin-quote-extra-chevron{transform:rotate(180deg)}
 .product-store-no-match{font-size:12px;padding:12px 13px;color:#777;background:#fff}
 .product-store-picker>.product-new-store-row{margin:10px 0 0}
 
+
+/* Compact searchable list of registered storefronts in admin. */
+.admin-store-search{display:flex;align-items:center;gap:8px;margin:0 0 12px;min-width:0}
+.admin-store-search input{flex:1;min-width:0;min-height:40px;height:40px;padding:8px 12px;border:1px solid #ddd;border-radius:7px;font-size:16px;background:#fff;color:#222}
+.admin-store-search .btn{flex:0 0 auto;padding:8px 10px;font-size:12px;min-height:36px}
+.admin-store-fold-inner [data-admin-store-card].hidden,#admin-store-search-empty.hidden{display:none!important}
+#admin-store-search-empty{font-size:12px;padding:26px 8px;color:#777}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -3298,6 +3305,22 @@ function adminProductSearchText(p){
  const options=Object.entries(p.options||{}).flatMap(([color,sizes])=>[color,...(Array.isArray(sizes)?sizes:[])]);
  return [p.name,storeName(p.store_id),categoryLabel(p),...options,state.productPrivate?.[p.id]?.supplier_name||''].join(' ').toLocaleLowerCase('ko-KR');
 }
+function updateAdminStoreSearch(){
+ const query=String(state.adminStoreSearch||'').trim().toLocaleLowerCase('ko-KR');
+ let count=0;
+ app.querySelectorAll('[data-admin-store-card]').forEach(card=>{
+  const matches=!query||String(card.dataset.storeSearchName||'').includes(query);
+  card.classList.toggle('hidden',!matches);
+  if(matches)count++;
+ });
+ const label=app.querySelector('#admin-store-search-count');
+ if(label)label.textContent=query?count+' / '+state.stores.length+'곳':state.stores.length+'곳';
+ const empty=app.querySelector('#admin-store-search-empty');
+ if(empty)empty.classList.toggle('hidden',!query||count>0);
+ const clear=app.querySelector('[data-action="clear-store-search"]');
+ if(clear)clear.classList.toggle('hidden',!query);
+ if(query){const fold=app.querySelector('.admin-store-fold');if(fold)fold.open=true;}
+}
 function updateAdminProductSearch(){
  const query=String(state.adminProductSearch||'').trim().toLocaleLowerCase('ko-KR');
  let visible=0;
@@ -3369,6 +3392,8 @@ function renderAdminProducts(){
  const searchQuery=String(state.adminProductSearch||'').trim().toLocaleLowerCase('ko-KR');
  const matchingCount=shown.filter(p=>!searchQuery||adminProductSearchText(p).includes(searchQuery)).length;
  const storesView=state.adminCatalogView==='stores';
+ const storeSearchQuery=String(state.adminStoreSearch||'').trim().toLocaleLowerCase('ko-KR');
+ const matchingStores=state.stores.filter(st=>String(st.name||'').toLocaleLowerCase('ko-KR').includes(storeSearchQuery));
  return `<section class="admin-catalog-panel" id="admin-catalog">
   <div class="admin-catalog-switch" role="group" aria-label="관리자 상품 및 거래처 화면 전환">
    <button type="button" class="admin-catalog-switch-btn ${!storesView?'active':''}" data-action="catalog-view" data-view="products" aria-pressed="${!storesView}">상품 <span>${all.length}</span></button>
@@ -3376,10 +3401,16 @@ function renderAdminProducts(){
   </div>
   ${storesView?`
    <div class="sectiontitle admin-catalog-section-title"><div><h2>남대문 거래처</h2><div class="sub">상품과 분리해서 거래처를 관리해요.</div></div><button class="btn sm" data-action="add-store">+ 가게</button></div>
+   <div class="admin-store-search" role="search">
+    <label class="sr-only" for="admin-store-search">등록된 거래처 검색</label>
+    <input id="admin-store-search" type="search" autocomplete="off" autocapitalize="off" placeholder="가게 이름 검색" aria-label="등록된 거래처 이름 검색" value="${esc(state.adminStoreSearch||'')}">
+    <button type="button" class="btn sm secondary ${storeSearchQuery?'':'hidden'}" data-action="clear-store-search">지우기</button>
+   </div>
    <details class="admin-store-fold" open>
-    <summary>등록된 거래처 ${state.stores.length}곳 <span class="admin-store-fold-hint">접기 · 펼치기</span></summary>
+    <summary>등록된 거래처 <span id="admin-store-search-count">${storeSearchQuery?matchingStores.length+' / '+state.stores.length+'곳':state.stores.length+'곳'}</span><span class="admin-store-fold-hint">접기 · 펼치기</span></summary>
     <div class="admin-store-fold-inner">
-     ${state.stores.map(st=>`<div class="card admin-store-list-card"><div class="row between"><div class="admin-store-name-status"><b>🏬 ${esc(st.name)}</b><span class="store-size-chart-status ${Array.isArray(st.size_chart_paths)&&st.size_chart_paths.length?'is-registered':'is-unregistered'}">${Array.isArray(st.size_chart_paths)&&st.size_chart_paths.length?'사이즈표 등록완료 · '+st.size_chart_paths.length+'장':'사이즈표 미등록'}</span></div><div class="admin-store-actions"><button class="btn sm secondary" type="button" data-action="edit-store" data-id="${esc(st.id)}">수정</button><button class="btn sm admin-store-delete" type="button" data-action="delete-store" data-id="${esc(st.id)}" aria-label="${esc(st.name)} 거래처 삭제">삭제</button></div></div><div class="tiny">${all.filter(p=>p.store_id===st.id).length}개 상품 · ${st.active?'사용 중':'가게 숨김'}</div></div>`).join('')||'<div class="empty">아직 등록된 거래처가 없어요. + 가게에서 추가해 주세요.</div>'}
+     ${state.stores.map(st=>`<div class="card admin-store-list-card ${storeSearchQuery&&!String(st.name||'').toLocaleLowerCase('ko-KR').includes(storeSearchQuery)?'hidden':''}" data-admin-store-card data-store-search-name="${esc(String(st.name||'').toLocaleLowerCase('ko-KR'))}"><div class="row between"><div class="admin-store-name-status"><b>🏬 ${esc(st.name)}</b><span class="store-size-chart-status ${Array.isArray(st.size_chart_paths)&&st.size_chart_paths.length?'is-registered':'is-unregistered'}">${Array.isArray(st.size_chart_paths)&&st.size_chart_paths.length?'사이즈표 등록완료 · '+st.size_chart_paths.length+'장':'사이즈표 미등록'}</span></div><div class="admin-store-actions"><button class="btn sm secondary" type="button" data-action="edit-store" data-id="${esc(st.id)}">수정</button><button class="btn sm admin-store-delete" type="button" data-action="delete-store" data-id="${esc(st.id)}" aria-label="${esc(st.name)} 거래처 삭제">삭제</button></div></div><div class="tiny">${all.filter(p=>p.store_id===st.id).length}개 상품 · ${st.active?'사용 중':'가게 숨김'}</div></div>`).join('')||'<div class="empty">아직 등록된 거래처가 없어요. + 가게에서 추가해 주세요.</div>'}
+     <div id="admin-store-search-empty" class="empty ${storeSearchQuery&&!matchingStores.length?'':'hidden'}">검색 결과가 없어요. 가게 이름을 다시 확인해 주세요.</div>
     </div>
    </details>
   `:`
@@ -5457,6 +5488,12 @@ async function click(e){
  if(e.target.matches?.('[data-product-store-search]')){productStoreSearchResults(e.target,true);return;}
  if(!e.target.closest?.('[data-product-store-picker]'))closeProductStoreSearch(app.querySelector('#product-form'));
  const pg=e.target.closest('[data-page]');if(pg){goto(pg.dataset.page);if(pg.classList.contains('brand-home'))window.scrollTo({top:0,behavior:'auto'});return}const b=e.target.closest('[data-action]');if(!b)return;const a=b.dataset.action,id=b.dataset.id;try{
+if(a==='clear-store-search'){
+ state.adminStoreSearch='';
+ const input=app.querySelector('#admin-store-search');
+ if(input){input.value='';updateAdminStoreSearch();input.focus();}
+ return;
+}
 if(a==='select-product-store'){
  const form=b.closest('#product-form');
  const field=form?.querySelector('select[name="store"]');
@@ -6245,6 +6282,10 @@ if(x.id==='deliveryMethodEdit'){
  await adminFulfillment(x.dataset.fulfillment,x.value);await loadAdmin();notif('상품 상태를 변경했어요.');
 }catch(ex){notif(errorText(ex));x.value=state.quotes.find(y=>y.items.some(i=>i.id===x.dataset.fulfillment))?.items.find(i=>i.id===x.dataset.fulfillment)?.fulfillment==='delayed'?'ordered':(state.quotes.find(y=>y.items.some(i=>i.id===x.dataset.fulfillment))?.items.find(i=>i.id===x.dataset.fulfillment)?.fulfillment||'ordered')}finally{busy=false}}}
 function input(e){
+ if(e.target.id==='admin-store-search'){
+  state.adminStoreSearch=e.target.value;
+  updateAdminStoreSearch();return;
+ }
  if(e.target.matches?.('[data-product-store-search]')){productStoreSearchResults(e.target);return;}
  if(['private_yuan','private_cost'].includes(e.target.name)&&e.target.closest('#product-form,#approve-form')){updatePrivateSourcingForm(e.target.closest('form'));return;}
  if(e.target.closest?.('#bulk-supplier-shipping-form')){

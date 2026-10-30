@@ -1611,6 +1611,68 @@ body:has(.overlay) .floating-actions{opacity:0;visibility:hidden;pointer-events:
  .admin-catalog-panel .admin-catalog-compact-title h2{font-size:21px}
  .admin-product-toolbar .admin-product-sortbar select{min-width:105px;max-width:125px;font-size:11px}
 }
+
+/* Compact order-management workspace: one quick-filter row, advanced filters on demand. */
+.admin-quote-workspace{min-width:0}
+.admin-quote-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:3px 0 13px}
+.admin-quote-head h2{font-size:21px;line-height:1.3;letter-spacing:-.04em;margin:0}
+.admin-quote-head .btn{min-height:35px;padding:7px 10px;font-size:11px}
+.admin-quote-attention{
+ width:100%;display:flex;justify-content:space-between;align-items:center;
+ border:1px solid #ead1ad;background:#fff9ee;color:#77502c;
+ border-radius:7px;padding:10px 12px;margin:0 0 10px;text-align:left;
+ font-size:12px;font-weight:760
+}
+.admin-quote-attention b{margin-left:3px}
+.admin-quote-primary-filters{
+ display:flex;align-items:center;gap:6px;flex-wrap:nowrap;
+ margin:0;padding:3px 0 9px;overflow-x:auto;overscroll-behavior-x:contain;
+ -webkit-overflow-scrolling:touch;scrollbar-width:none;
+}
+.admin-quote-primary-filters::-webkit-scrollbar{display:none}
+.admin-quote-quick-tab{
+ flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;
+ padding:8px 10px;min-height:34px;border:1px solid #dedede;border-radius:7px;
+ background:#fff;color:#444;white-space:nowrap;font-size:12px;font-weight:720;
+}
+.admin-quote-quick-tab span{font-size:11px;color:#888;font-weight:760}
+.admin-quote-quick-tab.active{color:#fff;background:#161616;border-color:#161616}
+.admin-quote-quick-tab.active span{color:#ddd}
+.admin-quote-extra-filters,.admin-quote-price-fold,.admin-quote-guide{border:1px solid #e9e9e9;background:#fff;border-radius:7px}
+.admin-quote-extra-filters{margin:1px 0 12px}
+.admin-quote-extra-filters>summary,.admin-quote-price-fold>summary,.admin-quote-guide>summary{
+ list-style:none;display:flex;align-items:center;gap:5px;min-height:39px;padding:9px 12px;
+ cursor:pointer;color:#595959;font-size:12px;font-weight:750;
+}
+.admin-quote-extra-filters>summary::-webkit-details-marker,.admin-quote-price-fold>summary::-webkit-details-marker,.admin-quote-guide>summary::-webkit-details-marker{display:none}
+.admin-quote-extra-filters>summary strong{color:#111;font-weight:810}
+.admin-quote-extra-chevron{display:inline-block;margin-left:auto;font-size:17px;font-weight:400;transition:transform .15s}
+details[open]>summary>.admin-quote-extra-chevron{transform:rotate(180deg)}
+.admin-quote-secondary-list{
+ display:flex;gap:6px;flex-wrap:wrap;padding:9px 11px 12px;border-top:1px solid #eee;
+}
+.admin-quote-secondary-tab{
+ padding:7px 9px;min-height:33px;font-size:11px;font-weight:680;
+ background:#fff;color:#555;border:1px solid #ddd;border-radius:6px;
+}
+.admin-quote-secondary-tab.active{background:#171717;border-color:#171717;color:#fff}
+.admin-quote-context{font-size:11px;color:#777;line-height:1.5;margin:5px 0 11px}
+.admin-quote-date-toolbar{margin:13px 0 8px}
+.admin-quote-date-toolbar>div:first-child{gap:2px}
+.admin-quote-date-toolbar strong{font-size:13px}
+.admin-quote-date-toolbar span{font-size:10px}
+.admin-quote-date-toolbar .date-all-btn{padding:7px 8px;min-height:32px;font-size:10px;border-radius:5px}
+.admin-quote-price-fold{margin:8px 0 13px}
+.admin-quote-price-fold>summary{font-size:12px;font-weight:790}
+.admin-quote-price-fold .admin-compare-totals{margin:0 9px 9px}
+.admin-quote-guide{margin:20px 0 6px;background:#fafafa}
+.admin-quote-guide>summary{font-size:11px;min-height:36px;color:#777}
+.admin-quote-guide p{font-size:11px;line-height:1.75;color:#666;padding:0 12px 12px;margin:0}
+@media(max-width:390px){
+ .admin-quote-head h2{font-size:19px}
+ .admin-quote-quick-tab{padding:7px 9px;font-size:11px}
+ .admin-quote-date-toolbar .date-all-btn{padding:6px 7px}
+}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -4032,24 +4094,54 @@ function renderAdminQuotes(){
  const nNext=state.quotes.filter(q=>q.status==='quoted'&&q.purchase_intent==='next_round').length;
  const nHold=state.quotes.filter(q=>q.status==='quoted'&&q.purchase_intent==='on_hold').length;
  const nUndecided=state.quotes.filter(q=>q.status==='quoted'&&(!q.purchase_intent||q.purchase_intent==='undecided')).length;
- return `<div class="row between" id="admin-quote-results"><h2>견적 및 확정 주문</h2><button class="btn sm secondary" data-action="refresh">새로고침</button></div>
- <div class="info" style="margin:10px 0 15px"><b>공동구매 진행 순서</b><div class="smallnote">① 판매가 입력 후 견적 먼저 보내기 → ② 고객에게 이번·다음 회차·보류 선택 받기 → ③ 이번 회차 구매자만 모아 도매배송비·고객 택배비 계산 → ④ 최종 결제금액 안내 후 고객 주문 확정</div></div>
- <div class="admin-purchase-counts">
-  ${optionPending?`<button type="button" data-action="show-pending-item-options">⚠️ 옵션 변경 요청 <b>${optionPending}건</b></button>`:''}
-  <button type="button" data-filter="buy_now">이번 회차 구매 <b>${nNow}건</b></button>
-  <button type="button" data-filter="wholesale_completed">발주 완료 <b>${nOrdered}건</b></button>
-  <button type="button" data-filter="next_round">다음 회차 구매 <b>${nNext}건</b></button>
-  <button type="button" data-filter="on_hold">구매 보류 <b>${nHold}건</b></button>
-  <button type="button" data-filter="undecided">미선택 <b>${nUndecided}건</b></button>
- </div>
- <div class="controls" style="margin-bottom:10px">${['all','buy_now','wholesale_completed','next_round','on_hold','undecided','cancel_requested','requested','quoted','confirmed','flow_new','flow_preparing','flow_pickup_ready','flow_shipped','flow_completed','flow_soldout_closed','cancelled'].map(s=>`<button class="tab ${state.filter===s?'active':''}" data-filter="${s}">${s==='all'?'전체':s==='buy_now'?'이번 회차 구매':s==='wholesale_completed'?'발주 완료':s==='next_round'?'다음 회차 구매':s==='on_hold'?'구매 보류':s==='undecided'?'미선택':s==='cancel_requested'?'취소 요청':s.startsWith('flow_')?workflowLabels[s.slice(5)]:statusLabel[s]}</button>`).join('')}</div>
- ${state.filter==='buy_now'?'<div class="smallnote">아직 도매 발주하지 않은 주문만 표시해요. 발주 완료 처리하면 완료 탭으로 자동 이동해요.</div>':state.filter==='wholesale_completed'?'<div class="info">도매 발주를 마친 주문이에요. 이후 입고·배송·수령 상태는 여기에서 관리해요. 새로 이번 회차 구매를 선택한 주문과 합산되지 않아요.</div>':''}
- ${qq.length?`<div class="admin-date-toolbar"><div><strong>날짜별 주문</strong><span>${qq.length}건 · ${dayCount}일 · 가격 미입력 ${unfinished}종</span></div><div class="admin-date-actions"><button type="button" class="date-all-btn" data-action="date-open-all">전체 펼치기</button><button type="button" class="date-all-btn" data-action="date-close-all">전체 접기</button></div></div>
- <div class="admin-overall-prices"><h3>현재 목록 상품 총액 비교</h3>${adminPriceTotalMarkup(qq)}</div>
- ${state.filter==='buy_now'?renderProcurementSheet()+renderSupplierBulkManager():state.filter==='wholesale_completed'?renderCompletedProcurementSheet():''}
- ${renderAdminQuoteDateSection(qq,awaiting,'pending')}
- ${renderAdminQuoteDateSection(qq,priced,'saved',!awaiting.length)}
- <p class="admin-date-hint">주문자 이름을 누르면 해당 주문만 접거나 펼칠 수 있어요. 미입력 주문은 처음부터 펼쳐지고, 가격 저장 완료 주문은 접힌 상태로 시작해요.</p>`:'<div class="empty">해당 상태의 견적이 없어요.</div>'}`;
+ const nCancelRequested=state.quotes.filter(q=>!!q.cancel_requested_at&&q.status!=='cancelled').length;
+ const primaryFilters=[
+  ['all','전체',state.quotes.length],
+  ['buy_now','이번 회차',nNow],
+  ['wholesale_completed','발주 완료',nOrdered],
+  ['next_round','다음 회차',nNext],
+  ['on_hold','구매 보류',nHold],
+  ['undecided','미선택',nUndecided],
+  ['cancel_requested','취소 요청',nCancelRequested]
+ ];
+ const secondaryKeys=['requested','quoted','confirmed','flow_new','flow_preparing','flow_pickup_ready','flow_shipped','flow_completed','flow_soldout_closed','cancelled'];
+ const secondaryLabel=key=>key.startsWith('flow_')?workflowLabels[key.slice(5)]:statusLabel[key]||key;
+ const isSecondary=secondaryKeys.includes(state.filter);
+ return `<section class="admin-quote-workspace">
+  <div class="admin-quote-head" id="admin-quote-results">
+   <h2>견적·주문 관리</h2>
+   <button class="btn sm secondary" data-action="refresh">새로고침</button>
+  </div>
+  ${optionPending?`<button class="admin-quote-attention" type="button" data-action="show-pending-item-options">옵션 변경 요청 <b>${optionPending}건</b> 확인하기 ↗</button>`:''}
+  <nav class="admin-quote-primary-filters" aria-label="구매 회차별 주문 필터">
+   ${primaryFilters.map(([key,label,count])=>`<button type="button" class="admin-quote-quick-tab ${state.filter===key?'active':''}" data-filter="${key}" aria-pressed="${state.filter===key}">${label}<span>${count}</span></button>`).join('')}
+  </nav>
+  <details class="admin-quote-extra-filters" ${isSecondary?'open':''}>
+   <summary>세부 상태별 보기 ${isSecondary?`<strong>· ${esc(secondaryLabel(state.filter))}</strong>`:''}<span class="admin-quote-extra-chevron">⌄</span></summary>
+   <div class="admin-quote-secondary-list" role="group" aria-label="견적, 배송, 취소 단계별 주문 보기">
+    ${secondaryKeys.map(key=>`<button type="button" class="admin-quote-secondary-tab ${state.filter===key?'active':''}" data-filter="${key}" aria-pressed="${state.filter===key}">${esc(secondaryLabel(key))}</button>`).join('')}
+   </div>
+  </details>
+  ${state.filter==='buy_now'?'<p class="admin-quote-context">아직 발주하지 않은 이번 회차 주문만 표시해요.</p>':state.filter==='wholesale_completed'?'<p class="admin-quote-context">완료된 도매 발주만 표시해요. 신규 주문은 포함되지 않아요.</p>':''}
+  ${qq.length?`<div class="admin-date-toolbar admin-quote-date-toolbar">
+   <div><strong>주문 ${qq.length}건 · ${dayCount}일</strong>${unfinished?`<span>가격 미입력 ${unfinished}종</span>`:''}</div>
+   <div class="admin-date-actions">
+    <button type="button" class="date-all-btn" data-action="date-open-all">모두 펼치기</button>
+    <button type="button" class="date-all-btn" data-action="date-close-all">모두 접기</button>
+   </div>
+  </div>
+  <details class="admin-quote-price-fold" data-fold-key="quote-amount-comparison">
+   <summary>상품 금액 비교 <span class="admin-quote-extra-chevron">⌄</span></summary>
+   ${adminPriceTotalMarkup(qq)}
+  </details>
+  ${state.filter==='buy_now'?renderProcurementSheet()+renderSupplierBulkManager():state.filter==='wholesale_completed'?renderCompletedProcurementSheet():''}
+  ${renderAdminQuoteDateSection(qq,awaiting,'pending')}
+  ${renderAdminQuoteDateSection(qq,priced,'saved',!awaiting.length)}`:'<div class="empty">해당 상태의 견적이 없어요.</div>'}
+  <details class="admin-quote-guide">
+   <summary>주문 처리 순서 안내 <span class="admin-quote-extra-chevron">⌄</span></summary>
+   <p>① 판매가 입력 및 견적 안내 → ② 고객 회차 선택 → ③ 이번 회차 배송비 계산 → ④ 결제금액 안내 후 최종 주문 확정</p>
+  </details>
+ </section>`;
 }
 function renderBuyerOrderDetail(q){
  if(!state.admin)return '';

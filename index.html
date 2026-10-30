@@ -2894,7 +2894,7 @@ return `<section class="content admin-workspace-content">
  <div class="admin-workspace-heading">
   <h1>관리자</h1>
   <div class="admin-workspace-actions">
-   <button type="button" class="admin-compact-refresh" data-action="refresh" aria-label="관리자 새로고침" title="새로고침"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 0 0-14-4M4 4v5h5M4 13a8 8 0 0 0 14 4M20 20v-5h-5"/></svg></button>
+   <button type="button" class="admin-compact-refresh" data-action="refresh" aria-label="관리자 최신 화면 새로고침" title="최신 화면 불러오기"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 0 0-14-4M4 4v5h5M4 13a8 8 0 0 0 14 4M20 20v-5h-5"/></svg></button>
    <button class="admin-settings-shortcut ${state.tab==='settings'?'active':''}" type="button" data-tab="settings" aria-label="관리자 설정 열기" ${state.tab==='settings'?'aria-current="page"':''}><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h9m4 0h3M4 17h3m4 0h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg><span>설정</span></button>
   </div>
  </div>
@@ -5604,7 +5604,7 @@ else if(a==='suggest-product'){modalOpen('suggest')}else if(a==='approve-request
  const count=app.querySelector('[data-saved-order-count]');
  if(count)count.textContent=state.receipts.length+'건';
  notif('이 기기에서 저장된 주문조회 기록을 삭제했어요.');
-}else if(a==='refresh'){await loadAdmin();notif('새로고침 완료')}else if(a==='copy-shop-link'){await copy(publicLink())}else if(a==='copy-request-notice'){await copy(requestAnnouncement(state.requests.find(r=>r.id===id)))}else if(a==='copy-product-notice'){await copy(productAnnouncement(state.products.find(p=>p.id===id)))}else if(a==='copy-quote-notice'){await copy(quoteAnnouncement(state.quotes.find(q=>q.id===id)))}else if(a==='share-track'){
+}else if(a==='refresh'){refreshFullOrderPage();return;}else if(a==='copy-shop-link'){await copy(publicLink())}else if(a==='copy-request-notice'){await copy(requestAnnouncement(state.requests.find(r=>r.id===id)))}else if(a==='copy-product-notice'){await copy(productAnnouncement(state.products.find(p=>p.id===id)))}else if(a==='copy-quote-notice'){await copy(quoteAnnouncement(state.quotes.find(q=>q.id===id)))}else if(a==='share-track'){
  const link=trackLink(state.trackId,state.trackToken);
  if(navigator.share){
   try{await navigator.share({title:'미니예나 주문조회',text:'내 미니예나 주문조회 링크예요.',url:link});return}

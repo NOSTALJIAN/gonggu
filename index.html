@@ -3415,9 +3415,33 @@ function procurementCopyText(readyOnly=false,vendorName=null){
  }
  return chunks.join('\n');
 }
+function wholesaleRoundCompletionPlan(){
+ const rows=procurementRows(),quotes=new Map();
+ for(const row of rows){
+  if(!quotes.has(row.q.id))quotes.set(row.q.id,[]);
+  quotes.get(row.q.id).push(row);
+ }
+ const ids=new Set([...quotes].filter(([,items])=>items.every(r=>r.ready)).map(([id])=>id));
+ // A shared shipment must not complete orders outside the displayed eligible set.
+ let changed=true;
+ while(changed){
+  changed=false;
+  for(const id of [...ids]){
+   const batches=quotes.get(id).map(r=>supplierItemBatch(r.item.id)).filter(b=>b&&!b.ordered_at);
+   if(batches.some(batch=>(batch.item_ids||[]).some(itemId=>{
+    const owner=state.quotes.find(q=>(q.items||[]).some(i=>i.id===itemId));
+    return !owner||(!owner.supplier_ordered_at&&!ids.has(owner.id));
+   }))){ids.delete(id);changed=true;}
+  }
+ }
+ const selected=rows.filter(r=>ids.has(r.q.id)),batchIds=new Set();
+ for(const row of selected){const batch=supplierItemBatch(row.item.id);if(batch&&!batch.ordered_at)batchIds.add(batch.id);}
+ return {quoteIds:[...ids],batchIds:[...batchIds],items:selected.length,qty:selected.reduce((sum,r)=>sum+r.qty,0)};
+}
 function renderProcurementSheet(){
  if(!state.admin||state.page!=='admin')return '';
  const rows=procurementRows(),ready=rows.filter(r=>r.ready),review=rows.filter(r=>!r.ready);
+ const completion=wholesaleRoundCompletionPlan();
  const qty=rows.reduce((n,r)=>n+r.qty,0),cost=rows.reduce((n,r)=>n+(r.unit===null?0:r.qty*r.unit),0);
  const optionCount=list=>procurementGroups(list).reduce((n,v)=>n+v.products.length,0);
  const missing=rows.filter(r=>r.unit===null).reduce((n,r)=>n+r.qty,0);
@@ -3450,6 +3474,8 @@ function renderProcurementSheet(){
    <button class="btn sm" data-action="copy-procurement-ready" type="button" ${ready.length?'':'disabled'}>발주 가능 상품 복사 (${optionCount(ready)}종)</button>
    <button class="btn sm secondary" data-action="copy-procurement-review" type="button" ${rows.length?'':'disabled'}>확정 주문 전체 복사 (검토용)</button>
   </div>
+  <button class="btn block" type="button" data-action="complete-wholesale-round" ${completion.quoteIds.length?'':'disabled'}>이번 회차 전체 발주 완료 (${completion.quoteIds.length}건 · ${completion.qty}개)</button>
+  <p class="smallnote">발주 가능한 주문을 한 번에 완료해요. 이미 완료된 주문과 확인이 필요한 주문은 제외돼요.</p>
   <div class="procurement-sheet-warning">최종 확정 주문만 합산하며 구매 희망만 한 사람은 제외돼. 실제 발주 전 도매배송비 배분·입금·옵션을 확인해 줘. <b>복사만으로 발주 처리되지는 않아.</b></div>
   <div class="procurement-phase"><h4>발주 가능 <small>${optionCount(ready)}종 · ${ready.reduce((n,r)=>n+r.qty,0)}개</small></h4>
    ${ready.length?suppliers(ready,'ready'):'<p class="procurement-sheet-intro">아직 배송비 배분·입금·옵션 확인을 마친 발주 가능 상품이 없어.</p>'}</div>
@@ -4379,6 +4405,28 @@ if(a==='admin-approve-item-options'||a==='admin-reject-item-options'){
  await rpc('gq_admin_decide_item_option_request_v61',{p_request_id:id,p_approve:approve,p_note:note},true);
  await loadAdmin();
  notif(approve?'옵션 변경을 승인하고 주문에 반영했어요. 고객에게 이메일이 발송돼요.':'옵션 변경을 반려했어요. 고객에게 이메일이 발송돼요.');
+ return;
+}
+if(a==='complete-wholesale-round'){
+ if(!state.admin||state.page!=='admin'||state.filter!=='buy_now')throw Error('이번 회차 구매 화면에서 처리해 주세요.');
+ if(busy)return;
+ const plan=wholesaleRoundCompletionPlan();
+ if(!plan.quoteIds.length)throw Error('완료 처리할 발주 가능 주문이 없어요.');
+ if(!window.confirm('이번 회차 '+plan.quoteIds.length+'건 · '+plan.qty+'개 상품을 모두 실제 도매 발주했나요?\\n확인하면 한 번에 발주 완료 처리하고 고객 옵션 변경 요청을 마감해요.'))return;
+ busy=true;b.disabled=true;
+ let completed=0,batches=0;
+ try{
+  for(const batchId of plan.batchIds){await adminMarkSupplierBatchOrdered(batchId);batches++;}
+  for(const quoteId of plan.quoteIds){
+   await rpc('gq_admin_mark_quote_wholesale_ordered_v61',{p_quote_id:quoteId},true);
+   completed++;
+  }
+  await loadAdmin();
+  notif('이번 회차 '+completed+'건을 한 번에 도매 발주 완료 처리했어요.');
+ }catch(error){
+  try{await loadAdmin()}catch{}
+  notif('주문 '+completed+'건 · 거래처 배분 '+batches+'건 처리 후 중단됐어요. '+errorText(error)+' 새로고침 후 남은 건을 다시 처리해 주세요.');
+ }finally{busy=false;b.disabled=false;}
  return;
 }
 if(a==='admin-complete-wholesale'){

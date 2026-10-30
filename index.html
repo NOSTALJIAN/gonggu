@@ -2308,13 +2308,22 @@ function buyerRoundIntent(q){
  </section>`;
 }
 function intentBadge(q){
+ if(isWholesaleCompleted(q))return '<span class="purchase-intent-chip later">도매 발주 완료</span>';
  const intent=q.status==='confirmed'?'buy_now':q.purchase_intent||'undecided';
  if(q.status==='cancelled'||q.status==='requested')return '';
  const label=intent==='buy_now'?(q.status==='confirmed'?'이번 구매 확정':'이번 회차 구매 희망'):intent==='next_round'?'다음 회차 구매':intent==='on_hold'?'구매 보류':'구매 회차 미선택';
  const color=intent==='buy_now'?'now':['next_round','on_hold'].includes(intent)?'later':'wait';
  return `<span class="purchase-intent-chip ${color}">${label}</span>`;
 }
-function isRoundBuyer(q){return q.status==='confirmed'||(q.status==='quoted'&&q.purchase_intent==='buy_now')}
+function isWholesaleCompleted(q){
+ if(q.status!=='confirmed')return false;
+ if(q.supplier_ordered_at)return true;
+ const active=(q.items||[]).filter(i=>i.fulfillment!=='sold_out');
+ return active.length>0&&active.every(i=>i.supplier_ordered_at||['received','delivered'].includes(i.fulfillment));
+}
+function isRoundBuyer(q){
+ return !isWholesaleCompleted(q)&&(q.status==='confirmed'||(q.status==='quoted'&&q.purchase_intent==='buy_now'));
+}
 function buyerWholesaleStatus(q){
  if(q.status!=='confirmed')return '';
  const active=(q.items||[]).filter(i=>i.fulfillment!=='sold_out');
@@ -3486,13 +3495,14 @@ function renderProcurementSheet(){
  </details>`;
 }
 function renderAdminQuotes(){
- const qq=state.quotes.filter(q=>state.filter==='all'||(state.filter==='buy_now'?isRoundBuyer(q):state.filter==='next_round'?q.status==='quoted'&&q.purchase_intent==='next_round':state.filter==='on_hold'?q.status==='quoted'&&q.purchase_intent==='on_hold':state.filter==='undecided'?q.status==='quoted'&&(!q.purchase_intent||q.purchase_intent==='undecided'):state.filter==='cancel_requested'?!!q.cancel_requested_at&&q.status!=='cancelled':state.filter.startsWith('flow_')?q.status==='confirmed'&&workflowStage(q)===state.filter.slice(5):q.status===state.filter));
- const groups=bundledQuoteGroups(qq);
+ const qq=state.quotes.filter(q=>state.filter==='all'||(state.filter==='buy_now'?isRoundBuyer(q):state.filter==='wholesale_completed'?isWholesaleCompleted(q):state.filter==='next_round'?q.status==='quoted'&&q.purchase_intent==='next_round':state.filter==='on_hold'?q.status==='quoted'&&q.purchase_intent==='on_hold':state.filter==='undecided'?q.status==='quoted'&&(!q.purchase_intent||q.purchase_intent==='undecided'):state.filter==='cancel_requested'?!!q.cancel_requested_at&&q.status!=='cancelled':state.filter.startsWith('flow_')?q.status==='confirmed'&&workflowStage(q)===state.filter.slice(5):q.status===state.filter));
+ const groups=['buy_now','wholesale_completed'].includes(state.filter)?qq.map(q=>[q]):bundledQuoteGroups(qq);
  const awaiting=groups.filter(quoteGroupNeedsPriceInput),priced=groups.filter(g=>!quoteGroupNeedsPriceInput(g));
  const unfinished=qq.reduce((n,q)=>n+(q.status==='cancelled'?0:q.items.filter(i=>i.unit_price==null&&i.fulfillment!=='sold_out').length),0);
  const dayCount=new Set(qq.map(q=>receivedDayKey(q.created_at))).size;
  const optionPending=state.optionRequests.filter(r=>r.status==='pending').length;
  const nNow=state.quotes.filter(isRoundBuyer).length;
+ const nOrdered=state.quotes.filter(isWholesaleCompleted).length;
  const nNext=state.quotes.filter(q=>q.status==='quoted'&&q.purchase_intent==='next_round').length;
  const nHold=state.quotes.filter(q=>q.status==='quoted'&&q.purchase_intent==='on_hold').length;
  const nUndecided=state.quotes.filter(q=>q.status==='quoted'&&(!q.purchase_intent||q.purchase_intent==='undecided')).length;
@@ -3501,11 +3511,13 @@ function renderAdminQuotes(){
  <div class="admin-purchase-counts">
   ${optionPending?`<button type="button" data-action="show-pending-item-options">⚠️ 옵션 변경 요청 <b>${optionPending}건</b></button>`:''}
   <button type="button" data-filter="buy_now">이번 회차 구매 <b>${nNow}건</b></button>
+  <button type="button" data-filter="wholesale_completed">발주 완료 <b>${nOrdered}건</b></button>
   <button type="button" data-filter="next_round">다음 회차 구매 <b>${nNext}건</b></button>
   <button type="button" data-filter="on_hold">구매 보류 <b>${nHold}건</b></button>
   <button type="button" data-filter="undecided">미선택 <b>${nUndecided}건</b></button>
  </div>
- <div class="controls" style="margin-bottom:10px">${['all','buy_now','next_round','on_hold','undecided','cancel_requested','requested','quoted','confirmed','flow_new','flow_preparing','flow_pickup_ready','flow_shipped','flow_completed','flow_soldout_closed','cancelled'].map(s=>`<button class="tab ${state.filter===s?'active':''}" data-filter="${s}">${s==='all'?'전체':s==='buy_now'?'이번 회차 구매':s==='next_round'?'다음 회차 구매':s==='on_hold'?'구매 보류':s==='undecided'?'미선택':s==='cancel_requested'?'취소 요청':s.startsWith('flow_')?workflowLabels[s.slice(5)]:statusLabel[s]}</button>`).join('')}</div>
+ <div class="controls" style="margin-bottom:10px">${['all','buy_now','wholesale_completed','next_round','on_hold','undecided','cancel_requested','requested','quoted','confirmed','flow_new','flow_preparing','flow_pickup_ready','flow_shipped','flow_completed','flow_soldout_closed','cancelled'].map(s=>`<button class="tab ${state.filter===s?'active':''}" data-filter="${s}">${s==='all'?'전체':s==='buy_now'?'이번 회차 구매':s==='wholesale_completed'?'발주 완료':s==='next_round'?'다음 회차 구매':s==='on_hold'?'구매 보류':s==='undecided'?'미선택':s==='cancel_requested'?'취소 요청':s.startsWith('flow_')?workflowLabels[s.slice(5)]:statusLabel[s]}</button>`).join('')}</div>
+ ${state.filter==='buy_now'?'<div class="smallnote">아직 도매 발주하지 않은 주문만 표시해요. 발주 완료 처리하면 완료 탭으로 자동 이동해요.</div>':state.filter==='wholesale_completed'?'<div class="info">도매 발주를 마친 주문이에요. 이후 입고·배송·수령 상태는 여기에서 관리해요. 새로 이번 회차 구매를 선택한 주문과 합산되지 않아요.</div>':''}
  ${qq.length?`<div class="admin-date-toolbar"><div><strong>날짜별 주문</strong><span>${qq.length}건 · ${dayCount}일 · 가격 미입력 ${unfinished}종</span></div><div class="admin-date-actions"><button type="button" class="date-all-btn" data-action="date-open-all">전체 펼치기</button><button type="button" class="date-all-btn" data-action="date-close-all">전체 접기</button></div></div>
  <div class="admin-overall-prices"><h3>현재 목록 상품 총액 비교</h3>${adminPriceTotalMarkup(qq)}</div>
  ${state.filter==='buy_now'?renderProcurementSheet()+renderSupplierBulkManager():''}

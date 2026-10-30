@@ -4188,10 +4188,10 @@ function renderAdminQuotes(){
  const nCancelRequested=state.quotes.filter(q=>!!q.cancel_requested_at&&q.status!=='cancelled').length;
  const primaryFilters=[
   ['all','전체',state.quotes.length],
-  ['cancel_requested','취소 요청',nCancelRequested],
   ['buy_now','발주 예정',nNow],
   ['wholesale_completed','발주 완료',nOrdered],
-  ['other','구매 미확정',nOther]
+  ['cancel_requested','취소 요청',nCancelRequested],
+  ['other','미확정',nOther]
  ];
  const secondaryKeys=['requested','quoted','confirmed','flow_new','flow_preparing','flow_pickup_ready','flow_shipped','flow_completed','flow_soldout_closed','cancelled'];
  const secondaryLabel=key=>({wholesale_completed:'발주 완료',next_round:'다음 회차',on_hold:'구매 보류',undecided:'미선택'})[key]||(key.startsWith('flow_')?workflowLabels[key.slice(5)]:statusLabel[key]||key);

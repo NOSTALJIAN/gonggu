@@ -3872,8 +3872,8 @@ function composeBulkOptions(existingText,colorsInput,sizesInput){
 function bulkOptionsBuilder(){
  return `<div class="bulk-option-builder">
  <div class="bulk-option-heading"><b>색상·사이즈 한 번에 입력</b><span>색상마다 사이즈가 같다면 한 번만 적으세요.</span></div>
- <label class="label">색상 여러 개 <span class="bulk-option-enter-hint">엔터로 구분</span><div class="bulk-option-textbox" data-bulk-editor="colors" role="textbox" aria-multiline="true" aria-label="색상 한 줄에 하나씩 입력" contenteditable="plaintext-only" spellcheck="false" autocorrect="off" autocapitalize="off" data-placeholder="핑크 · 블루 · 머스타드 · 자주 (엔터로 구분)"></div></label>
- <label class="label">공통 사이즈 <span class="bulk-option-enter-hint">엔터로 구분</span><div class="bulk-option-textbox" data-bulk-editor="sizes" role="textbox" aria-multiline="true" aria-label="사이즈 한 줄에 하나씩 입력" contenteditable="plaintext-only" spellcheck="false" autocorrect="off" autocapitalize="off" data-placeholder="1호 · 2호 (엔터로 구분)"></div></label>
+ <label class="label">색상 여러 개 <span class="bulk-option-enter-hint">엔터로 구분</span><div class="bulk-option-textbox" data-bulk-editor="colors" role="textbox" aria-multiline="true" aria-label="색상 한 줄에 하나씩 입력" contenteditable="plaintext-only" spellcheck="true" autocorrect="on" autocapitalize="off" lang="ko" data-placeholder="핑크 · 블루 · 머스타드 · 자주 (엔터로 구분)"></div></label>
+ <label class="label">공통 사이즈 <span class="bulk-option-enter-hint">엔터로 구분</span><div class="bulk-option-textbox" data-bulk-editor="sizes" role="textbox" aria-multiline="true" aria-label="사이즈 한 줄에 하나씩 입력" contenteditable="plaintext-only" spellcheck="true" autocorrect="on" autocapitalize="off" lang="ko" data-placeholder="1호 · 2호 (엔터로 구분)"></div></label>
  <button type="button" class="btn block bulk-option-apply" data-action="bulk-options-apply">선택한 색상에 사이즈 일괄 적용</button>
  <div class="smallnote">색상과 사이즈를 한 줄에 하나씩 적고 엔터로 구분해 주세요. 쉼표로 구분해도 돼요. 기존에 없는 색상은 추가되고, 이미 있는 색상은 해당 사이즈만 변경돼요.</div>
  </div>`;

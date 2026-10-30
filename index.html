@@ -1445,6 +1445,23 @@ body:has(.overlay) .floating-actions{opacity:0;visibility:hidden;pointer-events:
  .shoplist .shop-catalog-card .producttitle.catalog-title-link{font-size:12px}
  .shoplist .shop-catalog-card .shop-catalog-colors{font-size:10px}
 }
+
+/* Five numbered page buttons + compact accessible direct-page entry. */
+.shop-catalog-pagination{justify-content:center;gap:5px;margin:24px 0 8px}
+.shop-catalog-pagination button{min-width:36px;min-height:38px;padding:7px 8px}
+.shop-catalog-pagination .page-control{min-width:49px;padding-inline:8px}
+.shop-page-jump{display:flex;justify-content:center;align-items:center;gap:12px;flex-wrap:wrap;margin:4px 0 15px}
+.shop-page-jump .shop-catalog-pagination-status{margin:0;font-size:11px;white-space:nowrap}
+.shop-page-jump form{display:flex;align-items:center;gap:7px;margin:0}
+.shop-page-jump label{font-size:11px;color:#666;white-space:nowrap}
+.shop-page-jump input{box-sizing:border-box;width:58px;min-width:0;height:36px;padding:5px 6px;text-align:center;border:1px solid #ccc;border-radius:5px;background:#fff;color:#111;font-size:16px}
+.shop-page-jump button{height:36px;min-width:47px;border:1px solid #111;border-radius:5px;background:#fff;color:#111;font-size:12px;font-weight:750;padding:6px 10px}
+@media(max-width:380px){
+ .shop-catalog-pagination{gap:4px}
+ .shop-catalog-pagination button{min-width:31px;min-height:35px;padding:6px}
+ .shop-catalog-pagination .page-control{min-width:43px;padding-inline:6px}
+ .shop-page-jump{gap:9px}
+}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -2414,8 +2431,8 @@ function renderShop(){
  const firstNumber=products.length?(shopPage-1)*shopPageSize+1:0;
  const lastNumber=Math.min(products.length,shopPage*shopPageSize);
  const categoryCounts=Object.fromEntries(categoryFilterKeys.map(k=>[k,catalogue.filter(({p})=>matchesCategory(p,k)).length]));
- // Limit visible page controls to three numbers on mobile; retain every page via previous/next.
- const shopPageWindow=Math.min(3,shopPageCount);
+ // Show up to five page numbers, with direct jump for any page beyond the window.
+ const shopPageWindow=Math.min(5,shopPageCount);
  const shopPageFirst=Math.max(1,Math.min(shopPage-1,shopPageCount-shopPageWindow+1));
  const visibleShopPages=Array.from({length:shopPageWindow},(_,i)=>shopPageFirst+i);
  const banner=currentHeroPhotoUrl();
@@ -2433,7 +2450,15 @@ function renderShop(){
   <button type="button" class="page-control" data-action="shop-page" data-page-number="${shopPage-1}" ${shopPage===1?'disabled':''} aria-label="이전 상품 페이지">이전</button>
   ${visibleShopPages.map(n=>`<button type="button" data-action="shop-page" data-page-number="${n}" ${n===shopPage?'aria-current="page"':''} aria-label="${n}페이지">${n}</button>`).join('')}
   <button type="button" class="page-control" data-action="shop-page" data-page-number="${shopPage+1}" ${shopPage===shopPageCount?'disabled':''} aria-label="다음 상품 페이지">다음</button>
- </nav><p class="shop-catalog-pagination-status">${shopPage} / ${shopPageCount} 페이지</p>`:''}`:'<div class="empty">조건에 맞는 상품이 없어요. 다른 카테고리나 검색어를 선택해 주세요.</div>'}</div>
+ </nav>
+ <div class="shop-page-jump">
+  <span class="shop-catalog-pagination-status">${shopPage} / ${shopPageCount} 페이지</span>
+  <form id="shop-page-jump-form" aria-label="원하는 상품 페이지 바로 이동">
+   <label for="shop-page-jump-input">바로 이동</label>
+   <input id="shop-page-jump-input" name="page" type="number" inputmode="numeric" min="1" max="${shopPageCount}" step="1" placeholder="번호" required aria-label="이동할 페이지 번호">
+   <button type="submit">이동</button>
+  </form>
+ </div>`:''}`:'<div class="empty">조건에 맞는 상품이 없어요. 다른 카테고리나 검색어를 선택해 주세요.</div>'}</div>
  </section>`;
 }
 /* MINIYENA final-order bank transfer instructions (never pre-confirmation). */
@@ -4714,6 +4739,18 @@ function manualKoreanAddress(button){
  const pane=block.querySelector('[data-postcode-panel]');if(pane)pane.classList.add('hidden');
  zip.focus();notif('우편번호와 기본주소를 직접 입력할 수 있어요');
 }
+function navigateShopPage(next){
+ if(state.page!=='shop')throw Error('상품 화면에서만 페이지를 이동할 수 있어요.');
+ const total=state.stores.filter(st=>st.active)
+  .flatMap(st=>state.products.filter(p=>p.published&&p.store_id===st.id).map(p=>({p,store:st})))
+  .filter(({p,store})=>matchesCategory(p,state.shopCategory)&&(!state.search||p.name.includes(state.search)||store.name.includes(state.search)||categoryLabel(p).includes(state.search))).length;
+ const maxPage=Math.max(1,Math.ceil(total/10));
+ if(!Number.isSafeInteger(next)||next<1||next>maxPage)throw Error('1~'+maxPage+' 사이의 페이지 번호를 입력해 주세요.');
+ state.shopPage=next;
+ render();
+ const section=app.querySelector('#catalog');
+ if(section)window.scrollTo({top:Math.max(0,window.scrollY+section.getBoundingClientRect().top-12),behavior:'auto'});
+}
 async function click(e){const pg=e.target.closest('[data-page]');if(pg){goto(pg.dataset.page);if(pg.classList.contains('brand-home'))window.scrollTo({top:0,behavior:'auto'});return}const b=e.target.closest('[data-action]');if(!b)return;const a=b.dataset.action,id=b.dataset.id;try{
 if(a==='set-purchase-intent'){
  const next=String(b.dataset.intent||'');
@@ -4982,16 +5019,7 @@ if(a==='admin-summary'){
  return;
 }
 if(a==='shop-page'){
- if(state.page!=='shop')throw Error('상품 화면에서만 페이지를 이동할 수 있어요.');
- const next=Number(b.dataset.pageNumber);
- const total=state.stores.filter(st=>st.active).flatMap(st=>state.products.filter(p=>p.published&&p.store_id===st.id).map(p=>({p,store:st})))
-  .filter(({p,store})=>matchesCategory(p,state.shopCategory)&&(!state.search||p.name.includes(state.search)||store.name.includes(state.search)||categoryLabel(p).includes(state.search))).length;
- const maxPage=Math.max(1,Math.ceil(total/10));
- if(!Number.isInteger(next)||next<1||next>maxPage) return;
- state.shopPage=next;
- render();
- const section=app.querySelector('#catalog');
- if(section)window.scrollTo({top:Math.max(0,window.scrollY+section.getBoundingClientRect().top-12),behavior:'auto'});
+ navigateShopPage(Number(b.dataset.pageNumber));
  return;
 }
 if(a==='shop-category'){
@@ -5198,7 +5226,17 @@ else if(a==='suggest-product'){modalOpen('suggest')}else if(a==='approve-request
  }
  await copy(link);notif('링크를 복사했어요. 카톡 나와의 채팅에 붙여넣어 보관해 주세요.');
 }else if(a==='copy-track'){await copy(trackLink(state.trackId,state.trackToken))}else if(a==='load-track'){refreshFullOrderPage();return;}else if(a==='copy-quote'){await copy(quoteText(state.quotes.find(q=>q.id===id)))}else if(a==='copy-customer-link'){const q=state.quotes.find(q=>q.id===id);await copy(trackLink(q.id,q.lookup_token))}else if(a==='publish-quote'){if(!window.confirm('상품 가격을 확인했나요? 고객에게 먼저 견적을 보내고 이번 회차 구매·다음 회차 구매·보류 선택을 받을게요. 배송비는 답변을 받은 뒤 계산해요.'))return;await adminPublish(id);await loadAdmin();notif('견적을 보냈어요. 구매 회차 선택을 받은 후 배송비를 배분해 주세요.')}else if(a==='confirm-quote'){if(!window.confirm('이 견적으로 최종 주문을 확정할까요?'))return;await confirmFinalQuote();notif('최종 주문이 확정됐어요!')}else if(a==='export-csv'){csv()}else if(a==='copy-vendors'){await copy(vendorText())}else if(a==='logout'){session=null;localStorage.removeItem(SESS);state.admin=false;state.productPrivate={};state.productPrivateReady=false;render()} }catch(ex){notif(errorText(ex))}}
-async function submit(e){const f=e.target;if(!f.dataset.sizeChartForm&&!f.dataset.customerEmail&&!['gmail-settings-form','hero-photo-form','reject-request-form','admin-pin-form','pin-register-form','pin-lookup-form','import-track-form','pick','request','store-form','product-form','login','suggest-form','approve-form','bundle-form','edit-delivery-form','bulk-supplier-shipping-form'].includes(f.id)&&!f.dataset.itemOptions&&!f.dataset.buyerOptionRequest&&!f.dataset.price&&!f.dataset.payment&&!f.dataset.shipping&&!f.dataset.supplierShipping&&!f.dataset.ship&&!f.dataset.bundleShip)return;e.preventDefault();if(busy)return;busy=true;const data=new FormData(f);try{if(f.dataset.buyerOptionRequest){
+async function submit(e){const f=e.target;
+if(f.id==='shop-page-jump-form'){
+ e.preventDefault();
+ try{
+  const raw=String(new FormData(f).get('page')??'').trim();
+  if(!/^[1-9][0-9]*$/.test(raw))throw Error('이동할 페이지 번호를 입력해 주세요.');
+  navigateShopPage(Number(raw));
+ }catch(ex){notif(errorText(ex));}
+ return;
+}
+if(!f.dataset.sizeChartForm&&!f.dataset.customerEmail&&!['gmail-settings-form','hero-photo-form','reject-request-form','admin-pin-form','pin-register-form','pin-lookup-form','import-track-form','pick','request','store-form','product-form','login','suggest-form','approve-form','bundle-form','edit-delivery-form','bulk-supplier-shipping-form'].includes(f.id)&&!f.dataset.itemOptions&&!f.dataset.buyerOptionRequest&&!f.dataset.price&&!f.dataset.payment&&!f.dataset.shipping&&!f.dataset.supplierShipping&&!f.dataset.ship&&!f.dataset.bundleShip)return;e.preventDefault();if(busy)return;busy=true;const data=new FormData(f);try{if(f.dataset.buyerOptionRequest){
   const id=f.dataset.buyerOptionRequest;
   const item=state.tracking?.items?.find(i=>i.id===id);
   if(!item)throw Error('변경할 주문 상품이 없어요.');

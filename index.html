@@ -1344,6 +1344,16 @@ body:has(.overlay) .floating-actions{opacity:0;visibility:hidden;pointer-events:
 .compact-fold[open]>summary::after,.procurement-supplier[open]>summary::after{content:'접기 ▴'}
 .compact-fold>summary small{display:block;font-size:12px;font-weight:400;color:#666;margin-top:5px}
 .manual-freight-form{padding:10px 0;border-top:1px solid #eee}
+
+/* Catalog title alignment v74: reserve two lines without changing product names. */
+.shoplist .shop-catalog-card .producttitle{
+ font-size:13px;line-height:1.5;font-weight:700;letter-spacing:-.25px;
+ height:3em;min-height:3em;max-height:3em;flex-shrink:0;
+ display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+ overflow:hidden;overflow-wrap:anywhere;word-break:keep-all;
+}
+.shoplist .shop-catalog-card .shop-catalog-quote{min-height:3.1em}
+.shoplist .shop-catalog-card .shop-catalog-select{margin-top:auto}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -2239,7 +2249,7 @@ function renderShop(){
  ${categoryFilterKeys.filter(k=>k==='all'||categoryCounts[k]>0||k===activeCategory).map(k=>`<button type="button" class="shop-category-tab ${activeCategory===k?'active':''}" data-action="shop-category" data-category="${k}" aria-pressed="${activeCategory===k}">${k==='all'?'전체':k==='uncategorized'?'미분류':k}<span>${categoryCounts[k]}</span></button>`).join('')}
  </div>
  <div class="shop-search-wrap"><input id="search" type="search" placeholder="상품명·가게명·카테고리 검색" value="${esc(state.search)}" aria-label="상품 검색"></div>
- <div class="shoplist">${products.length?`<div class="shop-catalog-count">${activeCategory==='all'?'전체 상품':activeCategory==='uncategorized'?'미분류 상품':activeCategory} · 총 ${products.length}개 · 최신 등록순 · ${firstNumber}~${lastNumber}개 표시</div><div class="shop-catalog-grid">${pageProducts.map(({p,store})=>`<article class="shop-catalog-card ${p.is_sold_out?'shop-soldout-card':''}"><button class="shop-catalog-photo shop-photo-button" type="button" data-action="product-photos" data-id="${esc(p.id)}" aria-label="${esc(p.name)} 상품 사진 보기">${img(p)}</button>${p.is_sold_out?'<span class="shop-soldout-label">품절</span>':''}<div class="shop-catalog-store">${esc(store.name)} <span class="shop-catalog-category">${esc(categoryLabel(p))}</span></div><div class="producttitle">${esc(p.name)}</div><div class="shop-catalog-colors">${Object.keys(p.options||{}).map(esc).join(' · ')||'색상 옵션 확인'}</div>${estimatedProductPrice(p)}<div class="shop-catalog-quote">${p.is_sold_out?'현재 품절 · 주문 불가':hasProductEstimate(p)?'실제 결제금액은 견적에서 확정':'견적 후 가격 안내'}</div><button class="btn block shop-catalog-select" type="button" data-action="pick-product" data-id="${esc(p.id)}" ${p.is_sold_out?'disabled':''}>${p.is_sold_out?'품절':'옵션 선택 ↗'}</button></article>`).join('')}</div>
+ <div class="shoplist">${products.length?`<div class="shop-catalog-count">${activeCategory==='all'?'전체 상품':activeCategory==='uncategorized'?'미분류 상품':activeCategory} · 총 ${products.length}개 · 최신 등록순 · ${firstNumber}~${lastNumber}개 표시</div><div class="shop-catalog-grid">${pageProducts.map(({p,store})=>`<article class="shop-catalog-card ${p.is_sold_out?'shop-soldout-card':''}"><button class="shop-catalog-photo shop-photo-button" type="button" data-action="product-photos" data-id="${esc(p.id)}" aria-label="${esc(p.name)} 상품 사진 보기">${img(p)}</button>${p.is_sold_out?'<span class="shop-soldout-label">품절</span>':''}<div class="shop-catalog-store">${esc(store.name)} <span class="shop-catalog-category">${esc(categoryLabel(p))}</span></div><div class="producttitle" title="${esc(p.name)}">${esc(p.name)}</div><div class="shop-catalog-colors">${Object.keys(p.options||{}).map(esc).join(' · ')||'색상 옵션 확인'}</div>${estimatedProductPrice(p)}<div class="shop-catalog-quote">${p.is_sold_out?'현재 품절 · 주문 불가':hasProductEstimate(p)?'실제 결제금액은 견적에서 확정':'견적 후 가격 안내'}</div><button class="btn block shop-catalog-select" type="button" data-action="pick-product" data-id="${esc(p.id)}" ${p.is_sold_out?'disabled':''}>${p.is_sold_out?'품절':'옵션 선택 ↗'}</button></article>`).join('')}</div>
  ${shopPageCount>1?`<nav class="shop-catalog-pagination" aria-label="상품 페이지 이동">
   <button type="button" class="page-control" data-action="shop-page" data-page-number="${shopPage-1}" ${shopPage===1?'disabled':''} aria-label="이전 상품 페이지">이전</button>
   ${Array.from({length:shopPageCount},(_,i)=>i+1).map(n=>`<button type="button" data-action="shop-page" data-page-number="${n}" ${n===shopPage?'aria-current="page"':''} aria-label="${n}페이지">${n}</button>`).join('')}

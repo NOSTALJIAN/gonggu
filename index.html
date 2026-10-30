@@ -648,6 +648,30 @@ button.brand-home:focus-visible{outline:2px solid #111;outline-offset:5px}
 .shell:has(.dock) .floating-actions{bottom:calc(149px + env(safe-area-inset-bottom))}
 body:has(.overlay) .floating-actions{opacity:0;visibility:hidden;pointer-events:none}
 
+/* Compact, lightweight floating shortcuts on customer-facing screens only. */
+.shell:not(.is-admin-shell) .floating-actions{
+ gap:9px;
+}
+.shell:not(.is-admin-shell) .floating-actions .floating-refresh,
+.shell:not(.is-admin-shell) .floating-actions .back-to-top{
+ width:46px;
+ height:46px;
+ min-width:46px;
+ min-height:46px;
+ border:1px solid #ededed;
+ box-shadow:0 2px 9px rgba(0,0,0,.07);
+ gap:2px;
+ font-size:9px;
+ font-weight:600;
+ line-height:1.1;
+ color:#333;
+}
+.shell:not(.is-admin-shell) .floating-actions svg{
+ width:19px;
+ height:19px;
+ stroke-width:1.6;
+}
+
 /* Independent, administrator-controlled homepage hero photo. */
 .hero-photo-settings{margin-bottom:16px}
 .hero-settings-preview{width:100%;min-height:150px;max-height:330px;aspect-ratio:16/10;overflow:hidden;background:#f5f5f5;border:1px solid #e5e5e5;display:flex;align-items:center;justify-content:center;margin:13px 0 15px}

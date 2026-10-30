@@ -1698,7 +1698,7 @@ details[open]>summary>.admin-quote-extra-chevron{transform:rotate(180deg)}
 .admin-workspace-actions .admin-settings-shortcut svg{width:16px;height:16px}
 .admin-workspace-actions .admin-settings-shortcut.active{background:#171717;border-color:#171717;color:#fff}
 .admin-workspace-overview{
- display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
  border-top:1px solid #eee;border-bottom:1px solid #eee;margin:0;padding:9px 0;
 }
 .admin-overview-link{
@@ -1808,6 +1808,22 @@ details[open]>summary>.admin-quote-extra-chevron{transform:rotate(180deg)}
  .admin-workspace-content .request-card .sub{font-size:11px;line-height:1.5}
  .admin-workspace-content .request-status-tab span{font-size:13px}
 }
+
+/* Confirmed customer orders: compact product grouping instead of one long item string. */
+.admin-workspace-content .buyer-order-preview{margin-top:10px;text-align:left;min-width:0}
+.admin-workspace-content .buyer-order-preview-head{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;color:#777;margin-bottom:6px;flex-wrap:wrap}
+.admin-workspace-content .buyer-order-preview-head strong{font-size:12px;color:#333;font-weight:770}
+.admin-workspace-content .buyer-order-preview-head span{font-size:10px}
+.admin-workspace-content .buyer-order-preview-list{border:1px solid #ededed;border-radius:7px;padding:0 10px;background:#fafafa}
+.admin-workspace-content .buyer-order-preview-row{display:flex;align-items:center;justify-content:space-between;gap:9px;border-bottom:1px solid #ebebeb;padding:8px 0}
+.admin-workspace-content .buyer-order-preview-row:last-child{border-bottom:0}
+.admin-workspace-content .buyer-order-preview-product{min-width:0;display:flex;flex-direction:column;gap:2px;line-height:1.45}
+.admin-workspace-content .buyer-order-preview-product b{font-size:12px;font-weight:750;color:#222;overflow-wrap:anywhere}
+.admin-workspace-content .buyer-order-preview-product span{font-size:11px;color:#858585;overflow-wrap:anywhere}
+.admin-workspace-content .buyer-order-preview-qty{white-space:nowrap;color:#222;font-size:12px;font-weight:800;flex:0 0 auto}
+.admin-workspace-content .buyer-order-preview-more{font-size:11px;line-height:1.5;color:#777;margin:7px 0 0}
+.admin-workspace-content .stat-order-open .stat-order-more{font-size:11px;margin-top:9px;color:#333}
+
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -2967,7 +2983,7 @@ function renderTrack(){const q=state.tracking;return `<section class="content"><
 ${canRequestCancel(q)?`<button class="btn block outline" style="margin-top:12px" data-action="request-cancel">취소 요청하기</button>`:''}
 <button class="btn block neutral" style="margin-top:12px" data-action="copy-track">견적 확인 링크 복사</button><button class="btn block secondary" style="margin-top:7px" data-action="load-track">새로고침</button></div>`}</section>`}
 function renderAdmin(){if(connected&&!state.admin)return `<section class="content"><div class="card loginbox"><h2>관리자 로그인</h2><p class="sub">상품·가격·배송비·품절·입금은 관리자만 변경해요.</p><form id="login"><label class="label">이메일<input required name="email" type="email" autocomplete="email"></label><label class="label">비밀번호<input required name="password" type="password" autocomplete="current-password"></label><button class="btn block" type="submit">로그인</button></form></div></section>`;
-const nQuote=state.quotes.filter(q=>q.status==='requested').length,nConfirm=state.quotes.filter(q=>q.status==='confirmed').length;
+const nQuote=state.quotes.filter(q=>q.status==='requested').length;
 return `<section class="content admin-workspace-content">
 <div class="admin-workspace-top">
  <div class="admin-workspace-heading">
@@ -2979,7 +2995,6 @@ return `<section class="content admin-workspace-content">
  </div>
  <div class="admin-workspace-overview">
   <button type="button" class="admin-overview-link ${nQuote?'is-attention':''}" data-action="admin-summary" data-summary="requested" aria-label="견적 요청 ${nQuote}건 보기"><span>견적 요청</span><strong>${nQuote}</strong></button>
-  <button type="button" class="admin-overview-link" data-action="admin-summary" data-summary="confirmed" aria-label="확정 주문 ${nConfirm}건 보기"><span>확정 주문</span><strong>${nConfirm}</strong></button>
   <button type="button" class="admin-overview-link" data-action="admin-summary" data-summary="products" aria-label="등록 상품 ${state.products.length}개 보기"><span>등록 상품</span><strong>${state.products.length}</strong></button>
  </div>
 </div><div class="tabs admin-main-tabs" aria-label="관리자 메뉴"><button class="tab ${state.tab==='quotes'?'active':''}" data-tab="quotes">견적·주문</button><button class="tab ${state.tab==='requests'?'active':''}" data-tab="requests">상품 등록 신청 ${state.requests.filter(x=>x.status==='pending').length}</button><button class="tab ${state.tab==='products'?'active':''}" data-tab="products">상품·가게 관리</button><button class="tab ${state.tab==='buyers'?'active':''}" data-tab="buyers">구매자별 집계</button></div>${state.tab==='quotes'?renderAdminQuotes():state.tab==='requests'?renderAdminRequests():state.tab==='products'?renderAdminProducts():state.tab==='buyers'?renderBuyerStats():state.tab==='items'?renderProductStats():state.tab==='vendors'?renderVendorSummary():renderAdminSettings()}</section>`}
@@ -4369,6 +4384,34 @@ function renderBuyerOrderDetail(q){
   <p class="smallnote buyer-order-detail-footnote">주문 접수 시 저장된 품목명·색상·사이즈·수량을 보여줘요. 가격·입금·배송 상태는 관리자가 이후 수정했다면 현재 저장된 값으로 표시돼요. 삭제한 상품의 사진이나 상품 페이지는 복원되지 않아요.</p>
  </div>`;
 }
+
+function buyerOrderProductPreview(q){
+ const grouped=new Map();
+ for(const item of q.items||[]){
+  const store=String(item.store_name||'').trim();
+  const name=String(item.product_name||'상품명 미입력').trim()||'상품명 미입력';
+  const key=JSON.stringify([store,name]);
+  let group=grouped.get(key);
+  if(!group){group={name,qty:0,options:[]};grouped.set(key,group);}
+  const qty=Math.max(0,Number(item.quantity)||0);
+  group.qty+=qty;
+  const option=[String(item.color||'').trim(),String(item.size||'').trim()].filter(Boolean).join(' / ');
+  if(option&&!group.options.includes(option))group.options.push(option);
+ }
+ const products=[...grouped.values()];
+ const totalQty=products.reduce((n,p)=>n+p.qty,0);
+ const visible=products.slice(0,4);
+ return `<div class="buyer-order-preview" aria-label="주문 상품 미리보기">
+  <div class="buyer-order-preview-head"><strong>상품 ${products.length}종 · 총 ${totalQty}개</strong><span>${esc(deliveryLabel(q))}${isBundle(q)?' · 묶음배송':''}</span></div>
+  <div class="buyer-order-preview-list">
+   ${visible.map(p=>`<div class="buyer-order-preview-row">
+    <div class="buyer-order-preview-product"><b>${esc(p.name)}</b>${p.options.length?`<span>${esc(p.options[0])}${p.options.length>1?' 외 '+(p.options.length-1)+'옵션':''}</span>`:''}</div>
+    <strong class="buyer-order-preview-qty">${p.qty}개</strong>
+   </div>`).join('')}
+  </div>
+  ${products.length>visible.length?`<div class="buyer-order-preview-more">외 ${products.length-visible.length}종의 상품은 상세정보에서 확인</div>`:''}
+ </div>`;
+}
 function renderBuyerStats(){
  const groups=customerGroups();
  const confirmedAmount=groups.reduce((sum,g)=>sum+g.spent,0);
@@ -4395,7 +4438,7 @@ function renderBuyerStats(){
    <summary class="stats-summary"><span>확정 주문 내역 보기</span><span class="tiny">펼치기 ▾</span></summary>
    ${g.orders.map(q=>`<button type="button" class="stat-detail stat-order-open" data-action="buyer-order-details" data-id="${esc(q.id)}" aria-label="${esc(q.buyer_name)}님 확정 주문 ${esc(fmtDate(q.created_at))} 상세정보 열기">
     <div class="row between"><b>확정 · ${fmtDate(q.created_at)}</b><span>${money(totalDue(q))}</span></div>
-    <div class="tiny">${(q.items||[]).map(i=>esc(i.product_name)+' '+esc(i.color)+'/'+esc(i.size)+' ×'+i.quantity).join(' · ')} · ${deliveryLabel(q)}${isBundle(q)?' · 묶음배송':''}</div>
+    ${buyerOrderProductPreview(q)}
     <span class="stat-order-more">주문 상세정보 보기 <span aria-hidden="true">→</span></span>
    </button>`).join('')}
   </details>

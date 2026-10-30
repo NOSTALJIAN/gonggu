@@ -2045,6 +2045,38 @@ async function saveHeroPhoto(file){
  if(!state.heroPhotoUrl)throw Error('설정을 저장했지만 새 메인 사진이 확인되지 않아요.');
  render();
 }
+/* Random homepage hero: only published, in-stock products from active stores.
+   Persist the chosen existing public cover, never touch a product record. */
+function defaultHeroPhotoUrl(){
+ const featured=state.stores.filter(st=>st.active)
+  .flatMap(st=>state.products.filter(p=>p.published&&p.store_id===st.id));
+ return featured.find(p=>p.image_url&&!p.is_sold_out)?.image_url
+  ||featured.find(p=>p.image_url)?.image_url||'';
+}
+function currentHeroPhotoUrl(){return state.heroPhotoUrl||defaultHeroPhotoUrl()}
+async function randomizeHeroPhoto(){
+ if(!state.admin||!connected||!session)throw Error('관리자 로그인 후 메인 사진을 바꿀 수 있어요.');
+ const activeStoreIds=new Set(state.stores.filter(st=>st.active).map(st=>st.id));
+ const publicPrefix=publicPhotoUrl('');
+ const candidates=[...new Set(state.products
+  .filter(p=>p.published&&!p.is_sold_out&&activeStoreIds.has(p.store_id))
+  .map(p=>{
+   const photo=String(p.image_url||'');
+   const path=photo.startsWith(publicPrefix)?photo.slice(publicPrefix.length):'';
+   return /^covers\/[A-Za-z0-9-]{8,80}\.jpg$/.test(path)?path:null;
+  }).filter(Boolean))];
+ if(!candidates.length)throw Error('전시 중이고 판매 가능한 상품의 대표사진이 없어요.');
+ const previous=currentHeroPhotoUrl();
+ const alternatives=candidates.filter(path=>publicPhotoUrl(path)!==previous);
+ if(!alternatives.length)throw Error('현재 사진과 다른 상품 사진이 없어요. 상품을 더 등록한 후 다시 시도해 주세요.');
+ const chosen=alternatives[Math.floor(Math.random()*alternatives.length)];
+ const endpoint='/rest/v1/gq_stores'+(state.heroStoreId?'?id=eq.'+encodeURIComponent(state.heroStoreId):'');
+ await api(endpoint,{method:state.heroStoreId?'PATCH':'POST',
+  body:{name:HERO_META_PREFIX+chosen,active:true},admin:true});
+ await loadCatalog(true);
+ if(state.heroPhotoUrl!==publicPhotoUrl(chosen))throw Error('메인 사진이 저장되었는지 확인할 수 없어요. 관리자 새로고침을 눌러 주세요.');
+ render();
+}
 async function resetHeroPhoto(){
  if(!state.admin||!connected||!session)throw Error('관리자 로그인이 필요해요.');
  if(!state.heroStoreId)throw Error('변경한 메인 사진이 없어요.');
@@ -2262,8 +2294,7 @@ function renderShop(){
  const firstNumber=products.length?(shopPage-1)*shopPageSize+1:0;
  const lastNumber=Math.min(products.length,shopPage*shopPageSize);
  const categoryCounts=Object.fromEntries(categoryFilterKeys.map(k=>[k,catalogue.filter(({p})=>matchesCategory(p,k)).length]));
- const featuredProducts=state.stores.filter(s=>s.active).flatMap(s=>state.products.filter(p=>p.published&&p.store_id===s.id));const featured=featuredProducts.find(p=>p.image_url&&!p.is_sold_out)||featuredProducts.find(p=>p.image_url);
- const banner=state.heroPhotoUrl||featured?.image_url||'';
+ const banner=currentHeroPhotoUrl();
  return `<section class="content shop-content">
  <div class="shop-editorial"><div class="shop-editorial-visual ${banner?'has-photo':''}">${banner?`<img src="${esc(banner)}" alt="미니예나 메인 사진" loading="eager">`:'<div class="shop-editorial-art" aria-hidden="true"></div>'}</div>
  <div class="shop-editorial-copy"><span class="shop-editorial-label">남대문 아동복 · 초저가 공동구매</span><h1>남대문 아동복<br>초저가 쇼핑</h1><p>남아·여아 아동복을 부담 없이 골라보세요.<br>가격은 견적 요청 후 안내해 드려요.</p><a class="shop-editorial-link" href="#catalog">상품 둘러보기 ↗</a></div></div>
@@ -3695,7 +3726,7 @@ function renderEmailNotificationSettings(){
   ${controls}
  </section>`;
 }
-function renderAdminSettings(){return `${renderEmailNotificationSettings()}<div class="card hero-photo-settings"><h3>메인 사진 관리</h3><p class="smallnote">쇼핑몰 첫 화면의 큰 사진을 직접 변경할 수 있어요. 상품 대표사진과는 별개예요.</p><div class="hero-settings-preview">${state.heroPhotoUrl?`<img src="${esc(state.heroPhotoUrl)}" alt="현재 메인 사진">`:'<div class="hero-settings-placeholder">별도 메인 사진이 없어요.<br>현재는 등록된 상품 사진이 자동으로 표시돼요.</div>'}</div><form id="hero-photo-form"><label class="label">새 메인 사진 선택<input type="file" name="hero_photo" id="hero-photo-input" accept="image/*" required></label><p class="smallnote">세로형 사진을 추천해요. 원본이 커도 자동으로 크기를 줄여 저장해요.</p><button class="btn block" type="submit">메인 사진 변경하기</button></form>${state.heroPhotoUrl?'<button class="btn block secondary" style="margin-top:9px" type="button" data-action="reset-hero-photo">기존 자동 사진으로 되돌리기</button>':''}</div><div class="card"><h3>고객에게 보낼 주소</h3><p class="smallnote">상품 고르고 견적 요청을 보낼 수 있는 링크예요.</p><div class="info nooverflow">${esc(publicLink())}</div><button class="btn block" data-action="copy-shop-link">주문 링크 복사</button><div class="separator"></div><button class="btn block secondary" data-action="export-csv">주문 내역 CSV 저장</button>${connected?'<button class="btn block neutral" style="margin-top:9px" data-action="logout">관리자 로그아웃</button>':''}<p class="smallnote">가격·주문별 배송비·품절·상품 준비·입금 상태는 관리자 전용입니다. 아직 견적만 요청한 상품은 확정 주문 수량에 포함되지 않아요.</p></div>`}
+function renderAdminSettings(){return `${renderEmailNotificationSettings()}<div class="card hero-photo-settings"><h3>메인 사진 관리</h3><p class="smallnote">현재는 정해진 주기로 자동 변경되지 않아요. 설정한 사진은 다음에 바꾸기 전까지 유지돼요.</p><div class="hero-settings-preview">${currentHeroPhotoUrl()?`<img src="${esc(currentHeroPhotoUrl())}" alt="현재 메인 사진">`:'<div class="hero-settings-placeholder">등록된 상품 사진이 없어요.</div>'}</div><button class="btn block secondary" type="button" data-action="random-hero-photo">🎲 랜덤 상품 사진으로 변경</button><p class="smallnote">고객에게 전시 중인 판매 가능 상품에서 대표사진을 랜덤으로 선택해 저장해요.</p><form id="hero-photo-form"><label class="label">새 메인 사진 선택<input type="file" name="hero_photo" id="hero-photo-input" accept="image/*" required></label><p class="smallnote">세로형 사진을 추천해요. 원본이 커도 자동으로 크기를 줄여 저장해요.</p><button class="btn block" type="submit">메인 사진 변경하기</button></form>${state.heroPhotoUrl?'<button class="btn block secondary" style="margin-top:9px" type="button" data-action="reset-hero-photo">기존 자동 사진으로 되돌리기</button>':''}</div><div class="card"><h3>고객에게 보낼 주소</h3><p class="smallnote">상품 고르고 견적 요청을 보낼 수 있는 링크예요.</p><div class="info nooverflow">${esc(publicLink())}</div><button class="btn block" data-action="copy-shop-link">주문 링크 복사</button><div class="separator"></div><button class="btn block secondary" data-action="export-csv">주문 내역 CSV 저장</button>${connected?'<button class="btn block neutral" style="margin-top:9px" data-action="logout">관리자 로그아웃</button>':''}<p class="smallnote">가격·주문별 배송비·품절·상품 준비·입금 상태는 관리자 전용입니다. 아직 견적만 요청한 상품은 확정 주문 수량에 포함되지 않아요.</p></div>`}
 function modal(){const m=state.modal;if(!m)return '';const wrap=(title,body,stickyProductSave=false)=>stickyProductSave?`<div class="overlay" id="overlay"><div class="sheet sheet-product-editor" role="dialog" aria-modal="true"><div class="sheethead"><h2>${title}</h2><button class="close" data-action="close">×</button></div><div class="sheet-product-scroll">${body}</div><div class="sheet-product-save"><button class="btn block" type="submit" form="product-form">상품 저장</button></div></div></div>`:`<div class="overlay" id="overlay"><div class="sheet" role="dialog" aria-modal="true"><div class="sheethead"><h2>${title}</h2><button class="close" data-action="close">×</button></div>${body}</div></div>`;
 if(m.type==='buyer-order-details'){
  if(!state.admin||state.page!=='admin')return '';
@@ -4899,6 +4930,11 @@ if(a==='edit-delivery'){
  await updateStoreSizeChartPaths(storeId,updated);
  await refreshStoreSizeChartEditor();
  notif(a==='remove-size-chart-photo'?'선택한 사이즈표를 삭제했어요.':'사이즈표 순서를 변경했어요.');
+}else if(a==='random-hero-photo'){
+ if(b.disabled)return;
+ b.disabled=true;
+ try{await randomizeHeroPhoto();notif('랜덤 상품 사진으로 변경했어요. 고객 메인화면에도 적용돼요.')}
+ finally{if(b.isConnected)b.disabled=false}
 }else if(a==='reset-hero-photo'){if(!window.confirm('기존 메인 사진을 지우고 자동 상품 사진으로 되돌릴까요?'))return;await resetHeroPhoto();notif('기존 상품 사진으로 되돌렸어요')}else if(a==='close'){clearAdminSelectedPhotos();state.modal=null;render()}else if(a==='product-photos'){
  const p=selectedProd(id);
  if(!p||!p.published||!state.stores.some(st=>st.id===p.store_id&&st.active))throw Error('현재 전시 중인 상품이 아니에요.');

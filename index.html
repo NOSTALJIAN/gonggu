@@ -3015,10 +3015,12 @@ function renderShop(){
  const firstNumber=products.length?(shopPage-1)*shopPageSize+1:0;
  const lastNumber=Math.min(products.length,shopPage*shopPageSize);
  const categoryCounts=Object.fromEntries(categoryFilterKeys.map(k=>[k,catalogue.filter(({p})=>matchesCategory(p,k)).length]));
- // Show up to five page numbers, with direct jump for any page beyond the window.
- const shopPageWindow=Math.min(5,shopPageCount);
- const shopPageFirst=Math.max(1,Math.min(shopPage-1,shopPageCount-shopPageWindow+1));
+ // Keep page numbers in groups of five; arrows jump to the first page of adjacent groups.
+ const shopPageFirst=Math.floor((shopPage-1)/5)*5+1;
+ const shopPageWindow=Math.min(5,shopPageCount-shopPageFirst+1);
  const visibleShopPages=Array.from({length:shopPageWindow},(_,i)=>shopPageFirst+i);
+ const previousPageGroup=Math.max(1,shopPageFirst-5);
+ const nextPageGroup=Math.min(shopPageCount,shopPageFirst+5);
  const banner=currentHeroPhotoUrl();
  return `<section class="content shop-content">
  <div class="shop-editorial"><div class="shop-editorial-visual ${banner?'has-photo':''}">${banner?`<img src="${esc(banner)}" alt="미니예나 메인 사진" loading="eager">`:'<div class="shop-editorial-art" aria-hidden="true"></div>'}</div>
@@ -3031,9 +3033,9 @@ function renderShop(){
  <div class="shop-search-wrap"><input id="search" type="search" placeholder="상품명·가게명·카테고리 검색" value="${esc(state.search)}" aria-label="상품 검색"></div>
  <div class="shoplist">${products.length?`<div class="shop-catalog-count">${activeCategory==='all'?'전체 상품':activeCategory==='uncategorized'?'미분류 상품':activeCategory} · 총 ${products.length}개 · 최신 등록순 · ${firstNumber}~${lastNumber}개 표시</div><div class="shop-catalog-grid">${pageProducts.map(({p,store})=>`<article class="shop-catalog-card ${p.is_sold_out?'shop-soldout-card':''}"><button class="shop-catalog-photo shop-photo-button" type="button" data-action="${p.is_sold_out?'product-photos':'pick-product'}" data-id="${esc(p.id)}" aria-label="${esc(p.name)} ${p.is_sold_out?'상품 사진 보기':'상품 옵션 보기'}">${img(p)}</button>${p.is_sold_out?'<span class="shop-soldout-label">품절</span>':''}<div class="shop-catalog-store">${esc(store.name)}</div><button class="producttitle catalog-title-link" type="button" data-action="${p.is_sold_out?'product-photos':'pick-product'}" data-id="${esc(p.id)}" aria-label="${esc(p.name)} ${p.is_sold_out?'상품 사진 보기':'상품 옵션 보기'}" title="${esc(p.name)}">${esc(p.name)}</button><div class="shop-catalog-colors">${Object.keys(p.options||{}).map(esc).join(' · ')||'색상 옵션 확인'}</div>${hasProductEstimate(p)?estimatedProductPrice(p):'<div class="product-estimate product-estimate-card shop-catalog-no-estimate"><span class="product-estimate-label">가격</span><strong>견적 문의</strong></div>'}</article>`).join('')}</div>
  ${shopPageCount>1?`<nav class="shop-catalog-pagination" aria-label="상품 페이지 이동">
-  <button type="button" class="page-control" data-action="shop-page" data-page-number="${shopPage-1}" ${shopPage===1?'disabled':''} aria-label="이전 상품 페이지" title="이전 페이지">‹</button>
+  <button type="button" class="page-control" data-action="shop-page" data-page-number="${previousPageGroup}" ${shopPageFirst===1?'disabled':''} aria-label="이전 5페이지 묶음" title="이전 5페이지">‹</button>
   ${visibleShopPages.map(n=>`<button type="button" data-action="shop-page" data-page-number="${n}" ${n===shopPage?'aria-current="page"':''} aria-label="${n}페이지">${n}</button>`).join('')}
-  <button type="button" class="page-control" data-action="shop-page" data-page-number="${shopPage+1}" ${shopPage===shopPageCount?'disabled':''} aria-label="다음 상품 페이지" title="다음 페이지">›</button>
+  <button type="button" class="page-control" data-action="shop-page" data-page-number="${nextPageGroup}" ${shopPageFirst+5>shopPageCount?'disabled':''} aria-label="다음 5페이지 묶음" title="다음 5페이지">›</button>
  </nav>
  <div class="shop-page-jump">
   <span class="shop-catalog-pagination-status" aria-label="전체 ${shopPageCount}페이지 중 현재 ${shopPage}페이지">${shopPage} / ${shopPageCount}</span>

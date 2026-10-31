@@ -1233,6 +1233,7 @@ body:has(.overlay) .floating-actions{opacity:0;visibility:hidden;pointer-events:
 .option-request-result.pending{background:#fff4e5;color:#704c22}
 .option-request-result.approved{background:#ebf5ee;color:#315c40}
 .option-request-result.rejected{background:#f9eeee;color:#763d3d}
+ .option-request-result.withdrawn{background:#f1f2f5;color:#536075}
 .option-request-admin{padding:12px;margin:11px 0;border:1px solid #d9d9d9;border-radius:9px;background:#fff}
 .option-request-admin h4{font-size:13px;margin:0 0 7px}
 .option-request-admin p{font-size:12px;line-height:1.75;margin:4px 0}
@@ -3428,10 +3429,12 @@ function buyerOptionRequest(q,i){
   ['sold_out','received','delivered'].includes(i.fulfillment)||!['new','preparing'].includes(q.workflow_stage||'new'));
  const recent=req?.status==='pending'?'<b>변경 요청 검토 중</b>':
    req?.status==='approved'?'<b>이전 변경 요청 승인 완료</b>':
-   req?.status==='rejected'?'<b>이전 변경 요청 반려</b>':'';
+   req?.status==='rejected'?'<b>이전 변경 요청 반려</b>':
+    req?.status==='withdrawn'?'<b>옵션 변경 요청 취소됨</b>':'';
  const result=req?`<div class="option-request-result ${esc(req.status)}">${recent}<div>요청한 옵션: ${esc(req.requested_color)} / ${esc(req.requested_size)} · ${Number(req.requested_quantity)}개</div>${req.decision_note?`<div>안내: ${esc(req.decision_note)}</div>`:''}</div>`:'';
- if(closed)return `<div class="tiny" style="margin:7px 0">✅ 이 상품은 도매주문 완료 또는 입고 처리되어 옵션 변경 요청이 마감됐어요.</div>${result}`;
- if(req?.status==='pending')return result+'<div class="tiny">판매자가 승인하거나 반려하면 결과가 표시돼요. 승인 전까지 원래 옵션이 유지돼요.</div>';
+  const cancelButton=req?.status==='pending'?`<button type="button" class="btn block outline" style="margin:8px 0 4px" data-action="withdraw-item-options" data-id="${esc(req.id)}">옵션변경 요청 취소</button>`:'';
+ if(closed)return `<div class="tiny" style="margin:7px 0">✅ 이 상품은 도매주문 완료 또는 입고 처리되어 옵션 변경 요청이 마감됐어요.</div>${result}${cancelButton}`;
+ if(req?.status==='pending')return result+'<div class="tiny">판매자가 승인하거나 반려하면 결과가 표시돼요. 승인 전까지 원래 옵션이 유지돼요.</div>'+cancelButton;
  const rawOptions=i.product_options&&typeof i.product_options==='object'?i.product_options:{};
  const colors=[...new Set([i.color,...Object.keys(rawOptions)])].filter(Boolean);
  const sizes=[...new Set([i.size,...(Array.isArray(rawOptions[i.color])?rawOptions[i.color]:[])])].filter(Boolean);
@@ -5597,6 +5600,15 @@ async function submitBuyerOptionRequest(id,color,size,quantity){
  }).catch(e=>console.warn('옵션 변경 관리자 알림 전송 실패',e));
  await reloadTracking();
 }
+async function withdrawBuyerOptionRequest(requestId){
+  if(!state.tracking?.items?.some(i=>i.option_request?.id===requestId&&i.option_request.status==='pending'))
+    throw Error('대기 중인 옵션 변경 요청을 찾지 못했어요. 주문조회를 새로고침해 주세요.');
+  if(!connected)throw Error('실제 주문에서만 사용할 수 있어요.');
+  await rpc('gq_withdraw_item_option_request_v67',{
+    p_quote_id:state.trackId,p_lookup_token:state.trackToken,p_request_id:requestId
+  });
+  await reloadTracking();
+}
 async function setBuyerPurchaseIntent(intent){
  if(!state.tracking||state.tracking.status!=='quoted'||!['buy_now','next_round','on_hold'].includes(intent))throw Error('견적 안내를 받은 뒤 구매 회차를 선택해 주세요.');
  if(!connected){const q=demo.quotes.find(x=>x.id===state.trackId&&x.lookup_token===state.trackToken);if(!q)throw Error('조회한 견적을 찾지 못했어요.');q.purchase_intent=intent;q.purchase_intent_at=now();saveDemo();}
@@ -5985,6 +5997,12 @@ if(a==='select-product-store'){
   if(nameField){nameField.value=typed&&!state.stores.some(st=>st.name.trim().toLocaleLowerCase('ko-KR')===typed.toLocaleLowerCase('ko-KR'))?typed:'';nameField.focus();}
  }else input.blur();
  return;
+}
+if(a==='withdraw-item-options'){
+  if(!window.confirm('옵션변경 요청을 취소할까요?\n기존 주문의 옵션·수량·결제금액은 그대로 유지돼요.'))return;
+  await withdrawBuyerOptionRequest(id);
+  notif('옵션변경 요청을 취소했어요. 기존 주문은 그대로 유지돼요.');
+  return;
 }
 if(a==='withdraw-cancel-request'){await withdrawCancellation();return;}
 if(a==='set-purchase-intent'){

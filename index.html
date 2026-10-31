@@ -2340,6 +2340,60 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
  .shop-content .shop-section-head{margin-bottom:13px}
 }
 
+
+/* 2026-10-31 follow-up: preserve mobile compact storefront, unclipped categories.
+   Desktop remains full-width; no shipping/order/admin logic touched. */
+.shop-mobile-filter-toggle{display:none}
+@media(min-width:720px){
+ .shop-content .shop-catalog-tools .shop-filter-toolbar{display:flex}
+}
+@media(max-width:719px){
+ /* Undo the oversized mobile hero and top spacing from desktop-oriented overrides. */
+ .hero.is-shop-header{
+  padding:calc(env(safe-area-inset-top) + 8px) 14px 8px!important
+ }
+ .hero.is-shop-header .headrow{min-height:34px!important}
+ .hero.is-shop-header .logo{font-size:26px}
+ .hero.is-shop-header .heroaction{min-height:34px}
+ .shop-content .shop-editorial{
+  height:clamp(300px,42svh,400px)!important;
+  min-height:0!important;max-height:none!important;
+  margin-bottom:12px
+ }
+ /* Fit the entire catalog category list; no off-screen cut-off chips. */
+ .shop-content .shop-category-list{
+  display:flex;flex-wrap:wrap;overflow:visible;white-space:normal;
+  justify-content:flex-start;align-items:center;
+  gap:6px;padding:0 0 7px;margin:3px 0 8px;width:100%;
+ }
+ .shop-content .shop-category-list .shop-category-tab{
+  flex:0 0 auto;min-height:31px;padding:6px 9px;
+  font-size:11px;gap:4px
+ }
+ .shop-content .shop-category-list .shop-category-tab span{font-size:10px}
+ .shop-content .shop-catalog-tools{display:flex;flex-direction:column;align-items:stretch;gap:0;margin:5px 0 4px}
+ .shop-content .shop-catalog-tools .shop-search-wrap{width:100%}
+ .shop-content .shop-catalog-tools .shop-mobile-filter-toggle{
+  align-self:flex-end;display:flex;align-items:center;gap:7px;
+  padding:6px 1px;margin:3px 0 0;
+  border:0;background:transparent;color:#555;
+  min-height:32px;font-size:12px;font-weight:600;cursor:pointer
+ }
+ .shop-mobile-filter-toggle .shop-filter-arrow{font-size:15px;font-weight:400;line-height:1}
+ .shop-content .shop-catalog-tools .shop-filter-toolbar{display:none!important}
+ .shop-content .shop-catalog-tools .shop-filter-toolbar.shop-filters-open{
+  display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:8px;width:100%;margin:2px 0 6px
+ }
+ .shop-content .shop-catalog-tools .shop-filter-field:first-child{grid-column:auto}
+ .shop-content .shop-catalog-tools .shop-filter-field span{display:none}
+ .shop-content .shop-catalog-tools .shop-filter-field select{
+  min-height:39px;height:39px;width:100%;max-width:none;
+  font-size:16px;padding:5px 25px 5px 9px
+ }
+ .shop-content .shoplist .shop-catalog-count{margin:3px 0 13px}
+}
+
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -2521,7 +2575,7 @@ const demo=read(DEMO,initDemo());
 const saveDemo=()=>localStorage.setItem(DEMO,JSON.stringify(demo));
 let session=read(SESS,null),busy=false,refreshing=null;
 const p=new URLSearchParams(location.search);
-const state={page:['admin','track'].includes(p.get('page'))?p.get('page'):'shop',tab:'quotes',stores:[],products:[],requests:[],quotes:[],cart:read(CART,[]),modal:null,search:'',shopCategory:'all',shopSort:'newest',shopStore:'all',shopAvailability:'all',adminCategory:'all',trackId:p.get('id')||'',trackToken:p.get('token')||'',tracking:null,receipts:read(TRACK,[]),notice:'',filter:'all',admin:false,heroPhotoUrl:null,heroStoreId:null,dateGroupsOpen:{},orderCardsOpen:{},supplierBulkSelected:new Set(),supplierBulkStoreId:'',supplierBatches:[],supplierBatchesReady:false,supplierBatchesError:'',optionRequests:[],optionRequestsReady:false,optionRequestsError:'',requestStatusFilter:'pending',adminCatalogView:'products',adminCatalogFilter:'all',adminProductSort:'newest',adminProductSearch:'',productPrivate:{},productPrivateReady:false,emailSettings:null,emailSettingsReady:false,emailSettingsError:'',adminPinIds:new Set(),phoneLookupReady:null,pinLookupNotice:''};
+const state={page:['admin','track'].includes(p.get('page'))?p.get('page'):'shop',tab:'quotes',stores:[],products:[],requests:[],quotes:[],cart:read(CART,[]),modal:null,search:'',shopCategory:'all',shopSort:'newest',shopStore:'all',shopFiltersOpen:false,adminCategory:'all',trackId:p.get('id')||'',trackToken:p.get('token')||'',tracking:null,receipts:read(TRACK,[]),notice:'',filter:'all',admin:false,heroPhotoUrl:null,heroStoreId:null,dateGroupsOpen:{},orderCardsOpen:{},supplierBulkSelected:new Set(),supplierBulkStoreId:'',supplierBatches:[],supplierBatchesReady:false,supplierBatchesError:'',optionRequests:[],optionRequestsReady:false,optionRequestsError:'',requestStatusFilter:'pending',adminCatalogView:'products',adminCatalogFilter:'all',adminProductSort:'newest',adminProductSearch:'',productPrivate:{},productPrivateReady:false,emailSettings:null,emailSettingsReady:false,emailSettingsError:'',adminPinIds:new Set(),phoneLookupReady:null,pinLookupNotice:''};
 
 const PRODUCT_CATEGORIES=['바디수트','세트','상의','하의','아우터','원피스','스커트','모자','양말','악세서리','잡화'];
 const validProductCategory=x=>PRODUCT_CATEGORIES.includes(String(x||'').trim());
@@ -3607,13 +3661,11 @@ function renderShop(){
   .sort((a,b)=>String(a.name).localeCompare(String(b.name),'ko'));
  const activeShopStore=shopStores.some(store=>store.id===state.shopStore)?state.shopStore:'all';
  const sort=['newest','oldest','price-low','price-high','name'].includes(state.shopSort)?state.shopSort:'newest';
- const availability=['all','available','soldout'].includes(state.shopAvailability)?state.shopAvailability:'all';
  const sortLabels={newest:'최신 등록순',oldest:'오래된 등록순','price-low':'예상가 낮은순','price-high':'예상가 높은순',name:'상품명 가나다순'};
  const query=String(state.search||'').trim().toLocaleLowerCase('ko');
  const products=catalogue.filter(({p,store})=>
   matchesCategory(p,activeCategory)&&
   (activeShopStore==='all'||store.id===activeShopStore)&&
-  (availability==='all'||(availability==='available'?!p.is_sold_out:!!p.is_sold_out))&&
   (!query||[p.name,store.name,categoryLabel(p)].some(v=>String(v||'').toLocaleLowerCase('ko').includes(query)))
  ).sort((a,b)=>{
   const dateA=Date.parse(a.p.created_at)||0,dateB=Date.parse(b.p.created_at)||0;
@@ -3643,7 +3695,8 @@ function renderShop(){
  ${categoryFilterKeys.filter(k=>k==='all'||categoryCounts[k]>0||k===activeCategory).map(k=>`<button type="button" class="shop-category-tab ${activeCategory===k?'active':''}" data-action="shop-category" data-category="${k}" aria-pressed="${activeCategory===k}">${k==='all'?'전체':k==='uncategorized'?'미분류':k}<span>${categoryCounts[k]}</span></button>`).join('')}
  </div>
  <div class="shop-catalog-tools"><div class="shop-search-wrap"><input id="search" type="search" placeholder="상품명·가게명·카테고리 검색" value="${esc(state.search)}" aria-label="상품 검색"></div>
- <div class="shop-filter-toolbar" role="group" aria-label="상품 정렬 및 필터">
+ <button type="button" class="shop-mobile-filter-toggle" data-action="toggle-shop-filters" aria-expanded="${Boolean(state.shopFiltersOpen)}" aria-controls="shop-filter-toolbar"><span>정렬 · 거래처</span><span class="shop-filter-arrow" aria-hidden="true">${state.shopFiltersOpen?'−':'+'}</span></button>
+ <div class="shop-filter-toolbar ${state.shopFiltersOpen?'shop-filters-open':''}" id="shop-filter-toolbar" role="group" aria-label="상품 정렬 및 필터">
   <label class="shop-filter-field"><span>정렬</span><select id="shop-sort" aria-label="상품 정렬">
    <option value="newest" ${sort==='newest'?'selected':''}>최신 등록순</option>
    <option value="oldest" ${sort==='oldest'?'selected':''}>오래된 등록순</option>
@@ -3653,11 +3706,6 @@ function renderShop(){
   </select></label>
   <label class="shop-filter-field"><span>거래처</span><select id="shop-store" aria-label="거래처 필터"><option value="all">전체 거래처</option>
    ${shopStores.map(store=>`<option value="${esc(store.id)}" ${activeShopStore===store.id?'selected':''}>${esc(store.name)}</option>`).join('')}
-  </select></label>
-  <label class="shop-filter-field"><span>판매 상태</span><select id="shop-availability" aria-label="품절 여부 필터">
-   <option value="all" ${availability==='all'?'selected':''}>전체 상품</option>
-   <option value="available" ${availability==='available'?'selected':''}>품절 제외</option>
-   <option value="soldout" ${availability==='soldout'?'selected':''}>품절 상품만</option>
   </select></label>
  </div></div>
  <div class="shoplist">${products.length?`<div class="shop-catalog-count">상품 ${products.length}개</div><div class="shop-catalog-grid">${products.map(({p,store})=>`<article class="shop-catalog-card ${p.is_sold_out?'shop-soldout-card':''}">${catalogPhotoGallery(p)}${p.is_sold_out?'<span class="shop-soldout-label">품절</span>':''}<div class="shop-catalog-store">${esc(store.name)}</div><button class="producttitle catalog-title-link" type="button" data-action="${p.is_sold_out?'product-photos':'pick-product'}" data-id="${esc(p.id)}" aria-label="${esc(p.name)} ${p.is_sold_out?'상품 사진 보기':'상품 옵션 보기'}" title="${esc(p.name)}">${esc(p.name)}</button><div class="shop-catalog-colors">${Object.keys(p.options||{}).map(esc).join(' · ')||'색상 옵션 확인'}</div>${hasProductEstimate(p)?estimatedProductPrice(p):'<div class="product-estimate product-estimate-card shop-catalog-no-estimate"><span class="product-estimate-label">가격</span><strong>견적 문의</strong></div>'}</article>`).join('')}</div>`:'<div class="empty">조건에 맞는 상품이 없어요. 다른 카테고리나 검색어를 선택해 주세요.</div>'}</div>
@@ -6343,6 +6391,13 @@ async function click(e){
  if(e.target.matches?.('[data-product-store-search]')){productStoreSearchResults(e.target,true);return;}
  if(!e.target.closest?.('[data-product-store-picker]'))closeProductStoreSearch(app.querySelector('#product-form'));
  const pg=e.target.closest('[data-page]');if(pg){goto(pg.dataset.page);if(pg.classList.contains('brand-home'))window.scrollTo({top:0,behavior:'auto'});return}const b=e.target.closest('[data-action]');if(!b)return;const a=b.dataset.action,id=b.dataset.id;try{
+if(a==='toggle-shop-filters'){
+ if(state.page!=='shop')return;
+ state.shopFiltersOpen=!state.shopFiltersOpen;
+ const previousY=window.scrollY;
+ render();window.scrollTo({top:previousY,behavior:'auto'});
+ return;
+}
 if(a==='entry-push-open'){entryPushShown=true;state.modal={type:'entry-push'};render();return;}
 if(a==='entry-push-later'){postponeEntryPush();state.modal=null;render();return;}
 if(a==='entry-push-enable'){await enableEntryPush();return;}
@@ -7103,11 +7158,10 @@ else if(f.dataset.price){
 else if(f.dataset.payment){const paid=Number(data.get('paid')),refunded=Number(data.get('refunded'));if(!Number.isInteger(paid)||!Number.isInteger(refunded)||paid<0||refunded<0)throw Error('금액을 확인해 주세요');await adminPayment(f.dataset.payment,paid,refunded);await loadAdmin();notif('입금 기록 완료')}
 }catch(ex){notif(errorText(ex))}finally{busy=false}}
 async function change(e){const x=e.target;
-if(['shop-sort','shop-store','shop-availability'].includes(x.id)){
+if(['shop-sort','shop-store'].includes(x.id)){
  if(state.page!=='shop')return;
  if(x.id==='shop-sort')state.shopSort=['newest','oldest','price-low','price-high','name'].includes(x.value)?x.value:'newest';
- else if(x.id==='shop-store')state.shopStore=state.stores.some(store=>store.active&&store.id===x.value)?x.value:'all';
- else state.shopAvailability=['all','available','soldout'].includes(x.value)?x.value:'all';
+ else state.shopStore=state.stores.some(store=>store.active&&store.id===x.value)?x.value:'all';
  const previousY=window.scrollY;
  render();
  window.scrollTo({top:previousY,behavior:'auto'});

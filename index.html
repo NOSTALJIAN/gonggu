@@ -3318,9 +3318,11 @@ async function miniPushStatus(){
    const check=await Promise.race([window.miniYenaOneSignalReady,new Promise(r=>setTimeout(()=>r({ok:false}),7000))]);
    if(!node.isConnected)return;
    const subscribed=!!(check.ok&&check.client?.User?.PushSubscription?.optedIn);
-    node.textContent=subscribed?'✅ 알림 설정 완료 · 알림을 받을 수 있어요.':'시스템 알림은 허용됐지만 미니예나 알림 구독 확인이 필요해요.';
+    const adminAliasReady=subscribed?await miniRegisterAdminAlias():false;
+    if(!node.isConnected)return;
+    node.textContent=adminAliasReady?'✅ 관리자 푸시 연결 완료':subscribed?'기기 알림 허용됨 · 관리자 알림 연결 확인이 필요해요.':'미니예나 알림 구독이 필요해요.';
     const btn=node.closest('.pushbox')?.querySelector('[data-action="enable-admin-push"]');
-    if(btn){btn.classList.remove('hidden');btn.textContent=subscribed?'관리자 자동 알림 연결하기 · 다시 연결':'관리자 알림 허용하기';}
+    if(btn){btn.classList.remove('hidden');btn.textContent=adminAliasReady?'알림 연결 · 다시 연결':'관리자 알림 연결하기';}
    return;
  }
  node.textContent='알림 권한 미허용 · 버튼을 눌러 허용해 주세요.';
@@ -3371,12 +3373,23 @@ async function miniSendTestPush(){
  if(!res.ok||!json.ok)throw Error(json.error||'테스트 알림을 보내지 못했어요.');
  notif('테스트 알림을 보냈어요. 아이폰 알림을 확인해 주세요.');
 }
+let miniAdminAliasSyncedId='';
+let miniAdminAliasSyncing=null;
 async function miniRegisterAdminAlias(){
- try{
-  if(!connected||!state.admin)return;
-  const ready=await window.miniYenaOneSignalReady;
-  if(ready?.ok&&ready.client.User.PushSubscription.optedIn)await ready.client.User.addAlias('miniyena_admin','manager');
- }catch(e){console.warn('관리자 푸시 대상 등록 실패',e)}
+ if(!connected||!state.admin)return false;
+ const ready=await window.miniYenaOneSignalReady;
+ if(!ready?.ok||!ready.client?.User?.PushSubscription?.optedIn)return false;
+ const subscriptionId=String(ready.client.User.PushSubscription.id||'');
+ if(subscriptionId&&miniAdminAliasSyncedId===subscriptionId)return true;
+ if(miniAdminAliasSyncing)return miniAdminAliasSyncing;
+ miniAdminAliasSyncing=(async()=>{
+  await ready.client.User.addAlias('miniyena_admin','manager');
+  if(subscriptionId)miniAdminAliasSyncedId=subscriptionId;
+  return true;
+ })().catch(e=>{
+  console.warn('관리자 푸시 대상 등록 실패',e);return false;
+ }).finally(()=>{miniAdminAliasSyncing=null});
+ return miniAdminAliasSyncing;
 }
 async function miniNotifyAdminEvent(event){
  if(!connected||!state.trackId||!state.trackToken)return false;
@@ -3493,7 +3506,7 @@ function render(){
  syncModalPageLock();
  syncHeroContrast();
  scheduleEntryPush();
- updateScrollTop();updateProcurementSchedule();if(state.admin){updateSupplierBulkPreview();queueMicrotask(()=>showRequestImages().catch(console.error));queueMicrotask(()=>miniPushStatus().catch(console.warn));}}
+ updateScrollTop();updateProcurementSchedule();if(state.admin){updateSupplierBulkPreview();queueMicrotask(()=>showRequestImages().catch(console.error));queueMicrotask(()=>miniRegisterAdminAlias().catch(console.warn));queueMicrotask(()=>miniPushStatus().catch(console.warn));}}
 function updateScrollTop(){const btn=app.querySelector('.back-to-top');if(!btn)return;const visible=window.scrollY>440&&!state.modal;btn.classList.toggle('is-visible',visible);btn.tabIndex=visible?0:-1;btn.setAttribute('aria-hidden',String(!visible));}
 const steps=idx=>`<div class="quote-step">${['① 상품 담기','② 견적 요청','③ 가격 확인','④ 최종 주문'].map((x,i)=>`<span class="${i===idx?'current':''}">${x}</span>${i<3?'<i></i>':''}`).join('')}</div>`;
 

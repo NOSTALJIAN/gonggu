@@ -2135,9 +2135,13 @@ window.miniYenaOneSignalReady = new Promise(function(resolve) {
   window.OneSignalDeferred.push(async function(OneSignal) {
     try {
       await OneSignal.init({
-        appId: '4ecfc195-43f7-4108-b6d4-abb11164a504',
-        serviceWorkerPath: 'gonggu/OneSignalSDKWorker.js',
-        serviceWorkerParam: { scope: '/gonggu/onesignal-push/' }
+        appId: location.hostname === 'miniyena.pages.dev'
+          ? '74494ff1-8318-40fd-ab2c-4bf9017a8991'
+          : '4ecfc195-43f7-4108-b6d4-abb11164a504',
+        serviceWorkerPath: location.hostname === 'miniyena.pages.dev'
+          ? '/OneSignalSDKWorker.js'
+          : '/gonggu/OneSignalSDKWorker.js',
+        serviceWorkerParam: { scope: location.hostname === 'miniyena.pages.dev' ? '/onesignal-push/' : '/gonggu/onesignal-push/' }
       });
       resolve({ok:true, client:OneSignal});
     } catch(err) {

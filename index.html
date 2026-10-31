@@ -2178,24 +2178,49 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
  .hero.is-shop-header .heroaction{min-height:34px}
 }
 
-/* Customer catalog only: discreet compact sorting and store filter. */
+/* Storefront catalog anchor retained for navigation. */
 .shop-content .shop-catalog-anchor{height:0;scroll-margin-top:12px}
-.shop-content .shop-filter-strip{
- display:flex;align-items:center;justify-content:flex-end;gap:12px;margin:9px 0 3px;min-height:33px
-}
-.shop-content .shop-filter-strip select{
- box-sizing:border-box;display:block;min-width:0;max-width:49%;
- border:0;border-bottom:1px solid #e2e2e2;border-radius:0;
- color:#606060;background-color:transparent;font-family:var(--site-font);
- font-size:13px;font-weight:650;line-height:1.3;
- min-height:31px;padding:3px 21px 3px 5px;cursor:pointer;box-shadow:none
-}
-.shop-content .shop-filter-strip select:focus-visible{outline:2px solid #222;outline-offset:2px}
+
+/* Focused mobile search: do not lift site navigation and floating shortcuts
+   over the iPhone keyboard. iOS system keyboard controls are OS-owned. */
 @media(max-width:719px){
- .shop-content .shop-filter-strip{gap:8px;margin:7px 0 1px}
- .shop-content .shop-filter-strip select{font-size:16px;min-height:35px;max-width:53%}
- .shop-content .shop-filter-strip #shop-sort{max-width:47%}
+ body:has(#search:focus) .shop-bottom-nav,
+ body:has(#search:focus) .floating-actions{display:none!important}
+ body:has(#search:focus) .shell:has(.shop-bottom-nav){padding-bottom:20px}
 }
+/* Compact catalog filters: just one quiet link until explicitly expanded. */
+.shop-content .shop-filter-line{
+ display:flex;justify-content:space-between;align-items:center;gap:10px;
+ min-height:35px;margin:10px 0 12px;
+}
+.shop-content .shop-filter-count{color:#888;font-size:12px;font-weight:500;line-height:1.4}
+.shop-content .shop-filter-trigger{
+ appearance:none;border:0;background:transparent;border-radius:0;
+ color:#666;font-size:12px;font-weight:600;white-space:nowrap;
+ min-height:32px;padding:5px 0 5px 10px;cursor:pointer
+}
+.shop-content .shop-filter-trigger span{display:inline-block;margin-left:6px;font-size:16px;vertical-align:middle;font-weight:400}
+.shop-content .shop-filter-trigger.is-open{color:#222}
+.shop-content .shop-filter-panel[hidden]{display:none!important}
+.shop-content .shop-filter-panel{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:10px;max-width:440px;margin:0 0 14px auto;padding:11px 12px;
+ background:#fafafa;border:1px solid #eee;border-radius:6px;
+}
+.shop-content .shop-filter-panel label{display:flex;flex-direction:column;gap:5px;min-width:0}
+.shop-content .shop-filter-panel label span{color:#777;font-size:11px}
+.shop-content .shop-filter-panel select{
+ box-sizing:border-box;display:block;width:100%;min-width:0;
+ min-height:38px;height:38px;padding:5px 26px 5px 8px;
+ border:1px solid #e0e0e0;border-radius:4px;background-color:white;
+ color:#333;font-size:14px;font-weight:500;box-shadow:none
+}
+@media(max-width:719px){
+ .shop-content .shop-filter-line{margin:6px 0 11px}
+ .shop-content .shop-filter-panel{max-width:none;padding:10px;gap:8px}
+ .shop-content .shop-filter-panel select{font-size:16px}
+}
+
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -2377,7 +2402,7 @@ const demo=read(DEMO,initDemo());
 const saveDemo=()=>localStorage.setItem(DEMO,JSON.stringify(demo));
 let session=read(SESS,null),busy=false,refreshing=null;
 const p=new URLSearchParams(location.search);
-const state={page:['admin','track'].includes(p.get('page'))?p.get('page'):'shop',tab:'quotes',stores:[],products:[],requests:[],quotes:[],cart:read(CART,[]),modal:null,search:'',shopCategory:'all',shopSort:'newest',shopStore:'all',shopPage:1,adminCategory:'all',trackId:p.get('id')||'',trackToken:p.get('token')||'',tracking:null,receipts:read(TRACK,[]),notice:'',filter:'all',admin:false,heroPhotoUrl:null,heroStoreId:null,dateGroupsOpen:{},orderCardsOpen:{},supplierBulkSelected:new Set(),supplierBulkStoreId:'',supplierBatches:[],supplierBatchesReady:false,supplierBatchesError:'',optionRequests:[],optionRequestsReady:false,optionRequestsError:'',requestStatusFilter:'pending',adminCatalogView:'products',adminCatalogFilter:'all',adminProductSort:'newest',adminProductSearch:'',productPrivate:{},productPrivateReady:false,emailSettings:null,emailSettingsReady:false,emailSettingsError:'',adminPinIds:new Set(),phoneLookupReady:null,pinLookupNotice:''};
+const state={page:['admin','track'].includes(p.get('page'))?p.get('page'):'shop',tab:'quotes',stores:[],products:[],requests:[],quotes:[],cart:read(CART,[]),modal:null,search:'',shopCategory:'all',shopSort:'newest',shopStore:'all',shopFiltersOpen:false,shopPage:1,adminCategory:'all',trackId:p.get('id')||'',trackToken:p.get('token')||'',tracking:null,receipts:read(TRACK,[]),notice:'',filter:'all',admin:false,heroPhotoUrl:null,heroStoreId:null,dateGroupsOpen:{},orderCardsOpen:{},supplierBulkSelected:new Set(),supplierBulkStoreId:'',supplierBatches:[],supplierBatchesReady:false,supplierBatchesError:'',optionRequests:[],optionRequestsReady:false,optionRequestsError:'',requestStatusFilter:'pending',adminCatalogView:'products',adminCatalogFilter:'all',adminProductSort:'newest',adminProductSearch:'',productPrivate:{},productPrivateReady:false,emailSettings:null,emailSettingsReady:false,emailSettingsError:'',adminPinIds:new Set(),phoneLookupReady:null,pinLookupNotice:''};
 
 const PRODUCT_CATEGORIES=['바디수트','세트','상의','하의','아우터','원피스','스커트','모자','양말','악세서리','잡화'];
 const validProductCategory=x=>PRODUCT_CATEGORIES.includes(String(x||'').trim());
@@ -3504,21 +3529,25 @@ function renderShop(){
  <div class="shop-category-list" role="group" aria-label="상품 카테고리별 보기">
  ${categoryFilterKeys.filter(k=>k==='all'||categoryCounts[k]>0||k===activeCategory).map(k=>`<button type="button" class="shop-category-tab ${activeCategory===k?'active':''}" data-action="shop-category" data-category="${k}" aria-pressed="${activeCategory===k}">${k==='all'?'전체':k==='uncategorized'?'미분류':k}<span>${categoryCounts[k]}</span></button>`).join('')}
  </div>
- <div class="shop-search-wrap"><input id="search" type="search" placeholder="상품명·가게명·카테고리 검색" value="${esc(state.search)}" aria-label="상품 검색"></div>
- <div class="shop-filter-strip" role="group" aria-label="정렬 및 거래처">
-  <select id="shop-sort" aria-label="상품 정렬">
+ <div class="shop-search-wrap"><input id="search" type="search" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" placeholder="상품명·가게명·카테고리 검색" value="${esc(state.search)}" aria-label="상품 검색"></div>
+ <div class="shop-filter-line">
+  <span class="shop-filter-count">상품 ${products.length}개${products.length?` · ${firstNumber}~${lastNumber}개 표시`:''}</span>
+  <button type="button" class="shop-filter-trigger ${state.shopFiltersOpen?'is-open':''}" data-action="shop-filter-toggle" aria-controls="shop-filter-panel" aria-expanded="${state.shopFiltersOpen}">정렬 · 거래처 <span aria-hidden="true">${state.shopFiltersOpen?'−':'⌄'}</span></button>
+ </div>
+ <div class="shop-filter-panel ${state.shopFiltersOpen?'is-open':''}" id="shop-filter-panel" ${state.shopFiltersOpen?'':'hidden'} role="group" aria-label="정렬 및 거래처 선택">
+  <label><span>정렬</span><select id="shop-sort" aria-label="상품 정렬">
    <option value="newest" ${activeSort==='newest'?'selected':''}>최신 등록순</option>
    <option value="oldest" ${activeSort==='oldest'?'selected':''}>오래된 등록순</option>
    <option value="price-low" ${activeSort==='price-low'?'selected':''}>예상가 낮은순</option>
    <option value="price-high" ${activeSort==='price-high'?'selected':''}>예상가 높은순</option>
    <option value="name" ${activeSort==='name'?'selected':''}>상품명 가나다순</option>
-  </select>
-  <select id="shop-store" aria-label="거래처 필터">
+  </select></label>
+  <label><span>거래처</span><select id="shop-store" aria-label="거래처 필터">
    <option value="all">전체 거래처</option>
    ${state.stores.filter(st=>st.active&&catalogue.some(row=>row.store.id===st.id)).sort((a,b)=>String(a.name).localeCompare(String(b.name),'ko')).map(st=>`<option value="${esc(st.id)}" ${activeStore===st.id?'selected':''}>${esc(st.name)}</option>`).join('')}
-  </select>
+  </select></label>
  </div>
- <div class="shoplist">${products.length?`<div class="shop-catalog-count">상품 ${products.length}개 · ${firstNumber}~${lastNumber}개 표시</div><div class="shop-catalog-grid">${pageProducts.map(({p,store})=>`<article class="shop-catalog-card ${p.is_sold_out?'shop-soldout-card':''}">${catalogPhotoGallery(p)}${p.is_sold_out?'<span class="shop-soldout-label">품절</span>':''}<div class="shop-catalog-store">${esc(store.name)}</div><button class="producttitle catalog-title-link" type="button" data-action="${p.is_sold_out?'product-photos':'pick-product'}" data-id="${esc(p.id)}" aria-label="${esc(p.name)} ${p.is_sold_out?'상품 사진 보기':'상품 옵션 보기'}" title="${esc(p.name)}">${esc(p.name)}</button><div class="shop-catalog-colors">${Object.keys(p.options||{}).map(esc).join(' · ')||'색상 옵션 확인'}</div>${hasProductEstimate(p)?estimatedProductPrice(p):'<div class="product-estimate product-estimate-card shop-catalog-no-estimate"><span class="product-estimate-label">가격</span><strong>견적 문의</strong></div>'}</article>`).join('')}</div>
+ <div class="shoplist">${products.length?`<div class="shop-catalog-grid">${pageProducts.map(({p,store})=>`<article class="shop-catalog-card ${p.is_sold_out?'shop-soldout-card':''}">${catalogPhotoGallery(p)}${p.is_sold_out?'<span class="shop-soldout-label">품절</span>':''}<div class="shop-catalog-store">${esc(store.name)}</div><button class="producttitle catalog-title-link" type="button" data-action="${p.is_sold_out?'product-photos':'pick-product'}" data-id="${esc(p.id)}" aria-label="${esc(p.name)} ${p.is_sold_out?'상품 사진 보기':'상품 옵션 보기'}" title="${esc(p.name)}">${esc(p.name)}</button><div class="shop-catalog-colors">${Object.keys(p.options||{}).map(esc).join(' · ')||'색상 옵션 확인'}</div>${hasProductEstimate(p)?estimatedProductPrice(p):'<div class="product-estimate product-estimate-card shop-catalog-no-estimate"><span class="product-estimate-label">가격</span><strong>견적 문의</strong></div>'}</article>`).join('')}</div>
  ${shopPageCount>1?`<nav class="shop-catalog-pagination" aria-label="상품 페이지 이동">
   <button type="button" class="page-control" data-action="shop-page" data-page-number="${previousPageGroup}" ${shopPageFirst===1?'disabled':''} aria-label="이전 5페이지 묶음" title="이전 5페이지">‹</button>
   ${visibleShopPages.map(n=>`<button type="button" data-action="shop-page" data-page-number="${n}" ${n===shopPage?'aria-current="page"':''} aria-label="${n}페이지">${n}</button>`).join('')}
@@ -6226,6 +6255,12 @@ async function click(e){
  if(e.target.matches?.('[data-product-store-search]')){productStoreSearchResults(e.target,true);return;}
  if(!e.target.closest?.('[data-product-store-picker]'))closeProductStoreSearch(app.querySelector('#product-form'));
  const pg=e.target.closest('[data-page]');if(pg){goto(pg.dataset.page);if(pg.classList.contains('brand-home'))window.scrollTo({top:0,behavior:'auto'});return}const b=e.target.closest('[data-action]');if(!b)return;const a=b.dataset.action,id=b.dataset.id;try{
+if(a==='shop-filter-toggle'){
+ if(state.page!=='shop')return;
+ state.shopFiltersOpen=!state.shopFiltersOpen;
+ const y=window.scrollY;render();window.scrollTo({top:y,behavior:'auto'});
+ return;
+}
 if(a==='entry-push-open'){entryPushShown=true;state.modal={type:'entry-push'};render();return;}
 if(a==='entry-push-later'){postponeEntryPush();state.modal=null;render();return;}
 if(a==='entry-push-enable'){await enableEntryPush();return;}
@@ -7126,7 +7161,18 @@ function input(e){
    for(const node of app.querySelectorAll('[data-stats-entry]'))node.classList.toggle('hidden',!!query&&!node.textContent.toLowerCase().includes(query));
   }
   return;
- }if(e.target.id==='search'){state.search=e.target.value;state.shopPage=1;const pos=e.target.selectionStart;render();const el=$('#search');if(el){el.focus();el.setSelectionRange(pos,pos)}}}
+ }if(e.target.id==='search'){
+  // Keep the focused iPhone input in the DOM. Recreating it on every keypress
+  // makes the keyboard accessory and fixed bottom navigation jump.
+  state.search=e.target.value;state.shopPage=1;
+  const template=document.createElement('template');template.innerHTML=renderShop();
+  const nextList=template.content.querySelector('.shoplist');
+  const existingList=app.querySelector('.shop-content .shoplist');
+  if(existingList&&nextList)existingList.replaceWith(nextList);
+  const currentCount=app.querySelector('.shop-content .shop-filter-count');
+  const nextCount=template.content.querySelector('.shop-filter-count');
+  if(currentCount&&nextCount)currentCount.textContent=nextCount.textContent;
+ }}
 
 // Do not open product options when a photo swipe ends in a synthesized click.
 let catalogTouch=null;

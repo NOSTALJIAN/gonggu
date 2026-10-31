@@ -3387,7 +3387,7 @@ async function miniPushStatus(){
  const subscribed=!!(check?.ok&&check.client?.User?.PushSubscription?.optedIn&&check.client.User.PushSubscription.id);
  const aliasReady=subscribed?await miniRegisterAdminAlias():false;
  if(!state.admin||(!node?.isConnected&&!summary?.isConnected))return;
- if(aliasReady)update('기기 연결됨','관리자 알림 대상 등록됨 · 실제 배너 수신은 아래 테스트 알림으로 확인하세요.');
+ if(aliasReady)update('기기 연결됨','이 기기의 관리자 구독 ID가 서버에 개별 등록됐어요. 상품 요청 알림은 기기별로 발송됩니다.');
  else if(subscribed)update('관리자 연결 필요','기기 알림은 허용됐지만 관리자 수신 대상 연결이 완료되지 않았어요.');
  else update('구독 연결 필요','알림 권한은 허용됐지만 현재 주소의 푸시 구독 확인이 필요해요.');
  const btn=node?.closest('.pushbox')?.querySelector('[data-action="enable-admin-push"]');
@@ -3446,14 +3446,24 @@ async function miniRegisterAdminAlias(){
  const ready=await window.miniYenaOneSignalReady;
  if(!ready?.ok||!ready.client?.User?.PushSubscription?.optedIn)return false;
  const subscriptionId=String(ready.client.User.PushSubscription.id||'');
- if(subscriptionId&&miniAdminAliasSyncedId===subscriptionId)return true;
+ if(!/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(subscriptionId))return false;
+ if(miniAdminAliasSyncedId===subscriptionId)return true;
  if(miniAdminAliasSyncing)return miniAdminAliasSyncing;
  miniAdminAliasSyncing=(async()=>{
-  await ready.client.User.addAlias('miniyena_admin','manager');
-  if(subscriptionId)miniAdminAliasSyncedId=subscriptionId;
+  // Every authenticated admin device is saved separately so Mac and iPhone
+  // cannot displace one another's manager alias for product requests.
+  const site=location.hostname==='miniyena.pages.dev'?'cloudflare':'github';
+  const registered=await rpc('gq_register_admin_push_device_v1',
+    {p_site:site,p_subscription_id:subscriptionId},true);
+  if(registered!==true)throw Error('관리자 기기 알림 저장 실패');
+  miniAdminAliasSyncedId=subscriptionId;
+  // Keep the older alias for other existing notification types, but do not
+  // depend on it for product registration push delivery.
+  try{await ready.client.User.addAlias('miniyena_admin','manager')}
+  catch(error){console.warn('이전 방식 관리자 별칭 연결 실패',error)}
   return true;
  })().catch(e=>{
-  console.warn('관리자 푸시 대상 등록 실패',e);return false;
+  console.warn('관리자 기기별 푸시 등록 실패',e);return false;
  }).finally(()=>{miniAdminAliasSyncing=null});
  return miniAdminAliasSyncing;
 }

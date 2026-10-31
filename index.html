@@ -4082,8 +4082,8 @@ function renderAdminRequests(){
  ${requestPhotoGallery(r)}
  ${renderAdminEmailEditor('product_request',r)}
  <div class="smallnote">남대문 도매업체</div><h3 style="margin:2px 0 9px">${esc(r.store_name)}</h3><div class="smallnote">상품명</div><b>${esc(r.product_name)}</b><div class="request-category-label">카테고리 · ${esc(categoryLabel(r))}</div>${r.note?`<p class="sub">요청 내용: ${esc(r.note)}</p>`:''}
- ${r.status==='rejected'?`<div class="request-rejection-summary"><b>반려 사유: ${esc(r.rejection_reason||'사유 미기록')}</b>${r.rejection_note?`<div>${esc(r.rejection_note)}</div>`:''}</div><div class="row wrap" style="margin-top:10px"><button class="btn sm secondary" data-action="copy-rejection-notice" data-id="${esc(r.id)}">반려 안내문 복사</button></div>`:''}
- ${r.status==='pending'?`<div class="row wrap" style="margin-top:12px"><button class="btn sm" data-action="approve-request" data-id="${esc(r.id)}">검토 후 상품 등록</button><button class="btn sm danger" data-action="reject-request" data-id="${esc(r.id)}">반려 사유 선택</button><button class="btn sm secondary request-delete-btn" type="button" data-action="delete-pending-request" data-id="${esc(r.id)}">신청 삭제</button></div>`:''}
+ ${r.status==='rejected'?`<div class="request-rejection-summary"><b>반려 사유: ${esc(r.rejection_reason||'사유 미기록')}</b>${r.rejection_note?`<div>${esc(r.rejection_note)}</div>`:''}</div><div class="row wrap" style="margin-top:10px"><button class="btn sm secondary" data-action="copy-rejection-notice" data-id="${esc(r.id)}">반려 안내문 복사</button><button class="btn sm secondary request-delete-btn" type="button" data-action="delete-product-request" data-id="${esc(r.id)}">신청 삭제</button></div>`:''}
+ ${r.status==='pending'?`<div class="row wrap" style="margin-top:12px"><button class="btn sm" data-action="approve-request" data-id="${esc(r.id)}">검토 후 상품 등록</button><button class="btn sm danger" data-action="reject-request" data-id="${esc(r.id)}">반려 사유 선택</button><button class="btn sm secondary request-delete-btn" type="button" data-action="delete-product-request" data-id="${esc(r.id)}">신청 삭제</button></div>`:''}
  ${r.status==='approved'&&state.products.some(p=>p.id===r.approved_product_id&&p.published&&!p.is_sold_out&&state.stores.some(st=>st.id===p.store_id&&st.active))?`<div class="row wrap" style="margin-top:12px"><button class="btn sm secondary" data-action="copy-request-notice" data-id="${esc(r.id)}">💜 상품 등록 안내문 복사</button></div>`:''}
  </div>`).join('')}`;
 }
@@ -6874,16 +6874,16 @@ else if(a==='cart-checkout'){
 }
 else if(a==='cart-continue'){state.modal=null;render();return}
 else if(a==='suggest-product'){modalOpen('suggest')}else if(a==='approve-request'){modalOpen('approve',id)}else if(a==='reject-request'){modalOpen('reject-request',id)}
-else if(a==='delete-pending-request'){
+else if(a==='delete-product-request'){
  if(!connected||!state.admin)throw Error('관리자 로그인 후 삭제할 수 있어요.');
- const request=state.requests.find(r=>r.id===id&&r.status==='pending');
- if(!request)throw Error('검토 대기 중인 상품 신청만 삭제할 수 있어요.');
+ const request=state.requests.find(r=>r.id===id&&['pending','rejected'].includes(r.status));
+ if(!request)throw Error('검토 대기 또는 반려된 상품 신청만 삭제할 수 있어요.');
  const label=[request.store_name,request.product_name].filter(Boolean).join(' / ');
- if(!window.confirm('상품 등록 신청을 삭제할까요?\n\n'+label+'\n\n삭제한 신청 기록은 복원할 수 없어요. 실제 등록된 상품이나 주문은 삭제하지 않아요.'))return;
- const result=await rpc('gq_admin_delete_pending_product_request_v1',{p_request_id:id},true);
+ if(!window.confirm('상품 등록 신청을 삭제할까요?\n\n'+label+'\n\n삭제한 신청 기록은 복원할 수 없어요. 이미 등록된 상품과 기존 주문은 삭제되지 않아요.'))return;
+ const result=await rpc('gq_admin_delete_product_request_v2',{p_request_id:id},true);
  if(result!==true)throw Error('삭제 처리 결과를 확인할 수 없어요.');
  state.requests=state.requests.filter(r=>r.id!==id);
- render();notif('검토 대기 상품 신청을 삭제했어요.');
+ render();notif('상품 등록 신청을 삭제했어요.');
 }else if(a==='copy-rejection-notice'){await copy(rejectionAnnouncement(state.requests.find(r=>r.id===id)));notif('반려 안내문을 복사했어요. 고객에게 개별 전달해 주세요.')}else if(a==='add-store'||a==='edit-store'){modalOpen('store',a==='edit-store'?id:null)}else if(a==='add-product'||a==='edit-product'){modalOpen('product',a==='edit-product'?id:null)}else if(a==='my-quotes'){modalOpen('myquotes')}else if(a==='open-saved'){const r=findTrack(id);if(r)await openTracking(r.id,r.token)}else if(a==='remove-saved-order'){
  if(state.modal?.type!=='myquotes')throw Error('내 주문조회 화면에서만 저장 기록을 삭제할 수 있어요.');
  const saved=state.receipts.find(q=>q.id===id);

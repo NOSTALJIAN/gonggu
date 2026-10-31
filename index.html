@@ -3495,7 +3495,7 @@ function renderShop(){
  const activeSort=['newest','oldest','price-low','price-high','name'].includes(state.shopSort)?state.shopSort:'newest';
  const products=catalogue.filter(({p,store})=>
    matchesCategory(p,activeCategory)&&(activeStore==='all'||store.id===activeStore)
-   &&(!state.search||p.name.includes(state.search)||store.name.includes(state.search)||categoryLabel(p).includes(state.search)))
+   &&(!state.search||p.name.includes(state.search)))
   .sort((a,b)=>{
    const da=Date.parse(a.p.created_at)||0,db=Date.parse(b.p.created_at)||0;
    if(activeSort==='oldest'&&da!==db)return da-db;
@@ -3536,7 +3536,7 @@ function renderShop(){
  <div class="shop-category-list" role="group" aria-label="상품 카테고리별 보기">
  ${categoryFilterKeys.filter(k=>k==='all'||categoryCounts[k]>0||k===activeCategory).map(k=>`<button type="button" class="shop-category-tab ${activeCategory===k?'active':''}" data-action="shop-category" data-category="${k}" aria-pressed="${activeCategory===k}">${k==='all'?'전체':k==='uncategorized'?'미분류':k}<span>${categoryCounts[k]}</span></button>`).join('')}
  </div>
- <div class="shop-search-wrap"><input id="search" type="search" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" placeholder="상품명·가게명·카테고리 검색" value="${esc(state.search)}" aria-label="상품 검색"></div>
+ <div class="shop-search-wrap"><input id="search" type="search" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" placeholder="상품명 검색" value="${esc(state.search)}" aria-label="상품 검색"></div>
  <div class="shop-filter-line">
   <span class="shop-filter-count">상품 ${products.length}개${products.length?` · ${firstNumber}~${lastNumber}개 표시`:''}</span>
   <button type="button" class="shop-filter-trigger ${state.shopFiltersOpen?'is-open':''}" data-action="shop-filter-toggle" aria-controls="shop-filter-panel" aria-expanded="${state.shopFiltersOpen}">정렬 · 거래처 <span aria-hidden="true">${state.shopFiltersOpen?'−':'⌄'}</span></button>
@@ -6243,7 +6243,7 @@ function navigateShopPage(next){
   .flatMap(st=>state.products.filter(p=>p.published&&p.store_id===st.id).map(p=>({p,store:st})))
   .filter(({p,store})=>matchesCategory(p,state.shopCategory)
    &&(state.shopStore==='all'||store.id===state.shopStore)
-   &&(!state.search||p.name.includes(state.search)||store.name.includes(state.search)||categoryLabel(p).includes(state.search))).length;
+   &&(!state.search||p.name.includes(state.search))).length;
  const maxPage=Math.max(1,Math.ceil(total/10));
  if(!Number.isSafeInteger(next)||next<1||next>maxPage)throw Error('1~'+maxPage+' 사이의 페이지 번호를 입력해 주세요.');
  state.shopPage=next;

@@ -5588,9 +5588,13 @@ async function reloadTracking(){if(!state.trackId||!state.trackToken)return;let 
 async function submitBuyerOptionRequest(id,color,size,quantity){
  if(!state.tracking||state.tracking.status!=='confirmed')throw Error('최종 구매 확정 이후에 변경 요청할 수 있어요.');
  if(!connected)throw Error('실제 주문에서만 사용할 수 있어요.');
- await rpc('gq_request_item_option_change_v61',{
+ const result=await rpc('gq_request_item_option_change_v61',{
   p_quote_id:state.trackId,p_lookup_token:state.trackToken,p_item_id:id,
   p_color:color,p_size:size,p_quantity:quantity});
+ if(result?.request_id)void fetch(url+'/functions/v1/gq-admin-event-push',{
+  method:'POST',headers:{'Content-Type':'application/json','apikey':key},
+  body:JSON.stringify({quote_id:state.trackId,lookup_token:state.trackToken,request_id:result.request_id,event:'option_change_request'})
+ }).catch(e=>console.warn('옵션 변경 관리자 알림 전송 실패',e));
  await reloadTracking();
 }
 async function setBuyerPurchaseIntent(intent){

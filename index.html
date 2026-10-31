@@ -6650,7 +6650,23 @@ else if(f.dataset.price){
  const recipientSaved=Boolean(q.customer_email);
  const notifiedStatus=['quoted','confirmed'].includes(q.status);
  const result=await adminItemPrice(id,newPrice);
+ // Keep the edited order expanded even when saving the last missing price
+ // moves it from the pending section to the saved section.
+ const rootId=bundleRootId(q);
+ const cardId=state.quotes.some(x=>x.id===rootId)?rootId:q.id;
+ const dayKey=receivedDayKey(q.created_at);
+ state.orderCardsOpen[cardId]=true;
+ state.dateGroupsOpen['pending|'+dayKey]=true;
+ state.dateGroupsOpen['saved|'+dayKey]=true;
+ const previousScroll=window.scrollY;
  await loadAdmin();
+ const activeCard=[...document.querySelectorAll('[data-admin-order-id]')].find(el=>el.dataset.adminOrderId===cardId);
+ if(activeCard){
+  activeCard.open=true;
+  const dateGroup=activeCard.closest('[data-order-date]');
+  if(dateGroup)dateGroup.open=true;
+  window.scrollTo({top:Math.max(0,activeCard.getBoundingClientRect().top+window.scrollY-110),behavior:'auto'});
+ }else window.scrollTo({top:previousScroll,behavior:'auto'});
  const synced=Number(result?.auto_updated)||0;
  const autoNotice=changed&&notifiedStatus?
   !recipientSaved?'이 주문은 수신 이메일이 없어 가격 변경 메일이 생성되지 않았어요. 이메일을 등록해 주세요.':

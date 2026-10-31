@@ -2221,6 +2221,13 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
  .shop-content .shop-filter-panel select{font-size:16px}
 }
 
+
+/* Maintain the scrolled search position while iOS composition changes results.
+   Only the catalog results grow a temporary reserve; no header/hero changes. */
+@media(max-width:719px){
+ body:has(#search:focus) .shop-content .shoplist{overflow-anchor:none}
+}
+
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -7117,6 +7124,35 @@ if(x.id==='deliveryMethodEdit'){
  }
  await adminFulfillment(x.dataset.fulfillment,x.value);await loadAdmin();const updated=state.quotes.find(z=>z.id===q?.id);notif(q?.delivery_method==='pickup'&&updated&&workflowStage(updated)==='pickup_ready'?'모든 상품이 입고됐어요! 자동으로 픽업 대기 처리했어요.':'상품 상태를 변경했어요.');
 }catch(ex){notif(errorText(ex));x.value=state.quotes.find(y=>y.items.some(i=>i.id===x.dataset.fulfillment))?.items.find(i=>i.id===x.dataset.fulfillment)?.fulfillment==='delayed'?'ordered':(state.quotes.find(y=>y.items.some(i=>i.id===x.dataset.fulfillment))?.items.find(i=>i.id===x.dataset.fulfillment)?.fulfillment||'ordered')}finally{busy=false}}}
+// While the keyboard is open, preserve the catalog's original height.
+ // Otherwise a short/empty intermediate query collapses the document and
+ // iOS jumps up to the hero, pushing the focused search field offscreen.
+let shopSearchComposing=false;
+let shopSearchReservedHeight=0;
+function reserveShopSearchHeight(){
+ if(state.page!=='shop'||!window.matchMedia('(max-width:719px)').matches)return;
+ const list=app.querySelector('.shop-content .shoplist');
+ if(!list)return;
+ shopSearchReservedHeight=Math.max(shopSearchReservedHeight,Math.ceil(list.getBoundingClientRect().height));
+ if(shopSearchReservedHeight)list.style.minHeight=shopSearchReservedHeight+'px';
+}
+function updateShopSearchResults(){
+ if(state.page!=='shop')return;
+ const current=app.querySelector('.shop-content .shoplist');
+ if(!current)return;
+ const focused=app.querySelector('#search')===document.activeElement;
+ if(focused)reserveShopSearchHeight();
+ const template=document.createElement('template');
+ template.innerHTML=renderShop();
+ const next=template.content.querySelector('.shoplist');
+ if(next){
+  if(focused&&shopSearchReservedHeight)next.style.minHeight=shopSearchReservedHeight+'px';
+  current.replaceWith(next);
+ }
+ const count=app.querySelector('.shop-content .shop-filter-count');
+ const nextCount=template.content.querySelector('.shop-filter-count');
+ if(count&&nextCount)count.textContent=nextCount.textContent;
+}
 function input(e){
  if(e.target.id==='admin-store-search'){
   state.adminStoreSearch=e.target.value;
@@ -7162,16 +7198,10 @@ function input(e){
   }
   return;
  }if(e.target.id==='search'){
-  // Keep the focused iPhone input in the DOM. Recreating it on every keypress
-  // makes the keyboard accessory and fixed bottom navigation jump.
   state.search=e.target.value;state.shopPage=1;
-  const template=document.createElement('template');template.innerHTML=renderShop();
-  const nextList=template.content.querySelector('.shoplist');
-  const existingList=app.querySelector('.shop-content .shoplist');
-  if(existingList&&nextList)existingList.replaceWith(nextList);
-  const currentCount=app.querySelector('.shop-content .shop-filter-count');
-  const nextCount=template.content.querySelector('.shop-filter-count');
-  if(currentCount&&nextCount)currentCount.textContent=nextCount.textContent;
+  // Korean IME sends intermediate syllables; don't collapse the results
+  // before text composition finishes or while the iPhone keyboard animates.
+  if(!shopSearchComposing&&!e.isComposing)updateShopSearchResults();
  }}
 
 // Do not open product options when a photo swipe ends in a synthesized click.
@@ -7209,9 +7239,26 @@ app.addEventListener('click',e=>{
 app.addEventListener('click',e=>{const orderSummary=e.target.closest('.admin-order-fold > summary');if(orderSummary){const order=orderSummary.parentElement;state.orderCardsOpen[order.dataset.adminOrderId]=!order.open;return}const summary=e.target.closest('.admin-date-group > summary');if(summary){const group=summary.parentElement;state.dateGroupsOpen[group.dataset.orderDate]=!group.open;return}const tab=e.target.closest('[data-tab]'),filter=e.target.closest('[data-filter]');if(tab){state.tab=tab.dataset.tab;if(state.tab==='requests')state.requestStatusFilter='pending';render();return}if(filter){state.filter=filter.dataset.filter;state.supplierBulkSelected.clear();render();return}click(e)});
 app.addEventListener('submit',submit);app.addEventListener('change',change);app.addEventListener('input',input);
 app.addEventListener('focusin',e=>{
+ if(e.target.id==='search')reserveShopSearchHeight();
  if(e.target.matches?.('[data-product-store-search]')){
   productStoreSearchResults(e.target,true);
  }
+});
+app.addEventListener('focusout',e=>{
+ if(e.target.id!=='search')return;
+ shopSearchComposing=false;
+ shopSearchReservedHeight=0;
+ const list=app.querySelector('.shop-content .shoplist');
+ if(list)list.style.removeProperty('min-height');
+});
+app.addEventListener('compositionstart',e=>{
+ if(e.target.id==='search')shopSearchComposing=true;
+});
+app.addEventListener('compositionend',e=>{
+ if(e.target.id!=='search')return;
+ shopSearchComposing=false;
+ state.search=e.target.value;state.shopPage=1;
+ updateShopSearchResults();
 });
 app.addEventListener('keydown',e=>{
  if(!e.target.matches?.('[data-product-store-search]'))return;

@@ -22,10 +22,17 @@ Deno.serve(async req=>{
   const apiKey=Deno.env.get(site.secret);
   if(!apiKey)return {site:site.name,ok:false,error:"알림 서버 설정 확인 필요"};
   try{
-   const result=await fetch("https://api.onesignal.com/notifications",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Key "+apiKey},body:JSON.stringify({app_id:site.app,included_segments:["Subscribed Users"],target_channel:"push",headings:{en:title},contents:{en:message},url:site.url,idempotency_key:ids[i]}),signal:AbortSignal.timeout(20000)});
+   const audienceResponse=await fetch("https://api.onesignal.com/apps/"+site.app+"/segments?limit=300",{headers:{Authorization:"Key "+apiKey},signal:AbortSignal.timeout(10000)});
+   const audience=await audienceResponse.json();
+   if(!audienceResponse.ok||!audience.segments?.some((s:{name:string,is_active:boolean})=>s.name==="Total Subscriptions"&&s.is_active)){
+    console.warn("new arrival audience unavailable",site.name,audienceResponse.status);
+    return {site:site.name,ok:false,error:"전체 알림 대상 그룹 확인 실패"};
+   }
+   const result=await fetch("https://api.onesignal.com/notifications",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Key "+apiKey},body:JSON.stringify({app_id:site.app,included_segments:["Total Subscriptions"],target_channel:"push",headings:{en:title},contents:{en:message},url:site.url,idempotency_key:ids[i]}),signal:AbortSignal.timeout(20000)});
    const data=await result.json();
+   console.log("new arrival result",JSON.stringify({site:site.name,status:result.status,id:data.id||null,errors:data.errors||null}));
    const noRecipients=result.ok&&!data.id&&JSON.stringify(data.errors||"").includes("not subscribed");
-   if(noRecipients)return {site:site.name,ok:true,empty:true};
+   if(noRecipients)return {site:site.name,ok:false,empty:true,error:"수신 가능한 기기 없음"};
    if(!result.ok||data.errors||!data.id)return {site:site.name,ok:false,error:"발송 접수 실패"};
    return {site:site.name,ok:true,id:data.id};
   }catch{return {site:site.name,ok:false,error:"연결 지연 · 같은 내용으로 재시도해 주세요"}}

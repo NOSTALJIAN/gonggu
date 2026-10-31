@@ -2228,6 +2228,23 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
  body:has(#search:focus) .shop-content .shoplist{overflow-anchor:none}
 }
 
+
+/* Customer storefront: keep the notification settings shortcut at top right
+   without restoring the redundant "전체 상품" heading or changing PC actions. */
+.shop-content .shop-notification-row{display:none}
+@media(max-width:719px){
+ .shop-content .shop-notification-row{
+  display:flex;justify-content:flex-end;align-items:center;
+  min-height:31px;margin:0 1px 3px;padding:0
+ }
+ .shop-content .shop-notification-link{
+  min-height:30px;padding:5px 0;
+  border:0;background:transparent;color:#666;
+  font-family:var(--site-font);font-size:12px;font-weight:600;
+  text-decoration:underline;text-underline-offset:4px;
+  text-decoration-color:#c8c8c8;cursor:pointer
+ }
+}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -3533,6 +3550,7 @@ function renderShop(){
  <div class="shop-editorial-copy"><h1>남대문 · 수입<br>아동복 공동구매</h1><p>견적 요청 후 주문 가능한 공동구매몰이에요.</p></div></div>
  <div class="shop-catalog-anchor" id="catalog"></div>
  <div class="shop-actions"><button type="button" data-action="entry-push-open">🔔 알림 받기</button><button type="button" data-action="suggest-product">+ 상품 등록 신청</button><button type="button" data-action="my-quotes">내 견적 · 주문조회 ↗</button></div>
+ <div class="shop-notification-row"><button type="button" class="shop-notification-link" data-action="entry-push-open">알림 설정</button></div>
  <div class="shop-category-list" role="group" aria-label="상품 카테고리별 보기">
  ${categoryFilterKeys.filter(k=>k==='all'||categoryCounts[k]>0||k===activeCategory).map(k=>`<button type="button" class="shop-category-tab ${activeCategory===k?'active':''}" data-action="shop-category" data-category="${k}" aria-pressed="${activeCategory===k}">${k==='all'?'전체':k==='uncategorized'?'미분류':k}<span>${categoryCounts[k]}</span></button>`).join('')}
  </div>

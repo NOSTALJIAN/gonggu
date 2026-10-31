@@ -2426,7 +2426,7 @@ const demo=read(DEMO,initDemo());
 const saveDemo=()=>localStorage.setItem(DEMO,JSON.stringify(demo));
 let session=read(SESS,null),busy=false,refreshing=null;
 const p=new URLSearchParams(location.search);
-const state={page:['admin','track'].includes(p.get('page'))?p.get('page'):'shop',tab:'quotes',stores:[],products:[],requests:[],quotes:[],cart:read(CART,[]),modal:null,search:'',shopCategory:'all',shopSort:'newest',shopStore:'all',shopFiltersOpen:false,shopPage:1,adminCategory:'all',trackId:p.get('id')||'',trackToken:p.get('token')||'',tracking:null,receipts:read(TRACK,[]),notice:'',filter:'all',admin:false,heroPhotoUrl:null,heroStoreId:null,dateGroupsOpen:{},orderCardsOpen:{},supplierBulkSelected:new Set(),supplierBulkStoreId:'',supplierBatches:[],supplierBatchesReady:false,supplierBatchesError:'',optionRequests:[],optionRequestsReady:false,optionRequestsError:'',requestStatusFilter:'pending',adminCatalogView:'products',adminCatalogFilter:'all',adminProductSort:'newest',adminProductSearch:'',productPrivate:{},productPrivateReady:false,emailSettings:null,emailSettingsReady:false,emailSettingsError:'',adminPinIds:new Set(),phoneLookupReady:null,pinLookupNotice:''};
+const state={page:['admin','track'].includes(p.get('page'))?p.get('page'):'shop',tab:'quotes',stores:[],products:[],requests:[],quotes:[],cart:read(CART,[]),modal:null,search:'',shopCategory:'all',shopSort:'newest',shopStore:'all',shopFiltersOpen:false,adminCategory:'all',trackId:p.get('id')||'',trackToken:p.get('token')||'',tracking:null,receipts:read(TRACK,[]),notice:'',filter:'all',admin:false,heroPhotoUrl:null,heroStoreId:null,dateGroupsOpen:{},orderCardsOpen:{},supplierBulkSelected:new Set(),supplierBulkStoreId:'',supplierBatches:[],supplierBatchesReady:false,supplierBatchesError:'',optionRequests:[],optionRequestsReady:false,optionRequestsError:'',requestStatusFilter:'pending',adminCatalogView:'products',adminCatalogFilter:'all',adminProductSort:'newest',adminProductSearch:'',productPrivate:{},productPrivateReady:false,emailSettings:null,emailSettingsReady:false,emailSettingsError:'',adminPinIds:new Set(),phoneLookupReady:null,pinLookupNotice:''};
 
 const PRODUCT_CATEGORIES=['바디수트','세트','상의','하의','아우터','원피스','스커트','모자','양말','악세서리','잡화'];
 const validProductCategory=x=>PRODUCT_CATEGORIES.includes(String(x||'').trim());
@@ -3530,20 +3530,7 @@ function renderShop(){
    }
    return db-da||String(b.p.id).localeCompare(String(a.p.id));
   });
- const shopPageSize=10;
- const shopPageCount=Math.max(1,Math.ceil(products.length/shopPageSize));
- const shopPage=Math.min(Math.max(1,Number.isInteger(state.shopPage)?state.shopPage:1),shopPageCount);
- state.shopPage=shopPage;
- const pageProducts=products.slice((shopPage-1)*shopPageSize,shopPage*shopPageSize);
- const firstNumber=products.length?(shopPage-1)*shopPageSize+1:0;
- const lastNumber=Math.min(products.length,shopPage*shopPageSize);
  const categoryCounts=Object.fromEntries(categoryFilterKeys.map(k=>[k,catalogue.filter(({p})=>matchesCategory(p,k)).length]));
- // Keep page numbers in groups of five; arrows jump to the first page of adjacent groups.
- const shopPageFirst=Math.floor((shopPage-1)/5)*5+1;
- const shopPageWindow=Math.min(5,shopPageCount-shopPageFirst+1);
- const visibleShopPages=Array.from({length:shopPageWindow},(_,i)=>shopPageFirst+i);
- const previousPageGroup=Math.max(1,shopPageFirst-5);
- const nextPageGroup=Math.min(shopPageCount,shopPageFirst+5);
  const banner=currentHeroPhotoUrl();
  return `<section class="content shop-content">
  <div class="shop-editorial"><div class="shop-editorial-visual ${banner?'has-photo':''}">${banner?`<img src="${esc(banner)}" alt="미니예나 메인 사진" loading="eager">`:'<div class="shop-editorial-art" aria-hidden="true"></div>'}</div>
@@ -3556,7 +3543,7 @@ function renderShop(){
  </div>
  <div class="shop-search-wrap"><input id="search" type="search" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" placeholder="상품명 검색" value="${esc(state.search)}" aria-label="상품 검색"></div>
  <div class="shop-filter-line">
-  <span class="shop-filter-count">상품 ${products.length}개${products.length?` · ${firstNumber}~${lastNumber}개 표시`:''}</span>
+  <span class="shop-filter-count">상품 ${products.length}개</span>
   <button type="button" class="shop-filter-trigger ${state.shopFiltersOpen?'is-open':''}" data-action="shop-filter-toggle" aria-controls="shop-filter-panel" aria-expanded="${state.shopFiltersOpen}">정렬 · 거래처 <span aria-hidden="true">${state.shopFiltersOpen?'−':'⌄'}</span></button>
  </div>
  <div class="shop-filter-panel ${state.shopFiltersOpen?'is-open':''}" id="shop-filter-panel" ${state.shopFiltersOpen?'':'hidden'} role="group" aria-label="정렬 및 거래처 선택">
@@ -3572,19 +3559,7 @@ function renderShop(){
    ${state.stores.filter(st=>st.active&&catalogue.some(row=>row.store.id===st.id)).sort((a,b)=>String(a.name).localeCompare(String(b.name),'ko')).map(st=>`<option value="${esc(st.id)}" ${activeStore===st.id?'selected':''}>${esc(st.name)}</option>`).join('')}
   </select></label>
  </div>
- <div class="shoplist">${products.length?`<div class="shop-catalog-grid">${pageProducts.map(({p,store})=>`<article class="shop-catalog-card ${p.is_sold_out?'shop-soldout-card':''}">${catalogPhotoGallery(p)}${p.is_sold_out?'<span class="shop-soldout-label">품절</span>':''}<div class="shop-catalog-store">${esc(store.name)}</div><button class="producttitle catalog-title-link" type="button" data-action="${p.is_sold_out?'product-photos':'pick-product'}" data-id="${esc(p.id)}" aria-label="${esc(p.name)} ${p.is_sold_out?'상품 사진 보기':'상품 옵션 보기'}" title="${esc(p.name)}">${esc(p.name)}</button><div class="shop-catalog-colors">${Object.keys(p.options||{}).map(esc).join(' · ')||'색상 옵션 확인'}</div>${hasProductEstimate(p)?estimatedProductPrice(p):'<div class="product-estimate product-estimate-card shop-catalog-no-estimate"><span class="product-estimate-label">가격</span><strong>견적 문의</strong></div>'}</article>`).join('')}</div>
- ${shopPageCount>1?`<nav class="shop-catalog-pagination" aria-label="상품 페이지 이동">
-  <button type="button" class="page-control" data-action="shop-page" data-page-number="${previousPageGroup}" ${shopPageFirst===1?'disabled':''} aria-label="이전 5페이지 묶음" title="이전 5페이지">‹</button>
-  ${visibleShopPages.map(n=>`<button type="button" data-action="shop-page" data-page-number="${n}" ${n===shopPage?'aria-current="page"':''} aria-label="${n}페이지">${n}</button>`).join('')}
-  <button type="button" class="page-control" data-action="shop-page" data-page-number="${nextPageGroup}" ${shopPageFirst+5>shopPageCount?'disabled':''} aria-label="다음 5페이지 묶음" title="다음 5페이지">›</button>
- </nav>
- <div class="shop-page-jump">
-  <span class="shop-catalog-pagination-status" aria-label="전체 ${shopPageCount}페이지 중 현재 ${shopPage}페이지">${shopPage} / ${shopPageCount}</span>
-  <form id="shop-page-jump-form" aria-label="원하는 상품 페이지 바로 이동">
-   <input id="shop-page-jump-input" name="page" type="number" inputmode="numeric" min="1" max="${shopPageCount}" step="1" placeholder="페이지" required aria-label="이동할 페이지 번호">
-   <button type="submit" aria-label="입력한 페이지로 이동">이동 ↗</button>
-  </form>
- </div>`:''}`:'<div class="empty">조건에 맞는 상품이 없어요. 다른 카테고리나 검색어를 선택해 주세요.</div>'}</div>
+ <div class="shoplist">${products.length?`<div class="shop-catalog-grid">${products.map(({p,store})=>`<article class="shop-catalog-card ${p.is_sold_out?'shop-soldout-card':''}">${catalogPhotoGallery(p)}${p.is_sold_out?'<span class="shop-soldout-label">품절</span>':''}<div class="shop-catalog-store">${esc(store.name)}</div><button class="producttitle catalog-title-link" type="button" data-action="${p.is_sold_out?'product-photos':'pick-product'}" data-id="${esc(p.id)}" aria-label="${esc(p.name)} ${p.is_sold_out?'상품 사진 보기':'상품 옵션 보기'}" title="${esc(p.name)}">${esc(p.name)}</button><div class="shop-catalog-colors">${Object.keys(p.options||{}).map(esc).join(' · ')||'색상 옵션 확인'}</div>${hasProductEstimate(p)?estimatedProductPrice(p):'<div class="product-estimate product-estimate-card shop-catalog-no-estimate"><span class="product-estimate-label">가격</span><strong>견적 문의</strong></div>'}</article>`).join('')}</div>`:'<div class="empty">조건에 맞는 상품이 없어요. 다른 카테고리나 검색어를 선택해 주세요.</div>'}</div>
  </section>`;
 }
 /* MINIYENA final-order bank transfer instructions (never pre-confirmation). */
@@ -6255,20 +6230,7 @@ function manualKoreanAddress(button){
  const pane=block.querySelector('[data-postcode-panel]');if(pane)pane.classList.add('hidden');
  zip.focus();notif('우편번호와 기본주소를 직접 입력할 수 있어요');
 }
-function navigateShopPage(next){
- if(state.page!=='shop')throw Error('상품 화면에서만 페이지를 이동할 수 있어요.');
- const total=state.stores.filter(st=>st.active)
-  .flatMap(st=>state.products.filter(p=>p.published&&p.store_id===st.id).map(p=>({p,store:st})))
-  .filter(({p,store})=>matchesCategory(p,state.shopCategory)
-   &&(state.shopStore==='all'||store.id===state.shopStore)
-   &&(!state.search||p.name.includes(state.search))).length;
- const maxPage=Math.max(1,Math.ceil(total/10));
- if(!Number.isSafeInteger(next)||next<1||next>maxPage)throw Error('1~'+maxPage+' 사이의 페이지 번호를 입력해 주세요.');
- state.shopPage=next;
- render();
- const section=app.querySelector('#catalog');
- if(section)window.scrollTo({top:Math.max(0,window.scrollY+section.getBoundingClientRect().top-12),behavior:'auto'});
-}
+
 async function click(e){
  const galleryChoice=e.target.closest?.('[data-action="catalog-photo-index"]');
  if(galleryChoice){
@@ -6587,16 +6549,11 @@ if(a==='admin-summary'){
  if(section)window.scrollTo({top:Math.max(0,window.scrollY+section.getBoundingClientRect().top-12),behavior:'auto'});
  return;
 }
-if(a==='shop-page'){
- navigateShopPage(Number(b.dataset.pageNumber));
- return;
-}
 if(a==='shop-category'){
  if(state.page!=='shop')throw Error('상품 화면에서 카테고리를 선택해 주세요.');
  const chosen=b.dataset.category;
  if(!categoryFilterKeys.includes(chosen))throw Error('올바르지 않은 카테고리예요.');
  state.shopCategory=chosen;
- state.shopPage=1;
  render();
  const section=app.querySelector('.shop-category-list');
  if(section)window.scrollTo({top:Math.max(0,window.scrollY+section.getBoundingClientRect().top-12),behavior:'auto'});
@@ -6823,15 +6780,6 @@ else if(a==='suggest-product'){modalOpen('suggest')}else if(a==='approve-request
  notif('1688 도매배송비 0원 확정 완료! 구매자에게 최종 주문을 안내할 수 있어요.');
  }else if(a==='publish-quote'){const direct=isDirect1688Admin(state.quotes.find(q=>q.id===id));if(!window.confirm(direct?'1688 상품 가격과 배송비를 확인했나요? 견적 발송 후 구매자가 바로 주문을 확정할 수 있어요.':'상품 가격을 확인했나요? 고객에게 먼저 견적을 보내고 이번 회차 구매·다음 회차 구매·보류 선택을 받을게요. 배송비는 답변을 받은 뒤 계산해요.'))return;await adminPublish(id);await loadAdmin();notif(direct?'1688 견적을 보냈어요. 구매자가 바로 주문을 확정할 수 있어요.':'견적을 보냈어요. 구매 회차 선택을 받은 후 배송비를 배분해 주세요.')}else if(a==='confirm-quote'){if(!window.confirm('이 견적으로 최종 주문을 확정할까요?'))return;await confirmFinalQuote();notif('최종 주문이 확정됐어요!')}else if(a==='export-csv'){csv()}else if(a==='copy-vendors'){await copy(vendorText())}else if(a==='logout'){session=null;localStorage.removeItem(SESS);state.admin=false;state.productPrivate={};state.productPrivateReady=false;render()} }catch(ex){notif(errorText(ex))}}
 async function submit(e){const f=e.target;
-if(f.id==='shop-page-jump-form'){
- e.preventDefault();
- try{
-  const raw=String(new FormData(f).get('page')??'').trim();
-  if(!/^[1-9][0-9]*$/.test(raw))throw Error('이동할 페이지 번호를 입력해 주세요.');
-  navigateShopPage(Number(raw));
- }catch(ex){notif(errorText(ex));}
- return;
-}
 if(!f.dataset.sizeChartForm&&!f.dataset.customerEmail&&!['new-arrival-push-form','gmail-settings-form','hero-photo-form','reject-request-form','admin-pin-form','pin-register-form','pin-lookup-form','import-track-form','pick','request','store-form','product-form','login','suggest-form','approve-form','bundle-form','edit-delivery-form','bulk-supplier-shipping-form'].includes(f.id)&&!f.dataset.itemOptions&&!f.dataset.buyerOptionRequest&&!f.dataset.price&&!f.dataset.payment&&!f.dataset.shipping&&!f.dataset.supplierShipping&&!f.dataset.ship&&!f.dataset.bundleShip)return;e.preventDefault();if(busy)return;busy=true;const data=new FormData(f);try{if(f.dataset.buyerOptionRequest){
   const id=f.dataset.buyerOptionRequest;
   const item=state.tracking?.items?.find(i=>i.id===id);
@@ -7064,7 +7012,6 @@ if(x.id==='shop-sort'||x.id==='shop-store'){
  if(state.page!=='shop')return;
  if(x.id==='shop-sort')state.shopSort=['newest','oldest','price-low','price-high','name'].includes(x.value)?x.value:'newest';
  else state.shopStore=state.stores.some(st=>st.active&&st.id===x.value)?x.value:'all';
- state.shopPage=1;
  const previousScroll=window.scrollY;
  render();window.scrollTo({top:previousScroll,behavior:'auto'});
  return;
@@ -7151,7 +7098,9 @@ function reserveShopSearchHeight(){
  if(state.page!=='shop'||!window.matchMedia('(max-width:719px)').matches)return;
  const list=app.querySelector('.shop-content .shoplist');
  if(!list)return;
- shopSearchReservedHeight=Math.max(shopSearchReservedHeight,Math.ceil(list.getBoundingClientRect().height));
+ // With a continuous product feed, don't reserve thousands of pixels after filtering.
+ const keyboardSafeHeight=Math.max(window.innerHeight||0,600);
+ shopSearchReservedHeight=Math.max(shopSearchReservedHeight,Math.min(Math.ceil(list.getBoundingClientRect().height),keyboardSafeHeight));
  if(shopSearchReservedHeight)list.style.minHeight=shopSearchReservedHeight+'px';
 }
 function updateShopSearchResults(){
@@ -7216,7 +7165,7 @@ function input(e){
   }
   return;
  }if(e.target.id==='search'){
-  state.search=e.target.value;state.shopPage=1;
+  state.search=e.target.value;
   // Korean IME sends intermediate syllables; don't collapse the results
   // before text composition finishes or while the iPhone keyboard animates.
   if(!shopSearchComposing&&!e.isComposing)updateShopSearchResults();
@@ -7275,7 +7224,7 @@ app.addEventListener('compositionstart',e=>{
 app.addEventListener('compositionend',e=>{
  if(e.target.id!=='search')return;
  shopSearchComposing=false;
- state.search=e.target.value;state.shopPage=1;
+ state.search=e.target.value;
  updateShopSearchResults();
 });
 app.addEventListener('keydown',e=>{

@@ -2172,228 +2172,6 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 .hero.is-admin-header .heroaction:hover{background:transparent;color:#111}
 .hero.is-admin-header .heroaction:active{opacity:.65}
 .hero.is-admin-header .heroaction svg{flex:none;width:13px;height:13px;opacity:.8}
-
-/* 2026-10-31: responsive desktop storefront; retain the compact mobile design. */
-.shell{width:100%;max-width:none;margin:0 auto;box-sizing:border-box}
-@media(min-width:720px){
- .hero{padding-left:clamp(24px,3.5vw,64px);padding-right:clamp(24px,3.5vw,64px)}
- .shop-content{padding-left:clamp(24px,3.5vw,64px);padding-right:clamp(24px,3.5vw,64px)}
- .shop-content .shop-editorial{
-  margin-left:calc(-1 * clamp(24px,3.5vw,64px));
-  margin-right:calc(-1 * clamp(24px,3.5vw,64px));
-  height:min(64vh,640px)
- }
- .shoplist .shop-catalog-grid{grid-template-columns:repeat(3,minmax(0,1fr));column-gap:clamp(14px,1.7vw,30px);row-gap:35px}
- .shop-bottom-nav{max-width:min(860px,100%);border-left:1px solid #ededed;border-right:1px solid #ededed}
- .is-admin-shell .content{padding-left:clamp(24px,3.5vw,64px);padding-right:clamp(24px,3.5vw,64px)}
- .is-admin-shell .floating-actions{right:clamp(14px,2vw,32px)}
-}
-@media(min-width:1024px){
- .shoplist .shop-catalog-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
-}
-@media(min-width:1440px){
- .shoplist .shop-catalog-grid{grid-template-columns:repeat(5,minmax(0,1fr))}
-}
-.shop-filter-toolbar{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:12px 0 7px}
-.shop-filter-field{display:flex;flex-direction:column;gap:6px;min-width:0;color:#666;font-size:12px;font-weight:650}
-.shop-filter-field select{
- box-sizing:border-box;width:100%;min-width:0;min-height:42px;height:42px;
- border:1px solid #e5e5e5;border-radius:4px;background:#fff;color:#222;
- padding:7px 29px 7px 11px;font-size:14px;font-weight:550;box-shadow:none
-}
-.shop-filter-field select:focus-visible{outline:2px solid #222;outline-offset:2px}
-@media(max-width:519px){
- .shop-filter-toolbar{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
- .shop-filter-field:first-child{grid-column:span 2}
- .shop-filter-field select{font-size:16px}
-}
-/* Permission prompt is a centered dialog on desktop, without a blank error row
-   or the oversized white footer from the generic order-entry sheet. */
-.overlay:has(>.sheet-entry-push){align-items:center;padding:16px;box-sizing:border-box}
-.sheet.sheet-entry-push{
- box-sizing:border-box;width:100%;max-width:440px;
- max-height:calc(100dvh - 32px);overflow-y:auto;
- border-radius:14px;background:#fff;padding:24px;
- box-shadow:0 16px 55px rgba(0,0,0,.15)
-}
-.sheet-entry-push .sheethead{align-items:center;margin-bottom:12px}
-.sheet-entry-push .sheethead h2{font-size:19px;line-height:1.35;color:#111}
-.sheet-entry-push>p{margin:0 0 13px;line-height:1.65}
-.sheet-entry-push>.smallnote{font-size:12px;color:#777}
-.sheet-entry-push>.btn{min-height:44px;margin:9px 0 0;border-radius:5px}
-.sheet-entry-push>.btn.secondary{margin-top:9px}
-.sheet-entry-push>.entry-push-error{color:#a11;margin-top:10px}
-@media(max-width:519px){
- .sheet.sheet-entry-push{max-width:420px;padding:21px 18px;border-radius:12px}
- .sheet-entry-push .sheethead h2{font-size:17px}
-}
-
-
-/* 2026-10-31: MINIYENA clean adaptive navigation and balanced catalog. */
-.hero.is-shop-header{padding-bottom:16px}
-.hero.is-shop-header .headrow{min-height:44px}
-.hero.is-shop-header .header-actions{display:flex;gap:28px;align-items:center}
-.hero.is-shop-header .desktop-header-nav{display:flex;align-items:center;gap:25px}
-.hero.is-shop-header .desktop-header-nav button{
- cursor:pointer;min-height:40px;border:0;background:transparent;padding:7px 0;
- color:#323232;font-size:13px;font-weight:600;white-space:nowrap
-}
-.hero.is-shop-header .desktop-header-nav button:hover{color:#000;text-decoration:underline;text-underline-offset:5px}
-.hero.is-shop-header .header-cart-count{display:inline-block;margin-left:2px;font-size:11px;color:#777}
-.hero.is-shop-header .heroaction{min-height:40px;color:#888}
-.shop-content .shop-section-head{align-items:center;margin:0 0 18px}
-.shop-notification-link{
- cursor:pointer;border:0;background:transparent;display:inline-flex;gap:7px;
- align-items:center;min-height:40px;padding:4px 1px;font-size:12px;font-weight:600;color:#555;
- text-decoration:underline;text-underline-offset:4px;text-decoration-color:#ccc
-}
-.shop-notification-link:hover{color:#111;text-decoration-color:#111}
-.shop-content .shop-catalog-tools{display:flex;gap:12px;align-items:center;margin:14px 0 8px}
-.shop-content .shop-catalog-tools>.shop-search-wrap{flex:1 1 auto;min-width:0;margin:0}
-.shop-content .shop-catalog-tools .shop-filter-toolbar{
- flex:0 0 auto;display:flex;align-items:center;gap:8px;margin:0
-}
-.shop-content .shop-catalog-tools .shop-filter-field{gap:0}
-.shop-content .shop-catalog-tools .shop-filter-field span{display:none}
-.shop-content .shop-catalog-tools .shop-filter-field select{
- width:auto;min-width:140px;max-width:200px;height:41px;min-height:41px;
- font-size:13px;padding:7px 29px 7px 11px
-}
-.shop-content .shoplist .shop-catalog-count{
- font-size:12px;color:#777;font-weight:500;margin:10px 0 16px
-}
-@media(min-width:720px){
- /* PC uses the header navigation instead of a phone-sized fixed bottom bar. */
- .shop-bottom-nav{display:none!important}
- .shell:has(.shop-bottom-nav){padding-bottom:38px}
- .shell:not(.is-admin-shell) .floating-actions{bottom:28px;right:clamp(22px,3.5vw,64px)}
- .shell:not(.is-admin-shell) .floating-refresh{display:none!important}
- .shell:not(.is-admin-shell) .floating-actions .back-to-top{
-  width:40px;height:40px;min-width:40px;min-height:40px;font-size:0
- }
- .shell:not(.is-admin-shell) .floating-actions .back-to-top span{display:none}
- .hero.is-shop-header{padding-top:16px;padding-bottom:16px}
- .shop-content{max-width:1500px;margin:0 auto}
- .shop-content .shop-editorial{
-  display:grid;grid-template-columns:minmax(0,40%) minmax(0,60%);
-  width:100%;height:410px!important;min-height:0!important;max-height:none!important;
-  margin:0 0 36px!important;overflow:hidden;background:#f3f1ed
- }
- .shop-content .shop-editorial-visual{
-  position:relative!important;inset:auto!important;grid-row:1;grid-column:2;
-  width:100%;height:100%;min-width:0;background:#eeece9
- }
- .shop-content .shop-editorial-visual img{
-  display:block;object-fit:contain!important;object-position:center center!important;
-  width:100%;height:100%;max-width:none
- }
- .shop-content .shop-editorial .shop-editorial-copy{
-  position:relative!important;inset:auto!important;bottom:auto!important;
-  grid-row:1;grid-column:1;display:flex;flex-direction:column;justify-content:center;
-  align-items:flex-start;gap:15px;max-width:none;width:100%;
-  box-sizing:border-box;margin:0;padding:35px clamp(26px,4vw,62px)!important;
-  background:#f3f1ed;z-index:3
- }
- .shop-content .shop-editorial h1{
-  font-size:clamp(30px,3vw,44px)!important;line-height:1.25;
-  font-weight:750!important;color:#151515!important;letter-spacing:-.055em
- }
- .shop-content .shop-editorial p{font-size:13px;color:#5f5e5d!important;max-width:350px;line-height:1.65}
- .shop-content .shop-editorial .shop-editorial-visual.has-photo:before,
- .shop-content .shop-editorial[data-copy-tone="light"] .shop-editorial-visual.has-photo:before,
- .shop-content .shop-editorial[data-copy-tone="dark"] .shop-editorial-visual.has-photo:before,
- .shop-content .shop-editorial:after{display:none!important;content:none!important}
- .shop-content .shoplist .shop-catalog-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:32px 20px}
-}
-@media(min-width:1100px){
- .shop-content .shoplist .shop-catalog-grid{grid-template-columns:repeat(4,minmax(0,1fr));column-gap:24px}
-}
-@media(min-width:1450px){
- .shop-content .shop-editorial{height:440px!important}
-}
-@media(max-width:1050px) and (min-width:720px){
- .hero.is-shop-header .desktop-header-nav{gap:15px}
- .shop-content .shop-catalog-tools{flex-wrap:wrap}
- .shop-content .shop-catalog-tools>.shop-search-wrap{flex-basis:100%}
- .shop-content .shop-catalog-tools .shop-filter-toolbar{width:100%}
- .shop-content .shop-catalog-tools .shop-filter-field{flex:1}
- .shop-content .shop-catalog-tools .shop-filter-field select{width:100%;max-width:none}
-}
-@media(max-width:719px){
- .hero.is-shop-header{padding-bottom:12px}
- .hero.is-shop-header .desktop-header-nav{display:none}
- .shop-bottom-nav{
-  left:0;right:0;bottom:0;transform:none;width:100%;max-width:100%;
-  border-left:0;border-right:0;box-sizing:border-box
- }
- .shop-content .shop-catalog-tools{display:block;margin:9px 0}
- .shop-content .shop-catalog-tools>.shop-search-wrap{width:100%}
- .shop-content .shop-catalog-tools .shop-filter-toolbar{
-  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
-  gap:8px;width:100%;margin:10px 0 0
- }
- .shop-content .shop-catalog-tools .shop-filter-field:first-child{grid-column:span 2}
- .shop-content .shop-catalog-tools .shop-filter-field span{display:block;font-size:11px}
- .shop-content .shop-catalog-tools .shop-filter-field select{
-  box-sizing:border-box;width:100%;max-width:none;min-width:0;font-size:16px
- }
- .shop-content .shop-section-head{margin-bottom:13px}
-}
-
-
-/* 2026-10-31 follow-up: preserve mobile compact storefront, unclipped categories.
-   Desktop remains full-width; no shipping/order/admin logic touched. */
-.shop-mobile-filter-toggle{display:none}
-@media(min-width:720px){
- .shop-content .shop-catalog-tools .shop-filter-toolbar{display:flex}
-}
-@media(max-width:719px){
- /* Undo the oversized mobile hero and top spacing from desktop-oriented overrides. */
- .hero.is-shop-header{
-  padding:calc(env(safe-area-inset-top) + 8px) 14px 8px!important
- }
- .hero.is-shop-header .headrow{min-height:34px!important}
- .hero.is-shop-header .logo{font-size:26px}
- .hero.is-shop-header .heroaction{min-height:34px}
- .shop-content .shop-editorial{
-  height:clamp(300px,42svh,400px)!important;
-  min-height:0!important;max-height:none!important;
-  margin-bottom:12px
- }
- /* Fit the entire catalog category list; no off-screen cut-off chips. */
- .shop-content .shop-category-list{
-  display:flex;flex-wrap:wrap;overflow:visible;white-space:normal;
-  justify-content:flex-start;align-items:center;
-  gap:6px;padding:0 0 7px;margin:3px 0 8px;width:100%;
- }
- .shop-content .shop-category-list .shop-category-tab{
-  flex:0 0 auto;min-height:31px;padding:6px 9px;
-  font-size:11px;gap:4px
- }
- .shop-content .shop-category-list .shop-category-tab span{font-size:10px}
- .shop-content .shop-catalog-tools{display:flex;flex-direction:column;align-items:stretch;gap:0;margin:5px 0 4px}
- .shop-content .shop-catalog-tools .shop-search-wrap{width:100%}
- .shop-content .shop-catalog-tools .shop-mobile-filter-toggle{
-  align-self:flex-end;display:flex;align-items:center;gap:7px;
-  padding:6px 1px;margin:3px 0 0;
-  border:0;background:transparent;color:#555;
-  min-height:32px;font-size:12px;font-weight:600;cursor:pointer
- }
- .shop-mobile-filter-toggle .shop-filter-arrow{font-size:15px;font-weight:400;line-height:1}
- .shop-content .shop-catalog-tools .shop-filter-toolbar{display:none!important}
- .shop-content .shop-catalog-tools .shop-filter-toolbar.shop-filters-open{
-  display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));
-  gap:8px;width:100%;margin:2px 0 6px
- }
- .shop-content .shop-catalog-tools .shop-filter-field:first-child{grid-column:auto}
- .shop-content .shop-catalog-tools .shop-filter-field span{display:none}
- .shop-content .shop-catalog-tools .shop-filter-field select{
-  min-height:39px;height:39px;width:100%;max-width:none;
-  font-size:16px;padding:5px 25px 5px 9px
- }
- .shop-content .shoplist .shop-catalog-count{margin:3px 0 13px}
-}
-
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -2519,7 +2297,7 @@ function renderEntryPushBody(){
   denied?'<div class="info">기기 또는 브라우저 설정에서 미니예나 알림을 허용해 주세요.</div>':
   '<p class="smallnote">신상 안내를 포함한 알림 수신에 동의하면 아래 버튼을 눌러 주세요. 언제든 기기 설정에서 끌 수 있어요.</p>'+
   '<button type="button" class="btn block" data-action="entry-push-enable" '+(!entryPushClient||state.modal?.sending?'disabled':'')+'>'+(!entryPushClient?'알림 서비스 연결 중…':state.modal?.sending?'알림 연결 중…':'알림 받기')+'</button>')+
-  (state.modal?.error?'<p role="status" aria-live="polite" class="smallnote entry-push-error">'+esc(state.modal.error)+'</p>':'')+
+  '<p role="status" aria-live="polite" class="smallnote">'+esc(state.modal?.error||'')+'</p>'+
   '<button type="button" class="btn block secondary" data-action="entry-push-later">'+(subscribed||denied||install?'닫기':'나중에')+'</button>';
 }
 async function enableEntryPush(){
@@ -2575,7 +2353,7 @@ const demo=read(DEMO,initDemo());
 const saveDemo=()=>localStorage.setItem(DEMO,JSON.stringify(demo));
 let session=read(SESS,null),busy=false,refreshing=null;
 const p=new URLSearchParams(location.search);
-const state={page:['admin','track'].includes(p.get('page'))?p.get('page'):'shop',tab:'quotes',stores:[],products:[],requests:[],quotes:[],cart:read(CART,[]),modal:null,search:'',shopCategory:'all',shopSort:'newest',shopStore:'all',shopFiltersOpen:false,adminCategory:'all',trackId:p.get('id')||'',trackToken:p.get('token')||'',tracking:null,receipts:read(TRACK,[]),notice:'',filter:'all',admin:false,heroPhotoUrl:null,heroStoreId:null,dateGroupsOpen:{},orderCardsOpen:{},supplierBulkSelected:new Set(),supplierBulkStoreId:'',supplierBatches:[],supplierBatchesReady:false,supplierBatchesError:'',optionRequests:[],optionRequestsReady:false,optionRequestsError:'',requestStatusFilter:'pending',adminCatalogView:'products',adminCatalogFilter:'all',adminProductSort:'newest',adminProductSearch:'',productPrivate:{},productPrivateReady:false,emailSettings:null,emailSettingsReady:false,emailSettingsError:'',adminPinIds:new Set(),phoneLookupReady:null,pinLookupNotice:''};
+const state={page:['admin','track'].includes(p.get('page'))?p.get('page'):'shop',tab:'quotes',stores:[],products:[],requests:[],quotes:[],cart:read(CART,[]),modal:null,search:'',shopCategory:'all',shopPage:1,adminCategory:'all',trackId:p.get('id')||'',trackToken:p.get('token')||'',tracking:null,receipts:read(TRACK,[]),notice:'',filter:'all',admin:false,heroPhotoUrl:null,heroStoreId:null,dateGroupsOpen:{},orderCardsOpen:{},supplierBulkSelected:new Set(),supplierBulkStoreId:'',supplierBatches:[],supplierBatchesReady:false,supplierBatchesError:'',optionRequests:[],optionRequestsReady:false,optionRequestsError:'',requestStatusFilter:'pending',adminCatalogView:'products',adminCatalogFilter:'all',adminProductSort:'newest',adminProductSearch:'',productPrivate:{},productPrivateReady:false,emailSettings:null,emailSettingsReady:false,emailSettingsError:'',adminPinIds:new Set(),phoneLookupReady:null,pinLookupNotice:''};
 
 const PRODUCT_CATEGORIES=['바디수트','세트','상의','하의','아우터','원피스','스커트','모자','양말','악세서리','잡화'];
 const validProductCategory=x=>PRODUCT_CATEGORIES.includes(String(x||'').trim());
@@ -3409,13 +3187,13 @@ function header(){
  const admin=state.page==='admin';
  return `<header class="hero ${admin?'is-admin-header':'is-shop-header'}"><div class="headrow">
  <div class="brand-lockup"><div class="brand-text"><button class="logo brand-home" type="button" data-page="shop" aria-label="미니예나 첫 화면으로 이동">MINIYENA</button></div></div>
- <div class="header-actions">
- ${admin?'':`<nav class="desktop-header-nav" aria-label="쇼핑 메뉴">
-  <button type="button" data-action="suggest-product">상품 등록</button>
-  <button type="button" data-action="open-cart">장바구니${cartCount()?` <span class="header-cart-count">${cartCount()}</span>`:''}</button>
-  <button type="button" data-action="my-quotes">주문조회</button>
- </nav>`}
- <button class="heroaction" data-page="${admin?'shop':'admin'}" type="button">${admin?'<span>쇼핑몰</span>':'<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/><path d="M12 15v2"/></svg><span>관리자</span>'}</button></div></div>
+ <div class="header-actions"><button class="heroaction" data-page="${admin?'shop':'admin'}" type="button">${admin?'<span>쇼핑몰</span>':'<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/><path d="M12 15v2"/></svg><span>관리자</span>'}</button></div></div>
+ <nav class="header-nav" aria-label="사이트 메뉴">
+ ${state.page==='shop'?'<a href="#catalog">전체상품</a>':'<button data-page="shop" type="button">전체상품</button>'}
+ <button type="button" data-action="my-quotes">주문조회</button>
+ <button type="button" data-action="suggest-product">상품신청</button>
+ <span class="header-note">${admin?'관리자 화면':'남대문 아동복'}</span></nav>
+ 
  </header>`;
 }
 function shopBottomNav(){
@@ -3656,59 +3434,46 @@ function renderShop(){
  // No inferred categories, prices, stock levels or rankings: only active, published items.
  const catalogue=state.stores.filter(st=>st.active).flatMap(st=>state.products.filter(p=>p.published&&p.store_id===st.id).map(p=>({p,store:st})));
  const activeCategory=categoryFilterKeys.includes(state.shopCategory)?state.shopCategory:'all';
- // Filter the complete active catalog before sorting. Missing public prices sort last.
- const shopStores=[...new Map(catalogue.map(({store})=>[store.id,store])).values()]
-  .sort((a,b)=>String(a.name).localeCompare(String(b.name),'ko'));
- const activeShopStore=shopStores.some(store=>store.id===state.shopStore)?state.shopStore:'all';
- const sort=['newest','oldest','price-low','price-high','name'].includes(state.shopSort)?state.shopSort:'newest';
- const sortLabels={newest:'최신 등록순',oldest:'오래된 등록순','price-low':'예상가 낮은순','price-high':'예상가 높은순',name:'상품명 가나다순'};
- const query=String(state.search||'').trim().toLocaleLowerCase('ko');
- const products=catalogue.filter(({p,store})=>
-  matchesCategory(p,activeCategory)&&
-  (activeShopStore==='all'||store.id===activeShopStore)&&
-  (!query||[p.name,store.name,categoryLabel(p)].some(v=>String(v||'').toLocaleLowerCase('ko').includes(query)))
- ).sort((a,b)=>{
-  const dateA=Date.parse(a.p.created_at)||0,dateB=Date.parse(b.p.created_at)||0;
-  if(sort==='name'){
-   const byName=String(a.p.name||'').localeCompare(String(b.p.name||''),'ko');
-   if(byName)return byName;
-  }else if(sort==='oldest'){
-   const byDate=dateA-dateB;
-   if(byDate)return byDate;
-  }else if(sort==='price-low'||sort==='price-high'){
-   const pricedA=hasProductEstimate(a.p),pricedB=hasProductEstimate(b.p);
-   if(pricedA!==pricedB)return pricedA?-1:1;
-   if(pricedA){
-    const delta=Number(a.p.estimated_price)-Number(b.p.estimated_price);
-    if(delta)return sort==='price-low'?delta:-delta;
-   }
-  }
-  return dateB-dateA||String(b.p.id).localeCompare(String(a.p.id));
- });
+ // Sort across every store, not store-by-store, so the newest registered products appear first.
+ const products=catalogue.filter(({p,store})=>matchesCategory(p,activeCategory)&&(!state.search||p.name.includes(state.search)||store.name.includes(state.search)||categoryLabel(p).includes(state.search)))
+  .sort((a,b)=>(Date.parse(b.p.created_at)||0)-(Date.parse(a.p.created_at)||0)||String(b.p.id).localeCompare(String(a.p.id)));
+ const shopPageSize=10;
+ const shopPageCount=Math.max(1,Math.ceil(products.length/shopPageSize));
+ const shopPage=Math.min(Math.max(1,Number.isInteger(state.shopPage)?state.shopPage:1),shopPageCount);
+ state.shopPage=shopPage;
+ const pageProducts=products.slice((shopPage-1)*shopPageSize,shopPage*shopPageSize);
+ const firstNumber=products.length?(shopPage-1)*shopPageSize+1:0;
+ const lastNumber=Math.min(products.length,shopPage*shopPageSize);
  const categoryCounts=Object.fromEntries(categoryFilterKeys.map(k=>[k,catalogue.filter(({p})=>matchesCategory(p,k)).length]));
+ // Keep page numbers in groups of five; arrows jump to the first page of adjacent groups.
+ const shopPageFirst=Math.floor((shopPage-1)/5)*5+1;
+ const shopPageWindow=Math.min(5,shopPageCount-shopPageFirst+1);
+ const visibleShopPages=Array.from({length:shopPageWindow},(_,i)=>shopPageFirst+i);
+ const previousPageGroup=Math.max(1,shopPageFirst-5);
+ const nextPageGroup=Math.min(shopPageCount,shopPageFirst+5);
  const banner=currentHeroPhotoUrl();
  return `<section class="content shop-content">
  <div class="shop-editorial"><div class="shop-editorial-visual ${banner?'has-photo':''}">${banner?`<img src="${esc(banner)}" alt="미니예나 메인 사진" loading="eager">`:'<div class="shop-editorial-art" aria-hidden="true"></div>'}</div>
  <div class="shop-editorial-copy"><h1>남대문 · 수입<br>아동복 공동구매</h1><p>견적 요청 후 주문 가능한 공동구매몰이에요.</p></div></div>
- <div class="shop-section-head" id="catalog"><div><h2>전체 상품</h2></div><button type="button" class="shop-notification-link" data-action="entry-push-open" aria-label="신상품 알림 설정">알림 설정</button></div>
+ <div class="shop-section-head" id="catalog"><div><h2>전체 상품</h2></div></div>
+ <div class="shop-actions"><button type="button" data-action="entry-push-open">🔔 알림 받기</button><button type="button" data-action="suggest-product">+ 상품 등록 신청</button><button type="button" data-action="my-quotes">내 견적 · 주문조회 ↗</button></div>
  <div class="shop-category-list" role="group" aria-label="상품 카테고리별 보기">
  ${categoryFilterKeys.filter(k=>k==='all'||categoryCounts[k]>0||k===activeCategory).map(k=>`<button type="button" class="shop-category-tab ${activeCategory===k?'active':''}" data-action="shop-category" data-category="${k}" aria-pressed="${activeCategory===k}">${k==='all'?'전체':k==='uncategorized'?'미분류':k}<span>${categoryCounts[k]}</span></button>`).join('')}
  </div>
- <div class="shop-catalog-tools"><div class="shop-search-wrap"><input id="search" type="search" placeholder="상품명·가게명·카테고리 검색" value="${esc(state.search)}" aria-label="상품 검색"></div>
- <button type="button" class="shop-mobile-filter-toggle" data-action="toggle-shop-filters" aria-expanded="${Boolean(state.shopFiltersOpen)}" aria-controls="shop-filter-toolbar"><span>정렬 · 거래처</span><span class="shop-filter-arrow" aria-hidden="true">${state.shopFiltersOpen?'−':'+'}</span></button>
- <div class="shop-filter-toolbar ${state.shopFiltersOpen?'shop-filters-open':''}" id="shop-filter-toolbar" role="group" aria-label="상품 정렬 및 필터">
-  <label class="shop-filter-field"><span>정렬</span><select id="shop-sort" aria-label="상품 정렬">
-   <option value="newest" ${sort==='newest'?'selected':''}>최신 등록순</option>
-   <option value="oldest" ${sort==='oldest'?'selected':''}>오래된 등록순</option>
-   <option value="price-low" ${sort==='price-low'?'selected':''}>예상가 낮은순</option>
-   <option value="price-high" ${sort==='price-high'?'selected':''}>예상가 높은순</option>
-   <option value="name" ${sort==='name'?'selected':''}>상품명 가나다순</option>
-  </select></label>
-  <label class="shop-filter-field"><span>거래처</span><select id="shop-store" aria-label="거래처 필터"><option value="all">전체 거래처</option>
-   ${shopStores.map(store=>`<option value="${esc(store.id)}" ${activeShopStore===store.id?'selected':''}>${esc(store.name)}</option>`).join('')}
-  </select></label>
- </div></div>
- <div class="shoplist">${products.length?`<div class="shop-catalog-count">상품 ${products.length}개</div><div class="shop-catalog-grid">${products.map(({p,store})=>`<article class="shop-catalog-card ${p.is_sold_out?'shop-soldout-card':''}">${catalogPhotoGallery(p)}${p.is_sold_out?'<span class="shop-soldout-label">품절</span>':''}<div class="shop-catalog-store">${esc(store.name)}</div><button class="producttitle catalog-title-link" type="button" data-action="${p.is_sold_out?'product-photos':'pick-product'}" data-id="${esc(p.id)}" aria-label="${esc(p.name)} ${p.is_sold_out?'상품 사진 보기':'상품 옵션 보기'}" title="${esc(p.name)}">${esc(p.name)}</button><div class="shop-catalog-colors">${Object.keys(p.options||{}).map(esc).join(' · ')||'색상 옵션 확인'}</div>${hasProductEstimate(p)?estimatedProductPrice(p):'<div class="product-estimate product-estimate-card shop-catalog-no-estimate"><span class="product-estimate-label">가격</span><strong>견적 문의</strong></div>'}</article>`).join('')}</div>`:'<div class="empty">조건에 맞는 상품이 없어요. 다른 카테고리나 검색어를 선택해 주세요.</div>'}</div>
+ <div class="shop-search-wrap"><input id="search" type="search" placeholder="상품명·가게명·카테고리 검색" value="${esc(state.search)}" aria-label="상품 검색"></div>
+ <div class="shoplist">${products.length?`<div class="shop-catalog-count">${activeCategory==='all'?'전체 상품':activeCategory==='uncategorized'?'미분류 상품':activeCategory} · 총 ${products.length}개 · 최신 등록순 · ${firstNumber}~${lastNumber}개 표시</div><div class="shop-catalog-grid">${pageProducts.map(({p,store})=>`<article class="shop-catalog-card ${p.is_sold_out?'shop-soldout-card':''}">${catalogPhotoGallery(p)}${p.is_sold_out?'<span class="shop-soldout-label">품절</span>':''}<div class="shop-catalog-store">${esc(store.name)}</div><button class="producttitle catalog-title-link" type="button" data-action="${p.is_sold_out?'product-photos':'pick-product'}" data-id="${esc(p.id)}" aria-label="${esc(p.name)} ${p.is_sold_out?'상품 사진 보기':'상품 옵션 보기'}" title="${esc(p.name)}">${esc(p.name)}</button><div class="shop-catalog-colors">${Object.keys(p.options||{}).map(esc).join(' · ')||'색상 옵션 확인'}</div>${hasProductEstimate(p)?estimatedProductPrice(p):'<div class="product-estimate product-estimate-card shop-catalog-no-estimate"><span class="product-estimate-label">가격</span><strong>견적 문의</strong></div>'}</article>`).join('')}</div>
+ ${shopPageCount>1?`<nav class="shop-catalog-pagination" aria-label="상품 페이지 이동">
+  <button type="button" class="page-control" data-action="shop-page" data-page-number="${previousPageGroup}" ${shopPageFirst===1?'disabled':''} aria-label="이전 5페이지 묶음" title="이전 5페이지">‹</button>
+  ${visibleShopPages.map(n=>`<button type="button" data-action="shop-page" data-page-number="${n}" ${n===shopPage?'aria-current="page"':''} aria-label="${n}페이지">${n}</button>`).join('')}
+  <button type="button" class="page-control" data-action="shop-page" data-page-number="${nextPageGroup}" ${shopPageFirst+5>shopPageCount?'disabled':''} aria-label="다음 5페이지 묶음" title="다음 5페이지">›</button>
+ </nav>
+ <div class="shop-page-jump">
+  <span class="shop-catalog-pagination-status" aria-label="전체 ${shopPageCount}페이지 중 현재 ${shopPage}페이지">${shopPage} / ${shopPageCount}</span>
+  <form id="shop-page-jump-form" aria-label="원하는 상품 페이지 바로 이동">
+   <input id="shop-page-jump-input" name="page" type="number" inputmode="numeric" min="1" max="${shopPageCount}" step="1" placeholder="페이지" required aria-label="이동할 페이지 번호">
+   <button type="submit" aria-label="입력한 페이지로 이동">이동 ↗</button>
+  </form>
+ </div>`:''}`:'<div class="empty">조건에 맞는 상품이 없어요. 다른 카테고리나 검색어를 선택해 주세요.</div>'}</div>
  </section>`;
 }
 /* MINIYENA final-order bank transfer instructions (never pre-confirmation). */
@@ -5481,7 +5246,7 @@ function renderEmailNotificationSettings(){
  </section>`;
 }
 function renderAdminSettings(){return `<section class="card pushbox pushbox-settings" style="display:block!important;margin-bottom:15px"><h3>🔔 관리자 알림</h3><p class="smallnote">주문이 없어도 이 기기에서 알림 수신을 설정할 수 있어요.</p><button type="button" class="btn secondary" data-action="enable-admin-push">관리자 알림 허용하기</button><button type="button" class="btn secondary" style="margin-top:9px" data-action="send-test-push">🔔 내 아이폰에 테스트 알림 보내기</button><button type="button" class="btn secondary" style="margin-top:9px" data-action="send-buyer-test-push">📦 구매자 주문 알림 테스트</button><p id="mini-push-state" class="pushstate" aria-live="polite">알림 상태 확인 중…</p></section>${renderEmailNotificationSettings()}<div class="card hero-photo-settings"><h3>메인 사진 관리</h3><p class="smallnote">현재는 정해진 주기로 자동 변경되지 않아요. 설정한 사진은 다음에 바꾸기 전까지 유지돼요.</p><div class="hero-settings-preview">${currentHeroPhotoUrl()?`<img src="${esc(currentHeroPhotoUrl())}" alt="현재 메인 사진">`:'<div class="hero-settings-placeholder">등록된 상품 사진이 없어요.</div>'}</div><button class="btn block secondary" type="button" data-action="random-hero-photo">🎲 랜덤 상품 사진으로 변경</button><p class="smallnote">고객에게 전시 중인 판매 가능 상품에서 대표사진을 랜덤으로 선택해 저장해요.</p><form id="hero-photo-form"><label class="label">새 메인 사진 선택<input type="file" name="hero_photo" id="hero-photo-input" accept="image/*" required></label><p class="smallnote">세로형 사진을 추천해요. 원본이 커도 자동으로 크기를 줄여 저장해요.</p><button class="btn block" type="submit">메인 사진 변경하기</button></form>${state.heroPhotoUrl?'<button class="btn block secondary" style="margin-top:9px" type="button" data-action="reset-hero-photo">기존 자동 사진으로 되돌리기</button>':''}</div><div class="card"><h3>고객에게 보낼 주소</h3><p class="smallnote">상품 고르고 견적 요청을 보낼 수 있는 링크예요.</p><div class="info nooverflow">${esc(publicLink())}</div><button class="btn block" data-action="copy-shop-link">주문 링크 복사</button><div class="separator"></div><button class="btn block secondary" data-action="export-csv">주문 내역 CSV 저장</button>${connected?'<button class="btn block neutral" style="margin-top:9px" data-action="logout">관리자 로그아웃</button>':''}<p class="smallnote">가격·주문별 배송비·품절·상품 준비·입금 상태는 관리자 전용입니다. 아직 견적만 요청한 상품은 확정 주문 수량에 포함되지 않아요.</p></div>`}
-function modal(){const m=state.modal;if(!m)return '';const wrap=(title,body,stickyProductSave=false)=>stickyProductSave?`<div class="overlay" id="overlay"><div class="sheet sheet-product-editor" role="dialog" aria-modal="true"><div class="sheethead"><h2>${title}</h2><button class="close" data-action="close">×</button></div><div class="sheet-product-scroll">${body}</div><div class="sheet-product-save"><button class="btn block" type="submit" form="product-form">상품 저장</button></div></div></div>`:`<div class="overlay" id="overlay"><div class="sheet${m.type==='myquotes'?' myquotes-swipe-sheet':m.type==='entry-push'?' sheet-entry-push':''}" role="dialog" aria-modal="true">${m.type==='myquotes'?'<div class="sheet-drag-handle" aria-hidden="true"></div>':''}<div class="sheethead"><h2>${title}</h2><button class="close" data-action="close">×</button></div>${body}</div></div>`;
+function modal(){const m=state.modal;if(!m)return '';const wrap=(title,body,stickyProductSave=false)=>stickyProductSave?`<div class="overlay" id="overlay"><div class="sheet sheet-product-editor" role="dialog" aria-modal="true"><div class="sheethead"><h2>${title}</h2><button class="close" data-action="close">×</button></div><div class="sheet-product-scroll">${body}</div><div class="sheet-product-save"><button class="btn block" type="submit" form="product-form">상품 저장</button></div></div></div>`:`<div class="overlay" id="overlay"><div class="sheet${m.type==='myquotes'?' myquotes-swipe-sheet':''}" role="dialog" aria-modal="true">${m.type==='myquotes'?'<div class="sheet-drag-handle" aria-hidden="true"></div>':''}<div class="sheethead"><h2>${title}</h2><button class="close" data-action="close">×</button></div>${body}</div></div>`;
 if(m.type==='entry-push')return wrap('신상·주문 알림 받기',renderEntryPushBody());
 if(m.type==='buyer-order-details'){
  if(!state.admin||state.page!=='admin')return '';
@@ -6379,7 +6144,18 @@ function manualKoreanAddress(button){
  const pane=block.querySelector('[data-postcode-panel]');if(pane)pane.classList.add('hidden');
  zip.focus();notif('우편번호와 기본주소를 직접 입력할 수 있어요');
 }
-
+function navigateShopPage(next){
+ if(state.page!=='shop')throw Error('상품 화면에서만 페이지를 이동할 수 있어요.');
+ const total=state.stores.filter(st=>st.active)
+  .flatMap(st=>state.products.filter(p=>p.published&&p.store_id===st.id).map(p=>({p,store:st})))
+  .filter(({p,store})=>matchesCategory(p,state.shopCategory)&&(!state.search||p.name.includes(state.search)||store.name.includes(state.search)||categoryLabel(p).includes(state.search))).length;
+ const maxPage=Math.max(1,Math.ceil(total/10));
+ if(!Number.isSafeInteger(next)||next<1||next>maxPage)throw Error('1~'+maxPage+' 사이의 페이지 번호를 입력해 주세요.');
+ state.shopPage=next;
+ render();
+ const section=app.querySelector('#catalog');
+ if(section)window.scrollTo({top:Math.max(0,window.scrollY+section.getBoundingClientRect().top-12),behavior:'auto'});
+}
 async function click(e){
  const galleryChoice=e.target.closest?.('[data-action="catalog-photo-index"]');
  if(galleryChoice){
@@ -6391,13 +6167,6 @@ async function click(e){
  if(e.target.matches?.('[data-product-store-search]')){productStoreSearchResults(e.target,true);return;}
  if(!e.target.closest?.('[data-product-store-picker]'))closeProductStoreSearch(app.querySelector('#product-form'));
  const pg=e.target.closest('[data-page]');if(pg){goto(pg.dataset.page);if(pg.classList.contains('brand-home'))window.scrollTo({top:0,behavior:'auto'});return}const b=e.target.closest('[data-action]');if(!b)return;const a=b.dataset.action,id=b.dataset.id;try{
-if(a==='toggle-shop-filters'){
- if(state.page!=='shop')return;
- state.shopFiltersOpen=!state.shopFiltersOpen;
- const previousY=window.scrollY;
- render();window.scrollTo({top:previousY,behavior:'auto'});
- return;
-}
 if(a==='entry-push-open'){entryPushShown=true;state.modal={type:'entry-push'};render();return;}
 if(a==='entry-push-later'){postponeEntryPush();state.modal=null;render();return;}
 if(a==='entry-push-enable'){await enableEntryPush();return;}
@@ -6699,11 +6468,16 @@ if(a==='admin-summary'){
  if(section)window.scrollTo({top:Math.max(0,window.scrollY+section.getBoundingClientRect().top-12),behavior:'auto'});
  return;
 }
+if(a==='shop-page'){
+ navigateShopPage(Number(b.dataset.pageNumber));
+ return;
+}
 if(a==='shop-category'){
  if(state.page!=='shop')throw Error('상품 화면에서 카테고리를 선택해 주세요.');
  const chosen=b.dataset.category;
  if(!categoryFilterKeys.includes(chosen))throw Error('올바르지 않은 카테고리예요.');
  state.shopCategory=chosen;
+ state.shopPage=1;
  render();
  const section=app.querySelector('.shop-category-list');
  if(section)window.scrollTo({top:Math.max(0,window.scrollY+section.getBoundingClientRect().top-12),behavior:'auto'});
@@ -6930,6 +6704,15 @@ else if(a==='suggest-product'){modalOpen('suggest')}else if(a==='approve-request
  notif('1688 도매배송비 0원 확정 완료! 구매자에게 최종 주문을 안내할 수 있어요.');
  }else if(a==='publish-quote'){const direct=isDirect1688Admin(state.quotes.find(q=>q.id===id));if(!window.confirm(direct?'1688 상품 가격과 배송비를 확인했나요? 견적 발송 후 구매자가 바로 주문을 확정할 수 있어요.':'상품 가격을 확인했나요? 고객에게 먼저 견적을 보내고 이번 회차 구매·다음 회차 구매·보류 선택을 받을게요. 배송비는 답변을 받은 뒤 계산해요.'))return;await adminPublish(id);await loadAdmin();notif(direct?'1688 견적을 보냈어요. 구매자가 바로 주문을 확정할 수 있어요.':'견적을 보냈어요. 구매 회차 선택을 받은 후 배송비를 배분해 주세요.')}else if(a==='confirm-quote'){if(!window.confirm('이 견적으로 최종 주문을 확정할까요?'))return;await confirmFinalQuote();notif('최종 주문이 확정됐어요!')}else if(a==='export-csv'){csv()}else if(a==='copy-vendors'){await copy(vendorText())}else if(a==='logout'){session=null;localStorage.removeItem(SESS);state.admin=false;state.productPrivate={};state.productPrivateReady=false;render()} }catch(ex){notif(errorText(ex))}}
 async function submit(e){const f=e.target;
+if(f.id==='shop-page-jump-form'){
+ e.preventDefault();
+ try{
+  const raw=String(new FormData(f).get('page')??'').trim();
+  if(!/^[1-9][0-9]*$/.test(raw))throw Error('이동할 페이지 번호를 입력해 주세요.');
+  navigateShopPage(Number(raw));
+ }catch(ex){notif(errorText(ex));}
+ return;
+}
 if(!f.dataset.sizeChartForm&&!f.dataset.customerEmail&&!['new-arrival-push-form','gmail-settings-form','hero-photo-form','reject-request-form','admin-pin-form','pin-register-form','pin-lookup-form','import-track-form','pick','request','store-form','product-form','login','suggest-form','approve-form','bundle-form','edit-delivery-form','bulk-supplier-shipping-form'].includes(f.id)&&!f.dataset.itemOptions&&!f.dataset.buyerOptionRequest&&!f.dataset.price&&!f.dataset.payment&&!f.dataset.shipping&&!f.dataset.supplierShipping&&!f.dataset.ship&&!f.dataset.bundleShip)return;e.preventDefault();if(busy)return;busy=true;const data=new FormData(f);try{if(f.dataset.buyerOptionRequest){
   const id=f.dataset.buyerOptionRequest;
   const item=state.tracking?.items?.find(i=>i.id===id);
@@ -7158,15 +6941,6 @@ else if(f.dataset.price){
 else if(f.dataset.payment){const paid=Number(data.get('paid')),refunded=Number(data.get('refunded'));if(!Number.isInteger(paid)||!Number.isInteger(refunded)||paid<0||refunded<0)throw Error('금액을 확인해 주세요');await adminPayment(f.dataset.payment,paid,refunded);await loadAdmin();notif('입금 기록 완료')}
 }catch(ex){notif(errorText(ex))}finally{busy=false}}
 async function change(e){const x=e.target;
-if(['shop-sort','shop-store'].includes(x.id)){
- if(state.page!=='shop')return;
- if(x.id==='shop-sort')state.shopSort=['newest','oldest','price-low','price-high','name'].includes(x.value)?x.value:'newest';
- else state.shopStore=state.stores.some(store=>store.active&&store.id===x.value)?x.value:'all';
- const previousY=window.scrollY;
- render();
- window.scrollTo({top:previousY,behavior:'auto'});
- return;
-}
 if(x.id==='admin-product-sort'){
  if(!state.admin||state.page!=='admin'||state.tab!=='products')return;
  const allowed=['newest','oldest','price-high','price-low'];
@@ -7284,7 +7058,7 @@ function input(e){
    for(const node of app.querySelectorAll('[data-stats-entry]'))node.classList.toggle('hidden',!!query&&!node.textContent.toLowerCase().includes(query));
   }
   return;
- }if(e.target.id==='search'){state.search=e.target.value;const pos=e.target.selectionStart;render();const el=$('#search');if(el){el.focus();el.setSelectionRange(pos,pos)}}}
+ }if(e.target.id==='search'){state.search=e.target.value;state.shopPage=1;const pos=e.target.selectionStart;render();const el=$('#search');if(el){el.focus();el.setSelectionRange(pos,pos)}}}
 
 // Do not open product options when a photo swipe ends in a synthesized click.
 let catalogTouch=null;

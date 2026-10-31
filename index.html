@@ -4221,7 +4221,7 @@ function renderWholesaleCompletionAdmin(q){
   <div class="wholesale-state-chip ${complete?'done':''}">${complete?'도매주문 완료 · 옵션 변경 마감':done>0?`도매주문 진행 중 ${done}/${active.length}종`:'도매주문 전 · 옵션 변경 요청 가능'}</div>
   ${complete?`<p>완료일: ${fmtDate(q.supplier_ordered_at||active.find(i=>i.supplier_ordered_at)?.supplier_ordered_at)}</p>`:
     `<p>실제로 남대문 거래처에 발주한 후 완료 처리해 주세요. 완료하면 고객의 옵션 변경 요청이 마감돼요.</p>
-    <button type="button" class="btn sm secondary" data-action="admin-complete-wholesale" data-id="${esc(q.id)}" ${pending.length||!state.optionRequestsReady||assignedPending?'disabled':''}>이번 회차 도매주문 완료 처리</button>
+    <button type="button" class="btn sm secondary" data-action="admin-complete-wholesale" data-id="${esc(q.id)}" ${pending.length||!state.optionRequestsReady||assignedPending?'disabled':''}>발주완료 처리</button>
     ${pending.length?'<p>미처리 옵션 변경 요청을 먼저 승인·반려해야 해요.</p>':assignedPending?'<p>거래처별 배송비 배분을 사용 중이에요. 먼저 ‘거래처별 배송비 · 입금·발주 현황’에서 거래처 발주 완료를 처리해 주세요.</p>':''}`}
  </div>`;
 }

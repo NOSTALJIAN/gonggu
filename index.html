@@ -5598,7 +5598,7 @@ if(m.type==='myquotes'){return wrap('내 견적 · 주문조회',`
    <label class="label">조회 비밀번호<input type="password" name="lookup_pin" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" required autocomplete="off" placeholder="숫자 6자리"></label>
    <button class="btn block" type="submit" ${state.phoneLookupReady!==true?'disabled':''}>내 주문 조회하기</button>
   </form>
- <div class="phone-lookup-state">${esc(state.pinLookupNotice|| (state.phoneLookupReady===true?'주문 시 설정한 6자리 비밀번호를 입력해 주세요.':state.phoneLookupReady===null?'조회 기능 확인 중…':'조회 기능을 준비 중이에요. 아래 링크로 확인해 주세요.'))}</p>
+ <p class="phone-lookup-state" role="status" aria-live="polite">${esc(state.pinLookupNotice|| (state.phoneLookupReady===true?'주문 시 설정한 6자리 비밀번호를 입력해 주세요.':state.phoneLookupReady===null?'조회 기능 확인 중…':'조회 기능을 준비 중이에요. 아래 링크로 확인해 주세요.'))}</p>
  </section>
  <details class="order-lookup-help"><summary>조회가 안 되나요?</summary><p>문자 인증·회원가입 없이 조회할 수 있어요. 비밀번호를 5번 틀리면 30분 동안 조회가 제한돼요. 예전 주문은 보관한 주문 링크에서 비밀번호를 등록할 수 있어요.</p></details>
  <details class="order-lookup-fold">

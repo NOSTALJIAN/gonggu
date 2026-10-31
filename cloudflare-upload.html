@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>미니예나 · 새 주소 업로드 파일</title>
+<style>
+*{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;max-width:560px;margin:0 auto;padding:35px 21px;color:#161616;background:#fff;line-height:1.7}h1{font-size:25px;letter-spacing:-.06em;margin:0 0 12px}p{color:#535353;font-size:14px}button{border:0;border-radius:8px;background:#111;color:#fff;font-size:16px;font-weight:700;padding:15px 20px;width:100%;cursor:pointer;margin:15px 0}button:disabled{opacity:.55}.note{background:#f6f6f6;padding:14px;border-radius:8px;margin-top:15px;font-size:13px;color:#555}#status{font-size:14px;color:#333;white-space:pre-wrap}a{color:#151515}small{color:#777}ol{font-size:14px;padding-left:22px}
+</style>
+</head>
+<body>
+<h1>미니예나 새 주소 준비</h1>
+<p>GitHub 주소를 그대로 유지하면서 Cloudflare에 올릴 수 있는 미니예나 ZIP 파일을 생성합니다. 계정 비밀번호나 개인 주문 정보는 포함하지 않습니다.</p>
+<button id="generate" type="button">Cloudflare 업로드용 ZIP 만들기</button>
+<div id="status" role="status" aria-live="polite"></div>
+<div class="note"><b>ZIP 다운로드 후</b><ol>
+<li>Cloudflare의 Workers &amp; Pages에서 <b>Pages → Direct Upload</b>을 선택하세요.</li>
+<li>프로젝트 이름을 <b>miniyena</b>로 입력하세요(사용 가능할 경우).</li>
+<li>다운로드한 <b>miniyena-cloudflare.zip</b>을 올리고 배포하세요.</li>
+</ol>기존 GitHub 사이트는 계속 운영됩니다. 새 주소는 첫 배포 이후 별도 업로드가 필요하며, OneSignal 푸시 알림은 새 주소에 맞는 추가 설정이 필요할 수 있습니다.</div>
+<script>
+(function(){
+'use strict';
+var files=['index.html','manifest.webmanifest','icon-192.png','icon-512.png','apple-touch-icon.png','OneSignalSDKWorker.js'];
+var enc=new TextEncoder();
+function replaceOnce(src,a,b){
+ if(src.split(a).length!==2)throw Error('최신 사이트 코드가 예상과 달라요: '+a.slice(0,40));
+ return src.replace(a,b);
+}
+function put16(d,o,n){d.setUint16(o,n,true)}
+function put32(d,o,n){d.setUint32(o,n>>>0,true)}
+function crc32(bytes){
+ var crc=-1;
+ for(var i=0;i<bytes.length;i++){
+  crc^=bytes[i];
+  for(var j=0;j<8;j++)crc=(crc>>>1)^((crc&1)?0xedb88320:0);
+ }
+ return(crc^(-1))>>>0;
+}
+function makeZip(entries){
+ var local=[],central=[],offset=0,centralLen=0;
+ entries.forEach(function(e){
+  var name=enc.encode(e.name),data=e.bytes,crc=crc32(data);
+  var head=new Uint8Array(30+name.length),h=new DataView(head.buffer);
+  put32(h,0,0x04034b50);put16(h,4,20);put16(h,6,0x0800);put16(h,8,0);
+  put16(h,10,0);put16(h,12,0);put32(h,14,crc);put32(h,18,data.length);
+  put32(h,22,data.length);put16(h,26,name.length);put16(h,28,0);
+  head.set(name,30);local.push(head,data);
+  var cd=new Uint8Array(46+name.length),v=new DataView(cd.buffer);
+  put32(v,0,0x02014b50);put16(v,4,20);put16(v,6,20);put16(v,8,0x0800);
+  put16(v,10,0);put16(v,12,0);put16(v,14,0);put32(v,16,crc);
+  put32(v,20,data.length);put32(v,24,data.length);put16(v,28,name.length);
+  put16(v,30,0);put16(v,32,0);put16(v,34,0);put16(v,36,0);
+  put32(v,38,0);put32(v,42,offset);cd.set(name,46);
+  central.push(cd);centralLen+=cd.length;offset+=head.length+data.length;
+ });
+ var end=new Uint8Array(22),ev=new DataView(end.buffer);
+ put32(ev,0,0x06054b50);put16(ev,4,0);put16(ev,6,0);
+ put16(ev,8,entries.length);put16(ev,10,entries.length);
+ put32(ev,12,centralLen);put32(ev,16,offset);put16(ev,20,0);
+ return new Blob(local.concat(central,[end]),{type:'application/zip'});
+}
+var button=document.getElementById('generate'),status=document.getElementById('status');
+button.addEventListener('click',async function(){
+ button.disabled=true;status.textContent='최신 미니예나 파일을 준비하는 중…';
+ try{
+  var response=await Promise.all(files.map(function(filename){
+   return fetch('./'+filename+'?cf_export='+Date.now(),{cache:'no-store'}).then(function(r){
+    if(!r.ok)throw Error(filename+' 다운로드 실패 ('+r.status+')');
+    return r.arrayBuffer();
+   });
+  }));
+  var entries=files.map(function(name,i){return{name:name,bytes:new Uint8Array(response[i])}});
+  var i=files.indexOf('index.html'),page=new TextDecoder().decode(entries[i].bytes);
+  page=replaceOnce(page,"serviceWorkerPath: 'gonggu/OneSignalSDKWorker.js'","serviceWorkerPath: 'OneSignalSDKWorker.js'");
+  page=replaceOnce(page,"serviceWorkerParam: { scope: '/gonggu/onesignal-push/' }","serviceWorkerParam: { scope: '/' }");
+  page=replaceOnce(page,
+   "if(page.origin!==location.origin||norm(page.pathname)!==norm(location.pathname))throw Error('미니예나 주문조회 링크만 사용할 수 있어요.');",
+   "const isCurrentSite=page.origin===location.origin&&norm(page.pathname)===norm(location.pathname);\n const isOldSite=page.origin==='https://nostaljian.github.io'&&norm(page.pathname)==='/gonggu/';\n if(!isCurrentSite&&!isOldSite)throw Error('미니예나 주문조회 링크만 사용할 수 있어요.');"
+  );
+  page=page.replace('placeholder="https://nostaljian.github.io/gonggu/?page=track&id=...&token=..."','placeholder="주문조회 링크를 붙여넣어 주세요"');
+  entries[i].bytes=enc.encode(page);
+  var zip=makeZip(entries),url=URL.createObjectURL(zip),link=document.createElement('a');
+  link.href=url;link.download='miniyena-cloudflare.zip';document.body.appendChild(link);
+  link.click();link.remove();setTimeout(function(){URL.revokeObjectURL(url)},30000);
+  status.textContent='완료! 다운로드한 ZIP 파일을 Cloudflare의 Direct Upload에 올리면 돼요.';
+ }catch(error){status.textContent='파일 생성 실패: '+String(error.message||error)+'\n이 화면을 캡처해 알려주세요.'}
+ finally{button.disabled=false}
+});
+})();
+</script>
+</body>
+</html>

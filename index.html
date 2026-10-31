@@ -791,6 +791,53 @@ body:has(.overlay) .floating-actions{opacity:0;visibility:hidden;pointer-events:
 .admin-order-fold-body>.card{margin:0 0 11px}
 .admin-order-fold-body>.bundle-summary-card{margin:0 0 11px}
 @media(max-width:390px){.admin-order-fold-heading{padding:12px 10px;gap:8px}.admin-order-fold-left>strong{font-size:13px}.admin-order-fold-baby{font-size:10px;padding:2px 5px;margin-left:1px}.admin-order-fold-right{max-width:34%}.admin-order-fold-status{font-size:10px}.admin-order-fold-meta{font-size:10px}.admin-order-fold-body{padding:9px 7px 0}}
+/* Mobile order cards: buyer first, statuses on their own full-width line. */
+.admin-order-fold-heading{
+ display:grid;grid-template-columns:minmax(0,1fr) 15px;
+ align-items:center;column-gap:12px;row-gap:10px;
+ padding:14px 14px;min-height:88px;
+}
+.admin-order-fold-left{grid-column:1;grid-row:1;min-width:0;gap:4px}
+.admin-order-fold-left>strong{display:flex;align-items:center;flex-wrap:wrap;gap:5px;min-width:0;word-break:keep-all}
+.admin-order-fold-baby{flex:0 0 auto;margin:0;white-space:nowrap}
+.admin-order-fold-meta{overflow-wrap:normal;word-break:keep-all}
+.admin-order-fold-right{
+ grid-column:1/-1;grid-row:2;display:flex;flex-direction:row;
+ flex-wrap:wrap;justify-content:flex-start;align-items:center;
+ width:100%;max-width:none;min-width:0;gap:6px;text-align:left;
+}
+.admin-order-fold-status{
+ display:inline-flex;align-items:center;flex:0 0 auto;
+ padding:4px 8px;border-radius:5px;background:#f3f3f3;
+ font-size:11px;font-weight:760;line-height:1.4;white-space:nowrap;
+}
+.admin-order-fold-right>.purchase-intent-chip{
+ margin:0;flex:0 0 auto;white-space:nowrap;word-break:keep-all;
+ padding:4px 8px;font-size:11px;line-height:1.4;
+}
+.admin-order-fold-right>.admin-order-fold-alert,
+.admin-order-fold-right>.admin-order-fold-ordered,
+.admin-order-fold-right>.admin-order-fold-batched{
+ flex:0 0 auto;white-space:nowrap;text-align:left;
+}
+.admin-order-fold-chevron{grid-column:2;grid-row:1;justify-self:end;align-self:center;margin:0}
+.admin-order-detail-head{display:flex;flex-direction:column;align-items:stretch;gap:10px;min-width:0}
+.admin-order-detail-buyer{min-width:0}
+.admin-order-detail-buyer h3{display:flex;flex-wrap:wrap;align-items:center;gap:6px;word-break:keep-all}
+.admin-order-detail-buyer .chip{margin:0;white-space:nowrap}
+.admin-order-detail-status{display:flex;flex-wrap:wrap;align-items:center;gap:6px;min-width:0}
+.admin-order-detail-status>.stagebadge,
+.admin-order-detail-status>.purchase-intent-chip,
+.admin-order-detail-status>.workflow-stage{
+ display:inline-flex;align-items:center;white-space:nowrap;word-break:keep-all;
+ margin:0;padding:5px 8px;line-height:1.35;
+}
+@media(max-width:390px){
+ .admin-order-fold-heading{padding:12px 11px;column-gap:8px;row-gap:9px}
+ .admin-order-fold-right{width:100%;max-width:none;gap:5px}
+ .admin-order-fold-status,.admin-order-fold-right>.purchase-intent-chip{font-size:10px}
+ .admin-order-fold-left>strong{font-size:14px}
+}
 @media(prefers-reduced-motion:reduce){.admin-order-fold-chevron{transition:none}}
 
 .admin-date-hint{color:#888;font-size:10px;line-height:1.55;margin:11px 1px 24px}
@@ -4257,7 +4304,7 @@ function renderWholesaleCompletionAdmin(q){
     ${pending.length?'<p>미처리 옵션 변경 요청을 먼저 승인·반려해야 해요.</p>':assignedPending?'<p>거래처별 배송비 배분을 사용 중이에요. 먼저 ‘거래처별 배송비 · 입금·발주 현황’에서 거래처 발주 완료를 처리해 주세요.</p>':''}`}
  </div>`;
 }
-function renderAdminQuoteCard(q){return `<div class="card ordercard"><div class="row between"><div><h3>${esc(q.buyer_name)} <span class="chip purple">아기: ${esc(q.baby_name||'미입력')}</span></h3><button class="textbutton" data-action="edit-baby" data-id="${q.id}">아기 이름 수정</button><div class="quote-date">${fmtDate(q.created_at)} · ${esc(q.contact||'연락처 없음')}</div></div><div><span class="stagebadge">${statusLabel[q.status]}</span>${intentBadge(q)}${q.supplier_ordered_at?`<div class="workflow-stage" style="margin-top:5px">도매 발주 완료 · ${fmtDate(q.supplier_ordered_at)}</div>`:''}${q.status==='confirmed'?`<div class="workflow-stage" style="margin-top:5px">${workflowLabel(q)}</div>${workflowStage(q)==='shipped'&&isLotteShipment(q)?'<div class="tiny lotte-auto-chip">🚚 롯데 자동조회 대상</div>':''}`:''}</div></div><div class="tiny">메모: ${esc(q.note||'없음')}</div>${renderAdminEmailEditor('quote',q)}
+function renderAdminQuoteCard(q){return `<div class="card ordercard"><div class="admin-order-detail-head"><div class="admin-order-detail-buyer"><h3>${esc(q.buyer_name)} <span class="chip purple">아기: ${esc(q.baby_name||'미입력')}</span></h3><div class="quote-date">${fmtDate(q.created_at)} · ${esc(q.contact||'연락처 없음')}</div><button class="textbutton" data-action="edit-baby" data-id="${q.id}">아기 이름 수정</button></div><div class="admin-order-detail-status"><span class="stagebadge">${statusLabel[q.status]}</span>${intentBadge(q)}${q.supplier_ordered_at?`<span class="workflow-stage">도매 발주 완료 · ${fmtDate(q.supplier_ordered_at)}</span>`:''}${q.status==='confirmed'?`<span class="workflow-stage">${workflowLabel(q)}</span>${workflowStage(q)==='shipped'&&isLotteShipment(q)?'<span class="tiny lotte-auto-chip">🚚 롯데 자동조회 대상</span>':''}`:''}</div></div><div class="tiny">메모: ${esc(q.note||'없음')}</div>${renderAdminEmailEditor('quote',q)}
 <div class="info" style="background:#fafaff"><b>수령: ${deliveryLabel(q)}</b>${q.delivery_method==='courier'?`<div class="tiny">받는 사람: ${esc(q.recipient_name||'미입력')} · ${esc(addressLabel(q))}${q.delivery_note?' · 배송메모: '+esc(q.delivery_note):''}</div>`:''}${isBundle(q)?'<div class="chip purple">묶음배송 · 추가 배송비 0원</div>':''}${state.quotes.some(x=>x.bundle_parent_id===q.id&&x.status!=='cancelled')?'<div class="chip purple">묶음배송 대표 주문</div>':''}</div>
 ${q.bundle_parent_id&&!state.quotes.some(x=>x.id===q.bundle_parent_id&&x.status!=='cancelled')?'<div class="noticefail"><b>묶음 대표 주문 연결 확인 필요</b><div>대표 주문이 없거나 취소되어 함께 표시할 수 없어요. 아래 묶음배송 변경·해제에서 다시 연결해 주세요.</div></div>':''}
 ${q.delivery_change_requested_at?`<div class="noticefail" style="margin-top:10px"><b>📦 구매자 수령방식 변경 요청</b><div class="smallnote">${fmtDate(q.delivery_change_requested_at)} · 변경 요청: ${q.requested_delivery_method==='pickup'?'직접수령':'택배수령'}</div>${q.requested_delivery_method==='courier'?`<div class="smallnote">${esc(q.requested_recipient_name||'')} · ${esc([q.requested_postal_code,q.requested_address_line1,q.requested_address_line2].filter(Boolean).join(' '))}</div>`:''}<div class="row wrap" style="margin-top:8px"><button class="btn sm" data-action="approve-delivery" data-id="${q.id}">변경 승인</button><button class="btn sm neutral" data-action="reject-delivery" data-id="${q.id}">반려</button></div><div class="smallnote">배송비를 한 번만 받는 묶음배송이라면 배송지와 결제 차액을 확인해 주세요.</div></div>`:''}
@@ -4382,7 +4429,9 @@ function renderCollapsibleAdminOrder(group,section){
      <span class="admin-order-fold-meta">${group.length>1?group.length+'건 묶음배송 · ':''}상품 ${uniqueItems}종 · 총 ${qty}개 · ${fmtDate(root.created_at)}</span>
     </span>
     <span class="admin-order-fold-right">
-     <span class="admin-order-fold-status">${esc(stateText)}${stage?' · '+esc(stage):''}${group.length===1?intentBadge(root):''}${group.some(q=>pendingItemOptionRequests(q).length)?'<span class="admin-order-fold-alert">옵션 변경 요청 확인</span>':''}</span>
+     <span class="admin-order-fold-status">${esc(stateText)}${stage?' · '+esc(stage):''}</span>
+     ${group.length===1?intentBadge(root):''}
+     ${group.some(q=>pendingItemOptionRequests(q).length)?'<span class="admin-order-fold-alert">옵션 변경 요청 확인</span>':''}
      ${supplierOrdered?`<span class="admin-order-fold-ordered">도매 발주 ${supplierOrdered}/${activeItems.length}종 완료</span>`:assigned?`<span class="admin-order-fold-batched">거래처별 배분 ${assigned}종</span>`:''}
      ${pending?`<span class="admin-order-fold-alert">가격 미입력 ${pending}종</span>`:attention?'<span class="admin-order-fold-alert">요청 확인 필요</span>':''}
     </span>

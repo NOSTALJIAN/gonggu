@@ -1977,6 +1977,8 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
   background:linear-gradient(to top,rgba(0,0,0,.54) 0%,rgba(0,0,0,.18) 27%,transparent 54%);
  }
 }
+/* Home already shows products; the clickable MINIYENA wordmark returns home. */
+.shop-bottom-nav{grid-template-columns:repeat(3,minmax(0,1fr));}
 /* MINIYENA compact bottom navigation: preserve 44px tap targets and iPhone home-indicator clearance. */
 .shop-bottom-nav{
  padding:5px 6px max(11px,calc(env(safe-area-inset-bottom) - 11px));
@@ -2924,8 +2926,6 @@ function shopBottomNav(){
   orders:'<svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>'
  };
  return `<nav class="shop-bottom-nav" aria-label="하단 메뉴">
- <button class="nav-item ${state.page==='shop'?'active':''}" data-page="shop" type="button" ${state.page==='shop'?'aria-current="page"':''}><span class="nav-symbol">${icons.home}</span><span>홈</span></button>
- ${state.page==='shop'?`<a class="nav-item" href="#catalog"><span class="nav-symbol">${icons.catalog}</span><span>상품</span></a>`:`<button class="nav-item" data-page="shop" type="button"><span class="nav-symbol">${icons.catalog}</span><span>상품</span></button>`}
  <button class="nav-item nav-register" type="button" data-action="suggest-product"><span class="nav-symbol">${icons.request}</span><span>상품등록</span></button>
  <button class="nav-item" type="button" data-action="open-cart"><span class="nav-symbol">${icons.cart}${cartCount()?`<span class="nav-count">${cartCount()}</span>`:''}</span><span>장바구니</span></button>
  <button class="nav-item ${state.page==='track'?'active':''}" type="button" data-action="my-quotes"><span class="nav-symbol">${icons.orders}</span><span>주문조회</span></button>

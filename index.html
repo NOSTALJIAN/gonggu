@@ -2095,16 +2095,16 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
  content:"";display:block;position:absolute;z-index:1;left:0;right:0;bottom:0;height:2px;
  background:#fff;pointer-events:none;
 }
-/* Quiet admin entry in the storefront header. */
+/* Storefront admin shortcut: quiet text and lock, no competing button shape. */
 .hero.is-shop-header .heroaction{
  display:inline-flex;align-items:center;justify-content:center;gap:5px;
- min-height:44px;padding:0 11px;border:0;border-radius:10px;
- background:#f5f5f5;color:#666;font-size:11px;font-weight:600;
- letter-spacing:0;text-decoration:none;line-height:1;
+ min-height:44px;padding:0 4px;border:0;border-radius:0;
+ background:transparent;color:#666;font-size:11px;font-weight:650;
+ letter-spacing:0;text-decoration:none;line-height:1;box-shadow:none;
 }
-.hero.is-shop-header .heroaction:hover{background:#ededed;color:#333}
-.hero.is-shop-header .heroaction:active{background:#e6e6e6}
-.hero.is-shop-header .heroaction svg{flex:none}
+.hero.is-shop-header .heroaction:hover{background:transparent;color:#111}
+.hero.is-shop-header .heroaction:active{opacity:.65}
+.hero.is-shop-header .heroaction svg{flex:none;width:13px;height:13px;opacity:.8}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">

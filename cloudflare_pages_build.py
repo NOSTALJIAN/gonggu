@@ -49,6 +49,13 @@ change_once(
     "serviceWorkerParam: { scope: '/' }",
 )
 
+# OneSignal subscriptions belong to the website origin. Use the NEW Cloudflare
+# OneSignal app only in this generated copy; keep GitHub Pages subscribers intact.
+change_once(
+    "appId: '4ecfc195-43f7-4108-b6d4-abb11164a504'",
+    "appId: '74494ff1-8318-40fd-ab2c-4bf9017a8991'",
+)
+
 # Accept existing legacy customer order links on the new domain. The ID/token
 # validations directly below this code are preserved, and other sites rejected.
 change_once(

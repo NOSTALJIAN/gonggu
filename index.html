@@ -1746,7 +1746,7 @@ details[open]>summary>.admin-quote-extra-chevron{transform:rotate(180deg)}
 
 /* Minimal administrator interface. Only changes dashboard presentation;
    all order management, quote data, tab actions and sorting remain intact. */
-.hero.is-admin-header{padding:calc(env(safe-area-inset-top) + 10px) 16px 10px!important;border-bottom:1px solid #eee}
+.hero.is-admin-header{padding:calc(env(safe-area-inset-top) + 30px) 16px 10px!important;border-bottom:1px solid #eee;background:#fff!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;filter:none!important}
 .hero.is-admin-header .headrow{min-height:33px}
 .hero.is-admin-header .header-nav{display:none!important}
 .hero.is-admin-header .logo{font-size:25px;letter-spacing:-.077em}
@@ -2105,6 +2105,25 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 .hero.is-shop-header .heroaction:hover{background:transparent;color:#111}
 .hero.is-shop-header .heroaction:active{opacity:.65}
 .hero.is-shop-header .heroaction svg{flex:none;width:13px;height:13px;opacity:.8}
+
+/* Admin header: keep wordmark below the iPhone status-bar blur and use the same
+   understated navigation treatment as the storefront's admin shortcut. */
+.hero.is-admin-header .headrow,
+.hero.is-admin-header .brand-lockup,
+.hero.is-admin-header .brand-text,
+.hero.is-admin-header .logo{
+ -webkit-backdrop-filter:none!important;backdrop-filter:none!important;
+ -webkit-filter:none!important;filter:none!important;text-shadow:none!important;
+}
+.hero.is-admin-header .heroaction{
+ display:inline-flex;align-items:center;justify-content:center;gap:5px;
+ min-height:44px;padding:0 4px;border:0;border-radius:0;
+ background:transparent;color:#666;font-size:11px;font-weight:650;
+ letter-spacing:0;text-decoration:none;line-height:1;box-shadow:none;
+}
+.hero.is-admin-header .heroaction:hover{background:transparent;color:#111}
+.hero.is-admin-header .heroaction:active{opacity:.65}
+.hero.is-admin-header .heroaction svg{flex:none;width:13px;height:13px;opacity:.8}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -3018,7 +3037,7 @@ function header(){
  const admin=state.page==='admin';
  return `<header class="hero ${admin?'is-admin-header':'is-shop-header'}"><div class="headrow">
  <div class="brand-lockup"><div class="brand-text"><button class="logo brand-home" type="button" data-page="shop" aria-label="미니예나 첫 화면으로 이동">MINIYENA</button></div></div>
- <div class="header-actions"><button class="heroaction" data-page="${admin?'shop':'admin'}" type="button">${admin?'쇼핑몰 ↗':'<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/><path d="M12 15v2"/></svg><span>관리자</span>'}</button></div></div>
+ <div class="header-actions"><button class="heroaction" data-page="${admin?'shop':'admin'}" type="button">${admin?'<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 9h14l-1 12H6L5 9Z"/><path d="M9 9V7a3 3 0 0 1 6 0v2"/></svg><span>쇼핑몰</span>':'<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/><path d="M12 15v2"/></svg><span>관리자</span>'}</button></div></div>
  <nav class="header-nav" aria-label="사이트 메뉴">
  ${state.page==='shop'?'<a href="#catalog">전체상품</a>':'<button data-page="shop" type="button">전체상품</button>'}
  <button type="button" data-action="my-quotes">주문조회</button>

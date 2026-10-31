@@ -3187,6 +3187,29 @@ async function miniSendBuyerTestPush(){
  if(!res.ok||!result.ok)throw Error(result.error||'구매자 테스트 알림을 생성하지 못했어요.');
  notif('구매자 주문 알림 테스트를 요청했어요. 아이폰 알림을 확인해 주세요.');
 }
+
+async function miniSendNewArrival(form){
+ if(!connected||!state.admin)throw Error('관리자 로그인이 필요해요.');
+ const data=new FormData(form),title=String(data.get('title')||'').trim(),message=String(data.get('message')||'').trim();
+ if(!title||!message)throw Error('알림 제목과 내용을 입력해 주세요.');
+ if(!window.confirm('알림을 허용한 모든 기기에 아래 신상 알림을 보낼까요?\n\n'+title+'\n'+message))return;
+ const button=form.querySelector('button[type="submit"]'),output=form.querySelector('[role="status"]');
+ const storageKey='miniyena-new-arrival-pending',signature=JSON.stringify([title,message]);
+ let pending=read(storageKey,null);
+ if(!pending||pending.signature!==signature||Date.now()-pending.created>86400000)pending={signature,created:Date.now(),ids:[crypto.randomUUID(),crypto.randomUUID()]};
+ localStorage.setItem(storageKey,JSON.stringify(pending));
+ button.disabled=true;output.textContent='발송 접수 중…';
+ try{
+  const token=await getToken();if(!token)throw Error('다시 로그인해 주세요.');
+  const response=await fetch(url+'/functions/v1/gq-new-arrival-push',{method:'POST',headers:{Authorization:'Bearer '+token,apikey:key,'Content-Type':'application/json'},body:JSON.stringify({title,message,request_ids:pending.ids})});
+  const result=await response.json();
+  if(!response.ok||!result.results)throw Error(result.error||'발송 결과를 확인하지 못했어요.');
+  output.textContent=result.results.map(r=>r.site+': '+(r.ok?(r.empty?'수신 가능한 기기 없음':'발송 접수 완료'):r.error)).join(' / ');
+  if(result.ok){localStorage.removeItem(storageKey);button.textContent='발송 처리 완료';}
+  else {button.disabled=false;button.textContent='같은 알림 재시도';}
+ }catch(error){output.textContent=errorText(error)+' · 같은 내용으로 재시도하면 중복 발송을 방지해요.';button.disabled=false;}
+}
+
 async function miniSendTestPush(){
  if(!connected||!state.admin)throw Error('관리자 로그인이 필요해요.');
  const ready=await window.miniYenaOneSignalReady;
@@ -3909,6 +3932,7 @@ function renderAdminProducts(){
  const storeSearchQuery=String(state.adminStoreSearch||'').trim().toLocaleLowerCase('ko-KR');
  const matchingStores=state.stores.filter(st=>String(st.name||'').toLocaleLowerCase('ko-KR').includes(storeSearchQuery));
  return `<section class="admin-catalog-panel" id="admin-catalog">
+<details class="card" style="margin:12px 0"><summary style="cursor:pointer;font-weight:800;padding:8px 0">🔔 신상 알림 보내기</summary><form id="new-arrival-push-form" style="margin-top:14px"><p class="smallnote">기존 주소와 새 주소에서 알림을 허용한 모든 기기에 보내요. 두 주소 모두 구독했다면 각각 받을 수 있어요.</p><label class="label">알림 제목<input name="title" maxlength="60" required value="미니예나 신상 업데이트"></label><label class="label">알림 내용<textarea name="message" maxlength="200" required>새로운 아기옷이 올라왔어요. 미니예나에서 구경해 보세요!</textarea></label><p class="smallnote">알림을 누르면 해당 주소의 상품 목록으로 이동해요.</p><button type="submit" class="btn block">신상 알림 보내기</button><p id="new-arrival-push-result" class="smallnote" role="status" aria-live="polite"></p></form></details>
   <div class="admin-catalog-switch" role="group" aria-label="관리자 상품 및 거래처 화면 전환">
    <button type="button" class="admin-catalog-switch-btn ${!storesView?'active':''}" data-action="catalog-view" data-view="products" aria-pressed="${!storesView}">상품 <span>${all.length}</span></button>
    <button type="button" class="admin-catalog-switch-btn ${storesView?'active':''}" data-action="catalog-view" data-view="stores" aria-pressed="${storesView}">거래처 <span>${state.stores.length}</span></button>
@@ -6753,7 +6777,8 @@ if(!f.dataset.sizeChartForm&&!f.dataset.customerEmail&&!['gmail-settings-form','
 else if(f.id==='approve-form'){await approveSuggestion(data);clearAdminSelectedPhotos();state.modal=null;await loadAdmin();state.tab='requests';render();notif('선택한 사진만 등록하고 신청을 승인했어요')}
 else if(f.id==='edit-delivery-form'){
  const pending=await updateBuyerDelivery(data);state.modal=null;render();notif(pending?'관리자에게 수령방식 변경 요청을 보냈어요':'수령방식 수정이 저장됐어요. 택배 3,000원 / 직접수령 0원이 자동 적용돼요.');
-}else if(f.id==='pick'){const pr=selectedProd(state.modal.id);if(!pr||pr.is_sold_out||!pr.published||!state.stores.some(st=>st.id===pr.store_id&&st.active))throw Error('품절되었거나 판매가 종료된 상품이에요.');const color=data.get('color'),size=data.get('size'),quantity=Number(data.get('qty'));if(!pr?.options[color]?.includes(size)||quantity<1||quantity>20)throw Error('옵션을 다시 확인해 주세요');const same=state.cart.find(x=>x.product_id===pr.id&&x.color===color&&x.size===size);if(same)same.quantity+=quantity;else state.cart.push({product_id:pr.id,store_id:pr.store_id,product_name:pr.name,color,size,quantity});saveCart();state.modal=null;render();notif('장바구니에 담았어요')}
+}else if(f.id==='new-arrival-push-form'){await miniSendNewArrival(f);}
+else if(f.id==='pick'){const pr=selectedProd(state.modal.id);if(!pr||pr.is_sold_out||!pr.published||!state.stores.some(st=>st.id===pr.store_id&&st.active))throw Error('품절되었거나 판매가 종료된 상품이에요.');const color=data.get('color'),size=data.get('size'),quantity=Number(data.get('qty'));if(!pr?.options[color]?.includes(size)||quantity<1||quantity>20)throw Error('옵션을 다시 확인해 주세요');const same=state.cart.find(x=>x.product_id===pr.id&&x.color===color&&x.size===size);if(same)same.quantity+=quantity;else state.cart.push({product_id:pr.id,store_id:pr.store_id,product_name:pr.name,color,size,quantity});saveCart();state.modal=null;render();notif('장바구니에 담았어요')}
 else if(f.id==='request'){if(state.cart.some(c=>{const p=selectedProd(c.product_id);return !p||p.is_sold_out||!p.published||!state.stores.some(st=>st.id===p.store_id&&st.active)}))throw Error('품절되거나 전시가 종료된 상품이 장바구니에 있어요. 해당 상품을 삭제하고 다시 요청해 주세요.');const name=String(data.get('name')||'').trim(),baby=String(data.get('baby')||'').trim(),contact=String(data.get('contact')||'').trim(),email=normalizeCustomerEmail(data.get('email')),note=String(data.get('note')||'').trim();if(!name||!baby)throw Error('주문자 이름과 아기 이름(태명)을 모두 입력해 주세요');customerPhoneLocal(contact);const lookupPin=customerLookupPin(data.get('lookup_pin'));if(lookupPin!==String(data.get('lookup_pin_confirm')||''))throw Error('주문조회 비밀번호가 서로 달라요.');const method=String(data.get('delivery_method')||'');if(!['pickup','courier'].includes(method))throw Error('수령방식을 선택해 주세요');
  const delivery={delivery_method:method,recipient_name:String(data.get('recipient_name')||'').trim(),postal_code:String(data.get('postal_code')||'').trim(),address_line1:String(data.get('address_line1')||'').trim(),address_line2:String(data.get('address_line2')||'').trim(),delivery_note:String(data.get('delivery_note')||'').trim()};
  if(method==='courier'&&(!delivery.recipient_name||!/^[0-9]{5}$/.test(delivery.postal_code)||delivery.address_line1.length<4))throw Error('택배 받는 사람, 우편번호 5자리와 주소를 정확히 입력해 주세요');

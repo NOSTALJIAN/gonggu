@@ -4423,7 +4423,8 @@ function renderSupplierBulkManager(historyOnly=false){
  const allStores=[...new Set(state.quotes.filter(isRoundBuyer).flatMap(q=>(q.items||[]).map(supplierItemStore)))].filter(Boolean);
  const stores=allStores.map(id=>({id,name:privateSupplierDisplay(id)})).filter(x=>x.name)
   .sort((a,b)=>a.name.localeCompare(b.name,'ko'));
- const storeId=state.supplierBulkStoreId;
+ const storeId=stores.some(x=>x.id===state.supplierBulkStoreId)?state.supplierBulkStoreId:(stores[0]?.id||'');
+ if(storeId!==state.supplierBulkStoreId)state.supplierBulkStoreId=storeId;
  const store=stores.find(s=>s.id===storeId);
  const entries=storeId?state.quotes.filter(isRoundBuyer).flatMap(q=>(q.items||[])
   .filter(item=>supplierItemStore(item)===storeId)
@@ -4460,7 +4461,7 @@ function renderSupplierBulkManager(historyOnly=false){
    </div>
     <button type="button" class="btn sm secondary" data-action="supplier-bulk-select-buyer"
      data-buyer-key="${esc(key)}" ${!eligible.length||existingPending?'disabled':''}>
-     ${selected.length&&selected.length===eligible.length?'선택 해제':'이 사람 상품 모두 선택'}
+     ${selected.length&&selected.length===eligible.length?'선택 해제':'이 구매자 선택'}
     </button>
    </div>
    ${existingPending?'<p class="smallnote">이 거래처 배송비를 이미 배분한 구매자예요. 상품을 추가하려면 기존 미발주 배분을 취소하고 함께 선택해 주세요.</p>':''}
@@ -4506,24 +4507,25 @@ function renderSupplierBulkManager(historyOnly=false){
    <div class="supplier-bulk-list" style="margin-top:14px">${history}</div>
   </details>`;
  }
- return `<details class="card supplier-bulk-manager compact-fold" id="supplier-bulk-manager" data-fold-key="freight">
-  <summary><b>거래처별 도매배송비 배분</b><small>총액 배분 · 구매자별 직접 입력</small></summary>
+ return `<details class="card supplier-bulk-manager compact-fold" id="supplier-bulk-manager" open>
+  <summary><b>① 거래처별 도매배송비 배분 · 구매자 선택</b><small>거래처를 고르고 해당 거래처에서 주문할 구매자를 체크해 배송비를 나눠요.</small></summary>
   <p class="smallnote"><b>상품 등록에서 입력한 실제 도매업체명(비공개)</b>만 사용해요. 구매자에게 보이는 가게명은 사용하지 않아요. 실제 업체가 같으면 고객용 가게명이 달라도 함께 묶고, 한 구매자는 해당 업체 배송비를 한 번만 부담해요. ‘다음 회차 보류’·‘미선택’은 제외돼요.</p>
   ${!state.productPrivateReady?'<p class="noticefail">비공개 도매업체명 정보를 불러오지 못했어요. 새로고침 후 확인해 주세요.</p>':''}
   ${!state.supplierBatchesReady?`<p class="noticefail">배분 현황을 불러오지 못했어요. ${esc(state.supplierBatchesError||'관리자 새로고침 후 확인해 주세요.')}</p>`:''}
-  <label class="label">실제 도매업체 선택 (관리자 전용)
+  <p class="smallnote" style="padding:12px;background:#f5f5f5;border-radius:8px"><b>사용 순서</b> ① 거래처 선택 → ② 아래 주문자별 <b>이 사람 상품 모두 선택</b> 누르기 → ③ 도매배송비 총액 입력 → ④ 배분 버튼 누르기. 거래처가 여러 곳이면 각각 반복해 주세요.</p>
+  <label class="label">① 배송비를 나눌 거래처 선택
    <select data-supplier-bulk-store aria-label="배송비를 배분할 실제 비공개 도매업체">
     <option value="">거래처를 선택해 주세요</option>
     ${stores.map(s=>`<option value="${esc(s.id)}" ${storeId===s.id?'selected':''}>${esc(s.name)}</option>`).join('')}
    </select>
   </label>
   ${store?`<div class="supplier-bulk-store-summary"><strong>${esc(store.name)}</strong> · 상품 ${entries.length}종 · 구매자 ${groups.size}명</div>
-   <div class="supplier-bulk-customer-list">${customerList||'<p class="smallnote">이 거래처 주문 상품이 없어요.</p>'}</div>`:
+   <p class="smallnote" style="margin:12px 0 3px"><b>② 이 거래처에서 주문할 사람을 선택하세요.</b> 각 주문자 오른쪽의 선택 버튼을 누르면 돼요.</p><div class="supplier-bulk-customer-list">${customerList||'<p class="smallnote">이 거래처 주문 상품이 없어요.</p>'}</div>`:
    '<p class="smallnote">거래처를 선택하면 주문자별 해당 거래처 상품이 나타나요.</p>'}
   <div class="supplier-bulk-controls"><strong data-supplier-bulk-chosen>0명 · 0개 상품 선택</strong>
    <button type="button" class="btn sm secondary" data-action="supplier-bulk-clear">선택 해제</button></div>
   <form id="bulk-supplier-shipping-form">
-   <label class="label">이 거래처의 도매배송비 총액 (원)
+   <label class="label">③ 이 거래처의 도매배송비 총액 (원)
     <input type="number" name="bulk_supplier_total" min="0" max="1000000" step="1"
      inputmode="numeric" placeholder="예: 4000" required></label>
    <div class="supplier-bulk-preview" data-supplier-bulk-preview>먼저 거래처와 상품을 선택해 주세요.</div>
@@ -4533,7 +4535,7 @@ function renderSupplierBulkManager(historyOnly=false){
     <label><input type="radio" name="existing_mode" value="replace" checked> <span><b>기존 금액 대체 (추천)</b> · 이전 개별 배송비를 없애고 이번 배분금액으로 설정</span></label>
     <label><input type="radio" name="existing_mode" value="add"> <span><b>기존 금액에 추가</b> · 기존 개별 배송비에 이번 배분금액을 더하기</span></label>
    </div>
-   <button type="submit" class="btn block" data-supplier-bulk-apply disabled>체크한 구매자에게 거래처 배송비 배분</button>
+   <button type="submit" class="btn block" data-supplier-bulk-apply disabled>④ 선택한 구매자끼리 배송비 나누기</button>
   </form>
   <p class="smallnote">배송비는 선택한 거래처 상품의 <b>서로 다른 구매자 수</b>로 나누고, 남는 1원은 일부 구매자에게만 배분해 총액을 정확히 맞춰요. 각 고객 주문 총액에는 다른 거래처 분담금까지 합산돼요.</p>
   ${state.supplierBatches.length?`<div class="supplier-bulk-list"><h4>거래처별 배송비 · 입금·발주 현황</h4>${history}</div>`:

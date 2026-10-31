@@ -3952,6 +3952,14 @@ function adminWorkflow(q){
   ready&&stage==='preparing'?'모든 판매 가능 상품이 입고됐어요. 아래에서 다음 단계를 진행해 주세요.':'준비·입고·전달 여부를 관리하는 단계예요.';
  return `<section class="workflow-card"><div class="workflow-head"><b>📦 주문 진행관리</b><span class="workflow-stage">${workflowLabel(q)}</span></div>
  <div class="workflow-help">${note}</div>
+ ${stage==='preparing'&&saleItems(q).length?`<div class="workflow-receipt-checklist" style="margin:12px 0;padding:12px;border:1px solid #dedee8;border-radius:12px">
+  <b>📦 상품별 입고완료 체크</b>
+  <div class="smallnote">실제로 입고된 상품만 체크해 주세요. 주문 전체의 배송 상태는 변경되지 않아요.</div>
+  ${saleItems(q).map(i=>`<div class="row between wrap" style="gap:8px;padding-top:10px;margin-top:9px;border-top:1px solid #ebebef">
+   <span style="flex:1;min-width:135px"><b>${esc(i.product_name)}</b><div class="tiny">${esc(i.color)} / ${esc(i.size)} · ${Number(i.quantity)}개</div></span>
+   ${['received','delivered'].includes(i.fulfillment)?'<span class="workflow-stage">✓ 입고완료</span>':`<button type="button" class="btn sm secondary" data-action="mark-item-received" data-id="${esc(i.id)}">입고완료 체크</button>`}
+  </div>`).join('')}
+ </div>`:''}
  ${renderShipment(q)}
  ${actions.length?`<div class="workflow-actions">${actions.join('')}</div>`:''}
  ${q.items.some(i=>i.fulfillment==='sold_out')?`<div class="workflow-settlement"><b>품절 정산</b><div>품절 상품금액은 고객 결제금액에서 자동 제외돼요.${sold?' 모든 상품이 품절되어 배송비도 제외돼요.':''}</div><div>고객 결제금액: <b>${money(totalDue(q))}</b> · 실제 환불 추가 필요: <b>${money(payback)}</b></div><div>직접 환불 후 아래 '환불해 준 총액'에 누적 금액을 입력·저장해 주세요. 저장 자체로 송금되지는 않아요.</div></div>`:''}

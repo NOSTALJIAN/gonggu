@@ -2050,12 +2050,18 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 .shop-content .shop-editorial h1{text-shadow:none}
 .shop-content .shop-editorial[data-copy-tone="dark"]{--hero-ink:#000}
 .shop-content .shop-editorial[data-copy-tone="light"]{--hero-ink:#fff}
-.shop-content .shop-editorial[data-copy-tone="dark"] .shop-editorial-visual.has-photo:before{background:linear-gradient(to top,rgba(255,255,255,.88) 0%,rgba(255,255,255,.68) 18%,rgba(255,255,255,.28) 34%,transparent 48%)}
+.shop-content .shop-editorial[data-copy-tone="dark"] .shop-editorial-visual.has-photo:before{background:linear-gradient(to top,rgba(255,255,255,1) 0%,rgba(255,255,255,.68) 18%,rgba(255,255,255,.28) 34%,transparent 48%)}
 .shop-content .shop-editorial[data-copy-tone="light"] .shop-editorial-visual.has-photo:before{background:linear-gradient(to top,rgba(0,0,0,.78) 0%,rgba(0,0,0,.58) 18%,rgba(0,0,0,.24) 34%,transparent 48%)}
 @media(min-width:720px){.shop-content .shop-editorial{height:640px}}
 
 /* Readable hero caption over patterned clothing. */
 .shop-content .shop-editorial p{font-weight:650}
+/* Seamless hero-to-catalog fade, below the caption in either text tone. */
+.shop-content .shop-editorial:after{
+ content:"";position:absolute;z-index:1;left:0;right:0;bottom:-1px;height:22px;
+ background:linear-gradient(to bottom,rgba(255,255,255,0),#fff 95%);
+ pointer-events:none;
+}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">

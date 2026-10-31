@@ -4759,7 +4759,7 @@ function renderProcurementSheet(){
 function completedProcurementRows(){
  if(!state.admin||state.page!=='admin')return [];
  const rows=[];
- for(const q of state.quotes.filter(isWholesaleCompleted)){
+ for(const q of state.quotes.filter(q=>isWholesaleCompleted(q)&&!isFinishedOrder(q))){
   for(const item of q.items||[]){
    const ordered=Boolean(q.supplier_ordered_at||item.supplier_ordered_at||['received','delivered'].includes(item.fulfillment));
    if(!ordered)continue;

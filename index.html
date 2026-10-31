@@ -3958,22 +3958,22 @@ function adminWorkflow(q){
  if(stage==='new')actions.push(`<button class="btn" data-action="set-workflow" data-id="${q.id}" data-stage="preparing">상품 준비 시작</button>`);
  else if(stage==='preparing'){
   if(sold){actions.push(`<button class="btn" data-action="set-workflow" data-id="${q.id}" data-stage="soldout_closed" ${payback>0?'disabled':''}>품절·환불 정산 완료</button>`)}
-  else if(ready&&q.delivery_method==='pickup')actions.push(`<button class="btn" data-action="set-workflow" data-id="${q.id}" data-stage="pickup_ready">픽업 대기 처리</button>`);
+  else if(ready&&q.delivery_method==='pickup')actions.push('<span class="workflow-stage">전체 입고 완료 · 픽업 대기 자동 전환 중</span>');
   else if(q.delivery_method==='courier'&&saleItems(q).length>0)actions.push(`<form class="workflow-ship" data-ship="${q.id}"><label class="label">택배사<input required name="carrier" placeholder="롯데택배" maxlength="60" value="${esc(q.tracking_carrier||'롯데택배')}"></label><label class="label">송장번호<input required name="tracking" placeholder="롯데택배 운송장번호" maxlength="80" inputmode="numeric" value="${esc(q.tracking_number||'')}"></label><button class="btn" type="submit">송장 등록 · 배송 중</button><div class="lotte-tip">🚚 롯데택배 송장 등록 시 자동 배송조회 대상이 됩니다. 추적 서버 설치·인증이 끝나 있어야 자동으로 배송 완료 처리돼요. 그 외 택배사는 수동으로 완료해 주세요.</div></form>`);
  }
  if(stage==='pickup_ready')actions.push(`<button class="btn" data-action="set-workflow" data-id="${q.id}" data-stage="completed">픽업 완료</button>`);
  if(stage==='shipped')actions.push(`<button class="btn" data-action="set-workflow" data-id="${q.id}" data-stage="completed">배송 완료</button>`);
  if(stage!=='new')actions.push(`<button class="btn sm outline" data-action="set-workflow" data-id="${q.id}" data-stage="preparing">상품 준비 중으로 되돌리기</button>`);
  const note=sold?(payback>0?'입금액과 실제 환불액을 정산한 뒤 완료 처리할 수 있어요.':'전부 품절되었어요. 실제 환불할 돈이 남지 않았다면 정산 완료하세요.'):
-   itemWaiting>0&&q.delivery_method==='pickup'?`아직 입고되지 않은 품목 ${itemWaiting}종이 있어요. 위 주문 상품에서 '입고완료 체크'를 누르면 다음 단계가 열려요.`:
+   itemWaiting>0&&q.delivery_method==='pickup'?`아직 입고되지 않은 품목 ${itemWaiting}종이 있어요. 마지막 상품까지 입고완료 체크하면 자동으로 ‘픽업 대기 중’으로 넘어가요.`:
   historical?'기존 주문의 수령방식이 미설정이에요. 구매자의 수령방식·주소 변경 요청을 받아 승인한 뒤 배송 또는 픽업 단계로 이동할 수 있어요.':
     q.delivery_method==='courier'&&stage==='preparing'?`입고되지 않은 상품 ${itemWaiting}종 · 위 주문 상품에서 '입고완료 체크'로 입고를 기록하세요. 실제 출고 시 송장을 등록하면 배송 중으로 변경돼요.`:
-  ready&&stage==='preparing'?'모든 판매 가능 상품이 입고됐어요. 아래에서 다음 단계를 진행해 주세요.':'준비·입고·전달 여부를 관리하는 단계예요.';
+  ready&&stage==='preparing'&&q.delivery_method==='pickup'?'모든 상품이 입고됐어요. 픽업 대기 상태로 자동 변경 중이에요.':ready&&stage==='preparing'?'모든 판매 가능 상품이 입고됐어요. 다음 단계를 진행해 주세요.':'준비·입고·전달 여부를 관리하는 단계예요.';
  return `<section class="workflow-card"><div class="workflow-head"><b>📦 주문 진행관리</b><span class="workflow-stage">${workflowLabel(q)}</span></div>
  <div class="workflow-help">${note}</div>
  ${stage==='preparing'&&saleItems(q).length?`<div class="workflow-receipt-checklist" style="margin:12px 0;padding:12px;border:1px solid #dedee8;border-radius:12px">
   <b>📦 상품별 입고완료 체크</b>
-  <div class="smallnote">실제로 입고된 상품만 체크해 주세요. 주문 전체의 배송 상태는 변경되지 않아요.</div>
+  <div class="smallnote">${q.delivery_method==='pickup'?'마지막 상품까지 입고완료 체크하면 픽업 대기 중으로 자동 전환되고 구매자에게 알림이 가요.':'실제로 입고된 상품만 체크해 주세요. 택배 배송 상태는 별도로 관리돼요.'}</div>
   ${saleItems(q).map(i=>`<div class="row between wrap" style="gap:8px;padding-top:10px;margin-top:9px;border-top:1px solid #ebebef">
    <span style="flex:1;min-width:135px"><b>${esc(i.product_name)}</b><div class="tiny">${esc(i.color)} / ${esc(i.size)} · ${Number(i.quantity)}개</div></span>
    ${['received','delivered'].includes(i.fulfillment)?'<span class="workflow-stage">✓ 입고완료</span>':`<button type="button" class="btn sm secondary" data-action="mark-item-received" data-id="${esc(i.id)}">입고완료 체크</button>`}
@@ -5819,7 +5819,17 @@ async function adminFulfillment(id,s){
  const q=state.quotes.find(x=>x.items.some(i=>i.id===id));
  if(!q||q.status!=='confirmed'||workflowStage(q)!=='preparing')throw Error('상품 준비 중인 확정 주문만 품목 상태를 변경할 수 있어요.');
  if(!['ordered','delayed','sold_out','received'].includes(s))throw Error('선택할 수 없는 상태예요.');
- if(!connected){demo.items.find(x=>x.id===id).fulfillment=s;saveDemo();return}
+ if(!connected){
+  demo.items.find(x=>x.id===id).fulfillment=s;
+  const order=demo.quotes.find(x=>x.id===q.id);
+  if(order?.status==='confirmed'&&order.delivery_method==='pickup'&&workflowStage(order)==='preparing'){
+   const items=demo.items.filter(i=>i.quote_id===order.id);
+   if(items.some(i=>['received','delivered'].includes(i.fulfillment))&&!items.some(i=>['ordered','delayed'].includes(i.fulfillment))){
+    order.workflow_stage='pickup_ready';order.workflow_updated_at=now();
+   }
+  }
+  saveDemo();return;
+ }
  await api('/rest/v1/gq_quote_items?id=eq.'+id,{method:'PATCH',admin:true,body:{fulfillment:s}})
 }
 async function adminWorkflowStage(id,stage,carrier='',tracking=''){
@@ -6408,7 +6418,8 @@ if(a==='mark-item-received'){
   if(['received','delivered'].includes(item.fulfillment)){notif('이미 입고완료 처리한 상품이에요.');return;}
   await adminFulfillment(id,'received');
   await loadAdmin();
-  notif('입고완료 체크했어요.');
+  const updated=state.quotes.find(x=>x.id===q.id);
+  notif(q.delivery_method==='pickup'&&updated&&workflowStage(updated)==='pickup_ready'?'모든 상품이 입고됐어요! 자동으로 픽업 대기 처리했어요.':'입고완료 체크했어요.');
   return;
 }
 if(a==='set-workflow'){
@@ -6853,7 +6864,7 @@ if(x.id==='deliveryMethodEdit'){
   const amount=Number(item.unit_price||0)*item.quantity;
   if(!window.confirm(`${item.product_name} (${item.color}/${item.size})을 품절로 변경할까요?\n품절금액 ${money(amount)}은 결제금액에서 제외돼요.\n이미 받은 돈은 직접 환불한 뒤 아래 환불 기록을 저장해야 해요.`)){x.value=item.fulfillment==='delayed'?'ordered':item.fulfillment;return}
  }
- await adminFulfillment(x.dataset.fulfillment,x.value);await loadAdmin();notif('상품 상태를 변경했어요.');
+ await adminFulfillment(x.dataset.fulfillment,x.value);await loadAdmin();const updated=state.quotes.find(z=>z.id===q?.id);notif(q?.delivery_method==='pickup'&&updated&&workflowStage(updated)==='pickup_ready'?'모든 상품이 입고됐어요! 자동으로 픽업 대기 처리했어요.':'상품 상태를 변경했어요.');
 }catch(ex){notif(errorText(ex));x.value=state.quotes.find(y=>y.items.some(i=>i.id===x.dataset.fulfillment))?.items.find(i=>i.id===x.dataset.fulfillment)?.fulfillment==='delayed'?'ordered':(state.quotes.find(y=>y.items.some(i=>i.id===x.dataset.fulfillment))?.items.find(i=>i.id===x.dataset.fulfillment)?.fulfillment||'ordered')}finally{busy=false}}}
 function input(e){
  if(e.target.id==='admin-store-search'){

@@ -2046,6 +2046,48 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 .myquotes-swipe-sheet .sheethead .close{cursor:pointer}
 @media(prefers-reduced-motion:reduce){.myquotes-swipe-sheet{transition:none!important}}
 
+
+/* Customer order sheet: minimal primary form and optional collapsed sections. */
+.myquotes-swipe-sheet{background:#fff}
+.myquotes-swipe-sheet .sheethead{margin-bottom:17px}
+.myquotes-swipe-sheet .sheethead h2{font-size:19px;font-weight:780;letter-spacing:-.04em}
+.myquotes-swipe-sheet .phone-order-lookup{margin:0;padding:0;border:0;background:transparent;color:#161616}
+.myquotes-swipe-sheet .order-lookup-intro{font-size:12px;line-height:1.6;color:#666;margin:0 0 19px}
+.myquotes-swipe-sheet .phone-order-lookup form{gap:12px}
+.myquotes-swipe-sheet .phone-order-lookup .label{font-size:12px;font-weight:680;color:#333;margin:0}
+.myquotes-swipe-sheet .phone-order-lookup input{
+ box-sizing:border-box;margin-top:5px;width:100%;min-height:46px;height:46px;
+ border:1px solid #ddd;border-radius:7px;background:#fff;padding:10px 12px;
+ font-size:16px;line-height:1.4;font-weight:400;color:#111;box-shadow:none
+}
+.myquotes-swipe-sheet .phone-order-lookup input::placeholder{color:#aaa;font-weight:400;opacity:1}
+.myquotes-swipe-sheet .phone-order-lookup .btn{margin-top:4px;min-height:47px;border-radius:7px;font-size:14px}
+.myquotes-swipe-sheet .phone-lookup-state{font-size:11px;line-height:1.5;color:#777;margin:11px 0 4px}
+.myquotes-swipe-sheet .order-lookup-help{margin:0 0 18px;padding:0;color:#777;font-size:11px}
+.myquotes-swipe-sheet .order-lookup-help summary{display:inline-block;padding:7px 0;cursor:pointer;text-decoration:underline;text-underline-offset:3px;list-style:none}
+.myquotes-swipe-sheet .order-lookup-help summary::-webkit-details-marker{display:none}
+.myquotes-swipe-sheet .order-lookup-help p{margin:4px 0 12px;line-height:1.7;color:#777}
+.myquotes-swipe-sheet .order-lookup-fold{border-top:1px solid #e9e9e9;margin:0}
+.myquotes-swipe-sheet .order-lookup-fold:last-of-type{border-bottom:1px solid #e9e9e9}
+.myquotes-swipe-sheet .order-lookup-fold>summary{
+ display:flex;align-items:center;gap:8px;min-height:53px;padding:12px 1px;
+ list-style:none;cursor:pointer;color:#222;font-size:13px;font-weight:700
+}
+.myquotes-swipe-sheet .order-lookup-fold>summary::-webkit-details-marker{display:none}
+.myquotes-swipe-sheet .order-lookup-count{font-weight:450;font-size:11px;color:#888}
+.myquotes-swipe-sheet .order-lookup-chevron{margin-left:auto;font-size:20px;line-height:1;color:#888;transition:transform .15s}
+.myquotes-swipe-sheet .order-lookup-fold[open] .order-lookup-chevron{transform:rotate(180deg)}
+.myquotes-swipe-sheet .order-lookup-fold-body{padding:1px 0 17px}
+.myquotes-swipe-sheet .order-link-form{margin:0}
+.myquotes-swipe-sheet .order-link-form .label{font-size:12px;color:#555}
+.myquotes-swipe-sheet .order-link-form textarea{min-height:62px;border-radius:7px;padding:10px 12px;font-size:16px}
+.myquotes-swipe-sheet .order-link-form .btn{min-height:43px;font-size:13px;border-radius:7px}
+.myquotes-swipe-sheet .saved-order-list{margin:0}
+.myquotes-swipe-sheet .saved-order-row{margin:0 0 8px}
+.myquotes-swipe-sheet .saved-order-delete-notice{margin:9px 0 0}
+.myquotes-swipe-sheet .order-lookup-empty{font-size:12px;color:#888;text-align:center;padding:15px 0;margin:0}
+.myquotes-swipe-sheet .order-lookup-privacy{margin:17px 0 4px;font-size:10px;line-height:1.65;color:#999}
+
 /* MINIYENA compact bottom navigation: preserve 44px tap targets and iPhone home-indicator clearance. */
 .shop-bottom-nav{
  padding:5px 6px max(11px,calc(env(safe-area-inset-bottom) - 11px));
@@ -5548,25 +5590,33 @@ if(m.type==='admin-pin-done'){
  `);
 }
 if(m.type==='myquotes'){return wrap('내 견적 · 주문조회',`
- <section class="phone-order-lookup"><h3>이름 · 휴대폰 번호로 내 주문 찾기</h3>
- <p>문자 인증·회원가입 없이 조회할 수 있어요. 주문할 때 설정한 <b>숫자 6자리 조회 비밀번호</b>가 필요해요. 같은 비밀번호로 신청한 주문은 한꺼번에 불러올 수 있어요.</p>
- <form id="pin-lookup-form">
-  <label class="label">주문자 이름<input type="text" name="buyer_name" maxlength="40" required placeholder="주문할 때 입력한 이름"></label>
-  <label class="label">휴대폰 번호<input type="tel" name="contact" inputmode="tel" autocomplete="tel-national" maxlength="15" required placeholder="010-1234-5678"></label>
-  <label class="label">조회 비밀번호 (숫자 6자리)<input type="password" name="lookup_pin" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" required autocomplete="off" placeholder="6자리 비밀번호"></label>
-  <button class="btn block" type="submit" ${state.phoneLookupReady!==true?'disabled':''}>내 주문 조회하기</button>
- </form>
- <div class="phone-lookup-state">${esc(state.pinLookupNotice|| (state.phoneLookupReady===true?'비밀번호는 주문할 때 직접 설정한 번호예요.':state.phoneLookupReady===null?'조회 기능 확인 중…':'조회 기능을 준비 중이에요. 아래 링크로 확인해 주세요.'))}</div>
- <small>비밀번호 입력을 5번 틀리면 30분 동안 해당 번호로 조회할 수 없어요. 예전 주문은 고유 링크로 들어가 같은 비밀번호를 먼저 등록할 수 있어요.</small>
+ <section class="phone-order-lookup">
+  <p class="order-lookup-intro">주문할 때 입력한 정보로 내 주문을 확인하세요.</p>
+  <form id="pin-lookup-form">
+   <label class="label">주문자 이름<input type="text" name="buyer_name" maxlength="40" required placeholder="주문자 이름"></label>
+   <label class="label">휴대폰 번호<input type="tel" name="contact" inputmode="tel" autocomplete="tel-national" maxlength="15" required placeholder="010-1234-5678"></label>
+   <label class="label">조회 비밀번호<input type="password" name="lookup_pin" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" required autocomplete="off" placeholder="숫자 6자리"></label>
+   <button class="btn block" type="submit" ${state.phoneLookupReady!==true?'disabled':''}>내 주문 조회하기</button>
+  </form>
+ <div class="phone-lookup-state">${esc(state.pinLookupNotice|| (state.phoneLookupReady===true?'주문 시 설정한 6자리 비밀번호를 입력해 주세요.':state.phoneLookupReady===null?'조회 기능 확인 중…':'조회 기능을 준비 중이에요. 아래 링크로 확인해 주세요.'))}</p>
  </section>
- <div class="order-link-explain"><b>주문조회 링크로 불러오기</b><p>기존에 보관한 주문조회 링크로도 카톡·네이버·사파리 어디에서든 확인할 수 있어요.</p></div>
- <form id="import-track-form" class="order-link-form"><label class="label">기존 주문조회 링크 붙여넣기<textarea name="track_url" rows="2" maxlength="2500" required placeholder="https://nostaljian.github.io/gonggu/?page=track&id=...&token=..."></textarea></label><button class="btn block" type="submit">링크로 주문 불러오기</button></form>
- <div class="order-link-list-title"><b>이 브라우저에 저장된 주문</b><small data-saved-order-count>${state.receipts.length}건</small></div>
- <div class="saved-order-list" data-saved-order-list>
- ${state.receipts.map(q=>`<div class="storeitem saved-order-row" data-saved-order-id="${esc(q.id)}"><div class="saved-order-info"><b>${esc(q.name)}${q.baby?' · '+esc(q.baby):''}</b><div class="tiny">${fmtDate(q.date)} · ${esc(q.id.slice(0,8).toUpperCase())}</div></div><div class="saved-order-actions"><button class="btn sm secondary" type="button" data-action="open-saved" data-id="${esc(q.id)}">확인하기</button><button class="btn sm saved-order-remove" type="button" data-action="remove-saved-order" data-id="${esc(q.id)}" aria-label="${esc(q.name)}${q.baby?' · '+esc(q.baby):''} 저장된 주문조회 기록 삭제">삭제</button></div></div>`).join('')||'<div class="empty">현재 브라우저에 저장된 주문이 없어요.</div>'}
- </div>
- <p class="saved-order-delete-notice">삭제하면 이 기기의 주문조회 목록에서만 없어져요. 실제 주문은 취소되거나 삭제되지 않아요.</p>
- <p class="smallnote order-link-help">주문 비밀번호나 주문조회 링크를 다른 사람에게 알려주지 마세요. 비밀번호를 잊어버렸다면 보관한 주문 링크를 이용하거나 판매자에게 문의해 주세요.</p>
+ <details class="order-lookup-help"><summary>조회가 안 되나요?</summary><p>문자 인증·회원가입 없이 조회할 수 있어요. 비밀번호를 5번 틀리면 30분 동안 조회가 제한돼요. 예전 주문은 보관한 주문 링크에서 비밀번호를 등록할 수 있어요.</p></details>
+ <details class="order-lookup-fold">
+  <summary>기존 주문 링크로 조회 <span class="order-lookup-chevron" aria-hidden="true">⌄</span></summary>
+  <div class="order-lookup-fold-body">
+   <form id="import-track-form" class="order-link-form"><label class="label">주문조회 링크<textarea name="track_url" rows="2" maxlength="2500" required placeholder="보관한 주문조회 링크 붙여넣기"></textarea></label><button class="btn block" type="submit">링크로 불러오기</button></form>
+  </div>
+ </details>
+ <details class="order-lookup-fold">
+  <summary>이 기기에 저장된 주문 <span class="order-lookup-count" data-saved-order-count>${state.receipts.length}건</span><span class="order-lookup-chevron" aria-hidden="true">⌄</span></summary>
+  <div class="order-lookup-fold-body">
+   <div class="saved-order-list" data-saved-order-list>
+ ${state.receipts.map(q=>`<div class="storeitem saved-order-row" data-saved-order-id="${esc(q.id)}"><div class="saved-order-info"><b>${esc(q.name)}${q.baby?' · '+esc(q.baby):''}</b><div class="tiny">${fmtDate(q.date)} · ${esc(q.id.slice(0,8).toUpperCase())}</div></div><div class="saved-order-actions"><button class="btn sm secondary" type="button" data-action="open-saved" data-id="${esc(q.id)}">확인하기</button><button class="btn sm saved-order-remove" type="button" data-action="remove-saved-order" data-id="${esc(q.id)}" aria-label="${esc(q.name)}${q.baby?' · '+esc(q.baby):''} 저장된 주문조회 기록 삭제">삭제</button></div></div>`).join('')||'<p class="order-lookup-empty">저장된 주문이 없어요.</p>'}
+   </div>
+   ${state.receipts.length?'<p class="saved-order-delete-notice">목록에서 삭제해도 실제 주문은 그대로 유지돼요.</p>':''}
+  </div>
+ </details>
+ <p class="order-lookup-privacy">조회 비밀번호와 주문 링크는 다른 사람과 공유하지 마세요.</p>
  `)}return ''}
 function renderModal(){return modal()}
 // Keep checkout inputs untouched when removing items. Never store customer
@@ -6903,7 +6953,7 @@ else if(a==='delete-product-request'){
  const list=app.querySelector('[data-saved-order-list]');
  const row=[...(list?.querySelectorAll('[data-saved-order-id]')||[])].find(item=>item.dataset.savedOrderId===id);
  if(row)row.remove();
- if(list&&!state.receipts.length)list.innerHTML='<div class="empty">현재 브라우저에 저장된 주문이 없어요.</div>';
+ if(list&&!state.receipts.length)list.innerHTML='<p class="order-lookup-empty">저장된 주문이 없어요.</p>';
  const count=app.querySelector('[data-saved-order-count]');
  if(count)count.textContent=state.receipts.length+'건';
  notif('이 기기에서 저장된 주문조회 기록을 삭제했어요.');

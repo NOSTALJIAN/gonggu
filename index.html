@@ -2285,13 +2285,13 @@ const statusLabel={requested:'견적 요청',quoted:'견적 안내 완료',confi
 const fulfillmentLabel={ordered:'상품 준비 중',delayed:'상품 준비 중',sold_out:'품절',received:'입고 완료',delivered:'전달 완료'};
 const workflowLabels={new:'주문 접수',preparing:'상품 준비 중',pickup_ready:'픽업 대기 중',shipped:'배송 중',completed:'픽업·배송 완료',soldout_closed:'품절·환불 정산 완료'};
 const workflowStage=q=>q.workflow_stage||'new';
-// 직접수령은 입고 확인, 택배수령은 운송장 등록 단계로 관리합니다.
-// 이전 버전의 'received' 이력은 서버에서 유지하되 택배 화면에서는 불필요한 입고 단계를 숨깁니다.
+// 택배수령·직접수령 모두 상품별 입고완료 상태를 관리합니다.
+// 입고 완료와 배송 중은 서로 다른 상태입니다.
 const itemStatusLabel=(q,i)=>{
  if(i.fulfillment==='sold_out')return '품절';
  if(q.delivery_method==='courier'&&q.status==='confirmed'){
   const stage=workflowStage(q);
-  return stage==='completed'?'배송 완료':stage==='shipped'?'배송 중':'상품 준비 중';
+  return stage==='completed'?'배송 완료':stage==='shipped'?'배송 중':i.fulfillment==='received'?'입고 완료':'상품 준비 중';
  }
  if(q.delivery_method==='pickup'&&q.status==='confirmed'){
   const stage=workflowStage(q);
@@ -2302,16 +2302,15 @@ const itemStatusLabel=(q,i)=>{
 };
 const itemFulfillmentOptions=(q,i)=>{
  if(q.delivery_method==='courier'){
-  // 택배의 '입고 완료' 선택을 없앰: 상품 준비 중/품절만 직접 체크.
-  const current=i.fulfillment==='sold_out'?'sold_out':'ordered';
-  return [['ordered','상품 준비 중'],['sold_out','품절']].map(([k,v])=>`<option value="${k}" ${current===k?'selected':''}>${v}</option>`).join('');
+  const current=i.fulfillment==='delayed'?'ordered':i.fulfillment;
+  return [['ordered','상품 준비 중'],['received','입고 완료'],['sold_out','품절']].map(([k,v])=>`<option value="${k}" ${current===k?'selected':''}>${v}</option>`).join('');
  }
  const current=i.fulfillment==='delayed'?'ordered':i.fulfillment;
  return Object.entries(fulfillmentLabel).filter(([k])=>k!=='delayed'&&(k!=='delivered'||i.fulfillment==='delivered'))
   .map(([k,v])=>`<option value="${k}" ${current===k?'selected':''}>${v}</option>`).join('');
 };
 const itemFulfillmentControl=(q,i)=>workflowStage(q)==='preparing'
- ? `<select class="statusselect" aria-label="${esc(i.product_name)} 상태" data-fulfillment="${i.id}">${itemFulfillmentOptions(q,i)}</select>`
+ ? `<div class="item-receipt-actions"><select class="statusselect" aria-label="${esc(i.product_name)} 상태" data-fulfillment="${esc(i.id)}">${itemFulfillmentOptions(q,i)}</select>${['received','delivered'].includes(i.fulfillment)?'<div class="tiny" style="margin-top:5px">✓ 입고완료 체크됨</div>':i.fulfillment==='sold_out'?'':`<button type="button" class="btn sm secondary" style="margin-top:6px;width:100%" data-action="mark-item-received" data-id="${esc(i.id)}">입고완료 체크</button>`}</div>`
  : `<span class="workflow-stage">${itemStatusLabel(q,i)}</span>`;
 const workflowLabel=q=>workflowStage(q)==='completed'?(q.delivery_method==='pickup'?'픽업 완료':q.delivery_method==='courier'?'배송 완료':'전달 완료'):workflowLabels[workflowStage(q)]||'주문 접수';
 const saleItems=q=>(q.items||[]).filter(i=>i.fulfillment!=='sold_out');
@@ -3947,9 +3946,9 @@ function adminWorkflow(q){
  if(stage==='shipped')actions.push(`<button class="btn" data-action="set-workflow" data-id="${q.id}" data-stage="completed">배송 완료</button>`);
  if(stage!=='new')actions.push(`<button class="btn sm outline" data-action="set-workflow" data-id="${q.id}" data-stage="preparing">상품 준비 중으로 되돌리기</button>`);
  const note=sold?(payback>0?'입금액과 실제 환불액을 정산한 뒤 완료 처리할 수 있어요.':'전부 품절되었어요. 실제 환불할 돈이 남지 않았다면 정산 완료하세요.'):
-  itemWaiting>0&&q.delivery_method==='pickup'?`아직 입고되지 않은 품목 ${itemWaiting}종이 있어요. 각 상품을 입고 처리하면 다음 단계가 열려요.`:
+   itemWaiting>0&&q.delivery_method==='pickup'?`아직 입고되지 않은 품목 ${itemWaiting}종이 있어요. 위 주문 상품에서 '입고완료 체크'를 누르면 다음 단계가 열려요.`:
   historical?'기존 주문의 수령방식이 미설정이에요. 구매자의 수령방식·주소 변경 요청을 받아 승인한 뒤 배송 또는 픽업 단계로 이동할 수 있어요.':
-   q.delivery_method==='courier'&&stage==='preparing'?'택배는 상품별 입고 완료를 누르지 않고, 품절 여부 확인 후 운송장을 입력하면 바로 배송 중이 돼요.':
+    q.delivery_method==='courier'&&stage==='preparing'?`입고되지 않은 상품 ${itemWaiting}종 · 위 주문 상품에서 '입고완료 체크'로 입고를 기록하세요. 실제 출고 시 송장을 등록하면 배송 중으로 변경돼요.`:
   ready&&stage==='preparing'?'모든 판매 가능 상품이 입고됐어요. 아래에서 다음 단계를 진행해 주세요.':'준비·입고·전달 여부를 관리하는 단계예요.';
  return `<section class="workflow-card"><div class="workflow-head"><b>📦 주문 진행관리</b><span class="workflow-stage">${workflowLabel(q)}</span></div>
  <div class="workflow-help">${note}</div>
@@ -6362,6 +6361,19 @@ if(a==='bundle-stage'){
  const stage=b.dataset.stage;
  if(!window.confirm(stage==='completed'?'묶음 주문의 모든 상품 전달을 확인했나요?':stage==='pickup_ready'?'묶음 상품 모두 입고되어 픽업 대기로 전환할까요?':'묶음 주문의 상품 준비를 시작할까요?'))return;
  await adminBundleStage(id,stage);await loadAdmin();notif('묶음 주문 진행상태를 함께 변경했어요.');return;
+}
+if(a==='mark-item-received'){
+  if(!state.admin)throw Error('관리자만 입고완료를 체크할 수 있어요.');
+  const q=state.quotes.find(q=>(q.items||[]).some(i=>i.id===id));
+  const item=q?.items.find(i=>i.id===id);
+  if(!q||!item||q.status!=='confirmed'||workflowStage(q)!=='preparing')
+    throw Error('상품 준비 중인 확정 주문에서만 입고완료를 체크할 수 있어요.');
+  if(item.fulfillment==='sold_out')throw Error('품절된 상품은 입고완료 처리할 수 없어요.');
+  if(['received','delivered'].includes(item.fulfillment)){notif('이미 입고완료 처리한 상품이에요.');return;}
+  await adminFulfillment(id,'received');
+  await loadAdmin();
+  notif('입고완료 체크했어요.');
+  return;
 }
 if(a==='set-workflow'){
  const q=state.quotes.find(x=>x.id===id),stage=b.dataset.stage;if(!q||!stage)return;

@@ -1951,6 +1951,32 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
  .shop-content .shop-page-jump{display:none}
  .shop-content .shop-catalog-pagination{margin:20px 0 14px}
 }
+/* Storefront compact crisp header - keep iOS safe area, remove needless white space
+   and keep photo's upper edge unshaded. Admin header is deliberately unchanged. */
+@media(max-width:719px){
+ html,body{background:#fff}
+ .hero.is-shop-header{
+  padding:calc(env(safe-area-inset-top) + 4px) 14px 7px;
+  background:#fff;
+  border-bottom:0;
+  box-shadow:none;
+  -webkit-backdrop-filter:none!important;
+  backdrop-filter:none!important;
+ }
+ .hero.is-shop-header .headrow{min-height:32px}
+ .hero.is-shop-header .logo{font-size:26px;-webkit-font-smoothing:auto}
+ .hero.is-shop-header .heroaction{
+  padding:5px 0 4px;
+  min-height:0;
+  font-size:10px;
+ }
+ .shop-content .shop-editorial-visual img{
+  filter:none;
+ }
+ .shop-content .shop-editorial-visual.has-photo:before{
+  background:linear-gradient(to top,rgba(0,0,0,.54) 0%,rgba(0,0,0,.18) 27%,transparent 54%);
+ }
+}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">

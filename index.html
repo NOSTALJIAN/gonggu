@@ -3405,6 +3405,10 @@ function intentBadge(q){
  const color=intent==='buy_now'?'now':['next_round','on_hold'].includes(intent)?'later':'wait';
  return `<span class="purchase-intent-chip ${color}">${label}</span>`;
 }
+// Fulfilled/settled orders remain in the database but leave active work queues.
+function isFinishedOrder(q){
+ return q.status==='confirmed'&&['completed','soldout_closed'].includes(workflowStage(q));
+}
 function isWholesaleCompleted(q){
  if(q.status!=='confirmed')return false;
  if(q.supplier_ordered_at)return true;
@@ -3977,7 +3981,7 @@ function bundleRootId(q){
  }
  return cur.id;
 }
-function bundledQuoteGroups(visible){
+function bundledQuoteGroups(visible,splitMixed=false){
  const byId=new Map();
  for(const q of state.quotes){
   const id=bundleRootId(q);
@@ -3986,7 +3990,13 @@ function bundledQuoteGroups(visible){
  }
  const visibleIds=new Set(visible.map(q=>q.id));
  return Array.from(byId.values()).filter(group=>group.some(q=>visibleIds.has(q.id)))
-  .map(group=>group.sort((a,b)=>a.id===bundleRootId(a)?-1:b.id===bundleRootId(b)?1:0))
+  .flatMap(group=>{
+   const sorted=group.sort((a,b)=>a.id===bundleRootId(a)?-1:b.id===bundleRootId(b)?1:0);
+   // Never leak finished members into the active queue (or active members into finished).
+   // Mixed-state bundles appear as individual orders until all members match this filter.
+   if(splitMixed&&!sorted.every(q=>visibleIds.has(q.id)))return sorted.filter(q=>visibleIds.has(q.id)).map(q=>[q]);
+   return [sorted];
+  })
   .sort((a,b)=>Math.max(...b.map(q=>Date.parse(q.created_at)||0))-Math.max(...a.map(q=>Date.parse(q.created_at)||0)));
 }
 function bundleWorkControls(group){
@@ -4795,28 +4805,31 @@ function isOtherRoundQuote(q){
  return q.status==='quoted'&&['next_round','on_hold','undecided'].includes(q.purchase_intent||'undecided');
 }
 function renderAdminQuotes(){
- const qq=state.quotes.filter(q=>state.filter==='all'||(state.filter==='other'?isOtherRoundQuote(q):state.filter==='buy_now'?isRoundBuyer(q):state.filter==='wholesale_completed'?isWholesaleCompleted(q):state.filter==='next_round'?q.status==='quoted'&&q.purchase_intent==='next_round':state.filter==='on_hold'?q.status==='quoted'&&q.purchase_intent==='on_hold':state.filter==='undecided'?q.status==='quoted'&&(!q.purchase_intent||q.purchase_intent==='undecided'):state.filter==='cancel_requested'?!!q.cancel_requested_at&&q.status!=='cancelled':state.filter.startsWith('flow_')?q.status==='confirmed'&&workflowStage(q)===state.filter.slice(5):q.status===state.filter));
- const groups=['buy_now','wholesale_completed'].includes(state.filter)?qq.map(q=>[q]):bundledQuoteGroups(qq);
+ const qq=state.quotes.filter(q=>state.filter==='all'?(q.status!=='cancelled'&&!isFinishedOrder(q)):(state.filter==='all_history'?true:state.filter==='finished'?isFinishedOrder(q):state.filter==='other'?isOtherRoundQuote(q):state.filter==='buy_now'?isRoundBuyer(q)&&!isFinishedOrder(q):state.filter==='wholesale_completed'?isWholesaleCompleted(q)&&!isFinishedOrder(q):state.filter==='next_round'?q.status==='quoted'&&q.purchase_intent==='next_round':state.filter==='on_hold'?q.status==='quoted'&&q.purchase_intent==='on_hold':state.filter==='undecided'?q.status==='quoted'&&(!q.purchase_intent||q.purchase_intent==='undecided'):state.filter==='cancel_requested'?!!q.cancel_requested_at&&q.status!=='cancelled':state.filter.startsWith('flow_')?q.status==='confirmed'&&workflowStage(q)===state.filter.slice(5):q.status===state.filter));
+ const groups=['buy_now','wholesale_completed'].includes(state.filter)?qq.map(q=>[q]):bundledQuoteGroups(qq,['all','finished'].includes(state.filter));
  const awaiting=groups.filter(quoteGroupNeedsPriceInput),priced=groups.filter(g=>!quoteGroupNeedsPriceInput(g));
  const unfinished=qq.reduce((n,q)=>n+(q.status==='cancelled'?0:q.items.filter(i=>i.unit_price==null&&i.fulfillment!=='sold_out').length),0);
  const dayCount=new Set(qq.map(q=>receivedDayKey(q.created_at))).size;
  const optionPending=state.optionRequests.filter(r=>r.status==='pending').length;
- const nNow=state.quotes.filter(isRoundBuyer).length;
- const nOrdered=state.quotes.filter(isWholesaleCompleted).length;
+ const nNow=state.quotes.filter(q=>isRoundBuyer(q)&&!isFinishedOrder(q)).length;
+ const nOrdered=state.quotes.filter(q=>isWholesaleCompleted(q)&&!isFinishedOrder(q)).length;
+ const nFinished=state.quotes.filter(isFinishedOrder).length;
+ const nActive=state.quotes.filter(q=>q.status!=='cancelled'&&!isFinishedOrder(q)).length;
  const nNext=state.quotes.filter(q=>q.status==='quoted'&&q.purchase_intent==='next_round').length;
  const nHold=state.quotes.filter(q=>q.status==='quoted'&&q.purchase_intent==='on_hold').length;
  const nUndecided=state.quotes.filter(q=>q.status==='quoted'&&(!q.purchase_intent||q.purchase_intent==='undecided')).length;
  const nOther=nNext+nHold+nUndecided;
  const nCancelRequested=state.quotes.filter(q=>!!q.cancel_requested_at&&q.status!=='cancelled').length;
  const primaryFilters=[
-  ['all','전체',state.quotes.length],
+  ['all','진행 중',nActive],
   ['buy_now','발주 예정',nNow],
   ['wholesale_completed','발주 완료',nOrdered],
+  ['finished','완료',nFinished],
   ['cancel_requested','취소 요청',nCancelRequested],
   ['other','미확정',nOther]
  ];
- const secondaryKeys=['requested','quoted','confirmed','flow_new','flow_preparing','flow_pickup_ready','flow_shipped','flow_completed','flow_soldout_closed','cancelled'];
- const secondaryLabel=key=>({wholesale_completed:'발주 완료',next_round:'다음 회차',on_hold:'구매 보류',undecided:'미선택'})[key]||(key.startsWith('flow_')?workflowLabels[key.slice(5)]:statusLabel[key]||key);
+ const secondaryKeys=['all_history','requested','quoted','confirmed','flow_new','flow_preparing','flow_pickup_ready','flow_shipped','flow_completed','flow_soldout_closed','cancelled'];
+ const secondaryLabel=key=>({all_history:'전체 내역',wholesale_completed:'발주 완료',next_round:'다음 회차',on_hold:'구매 보류',undecided:'미선택'})[key]||(key.startsWith('flow_')?workflowLabels[key.slice(5)]:statusLabel[key]||key);
  const isSecondary=secondaryKeys.includes(state.filter);
  return `<section class="admin-quote-workspace">
   <div class="admin-quote-anchor" id="admin-quote-results"></div>
@@ -4830,7 +4843,7 @@ function renderAdminQuotes(){
     ${secondaryKeys.map(key=>`<button type="button" class="admin-quote-secondary-tab ${state.filter===key?'active':''}" data-filter="${key}" aria-pressed="${state.filter===key}">${esc(secondaryLabel(key))}</button>`).join('')}
    </div>
   </details>
-  ${state.filter==='buy_now'?'<p class="admin-quote-context">아직 발주하지 않은 이번 회차 주문만 표시해요.</p>':state.filter==='wholesale_completed'?'<p class="admin-quote-context">완료된 도매 발주만 표시해요. 신규 주문은 포함되지 않아요.</p>':''}
+  ${state.filter==='buy_now'?'<p class="admin-quote-context">아직 발주하지 않은 이번 회차 주문만 표시해요.</p>':state.filter==='wholesale_completed'?'<p class="admin-quote-context">발주가 끝났지만 아직 수령·배송 완료되지 않은 주문이에요.</p>':state.filter==='finished'?'<p class="admin-quote-context">픽업완료·배송완료·품절 정산 완료된 주문이에요. 기존 주문·입금·환불 기록은 그대로 보관돼요.</p>':state.filter==='all'?'<p class="admin-quote-context">픽업·배송 완료된 주문은 ‘완료’에서 확인할 수 있어요.</p>':''}
   ${qq.length?`<div class="admin-date-toolbar admin-quote-date-toolbar">
    <div><strong>주문 ${qq.length}건 · ${dayCount}일</strong>${unfinished?`<span>가격 미입력 ${unfinished}종</span>`:''}</div>
    <div class="admin-date-actions">
@@ -6389,7 +6402,7 @@ if(a==='set-workflow'){
  stage==='soldout_closed'?'모든 품절 상품에 대한 실제 환불 정산이 끝났나요? 이 버튼은 실제 송금 기능이 아닙니다.':
  stage==='preparing'&&workflowStage(q)!=='new'?'진행상태를 상품 준비 중으로 되돌릴까요? 기존 송장번호는 비워집니다.':
  stage==='pickup_ready'?'모든 품목이 입고됐고 구매자에게 픽업을 안내할 준비가 됐나요?':'상품 준비를 시작할까요?';
- if(!window.confirm(question))return;await adminWorkflowStage(id,stage);await loadAdmin();notif('주문 진행 상태가 변경됐어요.');return;
+ if(!window.confirm(question))return;await adminWorkflowStage(id,stage);await loadAdmin();notif(stage==='completed'?'완료된 주문으로 분류했어요. 상단 ‘완료’에서 확인할 수 있어요.':'주문 진행 상태가 변경됐어요.');return;
 }
 if(a==='copy-workflow-notice'){await copy(workflowNotice(state.quotes.find(q=>q.id===id)));return;}
 

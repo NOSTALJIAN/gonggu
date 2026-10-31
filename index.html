@@ -2427,6 +2427,40 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
  .cart-swipe-sheet .cart-review-name{font-size:12px}
 }
 
+
+/* Inline cart option editor: stays in the cart so checkout details remain intact. */
+.cart-swipe-sheet .cart-review-option-edit{
+ display:inline-flex;align-items:center;margin:6px 0 0;padding:3px 0;
+ border:0;background:none;color:#555;min-height:26px;cursor:pointer;
+ text-decoration:underline;text-underline-offset:3px;font-size:11px;font-weight:650;
+}
+.cart-swipe-sheet .cart-review-option-edit:focus-visible{outline:2px solid #111;outline-offset:2px}
+.cart-swipe-sheet .cart-option-editor{
+ margin:10px 0 0;padding:11px;border-radius:8px;background:#f7f7f7;border:1px solid #e8e8e8;
+}
+.cart-swipe-sheet .cart-option-editor-grid{
+ display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 70px;gap:8px;
+}
+.cart-swipe-sheet .cart-option-editor label{display:block;min-width:0;font-size:11px;color:#444;font-weight:650}
+.cart-swipe-sheet .cart-option-editor select,
+.cart-swipe-sheet .cart-option-editor input{
+ box-sizing:border-box;width:100%;height:44px;min-height:44px;
+ border:1px solid #ddd;border-radius:6px;background:#fff;
+ margin:5px 0 0;padding:8px 7px;color:#111;font-size:16px;
+}
+.cart-swipe-sheet .cart-option-editor select{padding-right:21px}
+.cart-swipe-sheet .cart-option-editor-buttons{display:flex;justify-content:flex-end;gap:8px;margin-top:10px}
+.cart-swipe-sheet .cart-option-editor-buttons button{
+ min-height:39px;padding:8px 15px;font-size:12px;font-weight:700;cursor:pointer;
+ border-radius:6px;border:1px solid #ddd;background:#fff;color:#555;
+}
+.cart-swipe-sheet .cart-option-editor-buttons .cart-option-save{background:#111;border-color:#111;color:#fff}
+@media(max-width:390px){
+ .cart-swipe-sheet .cart-option-editor{padding:9px}
+ .cart-swipe-sheet .cart-option-editor-grid{gap:6px;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 59px}
+ .cart-swipe-sheet .cart-option-editor select,.cart-swipe-sheet .cart-option-editor input{padding-left:6px;padding-right:5px}
+}
+
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -5667,24 +5701,7 @@ if(m.type==='product-photos'){
  if(!p||!p.published||!state.stores.some(st=>st.id===p.store_id&&st.active))return '';
  return wrap('상품 사진',`<h3>${esc(p.name)}</h3>${productGallery(p)}${estimatedProductPrice(p,true)}${publicProductNote(p)}${productSizeChart(p)}${p.is_sold_out?'<div class="smallnote">현재 품절된 상품이에요.</div>':`<button type="button" class="btn block" data-action="pick-product" data-id="${esc(p.id)}">옵션 선택하기</button>`}`);
 }
-if(m.type==='cart'){return wrap('견적 요청 장바구니',`<div class="cart-review-toolbar"><strong>담은 상품 <span id="cart-review-count">${cartCount()}</span>개</strong><button type="button" id="cart-review-clear" class="cart-review-clear ${state.cart.length?'':'hidden'}" data-action="cart-clear">전체 비우기</button></div><section class="cart-estimate-summary ${state.cart.length?'':'hidden'}" id="cart-estimate-summary" aria-label="장바구니 총 예상견적">${cartEstimateMarkup()}</section><div class="cart-review-list" id="cart-review-list">${state.cart.map((c,i)=>{
- const p=selectedProd(c.product_id),unavailable=!p||!p.published||p.is_sold_out||!state.stores.some(st=>st.id===p.store_id&&st.active);
- return `<article class="cart-review-item" data-cart-item>
-  <div class="cart-review-main">
-   <div class="cart-review-image">${p?img(p,'cart-review-photo'):'<div class="cart-review-placeholder">사진 없음</div>'}</div>
-   <div class="cart-review-info">
-    <div class="cart-review-store">${esc(storeName(c.store_id))}</div>
-    <b class="cart-review-name">${esc(c.product_name)}</b>
-    <div class="cart-review-option">${esc(c.color)} / ${esc(c.size)} · ${Math.max(1,Number(c.quantity)||1)}개</div>
-    <div class="cart-review-item-price">${!unavailable&&hasProductEstimate(p)?'예상 '+money(p.estimated_price*Math.max(1,Math.floor(Number(c.quantity)||1))):'예상가 확인 필요'}</div>
-   </div>
-   <button type="button" class="cart-review-remove" data-action="cart-remove" data-i="${i}" aria-label="${esc(c.product_name)} ${esc(c.color)} ${esc(c.size)} 장바구니에서 삭제" title="상품 삭제">
-    <svg viewBox="0 0 24 24" aria-hidden="true" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 10v6m4-6v6"/></svg>
-   </button>
-  </div>
-  ${unavailable?'<div class="noticefail cart-review-unavailable">품절 또는 판매 종료 상품이에요. 삭제 후 견적을 요청해 주세요.</div>':''}
- </article>`;
-}).join('')}</div><div class="cart-review-undo hidden" id="cart-review-undo" role="status"><span data-cart-undo-text>상품을 삭제했어요.</span><button type="button" data-action="cart-undo">↶ 되돌리기</button></div><div id="cart-review-empty" class="cart-review-empty ${state.cart.length?'hidden':''}"><b>장바구니가 비었어요.</b><p>상품을 선택해서 장바구니에 담아 주세요.</p><button type="button" class="btn block secondary" data-action="cart-continue">상품 보러 가기</button></div>${state.cart.length?`<div id="cart-review-checkout"><div class="procurement-checkout-note"><b>월·목 오후 7시 최종 주문·입금 마감, 밤 9시 남대문 발주</b>예요. 거래처 입고 후 배송됩니다.</div>
+if(m.type==='cart'){return wrap('견적 요청 장바구니',`<div class="cart-review-toolbar"><strong>담은 상품 <span id="cart-review-count">${cartCount()}</span>개</strong><button type="button" id="cart-review-clear" class="cart-review-clear ${state.cart.length?'':'hidden'}" data-action="cart-clear">전체 비우기</button></div><section class="cart-estimate-summary ${state.cart.length?'':'hidden'}" id="cart-estimate-summary" aria-label="장바구니 총 예상견적">${cartEstimateMarkup()}</section><div class="cart-review-list" id="cart-review-list">${state.cart.map(renderCartReviewItem).join('')}</div><div class="cart-review-undo hidden" id="cart-review-undo" role="status"><span data-cart-undo-text>상품을 삭제했어요.</span><button type="button" data-action="cart-undo">↶ 되돌리기</button></div><div id="cart-review-empty" class="cart-review-empty ${state.cart.length?'hidden':''}"><b>장바구니가 비었어요.</b><p>상품을 선택해서 장바구니에 담아 주세요.</p><button type="button" class="btn block secondary" data-action="cart-continue">상품 보러 가기</button></div>${state.cart.length?`<div id="cart-review-checkout"><div class="procurement-checkout-note"><b>월·목 오후 7시 최종 주문·입금 마감, 밤 9시 남대문 발주</b>예요. 거래처 입고 후 배송됩니다.</div>
 <button type="button" class="btn block cart-review-proceed" data-action="cart-checkout">다음: 견적 요청 정보 입력하기 →</button>
 <details class="cart-review-details" id="cart-review-details">
 <summary>주문자·수령 정보 입력 <span class="cart-review-expand">펼쳐서 입력하기 ↓</span></summary>
@@ -5756,6 +5773,87 @@ function renderModal(){return modal()}
 // Keep checkout inputs untouched when removing items. Never store customer
 // form values or the six-digit lookup PIN in localStorage.
 let lastCartRemoved=null;
+function renderCartReviewItem(c,i){
+  const p=selectedProd(c.product_id),unavailable=!p||!p.published||p.is_sold_out||!state.stores.some(st=>st.id===p.store_id&&st.active);
+ return `<article class="cart-review-item" data-cart-item>
+  <div class="cart-review-main">
+   <div class="cart-review-image">${p?img(p,'cart-review-photo'):'<div class="cart-review-placeholder">사진 없음</div>'}</div>
+   <div class="cart-review-info">
+    <div class="cart-review-store">${esc(storeName(c.store_id))}</div>
+    <b class="cart-review-name">${esc(c.product_name)}</b>
+    <div class="cart-review-option">${esc(c.color)} / ${esc(c.size)} · ${Math.max(1,Number(c.quantity)||1)}개</div>
+    <div class="cart-review-item-price">${!unavailable&&hasProductEstimate(p)?'예상 '+money(p.estimated_price*Math.max(1,Math.floor(Number(c.quantity)||1))):'예상가 확인 필요'}</div>
+    ${!unavailable?'<button type="button" class="cart-review-option-edit" data-action="cart-option-edit" aria-label="'+esc(c.product_name)+' 옵션 변경">옵션 변경</button>':''}
+   </div>
+   <button type="button" class="cart-review-remove" data-action="cart-remove" data-i="${i}" aria-label="${esc(c.product_name)} ${esc(c.color)} ${esc(c.size)} 장바구니에서 삭제" title="상품 삭제">
+    <svg viewBox="0 0 24 24" aria-hidden="true" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 10v6m4-6v6"/></svg>
+   </button>
+  </div>
+  ${unavailable?'<div class="noticefail cart-review-unavailable">품절 또는 판매 종료 상품이에요. 삭제 후 견적을 요청해 주세요.</div>':''}
+ </article>`;
+}
+
+function cartReviewIndexOfRow(row){
+ const list=app.querySelector('#cart-review-list');
+ if(!list||!row||row.parentElement!==list)return -1;
+ return Array.prototype.indexOf.call(list.children,row);
+}
+function cartOptionEditorMarkup(item,product){
+ const colors=Object.keys(product.options||{}).filter(color=>Array.isArray(product.options[color])&&product.options[color].length);
+ if(!colors.length)throw Error('변경할 수 있는 옵션이 없는 상품이에요.');
+ const color=colors.includes(item.color)?item.color:colors[0];
+ const sizes=product.options[color];
+ const size=sizes.includes(item.size)?item.size:sizes[0];
+ return `<div class="cart-option-editor" data-cart-option-editor aria-label="장바구니 옵션 수정">
+ <div class="cart-option-editor-grid">
+  <label>컬러<select data-cart-option-color aria-label="컬러 선택">${colors.map(c=>`<option value="${esc(c)}" ${c===color?'selected':''}>${esc(c)}</option>`).join('')}</select></label>
+  <label>사이즈<select data-cart-option-size aria-label="사이즈 선택">${sizes.map(v=>`<option value="${esc(v)}" ${v===size?'selected':''}>${esc(v)}</option>`).join('')}</select></label>
+  <label>수량<input type="number" data-cart-option-qty inputmode="numeric" min="1" max="20" step="1" value="${Math.min(20,Math.max(1,Number(item.quantity)||1))}" aria-label="수량"></label>
+ </div>
+ <div class="cart-option-editor-buttons"><button type="button" data-action="cart-option-cancel">취소</button><button type="button" class="cart-option-save" data-action="cart-option-save">변경 저장</button></div>
+ </div>`;
+}
+function toggleCartOptionEditor(button){
+ if(state.modal?.type!=='cart')return;
+ const row=button.closest('[data-cart-item]'),index=cartReviewIndexOfRow(row);
+ const item=state.cart[index],product=selectedProd(item?.product_id);
+ if(index<0||!item||!product||product.is_sold_out||!product.published||!state.stores.some(st=>st.id===product.store_id&&st.active))
+  throw Error('현재 변경할 수 없는 상품이에요.');
+ const alreadyOpen=!!row.querySelector('[data-cart-option-editor]');
+ app.querySelectorAll('#cart-review-list [data-cart-option-editor]').forEach(panel=>panel.remove());
+ if(alreadyOpen)return;
+ row.insertAdjacentHTML('beforeend',cartOptionEditorMarkup(item,product));
+}
+function saveCartOptionEdit(button){
+ if(state.modal?.type!=='cart')throw Error('장바구니에서 옵션을 변경해 주세요.');
+ const row=button.closest('[data-cart-item]'),index=cartReviewIndexOfRow(row),panel=row?.querySelector('[data-cart-option-editor]');
+ const item=state.cart[index],p=selectedProd(item?.product_id);
+ if(index<0||!panel||!item||!p||!p.published||p.is_sold_out||!state.stores.some(st=>st.id===p.store_id&&st.active))
+  throw Error('상품 정보를 다시 확인해 주세요.');
+ const color=panel.querySelector('[data-cart-option-color]')?.value;
+ const size=panel.querySelector('[data-cart-option-size]')?.value;
+ const rawQuantity=panel.querySelector('[data-cart-option-qty]')?.value;
+ const quantity=Number(rawQuantity);
+ if(!Array.isArray(p.options?.[color])||!p.options[color].includes(size))throw Error('선택한 컬러와 사이즈를 확인해 주세요.');
+ if(!rawQuantity||!Number.isInteger(quantity)||quantity<1||quantity>20)throw Error('수량은 1~20개로 입력해 주세요.');
+ const previous=state.cart;
+ const updated=previous.map(c=>({...c}));
+ const other=updated.findIndex((c,j)=>j!==index&&c.product_id===p.id&&c.color===color&&c.size===size);
+ if(other>=0){
+  updated[other].quantity=Number(updated[other].quantity||0)+quantity;
+  updated.splice(index,1);
+ }else{
+  updated[index]={...updated[index],store_id:p.store_id,product_name:p.name,color,size,quantity};
+ }
+ state.cart=updated;
+ try{saveCart()}catch(error){state.cart=previous;throw Error('옵션 변경을 저장하지 못했어요. 다시 시도해 주세요.')}
+ lastCartRemoved=null;
+ const undo=app.querySelector('#cart-review-undo');if(undo)undo.classList.add('hidden');
+ const list=app.querySelector('#cart-review-list');if(list)list.innerHTML=state.cart.map(renderCartReviewItem).join('');
+ syncCartReview();
+ notif(other>=0?'같은 옵션 상품과 수량을 합쳤어요.':'옵션을 변경했어요.');
+}
+
 function cartEstimateTotals(){
  let knownTotal=0,unpricedCount=0,unavailableCount=0;
  for(const item of state.cart){
@@ -7075,7 +7173,10 @@ if(a==='edit-delivery'){
  const next=a==='gallery-select'?Number(b.dataset.index):(Number(state.modal?.photoIndex)||0)+Number(b.dataset.step);
  if(Number.isInteger(next))changeProductGallery(next);
  return;
-}else if(a==='pick-product'){const p=selectedProd(id);if(!p||p.is_sold_out||!p.published||!state.stores.some(st=>st.id===p.store_id&&st.active))throw Error('현재 품절되었거나 전시가 종료된 상품이에요.');modalOpen('pick',id)}else if(a==='open-cart'){lastCartRemoved=null;modalOpen('cart')}else if(a==='cart-remove'){cartRemoveAt(Number(b.dataset.i));return}
+}else if(a==='pick-product'){const p=selectedProd(id);if(!p||p.is_sold_out||!p.published||!state.stores.some(st=>st.id===p.store_id&&st.active))throw Error('현재 품절되었거나 전시가 종료된 상품이에요.');modalOpen('pick',id)}else if(a==='open-cart'){lastCartRemoved=null;modalOpen('cart')}else if(a==='cart-option-edit'){toggleCartOptionEditor(b);return}
+ else if(a==='cart-option-cancel'){b.closest('[data-cart-option-editor]')?.remove();return}
+ else if(a==='cart-option-save'){saveCartOptionEdit(b);return}
+ else if(a==='cart-remove'){cartRemoveAt(Number(b.dataset.i));return}
 else if(a==='cart-undo'){cartUndoLastRemoval();return}
 else if(a==='cart-clear'){clearCartReview();return}
 else if(a==='cart-checkout'){
@@ -7356,6 +7457,14 @@ else if(f.dataset.price){
 else if(f.dataset.payment){const paid=Number(data.get('paid')),refunded=Number(data.get('refunded'));if(!Number.isInteger(paid)||!Number.isInteger(refunded)||paid<0||refunded<0)throw Error('금액을 확인해 주세요');await adminPayment(f.dataset.payment,paid,refunded);await loadAdmin();notif('입금 기록 완료')}
 }catch(ex){notif(errorText(ex))}finally{busy=false}}
 async function change(e){const x=e.target;
+if(x.matches?.('[data-cart-option-color]')){
+ const panel=x.closest('[data-cart-option-editor]'),row=x.closest('[data-cart-item]');
+ const index=cartReviewIndexOfRow(row),p=selectedProd(state.cart[index]?.product_id);
+ const sizes=Array.isArray(p?.options?.[x.value])?p.options[x.value]:[];
+ const sizeSelect=panel?.querySelector('[data-cart-option-size]');
+ if(sizeSelect)sizeSelect.innerHTML=sizes.map(z=>`<option value="${esc(z)}">${esc(z)}</option>`).join('');
+ return;
+}
 if(x.id==='shop-sort'||x.id==='shop-store'){
  if(state.page!=='shop')return;
  if(x.id==='shop-sort')state.shopSort=['newest','oldest','price-low','price-high','name'].includes(x.value)?x.value:'newest';

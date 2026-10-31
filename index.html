@@ -5604,9 +5604,14 @@ async function withdrawBuyerOptionRequest(requestId){
   if(!state.tracking?.items?.some(i=>i.option_request?.id===requestId&&i.option_request.status==='pending'))
     throw Error('대기 중인 옵션 변경 요청을 찾지 못했어요. 주문조회를 새로고침해 주세요.');
   if(!connected)throw Error('실제 주문에서만 사용할 수 있어요.');
-  await rpc('gq_withdraw_item_option_request_v67',{
+  const result=await rpc('gq_withdraw_item_option_request_v67',{
     p_quote_id:state.trackId,p_lookup_token:state.trackToken,p_request_id:requestId
   });
+  if(result?.withdrawn&&result.request_id)void fetch(url+'/functions/v1/gq-admin-event-push',{
+    method:'POST',headers:{'Content-Type':'application/json','apikey':key},
+    body:JSON.stringify({quote_id:state.trackId,lookup_token:state.trackToken,request_id:result.request_id,event:'option_change_withdrawn'})
+  }).then(async res=>{if(!res.ok)console.warn('옵션 변경 취소 관리자 푸시 응답 오류',res.status);})
+    .catch(e=>console.warn('옵션 변경 취소 관리자 푸시 전송 실패',e));
   await reloadTracking();
 }
 async function setBuyerPurchaseIntent(intent){

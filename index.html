@@ -2027,6 +2027,20 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
  bottom:calc(63px + max(11px,calc(env(safe-area-inset-bottom) - 11px)));
 }
 
+
+/* Native horizontal scrolling keeps vertical catalog browsing available. */
+.shoplist .catalog-gallery{position:relative}
+.catalog-photo-track{position:absolute;inset:0;display:flex;width:100%;height:100%;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.catalog-photo-track::-webkit-scrollbar{display:none}
+.catalog-photo-slide{flex:0 0 100%;width:100%;min-width:0;height:100%;padding:0;border:0;background:#f0f0f0;scroll-snap-align:start;scroll-snap-stop:always;cursor:pointer}
+.catalog-photo-slide img{pointer-events:none;user-select:none;-webkit-user-select:none}
+.catalog-photo-slide:focus-visible{outline:2px solid #111;outline-offset:-3px}
+.catalog-photo-count{position:absolute;right:8px;top:8px;padding:3px 7px;border-radius:12px;background:#0007;color:white;font-size:10px;line-height:1.5;pointer-events:none;font-variant-numeric:tabular-nums}
+.catalog-photo-dots{position:absolute;bottom:2px;left:50%;transform:translateX(-50%);display:flex;max-width:100%;padding:0 3px}
+.catalog-photo-dots button{border:0;background:transparent;padding:8px 4px;min-width:14px;min-height:28px;display:grid;place-items:center}
+.catalog-photo-dots span{display:block;width:5px;height:5px;border-radius:50%;background:#ffffff80;box-shadow:0 0 2px #0008}
+.catalog-photo-dots [aria-pressed="true"] span{background:white;width:7px;height:7px}
+
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -2830,6 +2844,21 @@ function productBuyerGroups(){const m=new Map();for(const q of state.quotes.filt
 
 const demoNotice=()=>!connected?'<div class="noticebar"><b>⚠️ 현재 체험 모드</b>견적 요청과 주문 확정은 이 아이폰 안에서만 저장돼요. 여러 사람이 실제로 주문하려면 <b>Supabase 연결이 먼저 필요</b>해요. 체험 중 만든 주문은 공유되지 않습니다.</div>':'';
 
+
+function catalogPhotoGallery(p){
+ const photos=productPhotoUrls(p);
+ const action=p.is_sold_out?'product-photos':'pick-product';
+ const label=esc(p.name)+' '+(p.is_sold_out?'상품 사진 보기':'상품 옵션 보기');
+ if(photos.length<2)return `<button class="shop-catalog-photo shop-photo-button" type="button" data-action="${action}" data-id="${esc(p.id)}" aria-label="${label}">${img(p)}</button>`;
+ return `<div class="shop-catalog-photo catalog-gallery" data-catalog-gallery>
+  <div class="catalog-photo-track" aria-label="${esc(p.name)} 상품 사진">
+   ${photos.map((src,i)=>`<button class="catalog-photo-slide" type="button" data-action="${action}" data-id="${esc(p.id)}" aria-label="${label} · 사진 ${i+1}/${photos.length}"><img class="product-cover" src="${esc(src)}" alt="${esc(p.name)} 사진 ${i+1}" loading="lazy" draggable="false"></button>`).join('')}
+  </div>
+  <span class="catalog-photo-count" aria-hidden="true">1 / ${photos.length}</span>
+  <div class="catalog-photo-dots" aria-label="사진 선택">${photos.map((_,i)=>`<button type="button" data-action="catalog-photo-index" data-index="${i}" aria-label="${i+1}번 사진" aria-pressed="${i===0}"><span></span></button>`).join('')}</div>
+ </div>`;
+}
+
 function productPhotoUrls(p){
  const links=[p?.image_url,...(Array.isArray(p?.gallery_urls)?p.gallery_urls:[])];
  return [...new Set(links.filter(x=>typeof x==='string'&&x.startsWith('https://')))];
@@ -3076,7 +3105,7 @@ function renderShop(){
  ${categoryFilterKeys.filter(k=>k==='all'||categoryCounts[k]>0||k===activeCategory).map(k=>`<button type="button" class="shop-category-tab ${activeCategory===k?'active':''}" data-action="shop-category" data-category="${k}" aria-pressed="${activeCategory===k}">${k==='all'?'전체':k==='uncategorized'?'미분류':k}<span>${categoryCounts[k]}</span></button>`).join('')}
  </div>
  <div class="shop-search-wrap"><input id="search" type="search" placeholder="상품명·가게명·카테고리 검색" value="${esc(state.search)}" aria-label="상품 검색"></div>
- <div class="shoplist">${products.length?`<div class="shop-catalog-count">${activeCategory==='all'?'전체 상품':activeCategory==='uncategorized'?'미분류 상품':activeCategory} · 총 ${products.length}개 · 최신 등록순 · ${firstNumber}~${lastNumber}개 표시</div><div class="shop-catalog-grid">${pageProducts.map(({p,store})=>`<article class="shop-catalog-card ${p.is_sold_out?'shop-soldout-card':''}"><button class="shop-catalog-photo shop-photo-button" type="button" data-action="${p.is_sold_out?'product-photos':'pick-product'}" data-id="${esc(p.id)}" aria-label="${esc(p.name)} ${p.is_sold_out?'상품 사진 보기':'상품 옵션 보기'}">${img(p)}</button>${p.is_sold_out?'<span class="shop-soldout-label">품절</span>':''}<div class="shop-catalog-store">${esc(store.name)}</div><button class="producttitle catalog-title-link" type="button" data-action="${p.is_sold_out?'product-photos':'pick-product'}" data-id="${esc(p.id)}" aria-label="${esc(p.name)} ${p.is_sold_out?'상품 사진 보기':'상품 옵션 보기'}" title="${esc(p.name)}">${esc(p.name)}</button><div class="shop-catalog-colors">${Object.keys(p.options||{}).map(esc).join(' · ')||'색상 옵션 확인'}</div>${hasProductEstimate(p)?estimatedProductPrice(p):'<div class="product-estimate product-estimate-card shop-catalog-no-estimate"><span class="product-estimate-label">가격</span><strong>견적 문의</strong></div>'}</article>`).join('')}</div>
+ <div class="shoplist">${products.length?`<div class="shop-catalog-count">${activeCategory==='all'?'전체 상품':activeCategory==='uncategorized'?'미분류 상품':activeCategory} · 총 ${products.length}개 · 최신 등록순 · ${firstNumber}~${lastNumber}개 표시</div><div class="shop-catalog-grid">${pageProducts.map(({p,store})=>`<article class="shop-catalog-card ${p.is_sold_out?'shop-soldout-card':''}">${catalogPhotoGallery(p)}${p.is_sold_out?'<span class="shop-soldout-label">품절</span>':''}<div class="shop-catalog-store">${esc(store.name)}</div><button class="producttitle catalog-title-link" type="button" data-action="${p.is_sold_out?'product-photos':'pick-product'}" data-id="${esc(p.id)}" aria-label="${esc(p.name)} ${p.is_sold_out?'상품 사진 보기':'상품 옵션 보기'}" title="${esc(p.name)}">${esc(p.name)}</button><div class="shop-catalog-colors">${Object.keys(p.options||{}).map(esc).join(' · ')||'색상 옵션 확인'}</div>${hasProductEstimate(p)?estimatedProductPrice(p):'<div class="product-estimate product-estimate-card shop-catalog-no-estimate"><span class="product-estimate-label">가격</span><strong>견적 문의</strong></div>'}</article>`).join('')}</div>
  ${shopPageCount>1?`<nav class="shop-catalog-pagination" aria-label="상품 페이지 이동">
   <button type="button" class="page-control" data-action="shop-page" data-page-number="${previousPageGroup}" ${shopPageFirst===1?'disabled':''} aria-label="이전 5페이지 묶음" title="이전 5페이지">‹</button>
   ${visibleShopPages.map(n=>`<button type="button" data-action="shop-page" data-page-number="${n}" ${n===shopPage?'aria-current="page"':''} aria-label="${n}페이지">${n}</button>`).join('')}
@@ -5674,6 +5703,13 @@ function navigateShopPage(next){
  if(section)window.scrollTo({top:Math.max(0,window.scrollY+section.getBoundingClientRect().top-12),behavior:'auto'});
 }
 async function click(e){
+ const galleryChoice=e.target.closest?.('[data-action="catalog-photo-index"]');
+ if(galleryChoice){
+  const track=galleryChoice.closest('[data-catalog-gallery]')?.querySelector('.catalog-photo-track');
+  if(track)track.scrollTo({left:Number(galleryChoice.dataset.index)*track.clientWidth,behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});
+  return;
+ }
+
  if(e.target.matches?.('[data-product-store-search]')){productStoreSearchResults(e.target,true);return;}
  if(!e.target.closest?.('[data-product-store-picker]'))closeProductStoreSearch(app.querySelector('#product-form'));
  const pg=e.target.closest('[data-page]');if(pg){goto(pg.dataset.page);if(pg.classList.contains('brand-home'))window.scrollTo({top:0,behavior:'auto'});return}const b=e.target.closest('[data-action]');if(!b)return;const a=b.dataset.action,id=b.dataset.id;try{
@@ -6515,6 +6551,40 @@ function input(e){
   }
   return;
  }if(e.target.id==='search'){state.search=e.target.value;state.shopPage=1;const pos=e.target.selectionStart;render();const el=$('#search');if(el){el.focus();el.setSelectionRange(pos,pos)}}}
+
+// Do not open product options when a photo swipe ends in a synthesized click.
+let catalogTouch=null;
+app.addEventListener('touchstart',e=>{
+ const track=e.target.closest?.('.catalog-photo-track');
+ if(!track||e.touches.length!==1){catalogTouch=null;return;}
+ track.dataset.suppressClickUntil='0';
+ catalogTouch={track,x:e.touches[0].clientX,y:e.touches[0].clientY};
+},{passive:true});
+app.addEventListener('touchmove',e=>{
+ if(!catalogTouch||e.touches.length!==1)return;
+ const touch=e.touches[0];
+ if(Math.abs(touch.clientX-catalogTouch.x)>8||Math.abs(touch.clientY-catalogTouch.y)>8)
+  catalogTouch.track.dataset.suppressClickUntil=String(Date.now()+700);
+},{passive:true});
+app.addEventListener('touchend',()=>{catalogTouch=null;},{passive:true});
+app.addEventListener('touchcancel',()=>{catalogTouch=null;},{passive:true});
+app.addEventListener('scroll',e=>{
+ const track=e.target;
+ if(!track.matches?.('.catalog-photo-track'))return;
+ const gallery=track.closest('[data-catalog-gallery]');
+ const count=track.children.length;
+ const index=Math.max(0,Math.min(count-1,Math.round(track.scrollLeft/(track.clientWidth||1))));
+ gallery.querySelector('.catalog-photo-count').textContent=(index+1)+' / '+count;
+ gallery.querySelectorAll('.catalog-photo-dots button').forEach((button,i)=>button.setAttribute('aria-pressed',String(i===index)));
+ track.dataset.suppressClickUntil=String(Date.now()+250);
+},true);
+app.addEventListener('click',e=>{
+ const track=e.target.closest?.('.catalog-photo-track');
+ if(track&&e.detail!==0&&Date.now()<Number(track.dataset.suppressClickUntil||0)){
+  e.preventDefault();e.stopImmediatePropagation();
+ }
+},true);
+
 app.addEventListener('click',e=>{const orderSummary=e.target.closest('.admin-order-fold > summary');if(orderSummary){const order=orderSummary.parentElement;state.orderCardsOpen[order.dataset.adminOrderId]=!order.open;return}const summary=e.target.closest('.admin-date-group > summary');if(summary){const group=summary.parentElement;state.dateGroupsOpen[group.dataset.orderDate]=!group.open;return}const tab=e.target.closest('[data-tab]'),filter=e.target.closest('[data-filter]');if(tab){state.tab=tab.dataset.tab;if(state.tab==='requests')state.requestStatusFilter='pending';render();return}if(filter){state.filter=filter.dataset.filter;state.supplierBulkSelected.clear();render();return}click(e)});
 app.addEventListener('submit',submit);app.addEventListener('change',change);app.addEventListener('input',input);
 app.addEventListener('focusin',e=>{

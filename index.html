@@ -2265,6 +2265,20 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 .admin-push-test-buttons{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:8px}
 .admin-push-test-buttons .btn{min-width:0;min-height:40px;padding:7px;font-size:12px;font-weight:600;border-radius:5px;white-space:normal}
 @media(max-width:380px){.admin-push-summary-hint{font-size:10px}.admin-push-compact details>summary{padding-inline:12px}}
+
+/* Administrator-only passive notice for new requests while the web app is open. */
+.admin-inapp-request-alert{
+ display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+ padding:12px 14px;margin:0 0 12px;border:1px solid #dcdcdc;
+ border-radius:5px;background:#fbfbfb;color:#222
+}
+.admin-inapp-request-alert span{display:flex;flex:1 1 150px;flex-direction:column;gap:4px;font-size:13px}
+.admin-inapp-request-alert small{font-size:11px;color:#777}
+.admin-inapp-request-alert button{
+ min-height:34px;border:1px solid #ddd;border-radius:4px;padding:5px 11px;
+ background:#fff;color:#222;font-size:12px;font-weight:650;cursor:pointer
+}
+.admin-inapp-request-alert button:last-child{border:0;min-width:30px;font-size:20px;font-weight:400;background:transparent}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -2652,6 +2666,45 @@ function renderShipment(order){
  </div>`;
 }
 
+/* Admin-only in-app fallback: check new product registrations while admin is actively using the site.
+   This is separate from background iOS push and never changes purchaser permissions. */
+const ADMIN_REQUEST_SEEN_KEY='miniyena-admin-product-request-seen-v1';
+let adminRequestSeenAt=Number(read(ADMIN_REQUEST_SEEN_KEY,0))||0;
+let adminRequestChecking=false;
+async function checkAdminProductRequestUpdates(){
+ if(!connected||!state.admin||state.page!=='admin'||document.hidden||adminRequestChecking)return;
+ adminRequestChecking=true;
+ try{
+  const rows=await api('/rest/v1/gq_product_requests?select=id,created_at,status&order=created_at.desc&limit=25',{admin:true});
+  if(!Array.isArray(rows)||!rows.length)return;
+  const latest=Date.parse(rows[0].created_at)||0;
+  if(!adminRequestSeenAt){
+   adminRequestSeenAt=latest;
+   try{localStorage.setItem(ADMIN_REQUEST_SEEN_KEY,JSON.stringify(latest))}catch(_){}
+   return;
+  }
+  const newPending=rows.filter(req=>req.status==='pending'&&(Date.parse(req.created_at)||0)>adminRequestSeenAt).length;
+  if(latest>adminRequestSeenAt){
+   adminRequestSeenAt=latest;
+   try{localStorage.setItem(ADMIN_REQUEST_SEEN_KEY,JSON.stringify(latest))}catch(_){}
+  }
+  if(newPending&&state.page==='admin'&&state.admin){
+   const pane=app.querySelector('.admin-workspace-content');
+   if(!pane)return;
+   let alert=pane.querySelector('.admin-inapp-request-alert');
+   if(!alert){
+    alert=document.createElement('div');
+    alert.className='admin-inapp-request-alert';
+    alert.setAttribute('role','status');
+    pane.prepend(alert);
+   }
+   alert.innerHTML='<span><b>새 상품 등록 요청 '+newPending+'건</b><small>관리자 화면에서 확인해 주세요.</small></span>'+
+    '<button type="button" data-action="open-admin-new-requests">요청 확인</button>'+
+    '<button type="button" data-action="dismiss-admin-new-requests" aria-label="안내 닫기">×</button>';
+  }
+ }catch(error){console.warn('관리자 상품 요청 갱신 확인 실패',error)}
+ finally{adminRequestChecking=false}
+}
 const notif=s=>{const el=$('#toasts');if(!el)return;el.innerHTML=`<div class="toast">${esc(s)}</div>`;clearTimeout(notif.t);notif.t=setTimeout(()=>el.innerHTML='',3500)};
 const errorText=e=>(e?.message||String(e)).replace(/^JSON object requested, multiple \(or no\) rows returned$/, '정보를 찾을 수 없어요.');
 const saveCart=()=>localStorage.setItem(CART,JSON.stringify(state.cart));
@@ -6428,6 +6481,16 @@ if(a==='copy-procurement-ready'||a==='copy-procurement-review'||a==='copy-procur
  notif(ready?'발주 가능 목록을 복사했어.':'확정 주문 검토 목록을 복사했어.');
  return;
 }
+if(a==='open-admin-new-requests'){
+ if(state.page!=='admin'||!state.admin)return;
+ state.tab='requests';state.requestStatusFilter='pending';
+ await loadAdmin();
+ return;
+}
+if(a==='dismiss-admin-new-requests'){
+ app.querySelector('.admin-inapp-request-alert')?.remove();
+ return;
+}
 if(a==='reload-app'){refreshFullOrderPage();return;}
 if(a==='reload-email-settings'){
  if(!state.admin)throw Error('관리자 로그인이 필요해요.');
@@ -7332,8 +7395,14 @@ app.addEventListener('pointerup',endAdminPhotoDrag);
 app.addEventListener('pointercancel',cancelAdminPhotoDrag);
 app.addEventListener('keydown',keyAdminPhotoMove);
 window.addEventListener('scroll',updateScrollTop,{passive:true});
-document.addEventListener('visibilitychange',()=>{if(!document.hidden)updateProcurementSchedule()});
+document.addEventListener('visibilitychange',()=>{
+ if(!document.hidden){
+  updateProcurementSchedule();
+  checkAdminProductRequestUpdates();
+ }
+});
 setInterval(updateProcurementSchedule,60000);
+setInterval(checkAdminProductRequestUpdates,25000);
 window.addEventListener('popstate',()=>{const pp=new URLSearchParams(location.search);state.page=pp.get('page')||'shop';state.trackId=pp.get('id')||'';state.trackToken=pp.get('token')||'';state.modal=null;render();if(state.page==='track')reloadTracking().catch(e=>notif(errorText(e)));if(state.page==='admin')loadAdmin().catch(e=>notif(errorText(e)))});
 (async()=>{
  try{

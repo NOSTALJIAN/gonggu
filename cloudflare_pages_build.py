@@ -76,7 +76,7 @@ change_once(
        </div>
        <p id="mini-push-state" class="pushstate" role="status" aria-live="polite">알림 상태 확인 중…</p>
      </section>
-     </div><div class="tabs admin-main-tabs''',
+     </div><div class="tabs admin-main-tabs"''',
 )
 # The original CSS hides the entire push section, even if markup is present.
 # Restore only the manager section. Do not show subscription UI to customers.

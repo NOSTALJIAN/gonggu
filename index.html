@@ -2277,7 +2277,7 @@ const supplierShippingLabel=o=>allSoldOut(o)?'0원 (전체 품절)':money(suppli
 const totalDue=o=>previewOrderSum(o)+appliedShipping(o)+supplierShippingShare(o);
 const readyQuote=o=>unknown(o)===0&&(hasShipping(o)||isBundle(o)||o.delivery_method==='pickup');
 const readyProductEstimate=o=>unknown(o)===0;
-const settledBuyerTotal=o=>o.status==='confirmed'||(o.status==='quoted'&&o.purchase_intent==='buy_now'&&o.supplier_shipping_ready&&readyQuote(o));
+const settledBuyerTotal=o=>o.status==='confirmed'||(o.status==='quoted'&&(o.direct_1688||o.purchase_intent==='buy_now')&&o.supplier_shipping_ready&&readyQuote(o));
 const shippingLabel=o=>allSoldOut(o)?'0원 (전부 품절)' : isBundle(o)?'0원 (묶음배송)':o.delivery_method==='pickup'?'0원 (직접수령)':hasShipping(o)?money(o.shipping_fee):'배송비 미정';
 const deliveryLabel=o=>o.delivery_method==='pickup'?'직접수령':o.delivery_method==='courier'?'택배수령':'미설정 (기존 주문)';
 const addressLabel=o=>o.address_line1?[o.postal_code?'('+o.postal_code+')':'',o.address_line1,o.address_line2].filter(Boolean).join(' '):'주소 미입력 (기존 주문)';
@@ -2744,6 +2744,8 @@ async function loadAdminSupplierBatches(){
 // Wholesale shipping uses only the real supplier entered in admin-private product fields.
 function privateSupplierKey(name){return String(name||'').trim().toLocaleLowerCase('ko-KR');}
 function isChinaDirectSupplier(name){return /(?:^|[^a-z0-9])1688(?:$|[^a-z0-9])|阿里巴巴|알리바바/i.test(String(name||''));}
+function isDirect1688ProductMeta(meta){return !!meta&&(meta.source_type==='1688'||isChinaDirectSupplier(meta.supplier_name));}
+function isDirect1688Admin(q){return !!(state.admin&&state.productPrivateReady&&(q?.items||[]).length&&q.items.every(i=>i.product_id&&isDirect1688ProductMeta(state.productPrivate[i.product_id])));}
 function supplierItemStore(item){
  if(!state.admin||!state.productPrivateReady||!item?.product_id)return '';
  const name=state.productPrivate[item.product_id]?.supplier_name;
@@ -3377,6 +3379,18 @@ ${due===0?'이미 입금이 기록된 주문입니다. 중복 송금하지 마�
 ※ 이 안내문은 자동 발송되지 않습니다.`;
 }
 function buyerRoundIntent(q){
+ if(q.direct_1688){
+  const ready=Boolean(q.supplier_shipping_ready)&&readyQuote(q);
+  return `<section class="purchase-round-card" aria-label="1688 견적 확인 및 주문 확정">
+   <h3>1688 · 견적 확인</h3>
+   <p>1688 상품은 구매 회차 선택 없이 최종 결제금액을 확인하고 주문을 확정할 수 있어요.</p>
+   <div class="purchase-round-confirm">${ready?
+    `<button type="button" class="btn block" data-action="confirm-quote" ${q.cancel_requested_at||q.delivery_change_requested_at?'disabled':''}>견적 확인 후 주문 확정</button>`:
+    '<div class="info">최종 금액 확인 중 · 판매자의 안내 후 주문을 확정해 주세요.</div>'}
+    <p class="purchase-round-note">상품금액 + 고객 배송비(택배 3,000원 / 직접수령 0원) · 1688 도매배송비 0원</p>
+   </div>
+  </section>`;
+ }
  const intent=q.purchase_intent||'undecided';
  const chosen=intent==='buy_now'?'이번 회차 구매':intent==='next_round'?'다음 회차 구매':intent==='on_hold'?'구매 보류':'아직 선택하지 않음';
  const freightReady=Boolean(q.supplier_shipping_ready)&&readyQuote(q);
@@ -4171,7 +4185,7 @@ function renderBundleLedger(q,idx,root){
     ${q.delivery_method==='pickup'?'<div class="tiny">직접수령 · 고객 수령 배송비 0원 (도매배송비 별도)</div>':child?'<div class="tiny">묶음 추가 주문 · 배송비 0원 (대표 주문에서만 배송비 변경)</div>':q.status==='requested'||(q.status==='quoted'&&q.purchase_intent!=='buy_now')?'<div class="tiny">고객 수령 택배비 3,000원 자동 적용 · 묶음 추가 주문 0원</div>':`<form data-shipping="${q.id}" class="shipping-form"><label class="label">묶음 대표 주문 배송비<input name="shipping" type="number" min="0" max="1000000" step="1" required value="${hasShipping(q)?q.shipping_fee:''}" ${q.status==='cancelled'?'disabled':''}></label><button class="btn sm secondary" type="submit" ${q.status==='cancelled'?'disabled':''}>배송비 저장</button></form>`}
     ${renderSupplierShippingForm(q)}
     ${['confirmed','cancelled'].includes(q.status)?`<form data-payment="${q.id}" class="two"><div><label class="label">입금받은 총액<input name="paid" type="number" min="0" value="${q.amount_paid||0}"></label></div><div><label class="label">환불해 준 총액<input name="refunded" type="number" min="0" value="${q.amount_refunded||0}"></label></div><button class="btn secondary" style="grid-column:span 2" type="submit">이 주문의 입금·환불 기록 저장</button></form>${refundDue(q)>0?`<div class="noticefail">추가 환불 확인: ${money(refundDue(q))} · 실제 송금 후 기록</div>`:''}`:''}
-    ${q.status==='requested'?`<button class="btn block" data-action="publish-quote" data-id="${q.id}" ${!readyProductEstimate(q)?'disabled':''}>견적 먼저 보내기 · 구매 회차 선택 요청</button>`:''}
+    ${q.status==='requested'?`<button class="btn block" data-action="publish-quote" data-id="${q.id}" ${!readyProductEstimate(q)?'disabled':''}>${isDirect1688Admin(q)?'1688 견적 보내기 · 바로 주문확정':'견적 먼저 보내기 · 구매 회차 선택 요청'}</button>`:''}
     ${q.status==='confirmed'?`<details class="bundle-ledger-work"><summary>이 주문의 진행 단계 개별 조정</summary>${adminWorkflow(q)}</details>`:''}
     <div class="row wrap"><button class="btn sm neutral" data-action="copy-quote" data-id="${q.id}">견적 내용 복사</button><button class="btn sm neutral" data-action="copy-customer-link" data-id="${q.id}">개인 견적 링크 복사</button>${adminPinButton(q)}${q.status==='quoted'?`<button class="btn sm secondary" data-action="copy-quote-notice" data-id="${q.id}">견적 안내문 복사</button>`:''}${q.status==='confirmed'?`<button class="btn sm secondary" data-action="copy-payment-notice" data-id="${esc(q.id)}">입금 안내문 복사</button>`:''}<button class="btn sm outline" data-action="bundle-order" data-id="${q.id}">묶음배송 변경·해제</button><button class="btn sm neutral" data-action="edit-baby" data-id="${q.id}">아기 이름 수정</button></div>
     <details class="bundle-delete"><summary>이 주문을 삭제해야 하는 경우</summary><button class="btn sm danger" data-action="delete-order" data-id="${q.id}">영구 삭제</button></details>
@@ -5641,7 +5655,7 @@ async function setBuyerPurchaseIntent(intent){
  if(connected)miniNotifyAdminEvent('purchase_intent');
  await reloadTracking();
 }
-async function confirmFinalQuote(){if(!state.tracking||state.tracking.status!=='quoted'||state.tracking.purchase_intent!=='buy_now')throw Error('먼저 ‘이번 회차에 구매할게요’를 선택해 주세요.');
+async function confirmFinalQuote(){if(!state.tracking||state.tracking.status!=='quoted'||(!state.tracking.direct_1688&&state.tracking.purchase_intent!=='buy_now'))throw Error('먼저 ‘이번 회차에 구매할게요’를 선택해 주세요.');
  if(!state.tracking.supplier_shipping_ready||!readyQuote(state.tracking))throw Error('배송비 계산이 아직 끝나지 않았어요. 최종 금액 안내 후 주문해 주세요.');if(!connected){const q=demo.quotes.find(x=>x.id===state.trackId&&x.lookup_token===state.trackToken);if(!q||demo.items.some(i=>i.quote_id===q.id&&i.unit_price==null)||!hasShipping(q))throw Error('상품 가격과 배송비를 확인해 주세요');q.status='confirmed';q.purchase_intent='buy_now';q.purchase_intent_at=q.purchase_intent_at||now();saveDemo()}else await rpc('gq_confirm_quote',{p_quote_id:state.trackId,p_lookup_token:state.trackToken});await reloadTracking()}
 const deliveryPayload=(d)=>{
  const method=String(d.get('delivery_method')||'');if(!['pickup','courier'].includes(method))throw Error('수령방식을 선택해 주세요');
@@ -5709,11 +5723,11 @@ function adminFreightReady(q){
 }
 function renderSupplierShippingForm(q){
  if(!state.admin||state.page!=='admin')return '';
- if(q.status!=='confirmed'&&!(q.status==='quoted'&&q.purchase_intent==='buy_now'))
-  return '<p class="smallnote">도매배송비는 견적을 먼저 보내고 구매자가 이번 회차 구매를 선택한 뒤 계산해 주세요.</p>';
+ if(q.status!=='confirmed'&&!(q.status==='quoted'&&(q.purchase_intent==='buy_now'||isDirect1688Admin(q))))
+  return '<p class="smallnote">남대문 도매배송비는 구매자가 이번 회차를 선택한 뒤 계산해 주세요. 1688은 바로 주문 확정할 수 있어요.</p>';
  const batches=supplierBatchesForQuote(q);
  const liveItems=(q.items||[]).filter(i=>i.fulfillment!=='sold_out');
- const direct1688=liveItems.length>0&&state.productPrivateReady&&liveItems.every(i=>isChinaDirectSupplier(state.productPrivate[i.product_id]?.supplier_name));
+ const direct1688=isDirect1688Admin(q);
  if(direct1688){
   const done=Boolean(q.supplier_shipping_manual_confirmed_at);
   return `<div class="info" style="margin:12px 0"><b>1688 직접 사입 · 도매배송비 0원</b><p class="smallnote">중국 직접 사입은 도매배송비를 나누지 않아요. 0원으로 확정하면 구매자가 최종 주문을 진행할 수 있어요.</p>
@@ -5799,7 +5813,7 @@ async function adminSupplierShippingBeforeQuote(id){
  if(!connected){const row=demo.quotes.find(x=>x.id===id);Object.assign(row,{supplier_shipping_total:0,supplier_shipping_people:1,supplier_shipping_share:0,supplier_shipping_manual_confirmed_at:now()});saveDemo();return;}
  await rpc('gq_admin_set_supplier_shipping_v35',{p_quote_id:id,p_total:0,p_people:1},true);
 }
-async function adminPublish(id){const q=state.quotes.find(q=>q.id===id);if(!q||q.status!=='requested'||!readyProductEstimate(q))throw Error('모든 상품 가격을 입력한 뒤 견적을 보내 주세요.');const direct=state.productPrivateReady&&(q.items||[]).length>0&&(q.items||[]).every(i=>isChinaDirectSupplier(state.productPrivate[i.product_id]?.supplier_name));if(direct){if(q.delivery_method==='courier'&&!hasShipping(q))throw Error('택배수령 배송비 3,000원 자동 적용을 확인해 주세요.');await adminSupplierShippingBeforeQuote(q.id);}if(!connected){demo.quotes.find(q=>q.id===id).status='quoted';saveDemo();return}await api('/rest/v1/gq_quotes?id=eq.'+id,{method:'PATCH',admin:true,body:{status:'quoted',quoted_at:now()}})}
+async function adminPublish(id){const q=state.quotes.find(q=>q.id===id);if(!q||q.status!=='requested'||!readyProductEstimate(q))throw Error('모든 상품 가격을 입력한 뒤 견적을 보내 주세요.');const direct=isDirect1688Admin(q);if(direct){if(q.delivery_method==='courier'&&!hasShipping(q))throw Error('택배수령 배송비 3,000원 자동 적용을 확인해 주세요.');await adminSupplierShippingBeforeQuote(q.id);}if(!connected){demo.quotes.find(q=>q.id===id).status='quoted';saveDemo();return}await api('/rest/v1/gq_quotes?id=eq.'+id,{method:'PATCH',admin:true,body:{status:'quoted',quoted_at:now()}})}
 async function adminFulfillment(id,s){
  const q=state.quotes.find(x=>x.items.some(i=>i.id===id));
  if(!q||q.status!=='confirmed'||workflowStage(q)!=='preparing')throw Error('상품 준비 중인 확정 주문만 품목 상태를 변경할 수 있어요.');
@@ -6529,7 +6543,7 @@ else if(a==='suggest-product'){modalOpen('suggest')}else if(a==='approve-request
  state.orderCardsOpen[q.bundle_parent_id||q.id]=true;
  await loadAdmin();
  notif('1688 도매배송비 0원 확정 완료! 구매자에게 최종 주문을 안내할 수 있어요.');
- }else if(a==='publish-quote'){if(!window.confirm('상품 가격을 확인했나요? 고객에게 먼저 견적을 보내고 이번 회차 구매·다음 회차 구매·보류 선택을 받을게요. 배송비는 답변을 받은 뒤 계산해요.'))return;await adminPublish(id);await loadAdmin();notif('견적을 보냈어요. 구매 회차 선택을 받은 후 배송비를 배분해 주세요.')}else if(a==='confirm-quote'){if(!window.confirm('이 견적으로 최종 주문을 확정할까요?'))return;await confirmFinalQuote();notif('최종 주문이 확정됐어요!')}else if(a==='export-csv'){csv()}else if(a==='copy-vendors'){await copy(vendorText())}else if(a==='logout'){session=null;localStorage.removeItem(SESS);state.admin=false;state.productPrivate={};state.productPrivateReady=false;render()} }catch(ex){notif(errorText(ex))}}
+ }else if(a==='publish-quote'){const direct=isDirect1688Admin(state.quotes.find(q=>q.id===id));if(!window.confirm(direct?'1688 상품 가격과 배송비를 확인했나요? 견적 발송 후 구매자가 바로 주문을 확정할 수 있어요.':'상품 가격을 확인했나요? 고객에게 먼저 견적을 보내고 이번 회차 구매·다음 회차 구매·보류 선택을 받을게요. 배송비는 답변을 받은 뒤 계산해요.'))return;await adminPublish(id);await loadAdmin();notif(direct?'1688 견적을 보냈어요. 구매자가 바로 주문을 확정할 수 있어요.':'견적을 보냈어요. 구매 회차 선택을 받은 후 배송비를 배분해 주세요.')}else if(a==='confirm-quote'){if(!window.confirm('이 견적으로 최종 주문을 확정할까요?'))return;await confirmFinalQuote();notif('최종 주문이 확정됐어요!')}else if(a==='export-csv'){csv()}else if(a==='copy-vendors'){await copy(vendorText())}else if(a==='logout'){session=null;localStorage.removeItem(SESS);state.admin=false;state.productPrivate={};state.productPrivateReady=false;render()} }catch(ex){notif(errorText(ex))}}
 async function submit(e){const f=e.target;
 if(f.id==='shop-page-jump-form'){
  e.preventDefault();

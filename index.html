@@ -4593,8 +4593,8 @@ function renderSupplierBulkManager(historyOnly=false){
    <div class="supplier-bulk-list" style="margin-top:14px">${history}</div>
   </details>`;
  }
- return `<details class="card supplier-bulk-manager compact-fold" id="supplier-bulk-manager" open>
-  <summary><b>거래처별 도매배송비 배분</b><small>실제 도매처 기준 자동 분류 · 1688 직접 사입 제외</small></summary>
+ return `<details class="card supplier-bulk-manager compact-fold" id="supplier-bulk-manager" data-fold-key="supplier-bulk-manager">
+  <summary><b>거래처별 도매배송비 배분</b><small>도매처 ${stores.length}곳 · 1688 제외</small></summary>
   <p class="smallnote"><b>상품 등록에서 입력한 실제 도매업체명(비공개)</b>만 사용해요. 구매자에게 보이는 가게명은 사용하지 않아요. 실제 업체가 같으면 고객용 가게명이 달라도 함께 묶고, 한 구매자는 해당 업체 배송비를 한 번만 부담해요. ‘다음 회차 보류’·‘미선택’은 제외돼요.</p>
   ${!state.productPrivateReady?'<p class="noticefail">비공개 도매업체명 정보를 불러오지 못했어요. 새로고침 후 확인해 주세요.</p>':''}
   ${!state.supplierBatchesReady?`<p class="noticefail">배분 현황을 불러오지 못했어요. ${esc(state.supplierBatchesError||'관리자 새로고침 후 확인해 주세요.')}</p>`:''}

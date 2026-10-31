@@ -2328,6 +2328,52 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
  background:#fff;color:#222;font-size:12px;font-weight:650;cursor:pointer
 }
 .admin-inapp-request-alert button:last-child{border:0;min-width:30px;font-size:20px;font-weight:400;background:transparent}
+
+/* Minimal customer product-registration sheet. Keep upload form fields and handlers intact. */
+.suggest-sheet .sheethead{margin-bottom:13px}
+.suggest-sheet .sheethead h2{font-size:19px;line-height:1.3;letter-spacing:-.04em;font-weight:760}
+.suggest-sheet .suggest-intro{margin:0 0 20px;color:#737373;font-size:12px;line-height:1.6}
+#suggest-form.suggest-clean-form{display:flex;flex-direction:column;gap:15px;margin:0}
+#suggest-form .label,#suggest-form .suggest-field-label{display:block;margin:0;color:#282828;font-size:12px;line-height:1.5;font-weight:680}
+#suggest-form .label input:not([type=file]),#suggest-form .label select,#suggest-form .label textarea{
+ box-sizing:border-box;display:block;width:100%;max-width:100%;min-width:0;
+ margin:6px 0 0;padding:10px 12px;border:1px solid #dedede;border-radius:7px;
+ color:#171717;background:#fff;box-shadow:none;font-size:16px;font-weight:400;line-height:1.4;
+}
+#suggest-form .label input:not([type=file]),#suggest-form .label select{min-height:46px;height:46px}
+#suggest-form .label input::placeholder,#suggest-form .label textarea::placeholder{color:#aaa;font-size:14px;font-weight:400;opacity:1}
+#suggest-form .label select{padding-right:31px}
+#suggest-form .label textarea{min-height:79px;resize:vertical}
+#suggest-form .suggest-photo-field{margin:0;min-width:0}
+#suggest-form .suggest-photo-picker{
+ position:relative;display:flex;align-items:center;gap:11px;min-height:55px;
+ margin:6px 0 0;padding:9px 12px;box-sizing:border-box;min-width:0;
+ border:1px solid #dedede;border-radius:7px;background:#fff;color:#111;cursor:pointer;
+}
+#suggest-form .suggest-picker-button{
+ display:inline-flex;align-items:center;justify-content:center;gap:3px;flex:none;
+ min-height:32px;padding:6px 10px;background:#f3f3f3;border-radius:5px;
+ color:#222;font-size:12px;font-weight:700;white-space:nowrap;
+}
+#suggest-form .suggest-picker-button span{font-size:16px;line-height:1}
+#suggest-form .suggest-picker-count{min-width:0;color:#888;font-size:11px;font-weight:400;line-height:1.4;word-break:keep-all}
+#suggest-form .suggest-photo-picker input[type=file]{
+ position:absolute;inset:0;display:block;width:100%;height:100%;margin:0;padding:0;
+ min-height:0;opacity:0;cursor:pointer;z-index:1
+}
+#suggest-form .suggest-photo-picker:focus-within{outline:2px solid #222;outline-offset:2px}
+#suggest-form .suggest-photo-previews{margin:10px 0 0}
+#suggest-form .suggest-email-field .label{margin:0}
+#suggest-form .suggest-email-note{margin:6px 0 0;color:#888;font-size:11px;line-height:1.55}
+#suggest-form .suggest-optional{font-size:11px;font-weight:400;color:#999;margin-left:3px}
+#suggest-form .suggest-submit-note{margin:1px 0 -5px;font-size:11px;line-height:1.5;color:#8a8a8a}
+#suggest-form > button[type=submit]{width:100%;min-height:48px;padding:12px;border-radius:7px;font-size:14px;font-weight:750}
+@media(max-width:380px){
+ #suggest-form .suggest-photo-picker{gap:7px;padding:8px}
+ #suggest-form .suggest-picker-button{padding:7px 8px}
+ #suggest-form .suggest-picker-count{font-size:10px}
+}
+
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -2515,11 +2561,11 @@ const PRODUCT_CATEGORIES=['바디수트','세트','상의','하의','아우터',
 const validProductCategory=x=>PRODUCT_CATEGORIES.includes(String(x||'').trim());
 const categoryLabel=p=>validProductCategory(p?.category)?p.category:'미분류';
 const categoryFilterKeys=['all',...PRODUCT_CATEGORIES,'uncategorized'];
-function productCategoryInput(selected,required=true){
+function productCategoryInput(selected,required=true,compact=false){
  const value=validProductCategory(selected)?selected:'';
- return `<label class="label">상품 카테고리 ${required?'(필수)':'(기존 미분류 상품)'}
+ return `<label class="label">${compact?'상품 카테고리':'상품 카테고리 '+(required?'(필수)':'(기존 미분류 상품)')}
   <select name="category" ${required?'required':''} aria-label="상품 카테고리">
-   <option value="" ${value?'':'selected'}>${required?'카테고리를 선택해 주세요':'미분류 (필요할 때 분류)'}</option>
+   <option value="" ${value?'':'selected'}>${required?(compact?'카테고리 선택':'카테고리를 선택해 주세요'):'미분류 (필요할 때 분류)'}</option>
    ${PRODUCT_CATEGORIES.map(c=>`<option value="${c}" ${value===c?'selected':''}>${c}</option>`).join('')}
   </select>
  </label>`;
@@ -4104,7 +4150,7 @@ function updateSuggestPhotoPreviews(input){
   notif('이미지 사진만 최대 9장, 장당 35MB 이하로 선택할 수 있어요.');
   return;
  }
- if(count)count.textContent=files.length?`사진 ${files.length}장 선택 · 첫 번째 사진이 대표사진이에요.`:'사진을 여러 장 선택할 수 있어요.';
+ if(count)count.textContent=files.length?`${files.length}장 선택 · 첫 번째가 대표사진`:'최대 9장 · 첫 번째가 대표사진';
  if(box){
   box.innerHTML=files.map((file,i)=>{
    const u=URL.createObjectURL(file);suggestPreviewUrls.push(u);
@@ -5497,7 +5543,7 @@ function renderAdminSettings(){return `<section class="card pushbox pushbox-sett
   <div class="admin-push-test-buttons"><button type="button" class="btn secondary" data-action="send-test-push">내 기기에 테스트 알림</button><button type="button" class="btn secondary" data-action="send-buyer-test-push">구매자 주문 알림 테스트</button></div>
  </div>
  </details></section>${renderEmailNotificationSettings()}<div class="card hero-photo-settings"><h3>메인 사진 관리</h3><p class="smallnote">현재는 정해진 주기로 자동 변경되지 않아요. 설정한 사진은 다음에 바꾸기 전까지 유지돼요.</p><div class="hero-settings-preview">${currentHeroPhotoUrl()?`<img src="${esc(currentHeroPhotoUrl())}" alt="현재 메인 사진">`:'<div class="hero-settings-placeholder">등록된 상품 사진이 없어요.</div>'}</div><button class="btn block secondary" type="button" data-action="random-hero-photo">🎲 랜덤 상품 사진으로 변경</button><p class="smallnote">고객에게 전시 중인 판매 가능 상품에서 대표사진을 랜덤으로 선택해 저장해요.</p><form id="hero-photo-form"><label class="label">새 메인 사진 선택<input type="file" name="hero_photo" id="hero-photo-input" accept="image/*" required></label><p class="smallnote">세로형 사진을 추천해요. 원본이 커도 자동으로 크기를 줄여 저장해요.</p><button class="btn block" type="submit">메인 사진 변경하기</button></form>${state.heroPhotoUrl?'<button class="btn block secondary" style="margin-top:9px" type="button" data-action="reset-hero-photo">기존 자동 사진으로 되돌리기</button>':''}</div><div class="card"><h3>고객에게 보낼 주소</h3><p class="smallnote">상품 고르고 견적 요청을 보낼 수 있는 링크예요.</p><div class="info nooverflow">${esc(publicLink())}</div><button class="btn block" data-action="copy-shop-link">주문 링크 복사</button><div class="separator"></div><button class="btn block secondary" data-action="export-csv">주문 내역 CSV 저장</button>${connected?'<button class="btn block neutral" style="margin-top:9px" data-action="logout">관리자 로그아웃</button>':''}<p class="smallnote">가격·주문별 배송비·품절·상품 준비·입금 상태는 관리자 전용입니다. 아직 견적만 요청한 상품은 확정 주문 수량에 포함되지 않아요.</p></div>`}
-function modal(){const m=state.modal;if(!m)return '';const wrap=(title,body,stickyProductSave=false)=>stickyProductSave?`<div class="overlay" id="overlay"><div class="sheet sheet-product-editor" role="dialog" aria-modal="true"><div class="sheethead"><h2>${title}</h2><button class="close" data-action="close">×</button></div><div class="sheet-product-scroll">${body}</div><div class="sheet-product-save"><button class="btn block" type="submit" form="product-form">상품 저장</button></div></div></div>`:`<div class="overlay" id="overlay"><div class="sheet${m.type==='myquotes'?' myquotes-swipe-sheet':''}" role="dialog" aria-modal="true">${m.type==='myquotes'?'<div class="sheet-drag-handle" aria-hidden="true"></div>':''}<div class="sheethead"><h2>${title}</h2><button class="close" data-action="close">×</button></div>${body}</div></div>`;
+function modal(){const m=state.modal;if(!m)return '';const wrap=(title,body,stickyProductSave=false)=>stickyProductSave?`<div class="overlay" id="overlay"><div class="sheet sheet-product-editor" role="dialog" aria-modal="true"><div class="sheethead"><h2>${title}</h2><button class="close" data-action="close">×</button></div><div class="sheet-product-scroll">${body}</div><div class="sheet-product-save"><button class="btn block" type="submit" form="product-form">상품 저장</button></div></div></div>`:`<div class="overlay" id="overlay"><div class="sheet${m.type==='myquotes'?' myquotes-swipe-sheet':''}${m.type==='suggest'?' suggest-sheet':''}" role="dialog" aria-modal="true">${m.type==='myquotes'?'<div class="sheet-drag-handle" aria-hidden="true"></div>':''}<div class="sheethead"><h2>${title}</h2><button class="close" data-action="close">×</button></div>${body}</div></div>`;
 if(m.type==='entry-push')return wrap('신상·주문 알림 받기',renderEntryPushBody());
 if(m.type==='buyer-order-details'){
  if(!state.admin||state.page!=='admin')return '';
@@ -5514,7 +5560,30 @@ if(m.type==='edit-delivery'){
  <p class="smallnote">고객 수령 배송비: 택배 3,000원 자동 적용 · 직접수령 0원 (묶음배송 추가 주문 제외)</p><form id="edit-delivery-form"><label class="label">수령방식<select name="delivery_method" id="deliveryMethodEdit" required><option value="pickup" ${method==='pickup'?'selected':''}>직접수령</option><option value="courier" ${isCourier?'selected':''}>택배수령 (+3,000원)</option></select></label>
  <div id="courierFieldsEdit" class="delivery-fields ${isCourier?'':'hidden'}"><label class="label">받는 사람<input name="recipient_name" maxlength="80" value="${field('recipient_name')}" data-courier-required ${isCourier?'required':'disabled'}></label><div class="address-tools"><button class="btn secondary" type="button" data-action="search-address">🔎 주소 검색</button><button class="textbutton address-manual" type="button" data-action="manual-address">주소 직접 입력</button></div><div class="postcode-search hidden" data-postcode-panel><div class="row between"><b>우편번호·주소 찾기</b><button type="button" class="btn sm neutral" data-action="close-address-search">닫기</button></div><div class="address-search-hint">도로명이나 건물 이름을 검색하고 주소를 선택해 주세요.</div><div class="postcode-mount" data-postcode-mount></div></div><label class="label">우편번호 (5자리)<input name="postal_code" readonly data-address-postal maxlength="5" inputmode="numeric" pattern="[0-9]{5}" value="${field('postal_code')}" data-courier-required ${isCourier?'required':'disabled'}></label><label class="label">주소<input name="address_line1" readonly data-address-primary maxlength="250" value="${field('address_line1')}" data-courier-required ${isCourier?'required':'disabled'}></label><label class="label">상세주소 (선택)<input name="address_line2" maxlength="250" value="${field('address_line2')}" ${isCourier?'':'disabled'}></label><label class="label">배송 요청사항 (선택)<input name="delivery_note" maxlength="200" value="${field('delivery_note')}" ${isCourier?'':'disabled'}></label></div><button type="submit" class="btn block">${q.status==='confirmed'||isBundle(q)?'변경 요청 보내기':'수령방식 수정 저장'}</button></form>`);
 }
-if(m.type==='suggest'){return wrap('상품 등록 신청',`<div class="filehelp">상품명·남대문 도매업체 이름과 사진을 첨부해 주세요. 첫 번째 사진이 대표사진이며, 최대 9장까지 한 번에 신청할 수 있어요. 관리자가 승인한 뒤에만 실제 상품 목록에 등록돼요. <b>이 신청은 견적 요청이나 최종 주문이 아니에요.</b></div><form id="suggest-form" style="margin-top:16px"><label class="label">남대문 도매업체 이름<input required name="store" maxlength="100" placeholder="예: 오뜨베베"></label><label class="label">상품명<input required name="name" maxlength="100" placeholder="예: 하트호피 전신슈트"></label>${productCategoryInput('',true)}<label class="label">상품 사진 첨부 (필수 · 최대 9장)<input name="photo" type="file" accept="image/*" multiple required id="suggest-photo"></label><div class="smallnote" id="suggest-photo-count" aria-live="polite">사진을 여러 장 선택할 수 있어요. 첫 번째 사진이 대표사진이에요.</div><div id="suggest-previews" class="suggest-photo-previews hidden" aria-label="신청 사진 미리보기"></div><label class="label">신청자 이름 (필수)<input name="customer" maxlength="40" required autocomplete="name" placeholder="신청자 이름을 입력해 주세요"></label><label class="label">이메일 주소 (필수 · 상품등록 결과 알림)<input name="email" type="email" inputmode="email" autocomplete="email" maxlength="254" required placeholder="example@gmail.com"></label><p class="smallnote">상품 등록 완료 또는 반려 결과를 이 이메일로 안내해 드려요. 발송 서비스 설정 전에는 알림이 지연될 수 있어요.</p><label class="label">메모 (선택)<textarea name="note" maxlength="300" placeholder="상품에 대해 참고할 내용"></textarea></label><button class="btn block" type="submit">상품 등록 신청 보내기</button></form>`)}
+if(m.type==='suggest'){return wrap('상품 등록 신청',`
+ <p class="suggest-intro">도매업체와 상품 정보를 보내주시면 확인 후 등록해요.</p>
+ <form id="suggest-form" class="suggest-clean-form">
+  <label class="label">도매업체명<input required name="store" maxlength="100" placeholder="예: 오뜨베베"></label>
+  <label class="label">상품명<input required name="name" maxlength="100" placeholder="예: 하트호피 전신슈트"></label>
+  ${productCategoryInput('',true,true)}
+  <div class="suggest-photo-field">
+   <div class="suggest-field-label">상품 사진</div>
+   <label class="suggest-photo-picker">
+    <span class="suggest-picker-button" aria-hidden="true"><span>＋</span> 사진 선택</span>
+    <span id="suggest-photo-count" class="suggest-picker-count" aria-live="polite">최대 9장 · 첫 번째가 대표사진</span>
+    <input name="photo" type="file" accept="image/*" multiple required id="suggest-photo" aria-label="상품 사진 선택">
+   </label>
+   <div id="suggest-previews" class="suggest-photo-previews hidden" aria-label="신청 사진 미리보기"></div>
+  </div>
+  <label class="label">신청자 이름<input name="customer" maxlength="40" required autocomplete="name" placeholder="신청자 이름"></label>
+  <div class="suggest-email-field">
+   <label class="label">이메일 주소<input name="email" type="email" inputmode="email" autocomplete="email" maxlength="254" required placeholder="example@gmail.com"></label>
+   <p class="suggest-email-note">등록 결과를 이메일로 안내해요. 발송 설정에 따라 지연될 수 있어요.</p>
+  </div>
+  <label class="label">메모 <span class="suggest-optional">선택</span><textarea name="note" maxlength="300" placeholder="참고할 내용이 있다면 적어주세요"></textarea></label>
+  <p class="suggest-submit-note">상품 등록 신청은 견적이나 주문이 아니에요.</p>
+  <button class="btn block" type="submit">상품 등록 신청하기</button>
+ </form>`)}
 if(m.type==='reject-request'){
  const req=state.requests.find(r=>r.id===m.id&&r.status==='pending');
  if(!req)return '';

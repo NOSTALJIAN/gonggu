@@ -1979,6 +1979,23 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 }
 /* Home already shows products; the clickable MINIYENA wordmark returns home. */
 .shop-bottom-nav{grid-template-columns:repeat(3,minmax(0,1fr));}
+/* Order lookup: downward swipe on grabber or title closes the sheet.
+   Input fields and scrollable content remain fully interactive. */
+.myquotes-swipe-sheet{will-change:transform}
+.myquotes-swipe-sheet .sheet-drag-handle{
+ position:relative;height:32px;margin:-15px -17px 6px;
+ touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none;
+}
+.myquotes-swipe-sheet .sheet-drag-handle:after{
+ content:"";position:absolute;top:13px;left:50%;transform:translateX(-50%);
+ width:39px;height:5px;border-radius:99px;background:#d1d1d1;
+}
+.myquotes-swipe-sheet .sheethead{
+ touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab;
+}
+.myquotes-swipe-sheet .sheethead .close{cursor:pointer}
+@media(prefers-reduced-motion:reduce){.myquotes-swipe-sheet{transition:none!important}}
+
 /* MINIYENA compact bottom navigation: preserve 44px tap targets and iPhone home-indicator clearance. */
 .shop-bottom-nav{
  padding:5px 6px max(11px,calc(env(safe-area-inset-bottom) - 11px));
@@ -4775,7 +4792,7 @@ function renderEmailNotificationSettings(){
  </section>`;
 }
 function renderAdminSettings(){return `${renderEmailNotificationSettings()}<div class="card hero-photo-settings"><h3>메인 사진 관리</h3><p class="smallnote">현재는 정해진 주기로 자동 변경되지 않아요. 설정한 사진은 다음에 바꾸기 전까지 유지돼요.</p><div class="hero-settings-preview">${currentHeroPhotoUrl()?`<img src="${esc(currentHeroPhotoUrl())}" alt="현재 메인 사진">`:'<div class="hero-settings-placeholder">등록된 상품 사진이 없어요.</div>'}</div><button class="btn block secondary" type="button" data-action="random-hero-photo">🎲 랜덤 상품 사진으로 변경</button><p class="smallnote">고객에게 전시 중인 판매 가능 상품에서 대표사진을 랜덤으로 선택해 저장해요.</p><form id="hero-photo-form"><label class="label">새 메인 사진 선택<input type="file" name="hero_photo" id="hero-photo-input" accept="image/*" required></label><p class="smallnote">세로형 사진을 추천해요. 원본이 커도 자동으로 크기를 줄여 저장해요.</p><button class="btn block" type="submit">메인 사진 변경하기</button></form>${state.heroPhotoUrl?'<button class="btn block secondary" style="margin-top:9px" type="button" data-action="reset-hero-photo">기존 자동 사진으로 되돌리기</button>':''}</div><div class="card"><h3>고객에게 보낼 주소</h3><p class="smallnote">상품 고르고 견적 요청을 보낼 수 있는 링크예요.</p><div class="info nooverflow">${esc(publicLink())}</div><button class="btn block" data-action="copy-shop-link">주문 링크 복사</button><div class="separator"></div><button class="btn block secondary" data-action="export-csv">주문 내역 CSV 저장</button>${connected?'<button class="btn block neutral" style="margin-top:9px" data-action="logout">관리자 로그아웃</button>':''}<p class="smallnote">가격·주문별 배송비·품절·상품 준비·입금 상태는 관리자 전용입니다. 아직 견적만 요청한 상품은 확정 주문 수량에 포함되지 않아요.</p></div>`}
-function modal(){const m=state.modal;if(!m)return '';const wrap=(title,body,stickyProductSave=false)=>stickyProductSave?`<div class="overlay" id="overlay"><div class="sheet sheet-product-editor" role="dialog" aria-modal="true"><div class="sheethead"><h2>${title}</h2><button class="close" data-action="close">×</button></div><div class="sheet-product-scroll">${body}</div><div class="sheet-product-save"><button class="btn block" type="submit" form="product-form">상품 저장</button></div></div></div>`:`<div class="overlay" id="overlay"><div class="sheet" role="dialog" aria-modal="true"><div class="sheethead"><h2>${title}</h2><button class="close" data-action="close">×</button></div>${body}</div></div>`;
+function modal(){const m=state.modal;if(!m)return '';const wrap=(title,body,stickyProductSave=false)=>stickyProductSave?`<div class="overlay" id="overlay"><div class="sheet sheet-product-editor" role="dialog" aria-modal="true"><div class="sheethead"><h2>${title}</h2><button class="close" data-action="close">×</button></div><div class="sheet-product-scroll">${body}</div><div class="sheet-product-save"><button class="btn block" type="submit" form="product-form">상품 저장</button></div></div></div>`:`<div class="overlay" id="overlay"><div class="sheet${m.type==='myquotes'?' myquotes-swipe-sheet':''}" role="dialog" aria-modal="true">${m.type==='myquotes'?'<div class="sheet-drag-handle" aria-hidden="true"></div>':''}<div class="sheethead"><h2>${title}</h2><button class="close" data-action="close">×</button></div>${body}</div></div>`;
 if(m.type==='buyer-order-details'){
  if(!state.admin||state.page!=='admin')return '';
  const q=state.quotes.find(x=>x.id===m.id);
@@ -6488,6 +6505,49 @@ app.addEventListener('keydown',e=>{
   if(first||newChoice)(first||newChoice).click();
  }
 });
+// Keep this gesture specific to the customer order-lookup sheet only.
+// A drag must start at the grabber/title, never on a form field or scrolled content.
+let myQuotesSwipe=null;
+app.addEventListener('pointerdown',e=>{
+ const handle=e.target.closest?.('.myquotes-swipe-sheet .sheet-drag-handle, .myquotes-swipe-sheet .sheethead');
+ if(!handle||e.target.closest('button,a,input,textarea,select,[contenteditable]'))return;
+ if(e.pointerType==='mouse'&&e.button!==0)return;
+ const sheet=handle.closest('.myquotes-swipe-sheet');
+ if(!sheet||state.modal?.type!=='myquotes')return;
+ myQuotesSwipe={id:e.pointerId,y:e.clientY,distance:0,sheet};
+ sheet.style.transition='none';
+ try{handle.setPointerCapture(e.pointerId)}catch(_){}
+});
+app.addEventListener('pointermove',e=>{
+ const drag=myQuotesSwipe;
+ if(!drag||drag.id!==e.pointerId||!drag.sheet.isConnected)return;
+ drag.distance=Math.max(0,e.clientY-drag.y);
+ drag.sheet.style.transform=drag.distance?('translate3d(0,'+Math.min(drag.distance,window.innerHeight)+'px,0)'):'';
+});
+function finishMyQuotesSwipe(e,cancelled){
+ const drag=myQuotesSwipe;
+ if(!drag||drag.id!==e.pointerId)return;
+ myQuotesSwipe=null;
+ const sheet=drag.sheet;
+ if(!sheet.isConnected)return;
+ if(!cancelled&&drag.distance>=110&&state.modal?.type==='myquotes'){
+  sheet.style.transition='transform .18s ease-out';
+  sheet.style.transform='translate3d(0,100dvh,0)';
+  window.setTimeout(()=>{
+   if(sheet.isConnected&&state.modal?.type==='myquotes'){
+    state.modal=null;
+    render();
+   }
+  },185);
+ }else{
+  sheet.style.transition='transform .18s ease-out';
+  sheet.style.transform='';
+  window.setTimeout(()=>{if(sheet.isConnected)sheet.style.transition='';},185);
+ }
+}
+app.addEventListener('pointerup',e=>finishMyQuotesSwipe(e,false));
+app.addEventListener('pointercancel',e=>finishMyQuotesSwipe(e,true));
+
 app.addEventListener('pointerdown',startAdminPhotoDrag,{passive:false});
 app.addEventListener('pointermove',moveAdminPhotoDrag,{passive:false});
 app.addEventListener('pointerup',endAdminPhotoDrag);

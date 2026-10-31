@@ -5670,6 +5670,13 @@ function renderSupplierShippingForm(q){
  if(q.status!=='confirmed'&&!(q.status==='quoted'&&q.purchase_intent==='buy_now'))
   return '<p class="smallnote">도매배송비는 견적을 먼저 보내고 구매자가 이번 회차 구매를 선택한 뒤 계산해 주세요.</p>';
  const batches=supplierBatchesForQuote(q);
+ const liveItems=(q.items||[]).filter(i=>i.fulfillment!=='sold_out');
+ const direct1688=liveItems.length>0&&state.productPrivateReady&&liveItems.every(i=>isChinaDirectSupplier(state.productPrivate[i.product_id]?.supplier_name));
+ if(direct1688){
+  const done=Boolean(q.supplier_shipping_manual_confirmed_at);
+  return `<div class="info" style="margin:12px 0"><b>1688 직접 사입 · 도매배송비 0원</b><p class="smallnote">중국 직접 사입은 도매배송비를 나누지 않아요. 0원으로 확정하면 구매자가 최종 주문을 진행할 수 있어요.</p>
+  ${done?'<b>✓ 도매배송비 0원 확정 완료 · 구매자 최종 주문 가능</b>':`<button type="button" class="btn block" data-action="confirm-1688-freight" data-id="${esc(q.id)}">1688 배송비 0원 확정 · 주문 진행</button>`}</div>`;
+ }
  if(batches.length)return `<div class="supplier-shipping-batched"><b>거래처별 도매배송비</b>
   ${batches.map(b=>`<div class="smallnote">· ${esc(b.supplier)} · ${b.people}명 분담 · ${b.ordered_at?'도매 발주 완료':'발주 대기'}</div>`).join('')}
   <div class="smallnote">이 주문 도매배송비 합계 <b>${money(supplierShippingShare(q))}</b></div>
@@ -6445,7 +6452,15 @@ else if(a==='suggest-product'){modalOpen('suggest')}else if(a==='approve-request
   catch(e){if(e?.name==='AbortError')return}
  }
  await copy(link);notif('링크를 복사했어요. 카톡 나와의 채팅에 붙여넣어 보관해 주세요.');
-}else if(a==='copy-track'){await copy(trackLink(state.trackId,state.trackToken))}else if(a==='load-track'){refreshFullOrderPage();return;}else if(a==='copy-quote'){await copy(quoteText(state.quotes.find(q=>q.id===id)))}else if(a==='copy-customer-link'){const q=state.quotes.find(q=>q.id===id);await copy(trackLink(q.id,q.lookup_token))}else if(a==='publish-quote'){if(!window.confirm('상품 가격을 확인했나요? 고객에게 먼저 견적을 보내고 이번 회차 구매·다음 회차 구매·보류 선택을 받을게요. 배송비는 답변을 받은 뒤 계산해요.'))return;await adminPublish(id);await loadAdmin();notif('견적을 보냈어요. 구매 회차 선택을 받은 후 배송비를 배분해 주세요.')}else if(a==='confirm-quote'){if(!window.confirm('이 견적으로 최종 주문을 확정할까요?'))return;await confirmFinalQuote();notif('최종 주문이 확정됐어요!')}else if(a==='export-csv'){csv()}else if(a==='copy-vendors'){await copy(vendorText())}else if(a==='logout'){session=null;localStorage.removeItem(SESS);state.admin=false;state.productPrivate={};state.productPrivateReady=false;render()} }catch(ex){notif(errorText(ex))}}
+}else if(a==='copy-track'){await copy(trackLink(state.trackId,state.trackToken))}else if(a==='load-track'){refreshFullOrderPage();return;}else if(a==='copy-quote'){await copy(quoteText(state.quotes.find(q=>q.id===id)))}else if(a==='copy-customer-link'){const q=state.quotes.find(q=>q.id===id);await copy(trackLink(q.id,q.lookup_token))}else if(a==='confirm-1688-freight'){
+ const q=state.quotes.find(x=>x.id===id);
+ const items=(q?.items||[]).filter(i=>i.fulfillment!=='sold_out');
+ if(!q||!items.length||!state.productPrivateReady||!items.every(i=>isChinaDirectSupplier(state.productPrivate[i.product_id]?.supplier_name)))throw Error('1688 직접 사입 상품만 0원으로 확정할 수 있어요.');
+ await adminSupplierShipping(q.id,0,1);
+ state.orderCardsOpen[q.bundle_parent_id||q.id]=true;
+ await loadAdmin();
+ notif('1688 도매배송비 0원 확정 완료! 구매자에게 최종 주문을 안내할 수 있어요.');
+ }else if(a==='publish-quote'){if(!window.confirm('상품 가격을 확인했나요? 고객에게 먼저 견적을 보내고 이번 회차 구매·다음 회차 구매·보류 선택을 받을게요. 배송비는 답변을 받은 뒤 계산해요.'))return;await adminPublish(id);await loadAdmin();notif('견적을 보냈어요. 구매 회차 선택을 받은 후 배송비를 배분해 주세요.')}else if(a==='confirm-quote'){if(!window.confirm('이 견적으로 최종 주문을 확정할까요?'))return;await confirmFinalQuote();notif('최종 주문이 확정됐어요!')}else if(a==='export-csv'){csv()}else if(a==='copy-vendors'){await copy(vendorText())}else if(a==='logout'){session=null;localStorage.removeItem(SESS);state.admin=false;state.productPrivate={};state.productPrivateReady=false;render()} }catch(ex){notif(errorText(ex))}}
 async function submit(e){const f=e.target;
 if(f.id==='shop-page-jump-form'){
  e.preventDefault();

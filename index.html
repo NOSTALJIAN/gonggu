@@ -1981,6 +1981,8 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 .shop-bottom-nav{grid-template-columns:repeat(3,minmax(0,1fr));}
 /* Order lookup: downward swipe on grabber or title closes the sheet.
    Input fields and scrollable content remain fully interactive. */
+.overlay{overscroll-behavior:none}
+.overlay .sheet{overscroll-behavior-y:contain}
 .myquotes-swipe-sheet{will-change:transform}
 .myquotes-swipe-sheet .sheet-drag-handle{
  position:relative;height:32px;margin:-15px -17px 6px;
@@ -2983,10 +2985,36 @@ async function miniEnablePush(){
  miniPushStatus();
 }
 const adminFoldState=new Map();
+// Freeze the page beneath dialogs, including iOS standalone Safari.
+let modalPageLock=null;
+function syncModalPageLock(){
+ const open=!!app.querySelector('.overlay');
+ const body=document.body,root=document.documentElement;
+ const properties=['position','top','left','width','overflow'];
+ if(open&&!modalPageLock){
+  modalPageLock={x:window.scrollX,y:window.scrollY,body:properties.map(key=>[key,body.style[key]]),overflow:root.style.overflow};
+  body.style.position='fixed';
+  body.style.top=-modalPageLock.y+'px';
+  body.style.left=-modalPageLock.x+'px';
+  body.style.width='100%';
+  body.style.overflow='hidden';
+  root.style.overflow='hidden';
+ }else if(!open&&modalPageLock){
+  const saved=modalPageLock;
+  modalPageLock=null;
+  saved.body.forEach(([key,value])=>{body.style[key]=value;});
+  root.style.overflow=saved.overflow;
+  const behavior=root.style.scrollBehavior;
+  root.style.scrollBehavior='auto';
+  window.scrollTo({left:saved.x,top:saved.y,behavior:'instant'});
+  root.style.scrollBehavior=behavior;
+ }
+}
 function render(){
  const adminScrollPositions=['.admin-main-tabs','.admin-product-filter-list','.admin-category-list','.admin-quote-primary-filters'].map(selector=>[selector,app.querySelector(selector)?.scrollLeft||0]);
  app.querySelectorAll("details[data-fold-key]").forEach(el=>adminFoldState.set(el.dataset.foldKey,el.open));cancelAdminPhotoDrag();app.innerHTML=`<main class="shell ${state.page==='admin'?'is-admin-shell':''}">${header()}${demoNotice()}${state.page==='admin'?renderAdmin():state.page==='track'?renderTrack():renderShop()}${shopBottomNav()}<div class="floating-actions" aria-label="화면 바로가기"><button class="floating-refresh" type="button" data-action="reload-app" aria-label="최신 화면으로 새로고침" title="새로고침"><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8.1 8.1 0 0 0-15.5-2"/><path d="M4 4v5h5"/><path d="M4 13a8.1 8.1 0 0 0 15.5 2"/><path d="M20 20v-5h-5"/></svg><span>새로고침</span></button><button class="back-to-top" type="button" data-action="scroll-top" aria-label="맨 위로 이동" aria-hidden="true" tabindex="-1"><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 13 7-7 7 7M12 6v12"/></svg><span>위로</span></button></div></main>${renderModal()}`;app.querySelectorAll("details[data-fold-key]").forEach(el=>{el.open=adminFoldState.get(el.dataset.foldKey)===true});
  adminScrollPositions.forEach(([selector,left])=>{const el=app.querySelector(selector);if(el)el.scrollLeft=left;});
+ syncModalPageLock();
  updateScrollTop();updateProcurementSchedule();if(state.admin){updateSupplierBulkPreview();queueMicrotask(()=>showRequestImages().catch(console.error));queueMicrotask(()=>miniPushStatus().catch(console.warn));}}
 function updateScrollTop(){const btn=app.querySelector('.back-to-top');if(!btn)return;const visible=window.scrollY>440&&!state.modal;btn.classList.toggle('is-visible',visible);btn.tabIndex=visible?0:-1;btn.setAttribute('aria-hidden',String(!visible));}
 const steps=idx=>`<div class="quote-step">${['① 상품 담기','② 견적 요청','③ 가격 확인','④ 최종 주문'].map((x,i)=>`<span class="${i===idx?'current':''}">${x}</span>${i<3?'<i></i>':''}`).join('')}</div>`;

@@ -2035,7 +2035,6 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 .catalog-photo-slide{flex:0 0 100%;width:100%;min-width:0;height:100%;padding:0;border:0;background:#f0f0f0;scroll-snap-align:start;scroll-snap-stop:always;cursor:pointer}
 .catalog-photo-slide img{pointer-events:none;user-select:none;-webkit-user-select:none}
 .catalog-photo-slide:focus-visible{outline:2px solid #111;outline-offset:-3px}
-.catalog-photo-count{position:absolute;right:8px;top:8px;padding:3px 7px;border-radius:12px;background:#0007;color:white;font-size:10px;line-height:1.5;pointer-events:none;font-variant-numeric:tabular-nums}
 .catalog-photo-dots{position:absolute;bottom:2px;left:50%;transform:translateX(-50%);display:flex;max-width:100%;padding:0 3px}
 .catalog-photo-dots button{border:0;background:transparent;padding:8px 4px;min-width:14px;min-height:28px;display:grid;place-items:center}
 .catalog-photo-dots span{display:block;width:5px;height:5px;border-radius:50%;background:#ffffff80;box-shadow:0 0 2px #0008}
@@ -2854,7 +2853,6 @@ function catalogPhotoGallery(p){
   <div class="catalog-photo-track" aria-label="${esc(p.name)} 상품 사진">
    ${photos.map((src,i)=>`<button class="catalog-photo-slide" type="button" data-action="${action}" data-id="${esc(p.id)}" aria-label="${label} · 사진 ${i+1}/${photos.length}"><img class="product-cover" src="${esc(src)}" alt="${esc(p.name)} 사진 ${i+1}" loading="lazy" draggable="false"></button>`).join('')}
   </div>
-  <span class="catalog-photo-count" aria-hidden="true">1 / ${photos.length}</span>
   <div class="catalog-photo-dots" aria-label="사진 선택">${photos.map((_,i)=>`<button type="button" data-action="catalog-photo-index" data-index="${i}" aria-label="${i+1}번 사진" aria-pressed="${i===0}"><span></span></button>`).join('')}</div>
  </div>`;
 }
@@ -6574,7 +6572,6 @@ app.addEventListener('scroll',e=>{
  const gallery=track.closest('[data-catalog-gallery]');
  const count=track.children.length;
  const index=Math.max(0,Math.min(count-1,Math.round(track.scrollLeft/(track.clientWidth||1))));
- gallery.querySelector('.catalog-photo-count').textContent=(index+1)+' / '+count;
  gallery.querySelectorAll('.catalog-photo-dots button').forEach((button,i)=>button.setAttribute('aria-pressed',String(i===index)));
  track.dataset.suppressClickUntil=String(Date.now()+250);
 },true);

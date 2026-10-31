@@ -3144,9 +3144,14 @@ async function miniRegisterAdminAlias(){
   if(ready?.ok&&ready.client.User.PushSubscription.optedIn)await ready.client.User.addAlias('miniyena_admin','manager');
  }catch(e){console.warn('관리자 푸시 대상 등록 실패',e)}
 }
-function miniNotifyAdminEvent(event){
- if(!connected||!state.trackId||!state.trackToken)return;
- fetch(url+'/functions/v1/gq-admin-event-push',{method:'POST',headers:{'Content-Type':'application/json','apikey':key},body:JSON.stringify({quote_id:state.trackId,lookup_token:state.trackToken,event})}).catch(e=>console.warn('관리자 알림 전송 실패',e));
+async function miniNotifyAdminEvent(event){
+ if(!connected||!state.trackId||!state.trackToken)return false;
+ try{
+  const res=await fetch(url+'/functions/v1/gq-admin-event-push',{method:'POST',headers:{'Content-Type':'application/json','apikey':key},body:JSON.stringify({quote_id:state.trackId,lookup_token:state.trackToken,event})});
+  const result=await res.json();
+  if(!res.ok||!result.ok)console.warn('관리자 푸시 발송 실패',event,res.status,result);
+  return res.ok&&result.ok===true;
+ }catch(e){console.warn('관리자 알림 전송 실패',e);return false;}
 }
 async function miniEnablePush(){
  if(!connected||!state.admin)throw Error('관리자로 로그인한 뒤 알림을 허용해 주세요.');
@@ -5627,8 +5632,8 @@ async function withdrawCancellation(){
  if(!window.confirm('취소 요청을 철회하고 기존 주문을 계속 진행할까요?'))return;
  if(!connected){const found=demo.quotes.find(x=>x.id===state.trackId&&x.lookup_token===state.trackToken);if(!found)throw Error('주문을 찾을 수 없어요.');found.cancel_requested_at=null;found.cancel_reason=null;saveDemo();}
  else {const ok=await rpc('gq_withdraw_cancel_request',{p_quote_id:state.trackId,p_lookup_token:state.trackToken});if(!ok)throw Error('관리자가 이미 취소를 처리했거나 요청이 변경됐어요.');}
- if(connected)miniNotifyAdminEvent('cancel_withdrawn');
- await reloadTracking();notif('취소 요청을 철회했어요. 기존 주문이 유지돼요.');
+ const pushOk=connected?await miniNotifyAdminEvent('cancel_withdrawn'):true;
+ await reloadTracking();notif(pushOk?'취소 요청을 철회했어요. 기존 주문이 유지돼요.':'취소 요청은 철회됐지만 관리자 푸시 발송이 확인되지 않았어요. 메일은 별도로 발송돼요.');
 }
 async function decideCancellation(id,accept){
  const q=state.quotes.find(x=>x.id===id);

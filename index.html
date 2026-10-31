@@ -2068,6 +2068,16 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
  height:66px;
  background:linear-gradient(to bottom,rgba(255,255,255,0) 0%,rgba(255,255,255,.12) 20%,rgba(255,255,255,.5) 52%,rgba(255,255,255,.88) 80%,#fff 100%);
 }
+/* Clean hero photo: original caption position, automatic text tone, no gradients. */
+.shop-content .shop-editorial .shop-editorial-copy{bottom:0}
+.shop-content .shop-editorial[data-copy-tone="light"] .shop-editorial-copy{bottom:0}
+.shop-content .shop-editorial .shop-editorial-visual.has-photo:before,
+.shop-content .shop-editorial[data-copy-tone="dark"] .shop-editorial-visual.has-photo:before,
+.shop-content .shop-editorial[data-copy-tone="light"] .shop-editorial-visual.has-photo:before,
+.shop-content .shop-editorial:after,
+.shop-content .shop-editorial[data-copy-tone="light"]:after{
+ content:none;display:none;background:none;
+}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">

@@ -3110,7 +3110,7 @@ async function miniPushStatus(){
    const subscribed=!!(check.ok&&check.client?.User?.PushSubscription?.optedIn);
     node.textContent=subscribed?'✅ 알림 설정 완료 · 알림을 받을 수 있어요.':'시스템 알림은 허용됐지만 미니예나 알림 구독 확인이 필요해요.';
     const btn=node.closest('.pushbox')?.querySelector('[data-action="enable-admin-push"]');
-    if(btn)btn.classList.toggle('hidden',subscribed);
+    if(btn){btn.classList.remove('hidden');btn.textContent=subscribed?'관리자 자동 알림 연결하기 · 다시 연결':'관리자 알림 허용하기';}
    return;
  }
  node.textContent='알림 권한 미허용 · 버튼을 눌러 허용해 주세요.';
@@ -6283,7 +6283,7 @@ if(a==='toggle-product-soldout'||a==='toggle-product-display'){
  return;
 }
 if(a==='enable-buyer-push'){await miniEnableBuyerPush();notif('이 기기의 주문 알림이 활성화됐어요.');return;}
-if(a==='enable-admin-push'){await miniEnablePush();notif('푸시 알림 허용 완료! OneSignal에서 테스트 알림을 보내 보세요.');return;}
+if(a==='enable-admin-push'){await miniEnablePush();notif('관리자 자동 알림 연결을 요청했어요. 구매 회차 변경으로 확인해 주세요.');return;}
 if(a==='send-test-push'){await miniSendTestPush();return;}
 if(a==='send-buyer-test-push'){await miniSendBuyerTestPush();return;}
 if(a==='bundle-sync-shipment'){

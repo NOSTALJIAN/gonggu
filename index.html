@@ -3309,23 +3309,28 @@ function miniStandalone(){return !!(window.navigator.standalone || window.matchM
 function miniIOS(){return /iPhone|iPad|iPod/i.test(navigator.userAgent)}
 async function miniPushStatus(){
  const node=document.getElementById('mini-push-state');
- if(!node||!state.admin)return;
- if(!('Notification' in window)){node.textContent='이 브라우저에서는 알림을 사용할 수 없어요.';return;}
- if(miniIOS()&&!miniStandalone()){node.textContent='아이폰: Safari 공유 → 홈 화면에 추가 → 미니예나 아이콘으로 실행해 주세요.';return;}
- if(Notification.permission==='denied'){node.textContent='알림이 차단되어 있어요. 아이폰 설정 → 알림 → 미니예나에서 허용해 주세요.';return;}
- if(Notification.permission==='granted'){
-   node.textContent='시스템 알림 허용됨 · OneSignal 구독 상태 확인 중…';
-   const check=await Promise.race([window.miniYenaOneSignalReady,new Promise(r=>setTimeout(()=>r({ok:false}),7000))]);
-   if(!node.isConnected)return;
-   const subscribed=!!(check.ok&&check.client?.User?.PushSubscription?.optedIn);
-    const adminAliasReady=subscribed?await miniRegisterAdminAlias():false;
-    if(!node.isConnected)return;
-    node.textContent=adminAliasReady?'✅ 관리자 푸시 연결 완료':subscribed?'기기 알림 허용됨 · 관리자 알림 연결 확인이 필요해요.':'미니예나 알림 구독이 필요해요.';
-    const btn=node.closest('.pushbox')?.querySelector('[data-action="enable-admin-push"]');
-    if(btn){btn.classList.remove('hidden');btn.textContent=adminAliasReady?'알림 연결 · 다시 연결':'관리자 알림 연결하기';}
-   return;
- }
- node.textContent='알림 권한 미허용 · 버튼을 눌러 허용해 주세요.';
+ const summary=document.getElementById('mini-push-summary-state');
+ if((!node&&!summary)||!state.admin)return;
+ const site=location.hostname==='miniyena.pages.dev'?'새 주소':'기존 주소';
+ const update=(label,detail)=>{
+  if(summary?.isConnected)summary.textContent=site+' · '+label;
+  if(node?.isConnected)node.textContent=detail;
+ };
+ if(!('Notification' in window)){update('지원 안 됨','이 브라우저에서는 웹 푸시를 지원하지 않아요.');return;}
+ if(miniIOS()&&!miniStandalone()){update('앱 설치 필요','아이폰 Safari 공유 → 홈 화면에 추가 → 해당 아이콘으로 실행해 주세요.');return;}
+ if(Notification.permission==='denied'){update('알림 차단됨','아이폰 설정 → 알림 → 미니예나에서 알림 허용을 켜 주세요.');return;}
+ if(Notification.permission!=='granted'){update('연결 필요','알림을 받으려면 아래 알림 연결 버튼을 눌러 주세요.');return;}
+ update('구독 확인 중','기기 알림 허용됨 · OneSignal 구독 확인 중…');
+ const check=await Promise.race([window.miniYenaOneSignalReady,new Promise(r=>setTimeout(()=>r({ok:false}),7000))]);
+ if(!state.admin||(!node?.isConnected&&!summary?.isConnected))return;
+ const subscribed=!!(check?.ok&&check.client?.User?.PushSubscription?.optedIn&&check.client.User.PushSubscription.id);
+ const aliasReady=subscribed?await miniRegisterAdminAlias():false;
+ if(!state.admin||(!node?.isConnected&&!summary?.isConnected))return;
+ if(aliasReady)update('기기 연결됨','관리자 알림 대상 등록됨 · 실제 배너 수신은 아래 테스트 알림으로 확인하세요.');
+ else if(subscribed)update('관리자 연결 필요','기기 알림은 허용됐지만 관리자 수신 대상 연결이 완료되지 않았어요.');
+ else update('구독 연결 필요','알림 권한은 허용됐지만 현재 주소의 푸시 구독 확인이 필요해요.');
+ const btn=node?.closest('.pushbox')?.querySelector('[data-action="enable-admin-push"]');
+ if(btn)btn.textContent=aliasReady?'알림 다시 연결':'관리자 알림 연결하기';
 }
 async function miniSendBuyerTestPush(){
  if(!connected||!state.admin)throw Error('관리자 로그인이 필요해요.');
@@ -5365,7 +5370,7 @@ function renderEmailNotificationSettings(){
  </section>`;
 }
 function renderAdminSettings(){return `<section class="card pushbox pushbox-settings admin-push-compact" style="display:block!important;margin-bottom:12px"><details data-fold-key="admin-push-settings" class="admin-push-details">
- <summary><span class="admin-push-summary-title">🔔 관리자 알림</span><span class="admin-push-summary-hint">알림 설정 · 테스트 <span class="admin-push-chevron" aria-hidden="true">⌄</span></span></summary>
+ <summary><span class="admin-push-summary-title">🔔 관리자 알림</span><span class="admin-push-summary-hint"><span id="mini-push-summary-state" aria-live="polite">연결 확인 중</span> <span class="admin-push-chevron" aria-hidden="true">⌄</span></span></summary>
  <div class="admin-push-body">
   <p id="mini-push-state" class="pushstate" aria-live="polite">알림 상태 확인 중…</p>
   <button type="button" class="btn secondary" data-action="enable-admin-push">알림 연결 · 다시 연결</button>

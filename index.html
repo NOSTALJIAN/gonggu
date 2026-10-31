@@ -2040,6 +2040,20 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 .catalog-photo-dots span{display:block;width:5px;height:5px;border-radius:50%;background:#ffffff80;box-shadow:0 0 2px #0008}
 .catalog-photo-dots [aria-pressed="true"] span{background:white;width:7px;height:7px}
 
+
+/* Taller storefront image with contrast chosen from the area behind the copy. */
+.shop-content .shop-editorial{height:clamp(400px,60svh,560px);min-height:0;max-height:none;--hero-ink:#fff}
+.shop-content .shop-editorial-visual img{filter:none;object-position:center 40%}
+.shop-content .shop-editorial-copy,
+.shop-content .shop-editorial h1,
+.shop-content .shop-editorial p{color:var(--hero-ink)}
+.shop-content .shop-editorial h1{text-shadow:none}
+.shop-content .shop-editorial[data-copy-tone="dark"]{--hero-ink:#000}
+.shop-content .shop-editorial[data-copy-tone="light"]{--hero-ink:#fff}
+.shop-content .shop-editorial[data-copy-tone="dark"] .shop-editorial-visual.has-photo:before{background:linear-gradient(to top,rgba(255,255,255,.24),transparent 55%)}
+.shop-content .shop-editorial[data-copy-tone="light"] .shop-editorial-visual.has-photo:before{background:linear-gradient(to top,rgba(0,0,0,.24),transparent 55%)}
+@media(min-width:720px){.shop-content .shop-editorial{height:640px}}
+
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -3037,11 +3051,71 @@ function syncModalPageLock(){
   root.style.scrollBehavior=behavior;
  }
 }
+
+// Sample the displayed crop behind the headline, not the whole photograph.
+const heroContrastImages=new Map();
+let heroContrastObserver=null;
+function heroCopyTone(pixels){
+ let luminance=0,count=0;
+ for(let i=0;i<pixels.length;i+=4){
+  if(pixels[i+3]<128)continue;
+  const linear=value=>{const c=value/255;return c<=.04045?c/12.92:Math.pow((c+.055)/1.055,2.4);};
+  luminance+=.2126*linear(pixels[i])+.7152*linear(pixels[i+1])+.0722*linear(pixels[i+2]);
+  count++;
+ }
+ if(!count)return 'light';
+ const mean=luminance/count;
+ return (mean+.05)/.05>=1.05/(mean+.05)?'dark':'light';
+}
+function syncHeroContrast(){
+ if(heroContrastObserver){heroContrastObserver.disconnect();heroContrastObserver=null;}
+ const hero=app.querySelector('.shop-editorial');
+ const visible=hero?.querySelector('.shop-editorial-visual img');
+ const copy=hero?.querySelector('.shop-editorial-copy');
+ if(!visible||!copy)return;
+ const src=visible.getAttribute('src');
+ if(!heroContrastImages.has(src)){
+  heroContrastImages.set(src,new Promise(resolve=>{
+   const image=new Image();
+   image.crossOrigin='anonymous';
+   image.onload=()=>resolve(image);
+   image.onerror=()=>resolve(null);
+   image.src=src;
+  }));
+ }
+ const paint=async()=>{
+  const photo=await heroContrastImages.get(src);
+  if(!photo||!hero.isConnected)return; // Keep the readable white/dark-gradient fallback.
+  try{
+   const box=hero.getBoundingClientRect(),textBox=copy.getBoundingClientRect();
+   if(!box.width||!box.height)return;
+   const canvas=document.createElement('canvas');
+   canvas.width=96;canvas.height=Math.max(1,Math.round(96*box.height/box.width));
+   const ctx=canvas.getContext('2d',{willReadFrequently:true});
+   const scale=Math.max(box.width/photo.naturalWidth,box.height/photo.naturalHeight);
+   const width=photo.naturalWidth*scale,height=photo.naturalHeight*scale;
+   const ratio=canvas.width/box.width;
+   ctx.drawImage(photo,(box.width-width)*.5*ratio,(box.height-height)*.4*ratio,width*ratio,height*ratio);
+   const x=Math.max(0,Math.floor((textBox.left-box.left)*ratio));
+   const y=Math.max(0,Math.floor((textBox.top-box.top)*ratio));
+   const w=Math.min(canvas.width-x,Math.max(1,Math.ceil(textBox.width*ratio)));
+   const h=Math.min(canvas.height-y,Math.max(1,Math.ceil(textBox.height*ratio)));
+   if(w>0&&h>0)hero.dataset.copyTone=heroCopyTone(ctx.getImageData(x,y,w,h).data);
+  }catch(_){/* External images without CORS retain the contrast overlay. */}
+ };
+ paint();
+ if(typeof ResizeObserver!=='undefined'){
+  heroContrastObserver=new ResizeObserver(paint);
+  heroContrastObserver.observe(hero);heroContrastObserver.observe(copy);
+ }
+}
+
 function render(){
  const adminScrollPositions=['.admin-main-tabs','.admin-product-filter-list','.admin-category-list','.admin-quote-primary-filters'].map(selector=>[selector,app.querySelector(selector)?.scrollLeft||0]);
  app.querySelectorAll("details[data-fold-key]").forEach(el=>adminFoldState.set(el.dataset.foldKey,el.open));cancelAdminPhotoDrag();app.innerHTML=`<main class="shell ${state.page==='admin'?'is-admin-shell':''}">${header()}${demoNotice()}${state.page==='admin'?renderAdmin():state.page==='track'?renderTrack():renderShop()}${shopBottomNav()}<div class="floating-actions" aria-label="화면 바로가기"><button class="floating-refresh" type="button" data-action="reload-app" aria-label="최신 화면으로 새로고침" title="새로고침"><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8.1 8.1 0 0 0-15.5-2"/><path d="M4 4v5h5"/><path d="M4 13a8.1 8.1 0 0 0 15.5 2"/><path d="M20 20v-5h-5"/></svg><span>새로고침</span></button><button class="back-to-top" type="button" data-action="scroll-top" aria-label="맨 위로 이동" aria-hidden="true" tabindex="-1"><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 13 7-7 7 7M12 6v12"/></svg><span>위로</span></button></div></main>${renderModal()}`;app.querySelectorAll("details[data-fold-key]").forEach(el=>{el.open=adminFoldState.get(el.dataset.foldKey)===true});
  adminScrollPositions.forEach(([selector,left])=>{const el=app.querySelector(selector);if(el)el.scrollLeft=left;});
  syncModalPageLock();
+ syncHeroContrast();
  updateScrollTop();updateProcurementSchedule();if(state.admin){updateSupplierBulkPreview();queueMicrotask(()=>showRequestImages().catch(console.error));queueMicrotask(()=>miniPushStatus().catch(console.warn));}}
 function updateScrollTop(){const btn=app.querySelector('.back-to-top');if(!btn)return;const visible=window.scrollY>440&&!state.modal;btn.classList.toggle('is-visible',visible);btn.tabIndex=visible?0:-1;btn.setAttribute('aria-hidden',String(!visible));}
 const steps=idx=>`<div class="quote-step">${['① 상품 담기','② 견적 요청','③ 가격 확인','④ 최종 주문'].map((x,i)=>`<span class="${i===idx?'current':''}">${x}</span>${i<3?'<i></i>':''}`).join('')}</div>`;

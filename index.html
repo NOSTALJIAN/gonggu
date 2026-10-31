@@ -5627,6 +5627,7 @@ async function withdrawCancellation(){
  if(!window.confirm('취소 요청을 철회하고 기존 주문을 계속 진행할까요?'))return;
  if(!connected){const found=demo.quotes.find(x=>x.id===state.trackId&&x.lookup_token===state.trackToken);if(!found)throw Error('주문을 찾을 수 없어요.');found.cancel_requested_at=null;found.cancel_reason=null;saveDemo();}
  else {const ok=await rpc('gq_withdraw_cancel_request',{p_quote_id:state.trackId,p_lookup_token:state.trackToken});if(!ok)throw Error('관리자가 이미 취소를 처리했거나 요청이 변경됐어요.');}
+ if(connected)miniNotifyAdminEvent('cancel_withdrawn');
  await reloadTracking();notif('취소 요청을 철회했어요. 기존 주문이 유지돼요.');
 }
 async function decideCancellation(id,accept){

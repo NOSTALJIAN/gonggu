@@ -65,6 +65,36 @@ change_once(
     " if(!isCurrentSite&&!isOldSite)throw Error('미니예나 주문조회 링크만 사용할 수 있어요.');",
 )
 
+# Restore the manager-only push subscription control removed from the shared
+# storefront. This applies only to the generated Cloudflare HTML.
+change_once(
+    '</div><div class="tabs admin-main-tabs"',
+    '''<section class="pushbox pushbox-settings" aria-label="관리자 푸시 알림 설정">
+       <div class="row between">
+         <strong>관리자 푸시 알림</strong>
+         <button type="button" class="btn sm" data-action="enable-admin-push">알림 허용</button>
+       </div>
+       <p id="mini-push-state" class="pushstate" role="status" aria-live="polite">알림 상태 확인 중…</p>
+     </section>
+     </div><div class="tabs admin-main-tabs''',
+)
+# The original CSS hides the entire push section, even if markup is present.
+# Restore only the manager section. Do not show subscription UI to customers.
+change_once(
+    '</style>',
+    '''/* Cloudflare-only manager push permission control */
+    .admin-workspace-content .pushbox-settings{
+      display:block!important;
+      padding:10px 12px!important;
+      margin:8px 0 13px!important;
+    }
+    .admin-workspace-content .pushbox-settings .row{gap:8px;align-items:center}
+    .admin-workspace-content .pushbox-settings strong{font-size:12px;font-weight:650}
+    .admin-workspace-content .pushbox-settings .btn{font-size:12px;padding:8px 12px;min-height:36px;white-space:nowrap}
+    .admin-workspace-content .pushbox-settings #mini-push-state{font-size:11px;margin:4px 0 0;line-height:1.5}
+    </style>''',
+)
+
 # Avoid presenting the legacy domain as the suggested example in the new site.
 page = page.replace(
     'placeholder="https://nostaljian.github.io/gonggu/?page=track&id=...&token=..."',

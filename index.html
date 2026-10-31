@@ -2472,12 +2472,10 @@ function rememberAccessibleOrder(q){
 
 function goto(page){state.page=page;state.modal=null;history.pushState({},'',location.pathname+'?page='+page);render();if(page==='admin')loadAdmin().catch(e=>notif(errorText(e)));}
 async function getToken(){if(!session)return null;if(session.expires_at>Date.now()/1000+60)return session.access_token;if(refreshing)return refreshing;refreshing=(async()=>{try{const r=await fetch(url+'/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:{apikey:key,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:session.refresh_token})});const j=await r.json();if(!r.ok)throw Error(j.error_description||'로그인 만료');session={...j,expires_at:Math.floor(Date.now()/1000)+j.expires_in};localStorage.setItem(SESS,JSON.stringify(session));return j.access_token}catch(e){session=null;localStorage.removeItem(SESS);throw e}finally{refreshing=null}})();return refreshing}
-async function api(path,{method='GET',body,admin=false,signal}={}){if(!connected)throw Error('온라인 연결 전 체험 모드입니다');const token=admin?await getToken():null;if(admin&&!token)throw Error('관리자 로그인이 필요해요');const h={apikey:key};if(token)h.Authorization='Bearer '+token;if(body!==undefined)h['Content-Type']='application/json';if(admin&&method!=='GET')h['Prefer']='return=representation';const r=await fetch(url+path,{method,headers:h,body:body===undefined?undefined:JSON.stringify(body),signal});const txt=await r.text();let j;try{j=txt?JSON.parse(txt):null}catch{j=txt};if(!r.ok){const error=Error(j?.message||j?.error_description||'서버 오류 '+r.status);error.code=j?.code;error.status=r.status;throw error}return j}
-const rpc=async(name,body,admin=false)=>{
- const result=await api('/rest/v1/rpc/'+name,{method:'POST',body,admin});
- if(admin)miniDispatchBuyerPush();
- return result;
-};
+async function api(path,{method='GET',body,admin=false,signal}={}){if(!connected)throw Error('온라인 연결 전 체험 모드입니다');const token=admin?await getToken():null;if(admin&&!token)throw Error('관리자 로그인이 필요해요');const h={apikey:key};if(token)h.Authorization='Bearer '+token;if(body!==undefined)h['Content-Type']='application/json';if(admin&&method!=='GET')h['Prefer']='return=representation';const r=await fetch(url+path,{method,headers:h,body:body===undefined?undefined:JSON.stringify(body),signal});const txt=await r.text();let j;try{j=txt?JSON.parse(txt):null}catch{j=txt};if(!r.ok){const error=Error(j?.message||j?.error_description||'서버 오류 '+r.status);error.code=j?.code;error.status=r.status;throw error}
+if(admin&&method!=='GET'&&path.startsWith('/rest/v1/')&&!path.includes('/rpc/gq_read_'))queueMicrotask(()=>miniDispatchBuyerPush());
+return j}
+const rpc=(name,body,admin=false)=>api('/rest/v1/rpc/'+name,{method:'POST',body,admin});
 // Existing v25 read RPCs: lookup failures never break existing orders.
 const unavailableShippingRPCs=new Set();
 async function optionalShippingRPC(name,body,admin=false){

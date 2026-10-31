@@ -2482,6 +2482,11 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 #approve-form .admin-combined-photo-heading b{font-size:12px;font-weight:700;color:#292929}
 #approve-form .admin-photo-compact-hint{font-size:10px;color:#999;line-height:1.4;text-align:right}
 #approve-form .admin-combined-photo-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
+/* Nine photos fill three even rows instead of an orphan at the end. */
+#approve-form .admin-combined-photo-grid[data-photo-count="3"],
+#approve-form .admin-combined-photo-grid[data-photo-count="5"],
+#approve-form .admin-combined-photo-grid[data-photo-count="6"],
+#approve-form .admin-combined-photo-grid[data-photo-count="9"]{grid-template-columns:repeat(3,minmax(0,1fr))}
 #approve-form .admin-combined-photo{padding:3px;border:1px solid #e6e6e6;border-radius:7px}
 #approve-form .admin-combined-photo-image{border-radius:5px}
 #approve-form .admin-combined-photo figcaption{gap:0;min-height:0;margin:4px 0 1px}
@@ -4210,7 +4215,7 @@ function adminPhotoGridMarkup(){
 function renderAdminPhotoWorkspace(compact=false){
  if(compact)return `<section class="admin-combined-photo-editor">
   <div class="admin-combined-photo-heading"><b>상품 사진</b><span class="admin-photo-compact-hint">첫 번째 사진이 대표사진이에요</span></div>
-  <div class="admin-combined-photo-grid" data-admin-photo-list>${adminPhotoGridMarkup()}</div>
+  <div class="admin-combined-photo-grid" data-admin-photo-list data-photo-count="${adminPhotoSequence.length}">${adminPhotoGridMarkup()}</div>
   <div class="admin-combined-photo-empty ${adminPhotoSequence.length?'hidden':''}" data-admin-photo-empty>등록할 사진을 추가해 주세요.</div>
   <label class="admin-compact-photo-add">
    <span class="admin-compact-photo-button">＋ 사진 추가</span>
@@ -4230,7 +4235,7 @@ function renderAdminPhotoWorkspace(compact=false){
 function updateAdminPhotoEditor(form){
  if(!form||!['approve-form','product-form'].includes(form.id))return;
  const grid=form.querySelector('[data-admin-photo-list]');
- if(grid)grid.innerHTML=adminPhotoGridMarkup();
+ if(grid){grid.innerHTML=adminPhotoGridMarkup();if(form.id==='approve-form')grid.dataset.photoCount=String(adminPhotoSequence.length);}
  const count=form.querySelector('[data-admin-photo-count]');
  if(count)count.textContent=form.id==='approve-form'?adminPhotoSequence.length+' / 9장':adminPhotoSequence.length+' / 9장 · 맨 앞이 대표사진 · ×는 판매 상품에서만 제외';
  const empty=form.querySelector('[data-admin-photo-empty]');

@@ -3137,6 +3137,17 @@ async function miniSendTestPush(){
  if(!res.ok||!json.ok)throw Error(json.error||'테스트 알림을 보내지 못했어요.');
  notif('테스트 알림을 보냈어요. 아이폰 알림을 확인해 주세요.');
 }
+async function miniRegisterAdminAlias(){
+ try{
+  if(!connected||!state.admin)return;
+  const ready=await window.miniYenaOneSignalReady;
+  if(ready?.ok&&ready.client.User.PushSubscription.optedIn)await ready.client.User.addAlias('miniyena_admin','manager');
+ }catch(e){console.warn('관리자 푸시 대상 등록 실패',e)}
+}
+function miniNotifyAdminEvent(event){
+ if(!connected||!state.trackId||!state.trackToken)return;
+ fetch(url+'/functions/v1/gq-admin-event-push',{method:'POST',headers:{'Content-Type':'application/json','apikey':key},body:JSON.stringify({quote_id:state.trackId,lookup_token:state.trackToken,event})}).catch(e=>console.warn('관리자 알림 전송 실패',e));
+}
 async function miniEnablePush(){
  if(!connected||!state.admin)throw Error('관리자로 로그인한 뒤 알림을 허용해 주세요.');
  if(miniIOS()&&!miniStandalone())throw Error('아이폰 Safari의 공유 메뉴에서 미니예나를 홈 화면에 추가하고, 홈 화면 아이콘으로 다시 실행해 주세요.');
@@ -3148,6 +3159,7 @@ async function miniEnablePush(){
  if(!result.client.Notifications.permission) await result.client.Notifications.requestPermission();
  if(result.client.Notifications.permission && !result.client.User.PushSubscription.optedIn) await result.client.User.PushSubscription.optIn();
  if(!result.client.User.PushSubscription.optedIn)throw Error('알림 허용이 완료되지 않았어요. 권한 상태를 확인해 주세요.');
+ await miniRegisterAdminAlias();
  miniPushStatus();
 }
 const adminFoldState=new Map();
@@ -5576,6 +5588,7 @@ async function setBuyerPurchaseIntent(intent){
  if(!state.tracking||state.tracking.status!=='quoted'||!['buy_now','next_round','on_hold'].includes(intent))throw Error('견적 안내를 받은 뒤 구매 회차를 선택해 주세요.');
  if(!connected){const q=demo.quotes.find(x=>x.id===state.trackId&&x.lookup_token===state.trackToken);if(!q)throw Error('조회한 견적을 찾지 못했어요.');q.purchase_intent=intent;q.purchase_intent_at=now();saveDemo();}
  else await rpc('gq_set_purchase_intent_v60',{p_quote_id:state.trackId,p_lookup_token:state.trackToken,p_intent:intent});
+ if(connected)miniNotifyAdminEvent('purchase_intent');
  await reloadTracking();
 }
 async function confirmFinalQuote(){if(!state.tracking||state.tracking.status!=='quoted'||state.tracking.purchase_intent!=='buy_now')throw Error('먼저 ‘이번 회차에 구매할게요’를 선택해 주세요.');
@@ -5604,6 +5617,7 @@ async function requestCancellation(reason){
  if(!state.trackId||!state.trackToken)throw Error('견적 확인 링크가 필요해요');
  if(!connected){const found=demo.quotes.find(x=>x.id===state.trackId&&x.lookup_token===state.trackToken);if(!found)throw Error('견적을 찾을 수 없어요');found.cancel_requested_at=now();found.cancel_reason=reason;found.cancel_rejected_at=null;saveDemo();}
  else await rpc('gq_request_cancel',{p_quote_id:state.trackId,p_lookup_token:state.trackToken,p_reason:reason});
+ if(connected)miniNotifyAdminEvent('cancel_request');
  await reloadTracking();
 }
 async function decideCancellation(id,accept){

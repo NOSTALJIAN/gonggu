@@ -4578,7 +4578,7 @@ function procurementRows(){
     if(unit===null)issues.push('도매가 미등록');
    }
    if(!state.supplierBatchesReady)issues.push('배송비 배분 정보 확인 전');
-   else if(!batch&&!q.supplier_shipping_manual_confirmed_at)issues.push('도매배송비 미확정');
+   else if(!batch&&!q.supplier_shipping_manual_confirmed_at&&!isChinaDirectSupplier(vendor))issues.push('도매배송비 미확정');
    else if(batch&&!supplierBatchPaymentState(batch).canOrder)issues.push('같은 거래처 배분 참여자 입금 확인 대기');
    if(!payment(q))issues.push('입금·금액 확인 필요');
    if(q.cancel_requested_at||q.delivery_change_requested_at)issues.push('취소·수령 변경 확인');

@@ -39,22 +39,8 @@ def change_once(before, after):
         raise SystemExit(f"Expected one exact occurrence of: {before[:100]!r}")
     page = page.replace(before, after, 1)
 
-# This is applied ONLY to the Cloudflare copy. GitHub Pages keeps its own setup.
-change_once(
-    "serviceWorkerPath: 'gonggu/OneSignalSDKWorker.js'",
-    "serviceWorkerPath: 'OneSignalSDKWorker.js'",
-)
-change_once(
-    "serviceWorkerParam: { scope: '/gonggu/onesignal-push/' }",
-    "serviceWorkerParam: { scope: '/' }",
-)
-
-# OneSignal subscriptions belong to the website origin. Use the NEW Cloudflare
-# OneSignal app only in this generated copy; keep GitHub Pages subscribers intact.
-change_once(
-    "appId: '4ecfc195-43f7-4108-b6d4-abb11164a504'",
-    "appId: '74494ff1-8318-40fd-ab2c-4bf9017a8991'",
-)
+# OneSignal selects its app ID and worker path by hostname in index.html.
+# No Cloudflare-specific replacement is needed here.
 
 # Accept existing legacy customer order links on the new domain. The ID/token
 # validations directly below this code are preserved, and other sites rejected.
@@ -63,36 +49,6 @@ change_once(
     "const isCurrentSite=page.origin===location.origin&&norm(page.pathname)===norm(location.pathname);\n"
     " const isOldSite=page.origin==='https://nostaljian.github.io'&&norm(page.pathname)==='/gonggu/';\n"
     " if(!isCurrentSite&&!isOldSite)throw Error('미니예나 주문조회 링크만 사용할 수 있어요.');",
-)
-
-# Restore the manager-only push subscription control removed from the shared
-# storefront. This applies only to the generated Cloudflare HTML.
-change_once(
-    '</div><div class="tabs admin-main-tabs"',
-    '''<section class="pushbox pushbox-settings" aria-label="관리자 푸시 알림 설정">
-       <div class="row between">
-         <strong>관리자 푸시 알림</strong>
-         <button type="button" class="btn sm" data-action="enable-admin-push">알림 허용</button>
-       </div>
-       <p id="mini-push-state" class="pushstate" role="status" aria-live="polite">알림 상태 확인 중…</p>
-     </section>
-     </div><div class="tabs admin-main-tabs"''',
-)
-# The original CSS hides the entire push section, even if markup is present.
-# Restore only the manager section. Do not show subscription UI to customers.
-change_once(
-    '</style>',
-    '''/* Cloudflare-only manager push permission control */
-    .admin-workspace-content .pushbox-settings{
-      display:block!important;
-      padding:10px 12px!important;
-      margin:8px 0 13px!important;
-    }
-    .admin-workspace-content .pushbox-settings .row{gap:8px;align-items:center}
-    .admin-workspace-content .pushbox-settings strong{font-size:12px;font-weight:650}
-    .admin-workspace-content .pushbox-settings .btn{font-size:12px;padding:8px 12px;min-height:36px;white-space:nowrap}
-    .admin-workspace-content .pushbox-settings #mini-push-state{font-size:11px;margin:4px 0 0;line-height:1.5}
-    </style>''',
 )
 
 # Avoid presenting the legacy domain as the suggested example in the new site.

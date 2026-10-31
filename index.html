@@ -2245,6 +2245,26 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
   text-decoration-color:#c8c8c8;cursor:pointer
  }
 }
+
+/* Minimal collapsed push settings. The existing admin notification controls
+   and their handlers remain available inside the disclosure. */
+.pushbox-settings.admin-push-compact{padding:0!important;overflow:hidden;border:1px solid #e8e8e8;border-radius:5px;background:#fff}
+.admin-push-compact details>summary{
+ list-style:none;display:flex;justify-content:space-between;align-items:center;
+ gap:10px;min-height:55px;padding:13px 15px;cursor:pointer;
+ font-size:14px;color:#222
+}
+.admin-push-compact details>summary::-webkit-details-marker{display:none}
+.admin-push-summary-title{font-weight:750;white-space:nowrap}
+.admin-push-summary-hint{font-size:11px;color:#777;white-space:nowrap}
+.admin-push-chevron{display:inline-block;margin-left:5px;font-size:17px;transition:transform .18s}
+.admin-push-compact details[open] .admin-push-chevron{transform:rotate(180deg)}
+.admin-push-body{padding:12px 15px 16px;border-top:1px solid #efefef}
+.admin-push-body .pushstate{margin:0 0 12px;padding:9px 11px;background:#f7f7f7;font-size:12px;line-height:1.55;color:#555}
+.admin-push-body>.btn{width:100%;min-height:42px;border-radius:5px}
+.admin-push-test-buttons{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:8px}
+.admin-push-test-buttons .btn{min-width:0;min-height:40px;padding:7px;font-size:12px;font-weight:600;border-radius:5px;white-space:normal}
+@media(max-width:380px){.admin-push-summary-hint{font-size:10px}.admin-push-compact details>summary{padding-inline:12px}}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -5331,7 +5351,14 @@ function renderEmailNotificationSettings(){
   ${controls}
  </section>`;
 }
-function renderAdminSettings(){return `<section class="card pushbox pushbox-settings" style="display:block!important;margin-bottom:15px"><h3>🔔 관리자 알림</h3><p class="smallnote">주문이 없어도 이 기기에서 알림 수신을 설정할 수 있어요.</p><button type="button" class="btn secondary" data-action="enable-admin-push">관리자 알림 허용하기</button><button type="button" class="btn secondary" style="margin-top:9px" data-action="send-test-push">🔔 내 아이폰에 테스트 알림 보내기</button><button type="button" class="btn secondary" style="margin-top:9px" data-action="send-buyer-test-push">📦 구매자 주문 알림 테스트</button><p id="mini-push-state" class="pushstate" aria-live="polite">알림 상태 확인 중…</p></section>${renderEmailNotificationSettings()}<div class="card hero-photo-settings"><h3>메인 사진 관리</h3><p class="smallnote">현재는 정해진 주기로 자동 변경되지 않아요. 설정한 사진은 다음에 바꾸기 전까지 유지돼요.</p><div class="hero-settings-preview">${currentHeroPhotoUrl()?`<img src="${esc(currentHeroPhotoUrl())}" alt="현재 메인 사진">`:'<div class="hero-settings-placeholder">등록된 상품 사진이 없어요.</div>'}</div><button class="btn block secondary" type="button" data-action="random-hero-photo">🎲 랜덤 상품 사진으로 변경</button><p class="smallnote">고객에게 전시 중인 판매 가능 상품에서 대표사진을 랜덤으로 선택해 저장해요.</p><form id="hero-photo-form"><label class="label">새 메인 사진 선택<input type="file" name="hero_photo" id="hero-photo-input" accept="image/*" required></label><p class="smallnote">세로형 사진을 추천해요. 원본이 커도 자동으로 크기를 줄여 저장해요.</p><button class="btn block" type="submit">메인 사진 변경하기</button></form>${state.heroPhotoUrl?'<button class="btn block secondary" style="margin-top:9px" type="button" data-action="reset-hero-photo">기존 자동 사진으로 되돌리기</button>':''}</div><div class="card"><h3>고객에게 보낼 주소</h3><p class="smallnote">상품 고르고 견적 요청을 보낼 수 있는 링크예요.</p><div class="info nooverflow">${esc(publicLink())}</div><button class="btn block" data-action="copy-shop-link">주문 링크 복사</button><div class="separator"></div><button class="btn block secondary" data-action="export-csv">주문 내역 CSV 저장</button>${connected?'<button class="btn block neutral" style="margin-top:9px" data-action="logout">관리자 로그아웃</button>':''}<p class="smallnote">가격·주문별 배송비·품절·상품 준비·입금 상태는 관리자 전용입니다. 아직 견적만 요청한 상품은 확정 주문 수량에 포함되지 않아요.</p></div>`}
+function renderAdminSettings(){return `<section class="card pushbox pushbox-settings admin-push-compact" style="display:block!important;margin-bottom:12px"><details data-fold-key="admin-push-settings" class="admin-push-details">
+ <summary><span class="admin-push-summary-title">🔔 관리자 알림</span><span class="admin-push-summary-hint">알림 설정 · 테스트 <span class="admin-push-chevron" aria-hidden="true">⌄</span></span></summary>
+ <div class="admin-push-body">
+  <p id="mini-push-state" class="pushstate" aria-live="polite">알림 상태 확인 중…</p>
+  <button type="button" class="btn secondary" data-action="enable-admin-push">알림 연결 · 다시 연결</button>
+  <div class="admin-push-test-buttons"><button type="button" class="btn secondary" data-action="send-test-push">내 기기에 테스트 알림</button><button type="button" class="btn secondary" data-action="send-buyer-test-push">구매자 주문 알림 테스트</button></div>
+ </div>
+ </details></section>${renderEmailNotificationSettings()}<div class="card hero-photo-settings"><h3>메인 사진 관리</h3><p class="smallnote">현재는 정해진 주기로 자동 변경되지 않아요. 설정한 사진은 다음에 바꾸기 전까지 유지돼요.</p><div class="hero-settings-preview">${currentHeroPhotoUrl()?`<img src="${esc(currentHeroPhotoUrl())}" alt="현재 메인 사진">`:'<div class="hero-settings-placeholder">등록된 상품 사진이 없어요.</div>'}</div><button class="btn block secondary" type="button" data-action="random-hero-photo">🎲 랜덤 상품 사진으로 변경</button><p class="smallnote">고객에게 전시 중인 판매 가능 상품에서 대표사진을 랜덤으로 선택해 저장해요.</p><form id="hero-photo-form"><label class="label">새 메인 사진 선택<input type="file" name="hero_photo" id="hero-photo-input" accept="image/*" required></label><p class="smallnote">세로형 사진을 추천해요. 원본이 커도 자동으로 크기를 줄여 저장해요.</p><button class="btn block" type="submit">메인 사진 변경하기</button></form>${state.heroPhotoUrl?'<button class="btn block secondary" style="margin-top:9px" type="button" data-action="reset-hero-photo">기존 자동 사진으로 되돌리기</button>':''}</div><div class="card"><h3>고객에게 보낼 주소</h3><p class="smallnote">상품 고르고 견적 요청을 보낼 수 있는 링크예요.</p><div class="info nooverflow">${esc(publicLink())}</div><button class="btn block" data-action="copy-shop-link">주문 링크 복사</button><div class="separator"></div><button class="btn block secondary" data-action="export-csv">주문 내역 CSV 저장</button>${connected?'<button class="btn block neutral" style="margin-top:9px" data-action="logout">관리자 로그아웃</button>':''}<p class="smallnote">가격·주문별 배송비·품절·상품 준비·입금 상태는 관리자 전용입니다. 아직 견적만 요청한 상품은 확정 주문 수량에 포함되지 않아요.</p></div>`}
 function modal(){const m=state.modal;if(!m)return '';const wrap=(title,body,stickyProductSave=false)=>stickyProductSave?`<div class="overlay" id="overlay"><div class="sheet sheet-product-editor" role="dialog" aria-modal="true"><div class="sheethead"><h2>${title}</h2><button class="close" data-action="close">×</button></div><div class="sheet-product-scroll">${body}</div><div class="sheet-product-save"><button class="btn block" type="submit" form="product-form">상품 저장</button></div></div></div>`:`<div class="overlay" id="overlay"><div class="sheet${m.type==='myquotes'?' myquotes-swipe-sheet':''}" role="dialog" aria-modal="true">${m.type==='myquotes'?'<div class="sheet-drag-handle" aria-hidden="true"></div>':''}<div class="sheethead"><h2>${title}</h2><button class="close" data-action="close">×</button></div>${body}</div></div>`;
 if(m.type==='entry-push')return wrap('신상·주문 알림 받기',renderEntryPushBody());
 if(m.type==='buyer-order-details'){

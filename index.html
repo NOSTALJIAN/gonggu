@@ -4914,7 +4914,7 @@ let ciFiles=[],ciRows=[],ciPreviews=[];
 function ciReset(){ciPreviews.forEach(x=>URL.revokeObjectURL(x));ciPreviews=[];ciRows=[];}
 function ciPanel(){
  if(!state.admin)return '';
- return '<details id="ci-panel" class="ci-panel"><summary><b>📷 카탈로그 사진 자동등록</b><span>상품명·도매가·컬러·사이즈 자동입력</span></summary>'+
+ return '<details id="ci-panel" class="ci-panel" '+(ciRows.length?'open':'')+'><summary><b>📷 카탈로그 사진 자동등록</b><span>상품명·도매가·컬러·사이즈 자동입력</span></summary>'+
  '<form id="ci-scan" class="ci-form">'+
  '<label class="label">도매거래처<input name="store" list="ci-stores" required maxlength="100" placeholder="예: 라라랜드" autocomplete="off"></label>'+
  '<datalist id="ci-stores">'+state.stores.map(s=>'<option value="'+esc(s.name)+'"></option>').join('')+'</datalist>'+
@@ -4929,7 +4929,7 @@ function ciReview(){
  const pending=ciRows.filter(r=>!r.done).length;
  return '<form id="ci-save" novalidate class="ci-form"><b>'+ciRows.length+'개 상품 추출 · 미등록 '+pending+'개</b>'+
  '<p class="smallnote">사진과 도매단가·옵션을 확인하고 수정해 주세요. 잘못 인식한 상품은 등록 체크를 해제하면 돼요.</p>'+
- ciRows.map((r,i)=>'<section class="ci-item"><div class="ci-head"><b>'+(i+1)+'번 상품'+(r.done?' · 등록완료':'')+'</b><label><input type="checkbox" name="use'+i+'" '+(r.done?'disabled':'checked')+'> 등록</label></div>'+
+ ciRows.map((r,i)=>'<section class="ci-item"><div class="ci-head"><b>'+(i+1)+'번 상품'+(r.done?' · 등록완료':'')+'</b><label><input type="checkbox" name="use'+i+'" '+(r.done?'disabled':r.selected===false?'':'checked')+'> 등록</label></div>'+
  '<div class="ci-image">'+(r.preview?'<img src="'+esc(r.preview)+'" alt="추출한 상품 사진">':'상품 사진 영역 미인식 · 등록 후 사진 추가 가능')+'</div>'+
  '<label class="label">상품명<input name="name'+i+'" maxlength="100" required value="'+esc(r.name)+'" '+(r.done?'disabled':'')+'></label>'+
  '<div class="ci-cols"><label class="label">도매단가 (원)<input type="number" inputmode="numeric" name="price'+i+'" min="0" max="100000000" required value="'+(r.price===null?'':r.price)+'" '+(r.done?'disabled':'')+'></label>'+
@@ -4947,8 +4947,19 @@ function ciUpdate(){
 }
 async function ciDataUrl(file){
  if(!file?.type?.startsWith('image/')||file.size>35*1024*1024)throw Error('사진은 장당 35MB 이하의 이미지만 가능해요.');
- const image=await toJpeg(file);
- return await new Promise((resolve,reject)=>{const f=new FileReader();f.onload=()=>resolve(f.result);f.onerror=()=>reject(Error('사진을 읽지 못했어요.'));f.readAsDataURL(image);});
+ const uri=URL.createObjectURL(file),picture=new Image();
+ try{
+  await new Promise((ok,fail)=>{picture.onload=ok;picture.onerror=()=>fail(Error('사진을 읽지 못했어요.'));picture.src=uri;});
+  const scale=Math.min(1,2400/Math.max(picture.naturalWidth,picture.naturalHeight));
+  const canvas=document.createElement('canvas');
+  canvas.width=Math.max(1,Math.round(picture.naturalWidth*scale));
+  canvas.height=Math.max(1,Math.round(picture.naturalHeight*scale));
+  const ctx=canvas.getContext('2d');if(!ctx)throw Error('이미지 변환 실패');
+  ctx.drawImage(picture,0,0,canvas.width,canvas.height);
+  const blob=await new Promise(ok=>canvas.toBlob(ok,'image/jpeg',.86));
+  if(!blob||blob.size>7500000)throw Error('사진이 너무 커요. 더 작은 카탈로그를 선택해 주세요.');
+  return await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(Error('사진을 읽지 못했어요.'));reader.readAsDataURL(blob);});
+ }finally{URL.revokeObjectURL(uri);}
 }
 async function ciCrop(file,coords){
  if(!Array.isArray(coords)||coords.length!==4)return null;
@@ -4987,7 +4998,7 @@ async function ciScan(form){
    const preview=file?URL.createObjectURL(file):'';
    if(preview)ciPreviews.push(preview);
    const sizes=Array.isArray(p.sizes)?p.sizes:[],colors=Array.isArray(p.colors)?p.colors:[];
-   ciRows.push({name:p.name||'',price:p.wholesale_price,category:p.category||'',options:colors.map(c=>c+': '+sizes.join(', ')).join('\n'),note:[p.fabric?'소재: '+p.fabric:'',p.note||''].filter(Boolean).join('\n').slice(0,1000),file,preview,id:null,done:false});
+   ciRows.push({name:p.name||'',price:p.wholesale_price,category:p.category||'',options:colors.map(c=>c+': '+sizes.join(', ')).join('\n'),note:[p.fabric?'소재: '+p.fabric:'',p.note||''].filter(Boolean).join('\n').slice(0,1000),file,preview,id:null,done:false,selected:true});
   }
   ciUpdate();
  }
@@ -4999,6 +5010,7 @@ async function ciSave(form){
  const storeName=String(app.querySelector('#ci-scan [name="store"]')?.value||'').trim();
  if(!storeName||storeName.length>100)throw Error('도매거래처를 입력해 주세요.');
  const data=new FormData(form),items=[];
+ for(let i=0;i<ciRows.length;i++)if(!ciRows[i].done)ciRows[i].selected=data.has('use'+i);
  for(let i=0;i<ciRows.length;i++){
   if(ciRows[i].done||!data.has('use'+i))continue;
   const name=String(data.get('name'+i)||'').trim();

@@ -5659,7 +5659,7 @@ function supplierBatchPaymentState(batch){
  });
  const partialReady=result.length===Number(batch.people)&&result.length>0&&result.every(r=>{
   const i=supplierPartialInvoice(batch.id,r.payer.buyer_key);
-  return i?.paid_at&&r.selected.length>0&&r.selected.every(({q,item})=>
+  return (r.eligible||!!i?.paid_at)&&r.selected.length>0&&r.selected.every(({q,item})=>
    ['quoted','confirmed'].includes(q.status)&&(q.status==='confirmed'||q.purchase_intent==='buy_now')&&
    !q.cancel_requested_at&&!q.delivery_change_requested_at&&!item.supplier_ordered_at&&item.fulfillment!=='sold_out');
  });
@@ -5758,7 +5758,7 @@ function renderSupplierBulkManager(historyOnly=false){
     ${ordered?`<div class="supplier-bulk-done">이 거래처 발주 완료: ${fmtDate(batch.ordered_at)}</div>`:
       `<button type="button" class="btn block" data-action="supplier-bulk-ordered" data-id="${esc(batch.id)}" ${checked.canOrder&&!unpaidRequests?'':'disabled'}>전체 주문 입금 확인 → 도매 발주 완료</button>
        <button type="button" class="btn block secondary" style="margin-top:7px" data-action="supplier-bulk-ordered-partial" data-id="${esc(batch.id)}" ${checked.partialReady?'':'disabled'}>이 거래처만 선입금 확인 → 발주 완료</button>
-       ${!checked.partialReady?'<p class="smallnote">선발주하려면 위 구매자별 입금 요청 생성 → 안내 복사·전송 → 입금 확인을 진행해 주세요.</p>':''}
+       ${!checked.partialReady?'<p class="smallnote">전체 입금이 확인된 구매자는 그대로 인정돼요. 미입금 구매자만 위에서 선입금 요청 → 안내 복사·전송 → 입금 확인을 진행해 주세요.</p>':''}
        <button type="button" class="btn sm neutral supplier-bulk-cancel" data-action="supplier-bulk-cancel" data-id="${esc(batch.id)}">이 거래처 배송비 배분 취소</button>`}
    </div>
   </details>`;

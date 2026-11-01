@@ -2615,6 +2615,7 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 
 
 /* Direct item create/edit: match approval spacing, preserve sticky Save footer. */
+.sheet-product-editor.product-editor-clean>.sheet-drag-handle{flex:0 0 32px}
 .sheet-product-editor.product-editor-clean .sheethead{margin-bottom:10px}
 .sheet-product-editor.product-editor-clean .sheethead h2{font-size:19px;letter-spacing:-.04em;font-weight:770}
 .sheet-product-editor.product-editor-clean .sheet-product-scroll{padding:5px 0 14px}
@@ -5848,7 +5849,7 @@ function renderAdminSettings(){return `<section class="card pushbox pushbox-sett
   <div class="admin-push-test-buttons"><button type="button" class="btn secondary" data-action="send-test-push">내 기기에 테스트 알림</button><button type="button" class="btn secondary" data-action="send-buyer-test-push">구매자 주문 알림 테스트</button></div>
  </div>
  </details></section>${renderEmailNotificationSettings()}<div class="card hero-photo-settings"><h3>메인 사진 관리</h3><p class="smallnote">현재는 정해진 주기로 자동 변경되지 않아요. 설정한 사진은 다음에 바꾸기 전까지 유지돼요.</p><div class="hero-settings-preview">${currentHeroPhotoUrl()?`<img src="${esc(currentHeroPhotoUrl())}" alt="현재 메인 사진">`:'<div class="hero-settings-placeholder">등록된 상품 사진이 없어요.</div>'}</div><button class="btn block secondary" type="button" data-action="random-hero-photo">🎲 랜덤 상품 사진으로 변경</button><p class="smallnote">고객에게 전시 중인 판매 가능 상품에서 대표사진을 랜덤으로 선택해 저장해요.</p><form id="hero-photo-form"><label class="label">새 메인 사진 선택<input type="file" name="hero_photo" id="hero-photo-input" accept="image/*" required></label><p class="smallnote">세로형 사진을 추천해요. 원본이 커도 자동으로 크기를 줄여 저장해요.</p><button class="btn block" type="submit">메인 사진 변경하기</button></form>${state.heroPhotoUrl?'<button class="btn block secondary" style="margin-top:9px" type="button" data-action="reset-hero-photo">기존 자동 사진으로 되돌리기</button>':''}</div><div class="card"><h3>고객에게 보낼 주소</h3><p class="smallnote">상품 고르고 견적 요청을 보낼 수 있는 링크예요.</p><div class="info nooverflow">${esc(publicLink())}</div><button class="btn block" data-action="copy-shop-link">주문 링크 복사</button><div class="separator"></div><button class="btn block secondary" data-action="export-csv">주문 내역 CSV 저장</button>${connected?'<button class="btn block neutral" style="margin-top:9px" data-action="logout">관리자 로그아웃</button>':''}<p class="smallnote">가격·주문별 배송비·품절·상품 준비·입금 상태는 관리자 전용입니다. 아직 견적만 요청한 상품은 확정 주문 수량에 포함되지 않아요.</p></div>`}
-function modal(){const m=state.modal;if(!m)return '';const wrap=(title,body,stickyProductSave=false)=>stickyProductSave?`<div class="overlay" id="overlay"><div class="sheet sheet-product-editor product-editor-clean" role="dialog" aria-modal="true"><div class="sheethead"><h2>${title}</h2><button class="close" data-action="close">×</button></div><div class="sheet-product-scroll">${body}</div><div class="sheet-product-save"><button class="btn block" type="submit" form="product-form">상품 저장</button></div></div></div>`:`<div class="overlay" id="overlay"><div class="sheet${['myquotes','suggest','cart','pick','product-photos','approve'].includes(m.type)?' swipe-dismiss-sheet':''}${m.type==='myquotes'?' myquotes-swipe-sheet':''}${m.type==='suggest'?' suggest-sheet':''}${m.type==='cart'?' cart-swipe-sheet':''}${m.type==='approve'?' approve-sheet':''}" role="dialog" aria-modal="true">${['myquotes','suggest','cart','pick','product-photos','approve'].includes(m.type)?'<div class="sheet-drag-handle" aria-hidden="true"></div>':''}<div class="sheethead"><h2>${title}</h2><button class="close" data-action="close">×</button></div>${body}</div></div>`;
+function modal(){const m=state.modal;if(!m)return '';const wrap=(title,body,stickyProductSave=false)=>stickyProductSave?`<div class="overlay" id="overlay"><div class="sheet sheet-product-editor product-editor-clean swipe-dismiss-sheet" role="dialog" aria-modal="true"><div class="sheet-drag-handle" aria-hidden="true"></div><div class="sheethead"><h2>${title}</h2><button class="close" data-action="close">×</button></div><div class="sheet-product-scroll">${body}</div><div class="sheet-product-save"><button class="btn block" type="submit" form="product-form">상품 저장</button></div></div></div>`:`<div class="overlay" id="overlay"><div class="sheet${['myquotes','suggest','cart','pick','product-photos','approve'].includes(m.type)?' swipe-dismiss-sheet':''}${m.type==='myquotes'?' myquotes-swipe-sheet':''}${m.type==='suggest'?' suggest-sheet':''}${m.type==='cart'?' cart-swipe-sheet':''}${m.type==='approve'?' approve-sheet':''}" role="dialog" aria-modal="true">${['myquotes','suggest','cart','pick','product-photos','approve'].includes(m.type)?'<div class="sheet-drag-handle" aria-hidden="true"></div>':''}<div class="sheethead"><h2>${title}</h2><button class="close" data-action="close">×</button></div>${body}</div></div>`;
 if(m.type==='entry-push')return wrap('신상·주문 알림 받기',renderEntryPushBody());
 if(m.type==='buyer-order-details'){
  if(!state.admin||state.page!=='admin')return '';
@@ -7751,7 +7752,14 @@ else if(f.id==='request'){if(state.cart.some(c=>{const p=selectedProd(c.product_
  const delivery={delivery_method:method,recipient_name:String(data.get('recipient_name')||'').trim(),postal_code:String(data.get('postal_code')||'').trim(),address_line1:String(data.get('address_line1')||'').trim(),address_line2:String(data.get('address_line2')||'').trim(),delivery_note:String(data.get('delivery_note')||'').trim()};
  if(method==='courier'&&(!delivery.recipient_name||!/^[0-9]{5}$/.test(delivery.postal_code)||delivery.address_line1.length<4))throw Error('택배 받는 사람, 우편번호 5자리와 주소를 정확히 입력해 주세요');
  const r=await requestQuote(name,baby,contact,note,delivery,lookupPin,email);state.receipts.unshift({id:r.id,token:r.token,name,baby,date:now()});saveTracks();state.cart=[];saveCart();await openTracking(r.id,r.token);notif('견적 요청 완료! 주문조회 링크를 카톡 나와의 채팅에 보관해 주세요.')}
-else if(f.id==='store-form'){const name=String(data.get('name')).trim();await putStore({name,active:data.has('active'),default_sizes:validateStoreSizes(data.get('default_sizes'))},state.modal.id);state.modal=null;await loadAdmin();notif('가게를 저장했어요')}
+else if(f.id==='store-form'){
+ const name=String(data.get('name')).trim();
+ const sizes=validateStoreSizes(data.get('default_sizes'));
+ const presets={...storeSizePresets(state.modal?.id)};
+ if(sizes.length)presets['기본']=sizes;else delete presets['기본'];
+ await putStore({name,active:data.has('active'),default_sizes:sizes,size_presets:presets},state.modal.id);
+ state.modal=null;await loadAdmin();notif('가게를 저장했어요');
+}
 else if(f.id==='product-form'){
  const old=selectedProd(state.modal?.id);
  if(!state.admin||!state.productPrivateReady)throw Error('관리자 인증 및 도매 정보 연결을 확인해 주세요.');
@@ -8096,7 +8104,7 @@ app.addEventListener('keydown',e=>{
 // Swipe-dismiss only the order-lookup, product-suggestion, and cart sheets.
 // Dragging begins on the top handle or title; inputs and scrolled content are unaffected.
 let dismissSheetSwipe=null;
-const swipeDismissModalTypes=['myquotes','suggest','cart','pick','product-photos','approve'];
+const swipeDismissModalTypes=['myquotes','suggest','cart','pick','product-photos','approve','product'];
 app.addEventListener('pointerdown',e=>{
  const handle=e.target.closest?.('.swipe-dismiss-sheet .sheet-drag-handle, .swipe-dismiss-sheet .sheethead');
  if(!handle||e.target.closest('button,a,input,textarea,select,[contenteditable]'))return;
@@ -8126,7 +8134,7 @@ function finishDismissSheetSwipe(e,cancelled){
   window.setTimeout(()=>{
    if(sheet.isConnected&&state.modal?.type===drag.modalType){
     if(drag.modalType==='suggest')clearSuggestPreviews();
-    if(drag.modalType==='approve'){
+    if(drag.modalType==='approve'||drag.modalType==='product'){
      cancelAdminPhotoDrag();
      clearAdminSelectedPhotos();
     }

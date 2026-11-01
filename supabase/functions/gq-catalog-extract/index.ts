@@ -76,8 +76,35 @@ Deno.serve(async (req: Request) => {
       });
     } finally { clearTimeout(timer); }
     if (!result.ok) {
-      console.warn("Catalog OCR upstream status", result.status);
-      return reply(origin, 502, { error: result.status === 429 ? "AI 요청이 많아요. 잠시 후 다시 시도해 주세요." : "AI 사진 분석에 실패했어요. 관리자 AI 설정과 사용 한도를 확인해 주세요." });
+      // OpenAI uses HTTP 429 for both temporary rate limits and billing exhaustion.
+      // Report a safe, actionable reason without exposing API credentials or raw provider errors.
+      const problem = await result.json().catch(() => ({}));
+      const code = String(problem?.error?.code || "");
+      const type = String(problem?.error?.type || "");
+      console.warn("Catalog OCR upstream", result.status, "code", code.slice(0, 80) || "unknown", "type", type.slice(0, 80) || "unknown");
+      if (result.status === 429) {
+        const exhausted = code === "credit_balance_exhausted" || code === "insufficient_quota" ||
+          type === "insufficient_quota";
+        const spending = code === "organization_spend_limit_exceeded" ||
+          code === "project_spend_limit_exceeded";
+        const usage = code === "organization_usage_limit_exceeded";
+        const message = exhausted
+          ? "OpenAI API 크레딧(잔액)이 부족해요. API 결제 페이지에서 잔액을 확인하고 충전해 주세요. ChatGPT 구독과는 별도예요."
+          : spending
+          ? "OpenAI API 결제 사용금액 상한에 도달했어요. OpenAI 프로젝트 또는 조직의 Spend limits 설정을 확인해 주세요."
+          : usage
+          ? "OpenAI API 조직 사용 한도에 도달했어요. OpenAI Limits에서 사용 한도를 확인해 주세요."
+          : code === "rate_limit_exceeded" || type === "rate_limit_error"
+          ? "OpenAI API 분당 요청 또는 토큰 한도에 걸렸어요. OpenAI Limits에서 한도를 확인하고 요청 간격을 조절해 주세요."
+          : "OpenAI API가 429 오류를 반환했어요. API 결제 잔액(Billing)과 사용 한도(Limits)를 확인해 주세요.";
+        return reply(origin, 429, { error: message, reason: exhausted ? "billing" : spending ? "spend_limit" : usage ? "usage_limit" : "rate_or_quota" });
+      }
+      const other = result.status === 401
+        ? "OpenAI API 키 인증에 실패했어요. Supabase Secrets의 OPENAI_API_KEY를 확인해 주세요."
+        : result.status === 403
+        ? "OpenAI API 모델 사용 권한을 확인해 주세요."
+        : "AI 사진 분석에 실패했어요. OpenAI API 모델 설정과 사용 한도를 확인해 주세요.";
+      return reply(origin, 502, { error: other });
     }
     const out = await result.json();
     const text = (out.output || []).flatMap((x: any) => x.content || []).find((x: any) => x.type === "output_text")?.text;

@@ -2877,6 +2877,17 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 .round-single-order>summary span{color:#777;font-weight:600}
 .round-single-order>.card{margin:0!important;box-shadow:none!important;border:0!important}
 
+
+/* Keep batch-specific copy within reach even when the supplier card is collapsed. */
+.supplier-bulk-batch>summary{flex-wrap:wrap}
+.supplier-bulk-batch>summary .supplier-bulk-copy-btn{
+ flex:0 0 100%;width:100%;min-height:35px;margin-top:2px;
+ display:flex;align-items:center;justify-content:center;white-space:normal;
+ background:#f7f7f7;color:#272727;border:1px solid #e2e2e2;border-radius:6px;
+ font-size:11px;font-weight:780;line-height:1.4;
+}
+.supplier-bulk-batch>summary .supplier-bulk-copy-btn:active{background:#eaeaea}
+
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -5937,6 +5948,7 @@ function renderSupplierBulkManager(historyOnly=false,expanded=false){
     <small>${batch.people}명 · ${batchItems.length}종 · 배송비 ${money(batch.total)} · 1인 ${shareText}</small>
     <small>${fmtDate(batch.created_at)}</small></span>
     <em>${ordered?'완료':checked.people.filter(p=>supplierPartialInvoice(batch.id,p.payer.buyer_key)?.paid_at).length?checked.people.filter(p=>supplierPartialInvoice(batch.id,p.payer.buyer_key)?.paid_at).length+'/'+batch.people+'명 선입금 확인':checked.paid+'/'+batch.people+'명 전체 입금 확인'}</em>
+    <button type="button" class="btn sm secondary supplier-bulk-copy-btn" data-action="copy-supplier-batch-procurement" data-id="${esc(batch.id)}" aria-label="${esc(batch.supplier||'거래처')} 발주서 복사">이 거래처 발주서 복사</button>
    </summary>
    <div class="supplier-bulk-batch-body">
     ${checked.people.map(p=>{
@@ -6144,6 +6156,28 @@ function formatWholesaleOrderCopy(rows,groupBySupplier=true,groupTitle='도매�
   output.push('','전체 수량: '+totalQty+'개','전체 매입 총액: '+money(totalAmount)+(unpricedQty?' (단가 미등록 '+unpricedQty+'개 제외 · 부분 합계)':''));
  }
  return output.join('\n');
+}
+/* Copy the EXACT allocation batch, not the global pending procurement list.
+   Never alter paid sums, ordered statuses, customer-visible prices or shipping fees. */
+function supplierBatchProcurementRows(batch){
+ if(!state.admin||state.page!=='admin'||!state.productPrivateReady)
+  throw Error('관리자 도매 단가를 불러온 뒤 발주서를 복사해 주세요.');
+ if(!batch||!Array.isArray(batch.item_ids)||!batch.item_ids.length)
+  throw Error('발주서에 포함된 거래처 상품이 없어요.');
+ const byId=new Map(state.quotes.flatMap(q=>(q.items||[]).map(item=>[item.id,{q,item}])));
+ const rows=batch.item_ids.map(id=>{
+  const entry=byId.get(id);
+  if(!entry)throw Error('발주서의 주문 품목이 일부 누락됐어요. 관리자 새로고침 후 확인해 주세요.');
+  const {q,item}=entry;
+  const privateMeta=state.productPrivate[item.product_id]||{};
+  const raw=privateMeta.wholesale_price;
+  const unit=raw===null||raw===undefined||raw===''?null:Number(raw);
+  if(unit!==null&&(!Number.isFinite(unit)||unit<0))
+   throw Error('도매 단가가 올바르지 않은 상품이 있어요. 상품 관리에서 확인해 주세요.');
+  return {q,item,vendor:String(batch.supplier||'').trim(),qty:Number(item.quantity)||0,unit};
+ });
+ if(rows.some(row=>row.qty<=0))throw Error('수량이 올바르지 않은 상품이 있어요. 주문을 확인해 주세요.');
+ return rows;
 }
 function procurementCopyText(readyOnly=false,vendorName=null){
  const rows=procurementRows().filter(r=>(!readyOnly||r.ready)&&(vendorName===null||r.vendor===vendorName));
@@ -8072,6 +8106,22 @@ if(a==='admin-complete-wholesale'){
  await rpc('gq_admin_mark_quote_wholesale_ordered_v61',{p_quote_id:id},true);
  await loadAdmin();
  notif('이번 회차 도매주문 완료 처리했어요. 고객 옵션 변경 요청이 마감됐어요.');
+ return;
+}
+if(a==='copy-supplier-batch-procurement'){
+ // Buttons are in <summary> to remain visible even while a batch is collapsed.
+ // Cancelling the native summary activation prevents an unwanted open/close jump.
+ e.preventDefault();
+ if(!state.admin||state.page!=='admin'||state.tab!=='quotes'||!state.supplierBatchesReady)
+  throw Error('관리자 거래처별 입금·발주 화면에서 복사해 주세요.');
+ const batch=state.supplierBatches.find(x=>x.id===id);
+ if(!batch)throw Error('거래처 배분을 찾지 못했어요. 새로고침 후 다시 복사해 주세요.');
+ const rows=supplierBatchProcurementRows(batch);
+ const invalid=rows.filter(r=>r.q.status==='cancelled'||r.item.fulfillment==='sold_out');
+ if(invalid.length&&!window.confirm('취소·품절 처리된 상품 '+invalid.length+'종이 포함되어 있어요. 원래 배분된 전체 상품으로 발주서를 복사할까요?'))return;
+ const missing=rows.filter(r=>r.unit===null).length;
+ await copy(formatWholesaleOrderCopy(rows,true,'도매처',true));
+ notif('‘'+batch.supplier+'’ 거래처 발주서 '+rows.reduce((n,r)=>n+r.qty,0)+'개 복사 완료.'+(missing?' 단가 미등록 '+missing+'종을 확인해 주세요.':''));
  return;
 }
 if(a==='copy-completed-procurement-all'||a==='copy-completed-procurement-vendor'){

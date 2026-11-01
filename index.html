@@ -2897,6 +2897,9 @@ function validateProductCategory(category,allowEmpty=false){
 function matchesCategory(p,key){
  return key==='all'||(key==='uncategorized'?!validProductCategory(p.category):p.category===key);
 }
+// Public site pricing: Cloudflare keeps current estimates; only the GitHub storefront uses alternate estimates.
+const githubStorefront=location.hostname.toLowerCase()==='nostaljian.github.io';
+function storeEstimate(p){const raw=githubStorefront?p?.github_estimated_price:p?.estimated_price;return Number.isInteger(raw)&&raw>0?raw:null;}
 const app=$('#app');
 const fmtDate=x=>x?new Date(x).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):'';
 const previewOrderSum=o=>(o.items||[]).filter(i=>i.fulfillment!=='sold_out').reduce((s,i)=>s+(i.unit_price??0)*i.quantity,0);
@@ -3260,7 +3263,10 @@ async function savePrivateProduct(productId,info){
  const wholesale=yuan!==null?Math.round(yuan*350):info.p_wholesale_price;
  state.productPrivate[productId]={supplier_name:info.p_supplier_name,source_type:info.p_source_type,yuan_price:yuan,wholesale_price:wholesale};
  const product=state.products.find(x=>x.id===productId);
- if(product)product.estimated_price=yuan!==null?Math.round(yuan*600):wholesale>0?Math.round(wholesale*1.3/1000)*1000:null;
+ if(product){
+ product.estimated_price=yuan!==null?Math.round(yuan*600):wholesale>0?Math.round(wholesale*1.3/1000)*1000:null;
+ product.github_estimated_price=yuan!==null?Math.round(yuan*500):wholesale>0?Math.round(wholesale*1.2):null;
+ }
 }
 function sourcingPreviewText(source,rawDomestic,rawYuan){
  if(source==='1688'){
@@ -3746,11 +3752,11 @@ function productPhotoUrls(p){
 }
 // Public approximation only: a rounded display estimate maintained in Postgres
 // from admin-only wholesale cost. Never fetch private supplier or wholesale data for buyers.
-function hasProductEstimate(p){return Number.isInteger(p?.estimated_price)&&p.estimated_price>0;}
+function hasProductEstimate(p){return storeEstimate(p)!==null;}
 function estimatedProductPrice(p,detail=false){
  if(!hasProductEstimate(p))return detail?'<div class="estimate-unavailable">예상 가격은 견적 요청 후 안내해 드려요.</div>':'';
  return `<div class="product-estimate ${detail?'product-estimate-detail':'product-estimate-card'}">
-  <span class="product-estimate-label">예상가</span><strong>약 ${money(p.estimated_price)}</strong>
+  <span class="product-estimate-label">예상가</span><strong>약 ${money(storeEstimate(p))}</strong>
   ${detail?'<div class="product-estimate-note">참고용 예상 금액이에요. 실제 상품 가격과 배송비는 견적 확인 후 확정됩니다.</div>':''}
  </div>`;
 }
@@ -4128,7 +4134,7 @@ function renderShop(){
     const knownA=hasProductEstimate(a.p),knownB=hasProductEstimate(b.p);
     if(knownA!==knownB)return knownA?-1:1;
     if(knownA){
-     const diff=a.p.estimated_price-b.p.estimated_price;
+     const diff=storeEstimate(a.p)-storeEstimate(b.p);
      if(diff)return activeSort==='price-low'?diff:-diff;
     }
    }
@@ -4705,14 +4711,14 @@ function renderAdminProducts(){
   if(meta?.source_type==='1688'){
    const raw=meta.yuan_price;
    const yuan=raw==null||raw===''?null:Number(raw);
-   if(yuan!==null&&Number.isFinite(yuan)&&yuan>0)return Math.round(yuan*600);
+   if(yuan!==null&&Number.isFinite(yuan)&&yuan>0)return Math.round(yuan*(githubStorefront?500:600));
   }
   const raw=p.estimated_price;
   const fromProduct=raw==null||raw===''?null:Number(raw);
   if(fromProduct!==null&&Number.isFinite(fromProduct)&&fromProduct>0)return Math.round(fromProduct);
   if(meta?.source_type==='namdaemun'){
    const cost=meta.wholesale_price==null?null:Number(meta.wholesale_price);
-   if(cost!==null&&Number.isFinite(cost)&&cost>0)return Math.round(cost*1.3/1000)*1000;
+   if(cost!==null&&Number.isFinite(cost)&&cost>0)return githubStorefront?Math.round(cost*1.2):Math.round(cost*1.3/1000)*1000;
   }
   return null;
  };
@@ -4949,16 +4955,16 @@ function bundleWorkControls(group){
 // Missing estimates/prices are visibly marked as partial; never treated as zero.
 function adminEstimatedUnitPrice(item){
  const p=state.products.find(x=>x.id===item.product_id);
- const estimate=Number(p?.estimated_price);
- if(Number.isInteger(estimate)&&estimate>0)return estimate;
+ const estimate=storeEstimate(p);
+ if(estimate!==null)return estimate;
  if(!state.productPrivateReady||!item.product_id)return null;
  const meta=state.productPrivate[item.product_id]||{};
  if(meta.source_type==='1688'){
   const yuan=meta.yuan_price==null?null:Number(meta.yuan_price);
-  return yuan!==null&&Number.isFinite(yuan)&&yuan>0?Math.round(yuan*600):null;
+  return yuan!==null&&Number.isFinite(yuan)&&yuan>0?Math.round(yuan*(githubStorefront?500:600)):null;
  }
  const wholesale=meta.wholesale_price==null?null:Number(meta.wholesale_price);
- return wholesale!==null&&Number.isFinite(wholesale)&&wholesale>0?Math.round(wholesale*1.3/1000)*1000:null;
+ return wholesale!==null&&Number.isFinite(wholesale)&&wholesale>0?(githubStorefront?Math.round(wholesale*1.2):Math.round(wholesale*1.3/1000)*1000):null;
 }
 function adminPriceSummary(orders){
  const summary={estimate:0,actual:0,wholesale:0,missingEstimates:0,missingActual:0,missingWholesale:0,pricedCount:0,itemCount:0};
@@ -6204,7 +6210,7 @@ function renderCartReviewItem(c,i){
     <div class="cart-review-store">${esc(storeName(c.store_id))}</div>
     <b class="cart-review-name">${esc(c.product_name)}</b>
     <div class="cart-review-option">${esc(c.color)} / ${esc(c.size)} · ${Math.max(1,Number(c.quantity)||1)}개</div>
-    <div class="cart-review-item-price">${!unavailable&&hasProductEstimate(p)?'예상 '+money(p.estimated_price*Math.max(1,Math.floor(Number(c.quantity)||1))):'예상가 확인 필요'}</div>
+    <div class="cart-review-item-price">${!unavailable&&hasProductEstimate(p)?'예상 '+money(storeEstimate(p)*Math.max(1,Math.floor(Number(c.quantity)||1))):'예상가 확인 필요'}</div>
     ${!unavailable?'<button type="button" class="cart-review-option-edit" data-action="cart-option-edit" aria-label="'+esc(c.product_name)+' 옵션 변경">옵션 변경</button>':''}
    </div>
    <button type="button" class="cart-review-remove" data-action="cart-remove" data-i="${i}" aria-label="${esc(c.product_name)} ${esc(c.color)} ${esc(c.size)} 장바구니에서 삭제" title="상품 삭제">
@@ -6283,7 +6289,7 @@ function cartEstimateTotals(){
   const active=!!(p&&p.published&&!p.is_sold_out&&state.stores.some(st=>st.id===p.store_id&&st.active));
   if(!active){unavailableCount++;continue}
   if(!hasProductEstimate(p)){unpricedCount++;continue}
-  knownTotal+=p.estimated_price*Math.max(1,Math.floor(Number(item.quantity)||1));
+  knownTotal+=storeEstimate(p)*Math.max(1,Math.floor(Number(item.quantity)||1));
  }
  return {knownTotal,unpricedCount,unavailableCount};
 }
@@ -6803,7 +6809,7 @@ async function approveSuggestion(d){
 }
 async function setBundle(id,parentId){if(!connected){const q=demo.quotes.find(x=>x.id===id);if(!q)throw Error('주문을 찾지 못했어요');q.bundle_parent_id=parentId||null;saveDemo();return true;}return rpc('gq_set_bundle',{p_quote_id:id,p_parent_id:parentId||null},true)}
 async function requestQuote(name,baby,contact,note,delivery,lookupPin,email){const items=state.cart.map(c=>({product_id:c.product_id,color:c.color,size:c.size,quantity:c.quantity}));if(!items.length)throw Error('상품을 먼저 담아 주세요');if(!connected){const id=uuid(),token=uuid(),q={id,lookup_token:token,buyer_name:name,baby_name:baby,customer_key:customerKey,contact,note,customer_email:email,lookup_pin:lookupPin,status:'requested',amount_paid:0,amount_refunded:0,created_at:now()};Object.assign(q,delivery,{shipping_fee:delivery.delivery_method==='courier'?3000:0,bundle_parent_id:null});demo.quotes.unshift(q);for(const c of state.cart)demo.items.push({id:uuid(),quote_id:id,store_name:storeName(c.store_id),product_name:c.product_name,color:c.color,size:c.size,quantity:c.quantity,unit_price:null,fulfillment:'ordered',created_at:now()});saveDemo();return{id,token}}
-return rpc('gq_request_quote_v45',{p_lookup_pin:lookupPin,p_name:name,p_baby_name:baby,p_contact:contact,p_note:note,p_items:items,p_customer_key:customerKey,p_delivery_method:delivery.delivery_method,p_recipient_name:delivery.recipient_name,p_postal_code:delivery.postal_code,p_address_line1:delivery.address_line1,p_address_line2:delivery.address_line2,p_delivery_note:delivery.delivery_note,p_email:email})}
+return rpc(githubStorefront?'gq_request_quote_github_v82':'gq_request_quote_v45',{p_lookup_pin:lookupPin,p_name:name,p_baby_name:baby,p_contact:contact,p_note:note,p_items:items,p_customer_key:customerKey,p_delivery_method:delivery.delivery_method,p_recipient_name:delivery.recipient_name,p_postal_code:delivery.postal_code,p_address_line1:delivery.address_line1,p_address_line2:delivery.address_line2,p_delivery_note:delivery.delivery_note,p_email:email})}
 // Refresh the app document itself, not just the tracking JSON.
 // Avoid stale iOS Home Screen JS after a new MINIYENA release.
 function refreshFullOrderPage(){

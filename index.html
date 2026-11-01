@@ -2462,121 +2462,121 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 }
 
 
-/* Minimal approval screen (approval only): remove duplicate helper boxes and control heights. */
+/* Consistent approval + direct-product editing, with protected sticky product Save action. */
 .approve-sheet .sheethead{margin-bottom:10px}
 .approve-sheet .sheethead h2{font-size:19px;letter-spacing:-.04em;font-weight:770}
-#approve-form.approve-clean-form{display:flex;flex-direction:column;gap:11px;margin:0;padding:0}
-#approve-form.approve-clean-form>.label{display:block;margin:0;color:#292929;font-size:12px;line-height:1.4;font-weight:700}
-#approve-form.approve-clean-form>.label input,
-#approve-form.approve-clean-form>.label select,
-#approve-form.approve-clean-form>.label textarea{
+:is(#approve-form,#product-form.product-clean-form).approve-clean-form{display:flex;flex-direction:column;gap:11px;margin:0;padding:0}
+:is(#approve-form,#product-form.product-clean-form).approve-clean-form>.label{display:block;margin:0;color:#292929;font-size:12px;line-height:1.4;font-weight:700}
+:is(#approve-form,#product-form.product-clean-form).approve-clean-form>.label input,
+:is(#approve-form,#product-form.product-clean-form).approve-clean-form>.label select,
+:is(#approve-form,#product-form.product-clean-form).approve-clean-form>.label textarea{
  box-sizing:border-box;display:block;width:100%;min-width:0;max-width:100%;
  margin:4px 0 0;padding:8px 12px;background:#fff;color:#151515;
  border:1px solid #dedede;border-radius:7px;font-size:16px;font-weight:400;box-shadow:none;
 }
-#approve-form.approve-clean-form>.label input,
-#approve-form.approve-clean-form>.label select{min-height:44px;height:44px}
-#approve-form.approve-clean-form>.label textarea{min-height:68px;resize:vertical;line-height:1.5}
-#approve-form .admin-combined-photo-editor{margin:0 0 3px;padding:0;border:0;background:transparent;border-radius:0}
-#approve-form .admin-combined-photo-heading{display:flex;align-items:baseline;justify-content:space-between;gap:9px;margin:0 0 8px}
-#approve-form .admin-combined-photo-heading b{font-size:12px;font-weight:700;color:#292929}
-#approve-form .admin-photo-compact-hint{font-size:10px;color:#999;line-height:1.4;text-align:right}
-#approve-form .admin-combined-photo-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
+:is(#approve-form,#product-form.product-clean-form).approve-clean-form>.label input,
+:is(#approve-form,#product-form.product-clean-form).approve-clean-form>.label select{min-height:44px;height:44px}
+:is(#approve-form,#product-form.product-clean-form).approve-clean-form>.label textarea{min-height:68px;resize:vertical;line-height:1.5}
+:is(#approve-form,#product-form.product-clean-form) .admin-combined-photo-editor{margin:0 0 3px;padding:0;border:0;background:transparent;border-radius:0}
+:is(#approve-form,#product-form.product-clean-form) .admin-combined-photo-heading{display:flex;align-items:baseline;justify-content:space-between;gap:9px;margin:0 0 8px}
+:is(#approve-form,#product-form.product-clean-form) .admin-combined-photo-heading b{font-size:12px;font-weight:700;color:#292929}
+:is(#approve-form,#product-form.product-clean-form) .admin-photo-compact-hint{font-size:10px;color:#999;line-height:1.4;text-align:right}
+:is(#approve-form,#product-form.product-clean-form) .admin-combined-photo-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
 /* Nine photos fill three even rows instead of an orphan at the end. */
-#approve-form .admin-combined-photo-grid[data-photo-count="3"],
-#approve-form .admin-combined-photo-grid[data-photo-count="5"],
-#approve-form .admin-combined-photo-grid[data-photo-count="6"],
-#approve-form .admin-combined-photo-grid[data-photo-count="9"]{grid-template-columns:repeat(3,minmax(0,1fr))}
-#approve-form .admin-combined-photo{padding:3px;border:1px solid #e6e6e6;border-radius:7px}
-#approve-form .admin-combined-photo-image{border-radius:5px}
-#approve-form .admin-combined-photo figcaption{gap:0;min-height:0;margin:4px 0 1px}
-#approve-form .admin-combined-photo figcaption b{font-size:10px;font-weight:700;line-height:1.3}
-#approve-form .admin-combined-photo figcaption span{display:none}
-#approve-form .admin-combined-photo-x{width:25px;min-width:25px;height:25px;min-height:25px;top:3px;right:3px;font-size:18px}
-#approve-form .admin-photo-drag-grip{width:22px;height:22px;font-size:16px;left:3px;bottom:3px}
-#approve-form .admin-combined-photo-empty{padding:13px 0;color:#888}
-#approve-form .admin-compact-photo-add{
+:is(#approve-form,#product-form.product-clean-form) .admin-combined-photo-grid[data-photo-count="3"],
+:is(#approve-form,#product-form.product-clean-form) .admin-combined-photo-grid[data-photo-count="5"],
+:is(#approve-form,#product-form.product-clean-form) .admin-combined-photo-grid[data-photo-count="6"],
+:is(#approve-form,#product-form.product-clean-form) .admin-combined-photo-grid[data-photo-count="9"]{grid-template-columns:repeat(3,minmax(0,1fr))}
+:is(#approve-form,#product-form.product-clean-form) .admin-combined-photo{padding:3px;border:1px solid #e6e6e6;border-radius:7px}
+:is(#approve-form,#product-form.product-clean-form) .admin-combined-photo-image{border-radius:5px}
+:is(#approve-form,#product-form.product-clean-form) .admin-combined-photo figcaption{gap:0;min-height:0;margin:4px 0 1px}
+:is(#approve-form,#product-form.product-clean-form) .admin-combined-photo figcaption b{font-size:10px;font-weight:700;line-height:1.3}
+:is(#approve-form,#product-form.product-clean-form) .admin-combined-photo figcaption span{display:none}
+:is(#approve-form,#product-form.product-clean-form) .admin-combined-photo-x{width:25px;min-width:25px;height:25px;min-height:25px;top:3px;right:3px;font-size:18px}
+:is(#approve-form,#product-form.product-clean-form) .admin-photo-drag-grip{width:22px;height:22px;font-size:16px;left:3px;bottom:3px}
+:is(#approve-form,#product-form.product-clean-form) .admin-combined-photo-empty{padding:13px 0;color:#888}
+:is(#approve-form,#product-form.product-clean-form) .admin-compact-photo-add{
  position:relative;display:flex;align-items:center;justify-content:flex-start;gap:11px;
  margin:8px 0 0;padding:7px 10px;border:1px solid #dedede;border-radius:7px;
  background:#fff;min-height:44px;box-sizing:border-box;cursor:pointer;
 }
-#approve-form .admin-compact-photo-button{display:inline-flex;align-items:center;justify-content:center;flex:none;
+:is(#approve-form,#product-form.product-clean-form) .admin-compact-photo-button{display:inline-flex;align-items:center;justify-content:center;flex:none;
  border-radius:5px;background:#f2f2f2;min-height:30px;padding:6px 11px;font-size:12px;font-weight:720;color:#222}
-#approve-form .admin-compact-photo-count{font-size:11px;color:#888;line-height:1.3}
-#approve-form .admin-compact-photo-add input[type=file]{
+:is(#approve-form,#product-form.product-clean-form) .admin-compact-photo-count{font-size:11px;color:#888;line-height:1.3}
+:is(#approve-form,#product-form.product-clean-form) .admin-compact-photo-add input[type=file]{
  position:absolute;inset:0;display:block;width:100%;height:100%;min-height:0;margin:0;
  padding:0;opacity:0;cursor:pointer;z-index:1
 }
-#approve-form .admin-compact-photo-add:focus-within{outline:2px solid #111;outline-offset:2px}
-#approve-form .admin-compact-photo-footnote{margin:4px 0 0;color:#888;font-size:10px;line-height:1.4}
-#approve-form .bulk-option-builder.approval-bulk{margin:3px 0 0;padding:0;border:0;border-radius:0;background:transparent}
-#approve-form .approval-bulk .bulk-option-heading{display:flex;justify-content:space-between;align-items:baseline;gap:7px;margin:0 0 7px}
-#approve-form .approval-bulk .bulk-option-heading b{font-size:12px;font-weight:700;color:#292929}
-#approve-form .approval-bulk .bulk-option-heading span{font-size:10px;line-height:1.3;color:#999;text-align:right}
-#approve-form .approval-bulk-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
-#approve-form .approval-bulk-fields .label{margin:0;min-width:0;font-size:11px;color:#555;font-weight:650}
-#approve-form .approval-bulk .bulk-option-textbox,
-#approve-form .approval-bulk .bulk-option-textbox[data-bulk-editor="sizes"]{
+:is(#approve-form,#product-form.product-clean-form) .admin-compact-photo-add:focus-within{outline:2px solid #111;outline-offset:2px}
+:is(#approve-form,#product-form.product-clean-form) .admin-compact-photo-footnote{margin:4px 0 0;color:#888;font-size:10px;line-height:1.4}
+:is(#approve-form,#product-form.product-clean-form) .bulk-option-builder.approval-bulk{margin:3px 0 0;padding:0;border:0;border-radius:0;background:transparent}
+:is(#approve-form,#product-form.product-clean-form) .approval-bulk .bulk-option-heading{display:flex;justify-content:space-between;align-items:baseline;gap:7px;margin:0 0 7px}
+:is(#approve-form,#product-form.product-clean-form) .approval-bulk .bulk-option-heading b{font-size:12px;font-weight:700;color:#292929}
+:is(#approve-form,#product-form.product-clean-form) .approval-bulk .bulk-option-heading span{font-size:10px;line-height:1.3;color:#999;text-align:right}
+:is(#approve-form,#product-form.product-clean-form) .approval-bulk-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+:is(#approve-form,#product-form.product-clean-form) .approval-bulk-fields .label{margin:0;min-width:0;font-size:11px;color:#555;font-weight:650}
+:is(#approve-form,#product-form.product-clean-form) .approval-bulk .bulk-option-textbox,
+:is(#approve-form,#product-form.product-clean-form) .approval-bulk .bulk-option-textbox[data-bulk-editor="sizes"]{
  display:block;width:100%;box-sizing:border-box;min-height:70px;height:70px;
  margin:4px 0 0;padding:9px;border:1px solid #dedede;border-radius:7px;
  background:#fff;color:#111;font-size:16px;line-height:1.45;overflow:auto;
  white-space:pre-wrap;overflow-wrap:anywhere;resize:none;
 }
-#approve-form .approval-bulk .bulk-option-textbox:empty:before{color:#aaa;font-size:12px;line-height:1.4}
-#approve-form .approval-bulk .bulk-option-apply{
+:is(#approve-form,#product-form.product-clean-form) .approval-bulk .bulk-option-textbox:empty:before{color:#aaa;font-size:12px;line-height:1.4}
+:is(#approve-form,#product-form.product-clean-form) .approval-bulk .bulk-option-apply{
  margin:9px 0 0;padding:10px 12px!important;min-height:43px;border-radius:7px;
  font-size:12px!important;font-weight:760;
 }
-#approve-form .approval-bulk-presets{border-bottom:1px solid #eee;padding:0 0 6px;margin:3px 0 0;color:#777}
-#approve-form .approval-bulk-presets summary{list-style:none;cursor:pointer;padding:8px 0;font-size:11px;color:#777}
-#approve-form .approval-bulk-presets summary::-webkit-details-marker{display:none}
-#approve-form .approval-bulk-presets summary:before{content:"＋ ";font-weight:700}
-#approve-form .approval-bulk-presets[open] summary:before{content:"− "}
-#approve-form .approval-bulk-presets .smallnote{margin:4px 0;font-size:10px}
-#approve-form .approval-bulk-preset-buttons{display:flex;gap:7px;flex-wrap:wrap;margin:8px 0 0}
-#approve-form .approval-bulk-preset-buttons .btn{flex:1 1 120px;min-height:38px;padding:8px;font-size:11px}
-#approve-form .approve-options-label textarea{height:70px;min-height:70px;max-height:210px}
-#approve-form .private-product-fields.approval-sourcing{
+:is(#approve-form,#product-form.product-clean-form) .approval-bulk-presets{border-bottom:1px solid #eee;padding:0 0 6px;margin:3px 0 0;color:#777}
+:is(#approve-form,#product-form.product-clean-form) .approval-bulk-presets summary{list-style:none;cursor:pointer;padding:8px 0;font-size:11px;color:#777}
+:is(#approve-form,#product-form.product-clean-form) .approval-bulk-presets summary::-webkit-details-marker{display:none}
+:is(#approve-form,#product-form.product-clean-form) .approval-bulk-presets summary:before{content:"＋ ";font-weight:700}
+:is(#approve-form,#product-form.product-clean-form) .approval-bulk-presets[open] summary:before{content:"− "}
+:is(#approve-form,#product-form.product-clean-form) .approval-bulk-presets .smallnote{margin:4px 0;font-size:10px}
+:is(#approve-form,#product-form.product-clean-form) .approval-bulk-preset-buttons{display:flex;gap:7px;flex-wrap:wrap;margin:8px 0 0}
+:is(#approve-form,#product-form.product-clean-form) .approval-bulk-preset-buttons .btn{flex:1 1 120px;min-height:38px;padding:8px;font-size:11px}
+:is(#approve-form,#product-form.product-clean-form) .approve-options-label textarea{height:70px;min-height:70px;max-height:210px}
+:is(#approve-form,#product-form.product-clean-form) .private-product-fields.approval-sourcing{
  margin:3px 0 0;padding:12px 0 0;background:transparent;border:0;border-top:1px solid #e8e8e8;border-radius:0
 }
-#approve-form .approval-sourcing .private-product-heading{display:flex;gap:9px;align-items:baseline;margin:0 0 10px}
-#approve-form .approval-sourcing .private-product-heading strong{font-size:12px;font-weight:750;color:#222}
-#approve-form .approval-sourcing .private-product-heading span{font-size:10px;color:#999;font-weight:400}
-#approve-form .approval-sourcing-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
-#approve-form .approval-sourcing-fields>.label,
-#approve-form .approval-sourcing-fields>div>.label{display:block;min-width:0;margin:0;color:#444;font-size:11px;font-weight:650}
-#approve-form .approval-sourcing-fields>div{min-width:0}
-#approve-form .approval-sourcing-fields input,
-#approve-form .approval-sourcing-fields select{
+:is(#approve-form,#product-form.product-clean-form) .approval-sourcing .private-product-heading{display:flex;gap:9px;align-items:baseline;margin:0 0 10px}
+:is(#approve-form,#product-form.product-clean-form) .approval-sourcing .private-product-heading strong{font-size:12px;font-weight:750;color:#222}
+:is(#approve-form,#product-form.product-clean-form) .approval-sourcing .private-product-heading span{font-size:10px;color:#999;font-weight:400}
+:is(#approve-form,#product-form.product-clean-form) .approval-sourcing-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+:is(#approve-form,#product-form.product-clean-form) .approval-sourcing-fields>.label,
+:is(#approve-form,#product-form.product-clean-form) .approval-sourcing-fields>div>.label{display:block;min-width:0;margin:0;color:#444;font-size:11px;font-weight:650}
+:is(#approve-form,#product-form.product-clean-form) .approval-sourcing-fields>div{min-width:0}
+:is(#approve-form,#product-form.product-clean-form) .approval-sourcing-fields input,
+:is(#approve-form,#product-form.product-clean-form) .approval-sourcing-fields select{
  display:block;box-sizing:border-box;width:100%;height:44px;min-height:44px;
  margin:4px 0 0;padding:8px 9px;border:1px solid #dedede;border-radius:7px;
  background:#fff;color:#111;font-size:16px;box-shadow:none;
 }
-#approve-form .approval-sourcing-fields select{padding-right:24px}
-#approve-form .approval-sourcing .private-sourcing-preview{
+:is(#approve-form,#product-form.product-clean-form) .approval-sourcing-fields select{padding-right:24px}
+:is(#approve-form,#product-form.product-clean-form) .approval-sourcing .private-sourcing-preview{
  margin:9px 0 0;padding:9px 11px;border:0;border-radius:7px;
  background:#f7f7f7;color:#555;font-size:11px;line-height:1.5;
 }
-#approve-form .approval-optional-note{margin:3px 0 0;border-top:1px solid #e8e8e8;border-bottom:1px solid #e8e8e8}
-#approve-form .approval-optional-note>summary{list-style:none;display:flex;align-items:center;gap:8px;cursor:pointer;min-height:45px;padding:10px 1px;font-size:12px;font-weight:700}
-#approve-form .approval-optional-note>summary::-webkit-details-marker{display:none}
-#approve-form .approval-optional-note>summary:after{content:"⌄";margin-left:auto;color:#888;font-size:18px;font-weight:400}
-#approve-form .approval-optional-note[open]>summary:after{transform:rotate(180deg)}
-#approve-form .approval-optional-note>summary span{color:#999;font-size:10px;font-weight:450}
-#approve-form .approval-optional-body{padding:1px 0 12px}
-#approve-form .approval-optional-body .product-note-label{display:none}
-#approve-form .approval-optional-body .product-note-input{min-height:75px;height:75px;max-height:230px;padding:9px 11px;border-radius:7px;font-size:16px;line-height:1.5}
-#approve-form .approval-optional-body .product-note-help{display:none}
-#approve-form .approval-publish-options{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center}
-#approve-form .approval-publish-options .approve-publish-label{display:inline-flex;gap:7px;align-items:center;margin:0!important;font-size:12px}
-#approve-form .approval-publish-options input{margin:0}
-#approve-form > button[type=submit]{margin-top:4px;min-height:46px;font-size:14px;border-radius:7px}
+:is(#approve-form,#product-form.product-clean-form) .approval-optional-note{margin:3px 0 0;border-top:1px solid #e8e8e8;border-bottom:1px solid #e8e8e8}
+:is(#approve-form,#product-form.product-clean-form) .approval-optional-note>summary{list-style:none;display:flex;align-items:center;gap:8px;cursor:pointer;min-height:45px;padding:10px 1px;font-size:12px;font-weight:700}
+:is(#approve-form,#product-form.product-clean-form) .approval-optional-note>summary::-webkit-details-marker{display:none}
+:is(#approve-form,#product-form.product-clean-form) .approval-optional-note>summary:after{content:"⌄";margin-left:auto;color:#888;font-size:18px;font-weight:400}
+:is(#approve-form,#product-form.product-clean-form) .approval-optional-note[open]>summary:after{transform:rotate(180deg)}
+:is(#approve-form,#product-form.product-clean-form) .approval-optional-note>summary span{color:#999;font-size:10px;font-weight:450}
+:is(#approve-form,#product-form.product-clean-form) .approval-optional-body{padding:1px 0 12px}
+:is(#approve-form,#product-form.product-clean-form) .approval-optional-body .product-note-label{display:none}
+:is(#approve-form,#product-form.product-clean-form) .approval-optional-body .product-note-input{min-height:75px;height:75px;max-height:230px;padding:9px 11px;border-radius:7px;font-size:16px;line-height:1.5}
+:is(#approve-form,#product-form.product-clean-form) .approval-optional-body .product-note-help{display:none}
+:is(#approve-form,#product-form.product-clean-form) .approval-publish-options{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center}
+:is(#approve-form,#product-form.product-clean-form) .approval-publish-options .approve-publish-label{display:inline-flex;gap:7px;align-items:center;margin:0!important;font-size:12px}
+:is(#approve-form,#product-form.product-clean-form) .approval-publish-options input{margin:0}
+:is(#approve-form,#product-form.product-clean-form) > button[type=submit]{margin-top:4px;min-height:46px;font-size:14px;border-radius:7px}
 @media(max-width:375px){
- #approve-form .admin-combined-photo-grid{gap:5px}
- #approve-form .admin-combined-photo{padding:2px}
- #approve-form .admin-photo-compact-hint{font-size:9px}
- #approve-form .approval-bulk-fields{gap:7px}
- #approve-form .approval-sourcing-fields{gap:7px}
+ :is(#approve-form,#product-form.product-clean-form) .admin-combined-photo-grid{gap:5px}
+ :is(#approve-form,#product-form.product-clean-form) .admin-combined-photo{padding:2px}
+ :is(#approve-form,#product-form.product-clean-form) .admin-photo-compact-hint{font-size:9px}
+ :is(#approve-form,#product-form.product-clean-form) .approval-bulk-fields{gap:7px}
+ :is(#approve-form,#product-form.product-clean-form) .approval-sourcing-fields{gap:7px}
 }
 
 
@@ -2612,6 +2612,26 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 :is(#approve-form,#product-form.product-clean-form) .size-preset-manager .smallnote{
  margin:7px 0 0;font-size:10px;line-height:1.5;color:#888;
 }
+
+
+/* Direct item create/edit: match approval spacing, preserve sticky Save footer. */
+.sheet-product-editor.product-editor-clean .sheethead{margin-bottom:10px}
+.sheet-product-editor.product-editor-clean .sheethead h2{font-size:19px;letter-spacing:-.04em;font-weight:770}
+.sheet-product-editor.product-editor-clean .sheet-product-scroll{padding:5px 0 14px}
+#product-form.product-clean-form .product-store-picker{margin:0}
+#product-form.product-clean-form .product-store-picker>.label{display:block;margin:0 0 4px;font-size:12px;font-weight:700;color:#292929}
+#product-form.product-clean-form .product-store-picker .product-store-combobox{margin:0}
+#product-form.product-clean-form [data-product-store-search],
+#product-form.product-clean-form .product-new-store-row input{
+ display:block;box-sizing:border-box;width:100%;min-height:44px;height:44px;
+ padding:8px 11px;margin:0;border:1px solid #dedede;border-radius:7px;
+ color:#111;background:#fff;font-size:16px;box-shadow:none;
+}
+#product-form.product-clean-form .product-new-store-row{display:block;margin:9px 0 0;font-size:12px;font-weight:690}
+#product-form.product-clean-form .product-new-store-row[hidden]{display:none!important}
+#product-form.product-clean-form .product-new-store-row input{margin-top:4px}
+#product-form.product-clean-form .approval-bulk-presets .smallnote{font-size:10px}
+#product-form.product-clean-form .product-note-help{display:none}
 
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
@@ -4269,9 +4289,9 @@ function renderAdminPhotoWorkspace(compact=false){
 function updateAdminPhotoEditor(form){
  if(!form||!['approve-form','product-form'].includes(form.id))return;
  const grid=form.querySelector('[data-admin-photo-list]');
- if(grid){grid.innerHTML=adminPhotoGridMarkup();if(form.id==='approve-form')grid.dataset.photoCount=String(adminPhotoSequence.length);}
+ if(grid){grid.innerHTML=adminPhotoGridMarkup();if(form.querySelector('.admin-compact-photo-add'))grid.dataset.photoCount=String(adminPhotoSequence.length);}
  const count=form.querySelector('[data-admin-photo-count]');
- if(count)count.textContent=form.id==='approve-form'?adminPhotoSequence.length+' / 9장':adminPhotoSequence.length+' / 9장 · 맨 앞이 대표사진 · ×는 판매 상품에서만 제외';
+ if(count)count.textContent=form.querySelector('.admin-compact-photo-add')?adminPhotoSequence.length+' / 9장':adminPhotoSequence.length+' / 9장 · 맨 앞이 대표사진 · ×는 판매 상품에서만 제외';
  const empty=form.querySelector('[data-admin-photo-empty]');
  if(empty)empty.classList.toggle('hidden',adminPhotoSequence.length!==0);
  if(form.id==='approve-form')showRequestImages().catch(console.error);
@@ -5828,7 +5848,7 @@ function renderAdminSettings(){return `<section class="card pushbox pushbox-sett
   <div class="admin-push-test-buttons"><button type="button" class="btn secondary" data-action="send-test-push">내 기기에 테스트 알림</button><button type="button" class="btn secondary" data-action="send-buyer-test-push">구매자 주문 알림 테스트</button></div>
  </div>
  </details></section>${renderEmailNotificationSettings()}<div class="card hero-photo-settings"><h3>메인 사진 관리</h3><p class="smallnote">현재는 정해진 주기로 자동 변경되지 않아요. 설정한 사진은 다음에 바꾸기 전까지 유지돼요.</p><div class="hero-settings-preview">${currentHeroPhotoUrl()?`<img src="${esc(currentHeroPhotoUrl())}" alt="현재 메인 사진">`:'<div class="hero-settings-placeholder">등록된 상품 사진이 없어요.</div>'}</div><button class="btn block secondary" type="button" data-action="random-hero-photo">🎲 랜덤 상품 사진으로 변경</button><p class="smallnote">고객에게 전시 중인 판매 가능 상품에서 대표사진을 랜덤으로 선택해 저장해요.</p><form id="hero-photo-form"><label class="label">새 메인 사진 선택<input type="file" name="hero_photo" id="hero-photo-input" accept="image/*" required></label><p class="smallnote">세로형 사진을 추천해요. 원본이 커도 자동으로 크기를 줄여 저장해요.</p><button class="btn block" type="submit">메인 사진 변경하기</button></form>${state.heroPhotoUrl?'<button class="btn block secondary" style="margin-top:9px" type="button" data-action="reset-hero-photo">기존 자동 사진으로 되돌리기</button>':''}</div><div class="card"><h3>고객에게 보낼 주소</h3><p class="smallnote">상품 고르고 견적 요청을 보낼 수 있는 링크예요.</p><div class="info nooverflow">${esc(publicLink())}</div><button class="btn block" data-action="copy-shop-link">주문 링크 복사</button><div class="separator"></div><button class="btn block secondary" data-action="export-csv">주문 내역 CSV 저장</button>${connected?'<button class="btn block neutral" style="margin-top:9px" data-action="logout">관리자 로그아웃</button>':''}<p class="smallnote">가격·주문별 배송비·품절·상품 준비·입금 상태는 관리자 전용입니다. 아직 견적만 요청한 상품은 확정 주문 수량에 포함되지 않아요.</p></div>`}
-function modal(){const m=state.modal;if(!m)return '';const wrap=(title,body,stickyProductSave=false)=>stickyProductSave?`<div class="overlay" id="overlay"><div class="sheet sheet-product-editor" role="dialog" aria-modal="true"><div class="sheethead"><h2>${title}</h2><button class="close" data-action="close">×</button></div><div class="sheet-product-scroll">${body}</div><div class="sheet-product-save"><button class="btn block" type="submit" form="product-form">상품 저장</button></div></div></div>`:`<div class="overlay" id="overlay"><div class="sheet${['myquotes','suggest','cart','pick','product-photos','approve'].includes(m.type)?' swipe-dismiss-sheet':''}${m.type==='myquotes'?' myquotes-swipe-sheet':''}${m.type==='suggest'?' suggest-sheet':''}${m.type==='cart'?' cart-swipe-sheet':''}${m.type==='approve'?' approve-sheet':''}" role="dialog" aria-modal="true">${['myquotes','suggest','cart','pick','product-photos','approve'].includes(m.type)?'<div class="sheet-drag-handle" aria-hidden="true"></div>':''}<div class="sheethead"><h2>${title}</h2><button class="close" data-action="close">×</button></div>${body}</div></div>`;
+function modal(){const m=state.modal;if(!m)return '';const wrap=(title,body,stickyProductSave=false)=>stickyProductSave?`<div class="overlay" id="overlay"><div class="sheet sheet-product-editor product-editor-clean" role="dialog" aria-modal="true"><div class="sheethead"><h2>${title}</h2><button class="close" data-action="close">×</button></div><div class="sheet-product-scroll">${body}</div><div class="sheet-product-save"><button class="btn block" type="submit" form="product-form">상품 저장</button></div></div></div>`:`<div class="overlay" id="overlay"><div class="sheet${['myquotes','suggest','cart','pick','product-photos','approve'].includes(m.type)?' swipe-dismiss-sheet':''}${m.type==='myquotes'?' myquotes-swipe-sheet':''}${m.type==='suggest'?' suggest-sheet':''}${m.type==='cart'?' cart-swipe-sheet':''}${m.type==='approve'?' approve-sheet':''}" role="dialog" aria-modal="true">${['myquotes','suggest','cart','pick','product-photos','approve'].includes(m.type)?'<div class="sheet-drag-handle" aria-hidden="true"></div>':''}<div class="sheethead"><h2>${title}</h2><button class="close" data-action="close">×</button></div>${body}</div></div>`;
 if(m.type==='entry-push')return wrap('신상·주문 알림 받기',renderEntryPushBody());
 if(m.type==='buyer-order-details'){
  if(!state.admin||state.page!=='admin')return '';
@@ -5930,7 +5950,30 @@ if(m.type==='cart'){return wrap('견적 요청 장바구니',`<div class="cart-r
 <div class="cart-review-checkout-form"><div class="smallnote">견적만 요청하는 단계예요. 최종 주문은 견적 확인 후 별도로 진행돼요.</div><form id="request"><label class="label">주문자 이름<input name="name" maxlength="40" required placeholder="예: 지현"></label><label class="label">아기 이름 또는 태명 (필수)<input name="baby" maxlength="40" required placeholder="예: 예나, 토리"></label><label class="label">휴대폰 번호 (필수 · 주문조회용)<input name="contact" type="tel" inputmode="tel" autocomplete="tel-national" maxlength="15" required placeholder="예: 010-0000-0000"></label><label class="label">이메일 주소 (필수 · 견적 및 주문 상태 안내)<input name="email" type="email" inputmode="email" autocomplete="email" maxlength="254" required placeholder="example@gmail.com"></label><p class="smallnote">견적 접수, 견적 완료와 이후 주문 진행 상태를 기존 Gmail 주소로 안내해요. Gmail 연동이 완료된 후 실제 발송돼요.</p><label class="label">주문조회 비밀번호 (숫자 6자리 · 필수)<input name="lookup_pin" type="password" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" autocomplete="off" required placeholder="6자리 숫자"></label><label class="label">주문조회 비밀번호 확인<input name="lookup_pin_confirm" type="password" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" autocomplete="off" required placeholder="다시 입력"></label><p class="smallnote">문자 발송은 없어요. 다른 브라우저에서 이름·휴대폰 번호와 이 비밀번호로 주문을 찾을 수 있어요. 다음 주문에도 같은 비밀번호를 사용하면 한꺼번에 조회돼요.</p><div class="separator"></div><label class="label">수령방식 (필수)<select name="delivery_method" id="deliveryMethod" required><option value="">수령방식을 선택해 주세요</option><option value="pickup">직접수령 (배송비 없음)</option><option value="courier">택배수령 (+3,000원)</option></select></label><div id="courierFields" class="hidden delivery-fields"><div class="info">택배수령을 선택하면 고객 배송비 3,000원이 자동 추가돼요. 묶음배송 추가 주문은 중복 청구하지 않아요. 아래에서 배송지를 입력해 주세요.</div><label class="label">받는 사람<input name="recipient_name" maxlength="80" autocomplete="name" data-courier-required placeholder="받는 사람 이름" disabled></label><div class="address-tools"><button class="btn secondary" type="button" data-action="search-address">🔎 주소 검색</button><button class="textbutton address-manual" type="button" data-action="manual-address">주소 직접 입력</button></div><div class="postcode-search hidden" data-postcode-panel><div class="row between"><b>우편번호·주소 찾기</b><button type="button" class="btn sm neutral" data-action="close-address-search">닫기</button></div><div class="address-search-hint">도로명이나 건물 이름을 검색하고 주소를 선택해 주세요.</div><div class="postcode-mount" data-postcode-mount></div></div><label class="label">우편번호 (5자리)<input name="postal_code" readonly data-address-postal inputmode="numeric" maxlength="5" pattern="[0-9]{5}" data-courier-required placeholder="예: 34123" disabled></label><label class="label">주소<input name="address_line1" readonly data-address-primary maxlength="250" data-courier-required placeholder="도로명주소 또는 지번주소" disabled></label><label class="label">상세주소 (선택)<input name="address_line2" maxlength="250" placeholder="동·호수 등" disabled></label><label class="label">배송 요청사항 (선택)<input name="delivery_note" maxlength="200" placeholder="예: 문 앞에 놓아주세요" disabled></label></div><label class="label">요청 메모 (선택)<textarea name="note" maxlength="300" placeholder="거래처에 확인할 내용"></textarea></label><div class="info">지금은 <b>가격만 문의하는 견적 요청</b>이에요. 아직 주문이 확정되지 않아요. 제출 후 나오는 <b>고유 견적 링크를 꼭 보관</b>해 주세요. 같은 이름으로 다시 요청해도 자동으로 합쳐지지 않아요.</div><button class="btn block" type="submit">전체 ${cartCount()}개 견적 요청하기</button></form></div>
 </details></div>`:''}`)}
 if(m.type==='store'){const s=state.stores.find(x=>x.id===m.id);return wrap(s?'가게 수정':'가게 등록',`<form id="store-form"><label class="label">남대문 가게 이름<input name="name" maxlength="100" required value="${esc(s?.name||'')}" placeholder="예: 동대문상회"></label><label class="stageradio"><input type="checkbox" name="active" ${s?.active===false?'':'checked'}> 주문자 화면에 표시</label><label class="label" style="margin-top:14px">기본 사이즈 (한 줄에 하나)<textarea name="default_sizes" rows="5" placeholder="S&#10;M&#10;L">${esc((s?storeDefaultSizes(s.id):[]).join('\n'))}</textarea></label><p class="smallnote">새 상품 등록 시 자동으로 불러와요. 기존 상품과 주문 옵션은 변경하지 않아요.</p><button class="btn block" type="submit">가게 저장</button></form>${s?renderStoreSizeChartEditor(s):''}`)}
-if(m.type==='product'){const pr=selectedProd(m.id);let lines=Object.entries(pr?.options||{}).map(([c,sz])=>c+': '+sz.join(', ')).join('\n');return wrap(pr?'상품 수정':'상품 등록',`<form id="product-form">${productStorePicker(pr)}<p class="smallnote product-new-store-hint">목록에 없는 가게는 ‘새 가게 직접 입력’을 선택하세요. 상품 저장과 동시에 거래처에 등록돼요.</p><label class="label">옷 이름<input name="name" maxlength="100" required value="${esc(pr?.name||'')}" placeholder="예: 하트호피 전신슈트"></label>${productCategoryInput(pr?.category,!pr||Boolean(pr.category))}${renderAdminPhotoWorkspace()}${bulkOptionsBuilder(pr?.store_id||state.stores[0]?.id)}<label class="label">완성된 색상별 옵션 (확인·수정 가능)</label><textarea name="options" required rows="6" placeholder="색상과 사이즈 입력 후 일괄 적용을 눌러 주세요.">${esc(lines)}</textarea><p class="help">색상별 사이즈가 다르면 아래에서 그 줄만 수정하면 돼요.</p>${productNoteField(pr?.product_note)}${privateProductFields(pr?.id)}<label class="stageradio" style="margin:15px 0"><input type="checkbox" name="published" ${pr?.published===false?'':'checked'}> 주문자 화면에 공개</label><label class="stageradio"><input type="checkbox" name="is_sold_out" ${pr?.is_sold_out?'checked':''}> 품절 표시 (전시해도 주문 불가)</label></form>`,true)}
+if(m.type==='product'){
+ const pr=selectedProd(m.id);
+ const lines=Object.entries(pr?.options||{}).map(([c,sz])=>c+': '+sz.join(', ')).join('\n');
+ return wrap(pr?'상품 수정':'상품 등록',`
+  <form id="product-form" class="approve-clean-form product-clean-form">
+   ${productStorePicker(pr)}
+   <label class="label">상품명<input name="name" maxlength="100" required value="${esc(pr?.name||'')}" placeholder="상품명 입력"></label>
+   ${productCategoryInput(pr?.category,!pr||Boolean(pr.category),true)}
+   ${renderAdminPhotoWorkspace(true)}
+   ${bulkOptionsBuilder(pr?.store_id||state.stores[0]?.id,true)}
+   <label class="label approve-options-label">등록할 옵션 확인·수정
+    <textarea name="options" required rows="2" placeholder="색상·사이즈를 입력하고 적용을 눌러 주세요.">${esc(lines)}</textarea>
+   </label>
+   ${privateProductFields(pr?.id,true)}
+   <details class="approval-optional-note" ${pr?.product_note?'open':''}>
+    <summary>상품 안내 · 사이즈팁 <span>선택</span></summary>
+    <div class="approval-optional-body">${productNoteField(pr?.product_note)}</div>
+   </details>
+   <div class="approval-publish-options">
+    <label class="stageradio approve-publish-label"><input type="checkbox" name="published" ${pr?.published===false?'':'checked'}> 주문자 화면에 공개</label>
+    <label class="stageradio approve-publish-label"><input type="checkbox" name="is_sold_out" ${pr?.is_sold_out?'checked':''}> 품절 표시</label>
+   </div>
+  </form>`,true);
+}
 if(m.type==='bundle'){const child=state.quotes.find(x=>x.id===m.id);if(!child)return '';const candidates=state.quotes.filter(x=>x.id!==child.id&&buyerIdentity(x)===buyerIdentity(child)&&x.status!=='cancelled'&&['quoted','confirmed'].includes(x.status)&&x.bundle_parent_id==null&&hasShipping(x)&&x.delivery_method!=='pickup'&&!state.quotes.some(y=>y.bundle_parent_id===child.id));return wrap('묶음배송 설정',`<div class="info">동일 구매자의 택배 주문을 함께 보내면 <b>연결된 추가 주문의 배송비는 0원</b>으로 계산돼요. 대표 주문에 기존 배송비가 남습니다.</div><div class="card"><b>${esc(buyerLabel(child))}</b><div class="smallnote">현재 주문: ${fmtDate(child.created_at)} · ${money(totalDue(child))}</div><div class="smallnote">수령: ${deliveryLabel(child)} · ${esc(addressLabel(child))}</div></div>${child.delivery_method==='pickup'?'<div class="noticefail">직접수령은 묶음배송할 수 없어요.</div>':`<form id="bundle-form"><label class="label">이 주문과 함께 보낼 대표 주문<select name="parent_id"><option value="">${child.bundle_parent_id?'묶음배송 해제 (각각 배송비 청구)':'묶음배송하지 않음'}</option>${candidates.map(q=>`<option value="${q.id}" ${child.bundle_parent_id===q.id?'selected':''}>${esc(q.buyer_name)} · ${fmtDate(q.created_at)} · ${esc(q.items.map(i=>i.product_name).slice(0,2).join(', '))}</option>`).join('')}</select></label>${!candidates.length?'<div class="noticefail">같은 구매자이고 배송비가 설정된 다른 견적/확정 주문이 없어요. 대표 주문이 없으면 아직 묶을 수 없어요.</div>':''}<div class="noticefail">이미 확정된 주문은 금액 차이가 발생할 수 있어요. 주소가 같은지 먼저 확인하고, 입금 완료라면 환불도 직접 확인해 주세요. 배송비 변경 안내는 주문자의 견적 확인 화면에 반영됩니다.</div><button class="btn block" type="submit">묶음배송 설정 저장</button></form>`}`)}
 
 if(m.type==='admin-pin'){

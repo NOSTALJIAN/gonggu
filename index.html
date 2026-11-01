@@ -2237,12 +2237,20 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 }
 .shop-content .shop-filter-count{color:#888;font-size:12px;font-weight:500;line-height:1.4}
 .shop-content .shop-filter-trigger{
- appearance:none;border:0;background:transparent;border-radius:0;
- color:#666;font-size:12px;font-weight:600;white-space:nowrap;
- min-height:32px;padding:5px 0 5px 10px;cursor:pointer
+ appearance:none;-webkit-appearance:none;border:0;background:transparent;border-radius:0;
+ display:inline-flex;flex:0 0 auto;align-items:center;justify-content:center;gap:7px;
+ box-sizing:border-box;height:36px;min-height:36px;padding:0 0 0 10px;margin:0;
+ color:#666;font-size:12px;font-weight:600;line-height:1;white-space:nowrap;
+ vertical-align:middle;cursor:pointer;-webkit-tap-highlight-color:transparent;
 }
-.shop-content .shop-filter-trigger span{display:inline-block;margin-left:6px;font-size:16px;vertical-align:middle;font-weight:400}
+.shop-content .shop-filter-trigger .shop-filter-chevron{
+ display:block;flex:0 0 14px;width:14px;height:14px;
+ color:currentColor;transform:none;transition:transform .18s ease;
+}
 .shop-content .shop-filter-trigger.is-open{color:#222}
+.shop-content .shop-filter-trigger.is-open .shop-filter-chevron{transform:rotate(180deg)}
+.shop-content .shop-filter-trigger:focus-visible{outline:2px solid #222;outline-offset:2px}
+@media(prefers-reduced-motion:reduce){.shop-content .shop-filter-trigger .shop-filter-chevron{transition:none}}
 .shop-content .shop-filter-panel[hidden]{display:none!important}
 .shop-content .shop-filter-panel{
  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
@@ -4154,7 +4162,7 @@ function renderShop(){
  <div class="shop-search-wrap"><input id="search" type="search" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" placeholder="상품명 검색" value="${esc(state.search)}" aria-label="상품 검색"></div>
  <div class="shop-filter-line">
   <span class="shop-filter-count">상품 ${products.length}개</span>
-  <button type="button" class="shop-filter-trigger ${state.shopFiltersOpen?'is-open':''}" data-action="shop-filter-toggle" aria-controls="shop-filter-panel" aria-expanded="${state.shopFiltersOpen}">정렬 · 거래처 <span aria-hidden="true">${state.shopFiltersOpen?'−':'⌄'}</span></button>
+  <button type="button" class="shop-filter-trigger ${state.shopFiltersOpen?'is-open':''}" data-action="shop-filter-toggle" aria-controls="shop-filter-panel" aria-expanded="${state.shopFiltersOpen}">정렬 · 거래처 <svg class="shop-filter-chevron" viewBox="0 0 20 20" fill="none" aria-hidden="true" focusable="false"><path d="M4.5 7.5L10 13l5.5-5.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
  </div>
  <div class="shop-filter-panel ${state.shopFiltersOpen?'is-open':''}" id="shop-filter-panel" ${state.shopFiltersOpen?'':'hidden'} role="group" aria-label="정렬 및 거래처 선택">
   <label><span>정렬</span><select id="shop-sort" aria-label="상품 정렬">

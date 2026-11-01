@@ -3026,6 +3026,42 @@ function renderShipment(order){
 const ADMIN_REQUEST_SEEN_KEY='miniyena-admin-product-request-seen-v1';
 let adminRequestSeenAt=Number(read(ADMIN_REQUEST_SEEN_KEY,0))||0;
 let adminRequestChecking=false;
+const ADMIN_QUOTE_SEEN_KEY='miniyena-admin-quote-request-seen-v1';
+let adminQuoteSeenAt=Number(read(ADMIN_QUOTE_SEEN_KEY,0))||0;
+let adminQuoteChecking=false;
+async function checkAdminQuoteUpdates(){
+ if(!connected||!state.admin||state.page!=='admin'||document.hidden||adminQuoteChecking)return;
+ adminQuoteChecking=true;
+ try{
+  const rows=await api('/rest/v1/gq_quotes?select=id,created_at,status&order=created_at.desc&limit=25',{admin:true});
+  if(!Array.isArray(rows)||!rows.length)return;
+  const latest=Date.parse(rows[0].created_at)||0;
+  if(!adminQuoteSeenAt){
+   adminQuoteSeenAt=latest;
+   try{localStorage.setItem(ADMIN_QUOTE_SEEN_KEY,JSON.stringify(latest))}catch(_){}
+   return;
+  }
+  const count=rows.filter(q=>(Date.parse(q.created_at)||0)>adminQuoteSeenAt).length;
+  if(latest>adminQuoteSeenAt){
+   adminQuoteSeenAt=latest;
+   try{localStorage.setItem(ADMIN_QUOTE_SEEN_KEY,JSON.stringify(latest))}catch(_){}
+  }
+  if(!count||!state.admin||state.page!=='admin')return;
+  const pane=app.querySelector('.admin-workspace-content');
+  if(!pane)return;
+  let alert=pane.querySelector('.admin-inapp-quote-alert');
+  if(!alert){
+   alert=document.createElement('div');
+   alert.className='admin-inapp-request-alert admin-inapp-quote-alert';
+   alert.setAttribute('role','alert');
+   pane.prepend(alert);
+  }
+  alert.innerHTML='<span><b>새 견적 신청 '+count+'건</b><small>새 주문이 접수됐어요. 가격과 요청 내용을 확인해 주세요.</small></span>'+
+   '<button type="button" data-action="open-admin-new-quotes">견적 확인</button>'+
+   '<button type="button" data-action="dismiss-admin-new-quotes" aria-label="안내 닫기">×</button>';
+ }catch(error){console.warn('관리자 견적 요청 확인 실패',error)}
+ finally{adminQuoteChecking=false}
+}
 async function checkAdminProductRequestUpdates(){
  if(!connected||!state.admin||state.page!=='admin'||document.hidden||adminRequestChecking)return;
  adminRequestChecking=true;
@@ -3046,7 +3082,7 @@ async function checkAdminProductRequestUpdates(){
   if(newPending&&state.page==='admin'&&state.admin){
    const pane=app.querySelector('.admin-workspace-content');
    if(!pane)return;
-   let alert=pane.querySelector('.admin-inapp-request-alert');
+   let alert=pane.querySelector('.admin-inapp-request-alert:not(.admin-inapp-quote-alert)');
    if(!alert){
     alert=document.createElement('div');
     alert.className='admin-inapp-request-alert';
@@ -3513,6 +3549,10 @@ async function loadAdminOptionRequests(){
  }
 }
 async function loadAdmin(){if(!connected){state.admin=true;state.productPrivate={};state.productPrivateReady=false;state.stores=clone(demo.stores);state.products=clone(demo.products);state.requests=clone(demo.requests||[]);syncDemo();render();return}if(!session){state.admin=false;state.productPrivate={};state.productPrivateReady=false;render();return}try{const auth=await rpc('gq_is_admin',{},true);if(!auth)throw Error('관리자 권한이 없습니다');state.admin=true;await loadCatalog(true);const [qq,ii,rr]=await Promise.all([api('/rest/v1/gq_quotes?select=*&order=created_at.desc',{admin:true}),api('/rest/v1/gq_quote_items?select=*&order=created_at.asc',{admin:true}),api('/rest/v1/gq_product_requests?select=*&order=created_at.desc',{admin:true})]);state.quotes=qq.map(q=>({...q,items:ii.filter(i=>i.quote_id===q.id)}));state.requests=rr;
+if(!adminQuoteSeenAt&&qq.length){
+ const latest=Math.max(0,...qq.map(order=>Date.parse(order.created_at)||0));
+ if(latest){adminQuoteSeenAt=latest;try{localStorage.setItem(ADMIN_QUOTE_SEEN_KEY,JSON.stringify(latest))}catch(_){}}
+}
 if(!adminRequestSeenAt&&rr.length){
  const newestRequestAt=Math.max(0,...rr.map(request=>Date.parse(request.created_at)||0));
  if(newestRequestAt){
@@ -7176,6 +7216,16 @@ if(a==='copy-procurement-ready'||a==='copy-procurement-review'||a==='copy-procur
  notif(ready?'발주 가능 목록을 복사했어.':'확정 주문 검토 목록을 복사했어.');
  return;
 }
+if(a==='open-admin-new-quotes'){
+ if(state.page!=='admin'||!state.admin)return;
+ state.tab='quotes';state.filter='all';
+ await loadAdmin();
+ return;
+}
+if(a==='dismiss-admin-new-quotes'){
+ app.querySelector('.admin-inapp-quote-alert')?.remove();
+ return;
+}
 if(a==='open-admin-new-requests'){
  if(state.page!=='admin'||!state.admin)return;
  state.tab='requests';state.requestStatusFilter='pending';
@@ -7183,7 +7233,7 @@ if(a==='open-admin-new-requests'){
  return;
 }
 if(a==='dismiss-admin-new-requests'){
- app.querySelector('.admin-inapp-request-alert')?.remove();
+ app.querySelector('.admin-inapp-request-alert:not(.admin-inapp-quote-alert)')?.remove();
  return;
 }
 if(a==='reload-app'){refreshFullOrderPage();return;}
@@ -8187,10 +8237,12 @@ document.addEventListener('visibilitychange',()=>{
  if(!document.hidden){
   updateProcurementSchedule();
   checkAdminProductRequestUpdates();
+  checkAdminQuoteUpdates();
  }
 });
 setInterval(updateProcurementSchedule,60000);
 setInterval(checkAdminProductRequestUpdates,25000);
+setInterval(checkAdminQuoteUpdates,25000);
 window.addEventListener('popstate',()=>{const pp=new URLSearchParams(location.search);state.page=pp.get('page')||'shop';state.trackId=pp.get('id')||'';state.trackToken=pp.get('token')||'';state.modal=null;render();if(state.page==='track')reloadTracking().catch(e=>notif(errorText(e)));if(state.page==='admin')loadAdmin().catch(e=>notif(errorText(e)))});
 (async()=>{
  try{

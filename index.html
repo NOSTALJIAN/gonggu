@@ -3360,10 +3360,10 @@ function privateSupplierFields(existingId){
  const previous=String(state.productPrivate[existingId]?.supplier_name||'').trim();
  const other=!!previous&&(!base||previous.toLocaleLowerCase('ko-KR')!==base.toLocaleLowerCase('ko-KR'));
  return `<div class="private-supplier-choice">
-  <label class="stageradio private-supplier-toggle"><input type="checkbox" name="private_supplier_override" data-private-supplier-override ${other?'checked':''}> 실제 사입 거래처가 다른 경우만 입력</label>
-  <p class="smallnote private-supplier-default" data-private-supplier-default>${base?'기본 사입 거래처: '+esc(base)+' (자동)':'거래처를 선택하면 같은 이름으로 자동 저장돼요.'}</p>
+  <label class="stageradio private-supplier-toggle"><input type="checkbox" name="private_supplier_override" data-private-supplier-override ${other?'checked':''}> 다른 거래처</label>
+  <p class="smallnote private-supplier-default" data-private-supplier-default>${base?esc(base)+' 자동 적용':'상품 거래처 자동 적용'}</p>
   <label class="label private-supplier-row" data-private-supplier-row ${other?'':'hidden'}>
-   다른 실제 사입 거래처
+   사입처명
    <input name="private_supplier" maxlength="150" autocomplete="off" value="${esc(other?previous:'')}" placeholder="실제 사입하는 거래처명" ${other?'required':'disabled'}>
   </label>
  </div>`;
@@ -3379,7 +3379,7 @@ function updatePrivateSupplierForm(form){
   const shop=form.id==='approve-form'?String(form.querySelector('[name="store"]')?.value||'').trim():
    form.querySelector('select[name="store"]')?.value==='__new_store__'?String(form.querySelector('[name="new_store_name"]')?.value||'').trim():
    String(state.stores.find(s=>s.id===form.querySelector('select[name="store"]')?.value)?.name||'').trim();
-  note.textContent=shop?'기본 사입 거래처: '+shop+' (자동)':'거래처를 선택하면 같은 이름으로 자동 저장돼요.';
+  note.textContent=shop?shop+' 자동 적용':'상품 거래처 자동 적용';
  }
 }
 function updatePrivateSourcingForm(form){

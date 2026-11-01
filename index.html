@@ -1514,50 +1514,47 @@ body:has(.overlay) .floating-actions{opacity:0;visibility:hidden;pointer-events:
 }
 .shop-content .shop-category-tab span{font-size:10px;font-weight:450}
 
-/* Desktop category filters have no separate arrow. */
-.shop-category-carousel .shop-category-step{display:none}
-/* Mobile categories: precisely-sized, scroll-snapping pills prevent cut-off chips. */
+/* iPhone category strip: five compact complete pills, edge-to-edge.
+   No reserved arrow area and no oversized fixed-width buttons. The native
+   scroll snap always finishes on a whole-pill boundary. */
 @media(max-width:719px){
  .shop-content .shop-category-carousel{
-  display:flex;align-items:center;gap:8px;min-width:0;
-  width:100%;max-width:100%;margin:0 0 8px;
+  --category-edge:18px;
+  display:block;box-sizing:border-box;
+  width:calc(100% + 2 * var(--category-edge));
+  max-width:none;margin:0 calc(-1 * var(--category-edge)) 8px;
+  padding:0;
  }
  .shop-content .shop-category-carousel .shop-category-list{
   display:grid;grid-auto-flow:column;
-  grid-auto-columns:calc((100% - 18px)/4);
-  gap:6px;align-items:center;flex:1 1 auto;min-width:0;
-  box-sizing:border-box;width:100%;max-width:100%;margin:0;
-  padding:3px 1px 9px;
-  overflow-x:auto;overflow-y:hidden;white-space:nowrap;
-  scroll-snap-type:x mandatory;scroll-padding-inline:1px;
+  grid-auto-columns:calc((100% - 20px)/5);
+  align-items:center;gap:5px;
+  box-sizing:border-box;width:100%;max-width:100%;
+  min-width:0;margin:0;padding:2px 0 8px;
+  overflow-x:auto;overflow-y:hidden;
+  white-space:nowrap;scroll-snap-type:x mandatory;
+  scroll-padding-inline:0;
   overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;
+  scrollbar-width:none;
  }
+ .shop-content .shop-category-carousel .shop-category-list::-webkit-scrollbar{display:none}
  .shop-content .shop-category-carousel .shop-category-tab{
-  box-sizing:border-box;width:100%;min-width:0;
-  scroll-snap-align:start;
-  justify-content:center;gap:3px;padding:7px 5px;
-  font-size:11px;white-space:nowrap;
-  overflow:hidden;text-overflow:ellipsis;
+  box-sizing:border-box;width:100%;min-width:0;min-height:32px;
+  justify-content:center;gap:2px;padding:6px 2px;
+  font-size:10.5px;font-weight:650;line-height:1.2;letter-spacing:-.04em;
+  white-space:nowrap;scroll-snap-align:start;scroll-snap-stop:normal;
  }
  .shop-content .shop-category-carousel .shop-category-tab span{
-  flex:0 0 auto;font-size:10px;
+  flex:0 0 auto;font-size:9px;font-weight:500;letter-spacing:-.02em;
  }
- .shop-content .shop-category-step{
-  display:flex;align-items:center;justify-content:center;
-  flex:0 0 28px;width:28px;height:34px;min-height:34px;
-  border:1px solid #e5e5e5;border-radius:999px;
-  padding:0;background:#fff;color:#666;cursor:pointer;
-  -webkit-tap-highlight-color:transparent;
- }
- .shop-content .shop-category-step[hidden]{display:none!important}
- .shop-content .shop-category-step svg{display:block;width:15px;height:15px}
- .shop-content .shop-category-step.is-prev svg{transform:rotate(180deg)}
- .shop-content .shop-category-step:focus-visible{outline:2px solid #222;outline-offset:2px}
+ .shop-content .shop-category-carousel .shop-category-step{display:none!important}
 }
-@media(max-width:389px){
- .shop-content .shop-category-carousel .shop-category-list{
-  grid-auto-columns:calc((100% - 12px)/3);
- }
+@media(max-width:519px){
+ .shop-content .shop-category-carousel{--category-edge:14px}
+}
+@media(max-width:350px){
+ .shop-content .shop-category-carousel .shop-category-tab{font-size:10px;padding-inline:1px}
+ .shop-content .shop-category-carousel .shop-category-tab span{font-size:8px}
 }
 
 .shop-content .shop-search-wrap #search{
@@ -4149,23 +4146,6 @@ function syncHeroContrast(){
  }
 }
 
-// Show a real next/previous control, and keep each category chip fully visible at rest.
-function updateShopCategoryControl(){
- const carousel=app.querySelector('.shop-category-carousel');
- const list=carousel?.querySelector('.shop-category-list');
- const button=carousel?.querySelector('.shop-category-step');
- if(!list||!button)return;
- const max=Math.max(0,list.scrollWidth-list.clientWidth);
- const canPrev=list.scrollLeft>3;
- const canNext=list.scrollLeft<max-3;
- button.hidden=max<=3;
- const back=!canNext&&canPrev;
- button.classList.toggle('is-prev',back);
- button.dataset.direction=back?'-1':'1';
- const label=back?'이전 카테고리 보기':'다음 카테고리 보기';
- button.setAttribute('aria-label',label);
- button.title=label;
-}
 function render(){
  const categoryScrollBefore=app.querySelector('.shop-category-list')?.scrollLeft||0;
  const adminScrollPositions=['.admin-main-tabs','.admin-product-filter-list','.admin-category-list','.admin-quote-primary-filters'].map(selector=>[selector,app.querySelector(selector)?.scrollLeft||0]);
@@ -4173,7 +4153,6 @@ function render(){
  adminScrollPositions.forEach(([selector,left])=>{const el=app.querySelector(selector);if(el)el.scrollLeft=left;});
  const categoryList=app.querySelector('.shop-category-list');
  if(categoryList)categoryList.scrollLeft=categoryScrollBefore;
- updateShopCategoryControl();
  syncModalPageLock();
  syncHeroContrast();
  scheduleEntryPush();
@@ -4244,7 +4223,7 @@ function renderShop(){
  <div class="shop-notification-row"><button type="button" class="shop-notification-link" data-action="entry-push-open">알림 설정</button></div>
  <div class="shop-category-carousel" aria-label="상품 카테고리"><div class="shop-category-list" role="group" aria-label="상품 카테고리별 보기">
  ${categoryFilterKeys.filter(k=>k==='all'||categoryCounts[k]>0||k===activeCategory).map(k=>`<button type="button" class="shop-category-tab ${activeCategory===k?'active':''}" data-action="shop-category" data-category="${k}" aria-pressed="${activeCategory===k}">${k==='all'?'전체':k==='uncategorized'?'미분류':k}<span>${categoryCounts[k]}</span></button>`).join('')}
- </div><button type="button" class="shop-category-step" data-action="shop-category-scroll" data-direction="1" aria-label="다음 카테고리 보기" title="다른 카테고리 보기"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m7 4.5 5.5 5.5L7 15.5" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/></svg></button></div>
+ </div></div>
  <div class="shop-search-wrap"><input id="search" type="search" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" placeholder="상품명 검색" value="${esc(state.search)}" aria-label="상품 검색"></div>
  <div class="shop-filter-line">
   <span class="shop-filter-count">상품 ${products.length}개</span>
@@ -7850,14 +7829,6 @@ if(a==='admin-summary'){
  if(section)window.scrollTo({top:Math.max(0,window.scrollY+section.getBoundingClientRect().top-12),behavior:'auto'});
  return;
 }
-if(a==='shop-category-scroll'){
- const list=app.querySelector('.shop-category-carousel .shop-category-list');
- if(!list)return;
- const direction=Number(b.dataset.direction)===-1?-1:1;
- const step=Math.max(90,list.clientWidth-list.clientWidth/4);
- list.scrollBy({left:direction*step,behavior:'smooth'});
- return;
-}
 if(a==='shop-category'){
  if(state.page!=='shop')throw Error('상품 화면에서 카테고리를 선택해 주세요.');
  const chosen=b.dataset.category;
@@ -8566,7 +8537,6 @@ app.addEventListener('touchmove',e=>{
 app.addEventListener('touchend',()=>{catalogTouch=null;},{passive:true});
 app.addEventListener('touchcancel',()=>{catalogTouch=null;},{passive:true});
 app.addEventListener('scroll',e=>{
- if(e.target.matches?.('.shop-category-list')){updateShopCategoryControl();return;}
  const track=e.target;
  if(!track.matches?.('.catalog-photo-track'))return;
  const gallery=track.closest('[data-catalog-gallery]');

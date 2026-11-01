@@ -6816,6 +6816,28 @@ async function adminSupplierShippingBeforeQuote(id){
  await rpc('gq_admin_set_supplier_shipping_v35',{p_quote_id:id,p_total:0,p_people:1},true);
 }
 async function adminPublish(id){const q=state.quotes.find(q=>q.id===id);if(!q||q.status!=='requested'||!readyProductEstimate(q))throw Error('모든 상품 가격을 입력한 뒤 견적을 보내 주세요.');const direct=isDirect1688Admin(q);if(direct){if(q.delivery_method==='courier'&&!hasShipping(q))throw Error('택배수령 배송비 3,000원 자동 적용을 확인해 주세요.');await adminSupplierShippingBeforeQuote(q.id);}if(!connected){demo.quotes.find(q=>q.id===id).status='quoted';saveDemo();return}await api('/rest/v1/gq_quotes?id=eq.'+id,{method:'PATCH',admin:true,body:{status:'quoted',quoted_at:now()}})}
+async function autoPublishAfterSavedPrices(previouslyUnpriced){
+ const complete=state.quotes.filter(q=>
+  previouslyUnpriced.has(q.id)&&q.status==='requested'&&(q.items||[]).length>0&&readyProductEstimate(q)
+ );
+ if(!complete.length)return {sent:0,errors:[]};
+ let sent=0;
+ const errors=[];
+ for(const q of complete){
+  try{
+   // Reuse the existing quote flow, including zero wholesale freight for direct 1688.
+   await adminPublish(q.id);
+   q.status='quoted';
+   q.quoted_at=now();
+   sent++;
+  }catch(error){
+   console.warn('자동 견적 발송 실패',q.id,error);
+   errors.push(errorText(error));
+  }
+ }
+ if(sent)await loadAdmin();
+ return {sent,errors};
+}
 async function adminFulfillment(id,s){
  const q=state.quotes.find(x=>x.items.some(i=>i.id===id));
  if(!q||q.status!=='confirmed'||workflowStage(q)!=='preparing')throw Error('상품 준비 중인 확정 주문만 품목 상태를 변경할 수 있어요.');
@@ -7816,6 +7838,7 @@ else if(f.dataset.supplierShipping){
 }
 else if(f.dataset.shipping){const val=String(data.get('shipping')??'').trim();if(!/^\d{1,7}$/.test(val))throw Error('배송비를 숫자로 입력해 주세요. 무료는 0원이에요');const q=state.quotes.find(x=>x.id===f.dataset.shipping),nextFee=Number(val);if(q?.status==='confirmed'&&Number(q.shipping_fee??0)!==nextFee){const oldTotal=totalDue(q),newTotal=oldTotal+nextFee-Number(q.shipping_fee??0);if(!window.confirm(`확정 주문의 배송비를 ${money(q.shipping_fee)} → ${money(nextFee)}으로 바꿀까요?\n결제금액: ${money(oldTotal)} → ${money(newTotal)}\n구매자에게 안내하고 입금·환불 차액을 꼭 확인하세요.`))return}await adminShipping(f.dataset.shipping,nextFee);await loadAdmin();notif('배송비를 수정했어요. 고객에게 변경 금액을 안내해 주세요')}
 else if(f.dataset.price){
+ const previouslyUnpriced=new Set(state.quotes.filter(order=>order.status==='requested'&&(order.items||[]).some(item=>item.unit_price==null)).map(order=>order.id));
  const id=f.dataset.price,value=String(data.get('price')??'').trim();
  if(!/^(0|[1-9][0-9]{0,8})$/.test(value)||Number(value)>100000000)throw Error('개당 가격을 0원부터 1억원까지 숫자로 입력해 주세요.');
  const q=state.quotes.find(x=>x.items?.some(y=>y.id===id));
@@ -7839,6 +7862,7 @@ else if(f.dataset.price){
  state.dateGroupsOpen['saved|'+dayKey]=true;
  const previousScroll=window.scrollY;
  await loadAdmin();
+ const autoDelivery=await autoPublishAfterSavedPrices(previouslyUnpriced);
  const activeCard=[...document.querySelectorAll('[data-admin-order-id]')].find(el=>el.dataset.adminOrderId===cardId);
  if(activeCard){
   activeCard.open=true;
@@ -7853,7 +7877,9 @@ else if(f.dataset.price){
   state.emailSettings?.enabled?'가격 변경 알림이 예약됐어요. 여러 번 수정한 경우 약 90초간 모아 발송해요.':
   '가격 변경 메일이 대기 중이지만 자동 발송이 꺼져 있어요. 관리자 이메일 설정을 확인해 주세요.':'';
  const savedMsg=synced>0?`가격 저장 완료 · 다른 견적의 미입력 상품 ${synced}건에도 반영했어요.`:'가격을 저장했어요.';
- notif(autoNotice?savedMsg+' '+autoNotice:savedMsg);
+ const autoMsg=autoDelivery.sent?` 가격이 모두 입력된 ${autoDelivery.sent}건의 견적을 자동 발송했어요.`:'';
+ const errorMsg=autoDelivery.errors.length?' 자동 견적 발송에 실패한 주문이 있어요. 견적 요청 화면에서 다시 보내 주세요.':'';
+ notif((autoNotice?savedMsg+' '+autoNotice:savedMsg)+autoMsg+errorMsg);
 }
 else if(f.dataset.payment){const paid=Number(data.get('paid')),refunded=Number(data.get('refunded'));if(!Number.isInteger(paid)||!Number.isInteger(refunded)||paid<0||refunded<0)throw Error('금액을 확인해 주세요');await adminPayment(f.dataset.payment,paid,refunded);await loadAdmin();notif('입금 기록 완료')}
 }catch(ex){notif(errorText(ex))}finally{busy=false}}

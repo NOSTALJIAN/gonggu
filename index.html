@@ -5657,7 +5657,8 @@ function supplierBatchPaymentState(batch){
   return {payer,selected,orders,due,net,eligible,reason,
    buyerName:selected[0]?.q.buyer_name||state.quotes.find(q=>q.id===payer.charged_quote_id)?.buyer_name||'주문자'};
  });
- const partialReady=result.length===Number(batch.people)&&result.length>0&&result.every(r=>{
+ const partialReady=result.length===Number(batch.people)&&result.length>0&&
+  !(batch.payers||[]).some(p=>{const i=supplierPartialInvoice(batch.id,p.buyer_key);return i&&!i.paid_at;})&&result.every(r=>{
   const i=supplierPartialInvoice(batch.id,r.payer.buyer_key);
   return (r.eligible||!!i?.paid_at)&&r.selected.length>0&&r.selected.every(({q,item})=>
    ['quoted','confirmed'].includes(q.status)&&(q.status==='confirmed'||q.purchase_intent==='buy_now')&&
@@ -5738,7 +5739,7 @@ function renderSupplierBulkManager(historyOnly=false){
    <div class="supplier-bulk-batch-body">
     ${checked.people.map(p=>{
      const inv=supplierPartialInvoice(batch.id,p.payer.buyer_key);
-     const canAsk=!ordered&&p.selected.length>0&&p.selected.every(({q,item})=>
+     const canAsk=!ordered&&!p.eligible&&p.selected.length>0&&p.selected.every(({q,item})=>
       ['quoted','confirmed'].includes(q.status)&&(q.status==='confirmed'||q.purchase_intent==='buy_now')&&
       item.unit_price!==null&&item.unit_price!==undefined&&!item.supplier_ordered_at&&item.fulfillment!=='sold_out');
      const actions=ordered?'':`<div class="row wrap" style="margin-top:6px;gap:6px">

@@ -2845,6 +2845,38 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 .admin-flat-order-list .admin-order-fold-right{display:block}
 @media(max-width:390px){.admin-workflow-step{padding:9px!important}.admin-workflow-step>strong{font-size:12px}.admin-workflow-focus>strong{font-size:15px}.admin-workflow-inline-actions button{font-size:10px}}
 
+
+/* v93: same unfinished buyer round appears as one compact admin card. */
+.round-merged-card{padding:12px!important;border:0!important;background:#fff!important}
+.round-merged-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;padding:2px 0 12px;border-bottom:1px solid #ececec}
+.round-merged-heading strong{display:block;font-size:15px;line-height:1.45;word-break:keep-all}
+.round-merged-heading strong small{display:inline-block;background:#f4f4f4;font-size:10px;padding:2px 6px;margin-left:3px;color:#666}
+.round-merged-heading p{font-size:11px;color:#777;line-height:1.5;margin:4px 0 0}
+.round-merged-heading>span{flex:none;white-space:nowrap;border:1px solid #ddd;border-radius:5px;padding:5px 7px;font-size:10px;color:#555;font-weight:750}
+.round-merged-items{margin:6px 0 12px}
+.round-merged-item{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:10px 2px;border-bottom:1px solid #f1f1f1}
+.round-merged-item>div:first-child{flex:1;min-width:0}
+.round-merged-item>div:last-child{text-align:right;flex:none}
+.round-merged-item b{display:block;font-size:12px;line-height:1.45;overflow-wrap:anywhere}
+.round-merged-item small{display:block;color:#777;font-size:10px;line-height:1.5;margin-top:3px}
+.round-merged-item strong{font-size:12px}
+.round-merged-totals{background:#f8f8f8;border-radius:7px;padding:9px 11px;display:grid;gap:7px}
+.round-merged-totals>div{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;color:#666}
+.round-merged-totals>div strong{color:#171717;font-size:12px}
+.round-merged-totals .round-merged-balance{padding-top:7px;border-top:1px solid #dedede;font-weight:800}
+.round-merged-totals .round-merged-balance strong{font-size:14px}
+.round-merged-warning{font-size:11px;line-height:1.6;color:#874525;background:#fff5ec;border:1px solid #ecd3b9;padding:10px;border-radius:6px;margin:10px 0}
+.round-merged-note{font-size:10px;color:#777;line-height:1.6;margin:10px 1px}
+.round-merged-details{border-top:1px solid #ececec;margin-top:10px}
+.round-merged-details>summary{cursor:pointer;display:flex;justify-content:space-between;gap:10px;list-style:none;padding:12px 0;font-size:12px;font-weight:800;color:#333}
+.round-merged-details>summary::-webkit-details-marker,.round-single-order>summary::-webkit-details-marker{display:none}
+.round-merged-details>summary span{color:#777;font-weight:650}
+.round-merged-individuals{display:grid;gap:9px;padding-top:4px}
+.round-single-order{border:1px solid #e4e4e4;border-radius:6px;overflow:hidden}
+.round-single-order>summary{list-style:none;cursor:pointer;display:flex;flex-wrap:wrap;justify-content:space-between;gap:7px;background:#fafafa;padding:11px;font-size:11px;font-weight:800}
+.round-single-order>summary span{color:#777;font-weight:600}
+.round-single-order>.card{margin:0!important;box-shadow:none!important;border:0!important}
+
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -5262,6 +5294,40 @@ function bundledQuoteGroups(visible,splitMixed=false){
   })
   .sort((a,b)=>Math.max(...b.map(q=>Date.parse(q.created_at)||0))-Math.max(...a.map(q=>Date.parse(q.created_at)||0)));
 }
+/* Same buyer + same unfinished purchase round: combine admin presentation only.
+   The quote IDs, customer links, individual payment entries and shipping ledgers stay intact.
+   Ordered/finished/held requests are not silently pulled into a current round. */
+function isActiveRoundEntry(q){
+ if(!q||!['requested','quoted','confirmed'].includes(q.status))return false;
+ if(['next_round','on_hold'].includes(q.purchase_intent))return false;
+ if(q.supplier_ordered_at||isWholesaleCompleted(q)||isFinishedOrder(q))return false;
+ if((q.items||[]).some(i=>i.supplier_ordered_at||['received','delivered'].includes(i.fulfillment)))return false;
+ return true;
+}
+function roundOrderRoot(group){
+ return [...group].sort((a,b)=>String(a.created_at||'').localeCompare(String(b.created_at||''))||String(a.id).localeCompare(String(b.id)))[0];
+}
+function sameRoundGroups(visible){
+ const bundles=bundledQuoteGroups(visible,true);
+ const grouped=new Map();
+ const order=[];
+ // Preserve actual shipping bundles, but never merge with an unrelated delivered batch.
+ for(const group of bundles){
+  const eligible=group.every(isActiveRoundEntry);
+  const names=[...new Set(group.map(buyerIdentity))];
+  const identity=eligible&&names.length===1&&
+   !/^(old:|unique:)/.test(names[0])?names[0]:null;
+  const key=identity?'active:'+identity:'original:'+bundleRootId(group[0]);
+  let entry=grouped.get(key);
+  if(!entry){entry=[];grouped.set(key,entry);order.push(entry);}
+  entry.push(...group);
+ }
+ return order.map(g=>g.sort((a,b)=>String(a.created_at||'').localeCompare(String(b.created_at||''))))
+  .sort((a,b)=>Math.max(...b.map(q=>Date.parse(q.created_at)||0))-Math.max(...a.map(q=>Date.parse(q.created_at)||0)));
+}
+function roundGroupForOrder(q,visible){
+ return sameRoundGroups(visible).find(g=>g.some(x=>x.id===q.id))||[q];
+}
 function bundleWorkControls(group){
  const root=group.find(q=>q.id===bundleRootId(q))||group[0];
  const method=root.delivery_method;
@@ -5442,6 +5508,54 @@ function renderBundleLedger(q,idx,root){
   </details>
  </section>`;
 }
+/* A combined round is not a shipping bundle: do not show shipment-sync controls
+   or imply delivery fees have already been waived. */
+function renderSameRoundCard(group){
+ const root=roundOrderRoot(group);
+ const products=new Map();
+ for(const q of group)for(const i of q.items||[]){
+  const unit=i.unit_price==null?null:Number(i.unit_price);
+  const key=JSON.stringify([i.product_id||i.store_name+'|'+i.product_name,i.color,i.size,unit,i.fulfillment]);
+  if(!products.has(key))products.set(key,{i,quantity:0,unit,quotes:new Set()});
+  const rec=products.get(key);rec.quantity+=Number(i.quantity||0);rec.quotes.add(q.id);
+ }
+ const rows=[...products.values()];
+ const count=group.reduce((n,q)=>n+(q.items||[]).length,0);
+ const quantity=rows.reduce((n,r)=>n+r.quantity,0);
+ const total=group.reduce((n,q)=>n+totalDue(q),0);
+ const netPaid=group.reduce((n,q)=>n+Number(q.amount_paid||0)-Number(q.amount_refunded||0),0);
+ const missing=group.some(unknown);
+ const courier=group.filter(q=>q.delivery_method==='courier');
+ const courierFees=courier.reduce((n,q)=>n+appliedShipping(q),0);
+ const courierCheck=courier.length>1&&!courier.every(q=>isBundle(q))&&courierFees>3000;
+ const methods=[...new Set(group.map(q=>q.delivery_method||'unknown'))];
+ const actualBundle=group.every(q=>bundleRootId(q)===bundleRootId(group[0]));
+ return `<div class="card round-merged-card">
+  <div class="round-merged-heading"><div>
+   <strong>${esc(root.buyer_name)} <small>아기: ${esc(root.baby_name||'미입력')}</small></strong>
+   <p>이번 회차 주문 ${group.length}건 · 상품 ${rows.length}종 / 총 ${quantity}개</p>
+  </div><span>합산 보기</span></div>
+  <div class="round-merged-items">${rows.map(({i,unit,quantity,quotes})=>`<div class="round-merged-item">
+   <div><b>${esc(i.product_name)}</b><small>${esc(i.store_name)} · ${esc(i.color)} / ${esc(i.size)}${quotes.size>1?' · '+quotes.size+'건 합산':''}</small></div>
+   <div><strong>${quantity}개</strong><small>${unit==null?'가격 미입력':money(unit*quantity)}</small></div>
+  </div>`).join('')}</div>
+  <div class="round-merged-totals">
+   <div><span>전체 상품·배송비 합계</span><strong>${missing?'가격 미확정':money(total)}</strong></div>
+   <div><span>받은 금액 (환불 차감)</span><strong>${money(netPaid)}</strong></div>
+   <div class="round-merged-balance"><span>남은 금액</span><strong>${missing?'확인 필요':money(Math.max(0,total-netPaid))}</strong></div>
+  </div>
+  ${courierCheck?`<p class="round-merged-warning">택배 주문 ${courier.length}건에 배송비가 ${money(courierFees)} 계산되어 있어요. 동일 주소로 묶음배송할지 확인한 뒤 주문별 '묶음배송 설정'에서 처리하세요. 자동 차감하지 않았어요.</p>`:''}
+  ${methods.length>1?'<p class="round-merged-warning">직접수령과 택배수령이 함께 있어요. 실제 수령방식은 개별 주문에서 확인해 주세요.</p>':''}
+  ${actualBundle?'<div class="round-merged-note">이미 설정된 묶음배송이에요. 배송비와 배송상태는 대표 주문을 기준으로 관리하세요.</div>':'<div class="round-merged-note">같은 회차 상품을 한눈에 모은 화면이에요. 주문번호·입금·견적 안내는 기존 주문별로 보존돼요.</div>'}
+  <details class="round-merged-details">
+   <summary>주문별 견적·금액·옵션 수정 <span>${group.length}건 ▾</span></summary>
+   <div class="round-merged-individuals">${group.map(q=>`<details class="round-single-order">
+    <summary>${esc(q.buyer_name)} · ${esc(fmtDate(q.created_at))} <span>${esc(statusLabel[q.status]||q.status)} · ${money(previewOrderSum(q))} ▾</span></summary>
+    ${renderAdminQuoteCard(q)}
+   </details>`).join('')}</div>
+  </details>
+ </div>`;
+}
 function renderBundleCard(group){
  const root=group.find(q=>q.id===bundleRootId(q))||group[0];
  const qty=group.reduce((n,q)=>n+q.items.reduce((m,i)=>m+Number(i.quantity||0),0),0);
@@ -5610,7 +5724,7 @@ function quoteGroupNeedsPriceInput(group){return group.some(quoteNeedsPriceInput
 // Unpriced orders open by default so the admin can enter prices quickly; priced orders
 // start collapsed, keeping the list compact on mobile.
 function renderCollapsibleAdminOrder(group,section){
- const root=group.find(q=>q.id===bundleRootId(q))||group[0];
+ const root=group.length>1?roundOrderRoot(group):group[0];
  const key=root.id;
  const open=state.orderCardsOpen[key]===undefined?
   group.some(q=>pendingItemOptionRequests(q).length>0):state.orderCardsOpen[key];
@@ -5639,13 +5753,13 @@ function renderCollapsibleAdminOrder(group,section){
   <summary class="admin-order-fold-heading">
    <span class="admin-order-fold-left">
     <strong>${esc(root.buyer_name||'주문자 미입력')} <span class="admin-order-fold-baby">아기: ${esc(root.baby_name||'미입력')}</span></strong>
-    <span class="admin-order-fold-meta">${group.length>1?group.length+'건 묶음 · ':''}상품 ${count}종 · ${qty}개 · ${fmtDate(root.created_at)}</span>
+    <span class="admin-order-fold-meta">${group.length>1?'이번 회차 '+group.length+'건 합산 · ':''}상품 ${count}종 · ${qty}개 · ${fmtDate(root.created_at)}</span>
    </span>
    <span class="admin-order-fold-right"><span class="admin-order-fold-next ${urgent?'is-urgent':''}">${esc(next)}</span></span>
    <span class="admin-order-fold-chevron" aria-hidden="true"></span>
   </summary>
   <div class="admin-order-fold-body">
-   ${group.length>1?renderBundleCard(group):renderAdminQuoteCard(group[0])}
+   ${group.length>1?(group.every(q=>bundleRootId(q)===bundleRootId(group[0]))?renderBundleCard(group):renderSameRoundCard(group)):renderAdminQuoteCard(group[0])}
   </div>
  </details>`;
 }
@@ -6198,7 +6312,7 @@ function renderAdminQuotes(){
   state.filter==='undecided'?q.status==='quoted'&&(!q.purchase_intent||q.purchase_intent==='undecided'):
   state.filter==='cancel_requested'?!!q.cancel_requested_at&&q.status!=='cancelled':
   state.filter.startsWith('flow_')?q.status==='confirmed'&&workflowStage(q)===state.filter.slice(5):q.status===state.filter);
- const groups=['buy_now','wholesale_completed'].includes(state.filter)?qq.map(q=>[q]):bundledQuoteGroups(qq,['all','finished'].includes(state.filter));
+ const groups=['all_history','finished','wholesale_completed'].includes(state.filter)?bundledQuoteGroups(qq,['all_history','finished'].includes(state.filter)):sameRoundGroups(qq);
  const awaiting=groups.filter(g=>g.some(q=>q.status==='requested'||quoteNeedsPriceInput(q)));
  const priced=groups.filter(g=>!awaiting.includes(g));
  const unfinished=qq.reduce((n,q)=>n+(q.status==='cancelled'?0:q.items.filter(i=>i.unit_price==null&&i.fulfillment!=='sold_out').length),0);
@@ -6261,7 +6375,7 @@ function renderAdminQuotes(){
    ${state.filter==='buy_now'?`<div class="admin-workflow-inline-actions"><button type="button" data-action="open-supplier-bulk-allocations">배송비 배분하기</button><button type="button" data-filter="supplier_payments">입금·발주 진행 ${nSupplier}곳</button></div>`:''}
   </div>
   ${state.filter==='supplier_payments'?renderSupplierPaymentCenter():
-   qq.length?`<div class="admin-date-toolbar admin-workflow-listbar"><strong>주문 ${qq.length}건${unfinished?' · 가격 미입력 '+unfinished+'종':''}</strong>
+   qq.length?`<div class="admin-date-toolbar admin-workflow-listbar"><strong>구매자 묶음 ${groups.length}개 · 원주문 ${qq.length}건${unfinished?' · 가격 미입력 '+unfinished+'종':''}</strong>
     <div class="admin-date-actions"><button type="button" class="date-all-btn" data-action="date-open-all">모두 펼치기</button><button type="button" class="date-all-btn" data-action="date-close-all">모두 접기</button></div>
    </div>
    ${state.filter==='buy_now'?renderSupplierBulkManager()+renderProcurementSheet():state.filter==='wholesale_completed'?renderCompletedProcurementSheet():''}

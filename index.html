@@ -5722,6 +5722,7 @@ function renderSupplierBulkManager(historyOnly=false){
  const history=state.supplierBatchesReady?state.supplierBatches.map((batch,index)=>{
   const checked=supplierBatchPaymentState(batch);
   const ordered=Boolean(batch.ordered_at);
+  const unpaidRequests=(batch.payers||[]).some(p=>{const invoice=supplierPartialInvoice(batch.id,p.buyer_key);return invoice&&!invoice.paid_at;});
   const base=batch.people?Math.floor(batch.total/batch.people):0;
   const extra=batch.people?batch.total%batch.people:0;
   const shareText=extra?`${money(base)}~${money(base+1)}`:money(base);
@@ -5741,7 +5742,8 @@ function renderSupplierBulkManager(historyOnly=false){
      const actions=ordered?'':`<div class="row wrap" style="margin-top:6px;gap:6px">
       <button type="button" class="btn sm secondary" data-action="supplier-partial-request" data-id="${esc(batch.id)}" data-buyer-key="${esc(p.payer.buyer_key)}" ${canAsk&&!inv?.paid_at?'':'disabled'}>${inv?'요청금액 다시 계산':'이 거래처 상품 입금 요청'}</button>
       ${inv?`<button type="button" class="btn sm outline" data-action="supplier-partial-copy" data-id="${esc(inv.id)}" ${inv.paid_at?'disabled':''}>입금 안내 복사</button>
-      <button type="button" class="btn sm ${inv.paid_at?'neutral':'secondary'}" data-action="supplier-partial-paid" data-id="${esc(inv.id)}" ${inv.paid_at?'disabled':''}>${inv.paid_at?'입금 확인됨':'입금 확인 처리'}</button>`:''}
+      <button type="button" class="btn sm ${inv.paid_at?'neutral':'secondary'}" data-action="supplier-partial-paid" data-id="${esc(inv.id)}" ${inv.paid_at?'disabled':''}>${inv.paid_at?'입금 확인됨':'입금 확인 처리'}</button>
+      <button type="button" class="btn sm neutral" data-action="supplier-partial-cancel" data-id="${esc(inv.id)}" ${inv.paid_at?'disabled':''}>요청 취소</button>`:''}
      </div>`;
      return `<div class="supplier-bulk-person" style="display:block">
       <div class="row between wrap"><span>${esc(p.buyerName)} · ${money(p.payer.amount)} 배송비</span>
@@ -5752,7 +5754,7 @@ function renderSupplierBulkManager(historyOnly=false){
     <div class="smallnote supplier-bulk-items-count">배분 상품: ${batchItems.map(i=>esc(i.product_name)).join(' · ')||'기록 확인 필요'}</div>
     <p class="smallnote">전체 주문 입금 또는 해당 거래처 상품·배송비 선입금 중 선택할 수 있어요. 다른 거래처 상품은 그대로 유지해요.</p>
     ${ordered?`<div class="supplier-bulk-done">이 거래처 발주 완료: ${fmtDate(batch.ordered_at)}</div>`:
-      `<button type="button" class="btn block" data-action="supplier-bulk-ordered" data-id="${esc(batch.id)}" ${checked.canOrder?'':'disabled'}>전체 주문 입금 확인 → 도매 발주 완료</button>
+      `<button type="button" class="btn block" data-action="supplier-bulk-ordered" data-id="${esc(batch.id)}" ${checked.canOrder&&!unpaidRequests?'':'disabled'}>전체 주문 입금 확인 → 도매 발주 완료</button>
        <button type="button" class="btn block secondary" style="margin-top:7px" data-action="supplier-bulk-ordered-partial" data-id="${esc(batch.id)}" ${checked.partialReady?'':'disabled'}>이 거래처만 선입금 확인 → 발주 완료</button>
        ${!checked.partialReady?'<p class="smallnote">선발주하려면 위 구매자별 입금 요청 생성 → 안내 복사·전송 → 입금 확인을 진행해 주세요.</p>':''}
        <button type="button" class="btn sm neutral supplier-bulk-cancel" data-action="supplier-bulk-cancel" data-id="${esc(batch.id)}">이 거래처 배송비 배분 취소</button>`}
@@ -7885,6 +7887,17 @@ if(a==='supplier-partial-copy'){
  notif('선입금 안내문을 복사했어요. 고객에게 전송하면 주문조회에서도 확인할 수 있어요.');
  return;
 }
+if(a==='supplier-partial-cancel'){
+ if(!state.admin)throw Error('관리자만 선입금 요청을 취소할 수 있어요.');
+ const invoice=state.supplierPartialInvoices.find(i=>i.id===id);
+ if(!invoice||invoice.paid_at)throw Error('입금 확인된 내역은 취소할 수 없어요.');
+ if(!window.confirm('미입금 선입금 요청 '+money(invoice.amount)+'을 취소할까요?\n고객 주문조회에서도 이 요청이 사라집니다. 이미 안내문을 전달했다면 고객에게 취소 사실을 알려 주세요.'))return;
+ const ok=await rpc('gq_admin_cancel_supplier_partial_v88',{p_invoice_id:id},true);
+ if(ok!==true)throw Error('요청 취소 결과를 확인할 수 없어요.');
+ await refreshSupplierPartialBatch(invoice.batch_id,b);
+ notif('선입금 요청을 취소했어요. 고객에게도 취소 사실을 알려 주세요.');
+ return;
+}
 if(a==='supplier-partial-paid'){
  if(!state.admin||!state.supplierBatchesReady)throw Error('관리자만 선입금을 확인할 수 있어요.');
  const invoice=state.supplierPartialInvoices.find(i=>i.id===id);
@@ -7919,6 +7932,8 @@ if(a==='supplier-bulk-ordered'){
  const batch=state.supplierBatches.find(x=>x.id===id);
  if(!batch||batch.ordered_at)throw Error('발주 대기 중인 거래처 배분이 없어요.');
  if(!supplierBatchPaymentState(batch).canOrder)throw Error('이 거래처에 포함된 주문의 최종 확정과 입금 기록을 먼저 완료해 주세요.');
+ if((batch.payers||[]).some(p=>{const invoice=supplierPartialInvoice(batch.id,p.buyer_key);return invoice&&!invoice.paid_at;}))
+  throw Error('미입금 선입금 요청을 먼저 입금 확인하거나 취소해 주세요.');
  if(!window.confirm('‘'+batch.supplier+'’ 거래처에 선택한 상품 '+batch.item_ids.length+'종을 실제로 발주 완료했나요?\n\n확인하면 선택된 이 거래처 상품만 발주 완료로 표시해요. 다른 거래처 상품이나 고객 배송 완료 상태는 변경하지 않아요.'))return;
  const result=await adminMarkSupplierBatchOrdered(id);
  if(!result?.ordered)throw Error('거래처별 도매 발주 완료 처리 결과가 올바르지 않아요.');

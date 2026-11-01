@@ -4309,6 +4309,18 @@ function render(){
  adminScrollPositions.forEach(([selector,left])=>{const el=app.querySelector(selector);if(el)el.scrollLeft=left;});
  const categoryList=app.querySelector('.shop-category-list');
  if(categoryList)categoryList.scrollLeft=categoryScrollBefore;
+ // Mobile filter row scrolls horizontally: show the selected filter even
+ // when it is the last "전체 주문" button.
+ if(state.page==='admin'&&state.tab==='quotes'){
+  const row=app.querySelector('.admin-quote-primary-filters');
+  const active=row?.querySelector('.admin-quote-quick-tab.active');
+  if(row&&active){
+   const left=active.offsetLeft-row.offsetLeft;
+   const right=left+active.offsetWidth;
+   if(left<row.scrollLeft+4)row.scrollLeft=Math.max(0,left-4);
+   else if(right>row.scrollLeft+row.clientWidth-4)row.scrollLeft=right-row.clientWidth+4;
+  }
+ }
  syncModalPageLock();
  if(adminPriceScrollAnchor)restoreAdminPriceScrollAnchor();
  syncHeroContrast();
@@ -5667,7 +5679,7 @@ function supplierBatchPaymentState(batch){
  return {people:result,paid:result.filter(r=>r.eligible).length,
   partialReady,canOrder:result.length===Number(batch.people)&&result.every(r=>r.eligible)};
 }
-function renderSupplierBulkManager(historyOnly=false){
+function renderSupplierBulkManager(historyOnly=false,expanded=false){
  if(!state.admin||state.page!=='admin')return '';
  const allStores=[...new Set(state.quotes.filter(isRoundBuyer).flatMap(q=>(q.items||[]).map(supplierItemStore)))].filter(Boolean);
  const stores=allStores.map(id=>({id,name:privateSupplierDisplay(id)})).filter(x=>x.name)
@@ -5774,7 +5786,15 @@ function renderSupplierBulkManager(historyOnly=false){
   </details>`;
  }).join(''):'';
  if(historyOnly){
-  if(!state.supplierBatches.length)return '';
+  if(!state.supplierBatches.length)return expanded?'<div class="empty">아직 거래처별 배송비 배분 내역이 없어요. 먼저 발주 예정에서 거래처 배송비를 배분해 주세요.</div>':'';
+  if(expanded){
+   const pending=state.supplierBatches.filter(b=>!b.ordered_at);
+   const completed=state.supplierBatches.filter(b=>b.ordered_at);
+   return `<div class="supplier-bulk-payments" aria-label="거래처별 입금 요청 목록">
+    <div class="supplier-bulk-payments-title"><strong>발주 대기 중 ${pending.length}곳</strong><span>거래처를 열면 구매자별 입금 요청 버튼이 바로 보여요.</span></div>
+    <div class="supplier-bulk-list" style="margin-top:8px">${history}</div>
+   </div>`;
+  }
   return `<details class="card supplier-bulk-history-only">
    <summary style="cursor:pointer;font-weight:800;font-size:15px">거래처별 배송비 · 입금·발주 현황 (${state.supplierBatches.length}건) ▾</summary>
    <div class="supplier-bulk-list" style="margin-top:14px">${history}</div>
@@ -6055,8 +6075,25 @@ function renderCompletedProcurementSheet(){
 function isOtherRoundQuote(q){
  return q.status==='quoted'&&['next_round','on_hold','undecided'].includes(q.purchase_intent||'undecided');
 }
+function renderSupplierPaymentCenter(){
+ const pending=state.supplierBatches.filter(b=>!b.ordered_at);
+ return `<section class="admin-supplier-payments-center">
+  <div class="admin-supplier-payments-heading">
+   <h3>거래처별 입금 요청</h3>
+   <p>배송비를 배분한 거래처를 열면 각 구매자 아래에 <b>‘이 거래처 상품 입금 요청’</b> 버튼이 있어요. 요청하면 등록된 이메일로 안내가 자동 발송돼요.</p>
+   <p class="smallnote">해당 거래처 상품금액 + 배분 배송비만 요청하고, 다른 거래처 상품은 건드리지 않아요.</p>
+  </div>
+  <div class="admin-supplier-payments-steps">
+   <span>① 배송비 배분</span><span>② 입금 요청·메일</span><span>③ 입금 확인</span><span>④ 해당 거래처 발주</span>
+  </div>
+  <button type="button" class="btn sm secondary" data-action="open-supplier-bulk-allocations" style="margin:9px 0 14px">+ 새 거래처 배송비 배분하기</button>
+  ${!state.supplierBatchesReady?`<p class="noticefail">배송비 배분 내역을 확인할 수 없어요. ${esc(state.supplierBatchesError||'관리자 새로고침 후 다시 확인해 주세요.')}</p>`:''}
+  ${state.supplierBatchesReady&&pending.length===0?'<p class="smallnote">현재 발주 대기 중인 거래처가 없어요. 이전 배분·발주 내역은 아래에서 확인할 수 있어요.</p>':''}
+  ${renderSupplierBulkManager(true,true)}
+ </section>`;
+}
 function renderAdminQuotes(){
- const qq=state.quotes.filter(q=>state.filter==='all'?(q.status!=='cancelled'&&!isFinishedOrder(q)):(state.filter==='all_history'?true:state.filter==='finished'?isFinishedOrder(q):state.filter==='other'?isOtherRoundQuote(q):state.filter==='buy_now'?isRoundBuyer(q)&&!isFinishedOrder(q):state.filter==='wholesale_completed'?isWholesaleCompleted(q)&&!isFinishedOrder(q):state.filter==='next_round'?q.status==='quoted'&&q.purchase_intent==='next_round':state.filter==='on_hold'?q.status==='quoted'&&q.purchase_intent==='on_hold':state.filter==='undecided'?q.status==='quoted'&&(!q.purchase_intent||q.purchase_intent==='undecided'):state.filter==='cancel_requested'?!!q.cancel_requested_at&&q.status!=='cancelled':state.filter.startsWith('flow_')?q.status==='confirmed'&&workflowStage(q)===state.filter.slice(5):q.status===state.filter));
+ const qq=state.quotes.filter(q=>state.filter==='all'?['requested','quoted'].includes(q.status):(state.filter==='all_history'?true:state.filter==='finished'?isFinishedOrder(q):state.filter==='other'?isOtherRoundQuote(q):state.filter==='buy_now'?isRoundBuyer(q)&&!isFinishedOrder(q):state.filter==='wholesale_completed'?isWholesaleCompleted(q)&&!isFinishedOrder(q):state.filter==='next_round'?q.status==='quoted'&&q.purchase_intent==='next_round':state.filter==='on_hold'?q.status==='quoted'&&q.purchase_intent==='on_hold':state.filter==='undecided'?q.status==='quoted'&&(!q.purchase_intent||q.purchase_intent==='undecided'):state.filter==='cancel_requested'?!!q.cancel_requested_at&&q.status!=='cancelled':state.filter.startsWith('flow_')?q.status==='confirmed'&&workflowStage(q)===state.filter.slice(5):q.status===state.filter));
  const groups=['buy_now','wholesale_completed'].includes(state.filter)?qq.map(q=>[q]):bundledQuoteGroups(qq,['all','finished'].includes(state.filter));
  const awaiting=groups.filter(quoteGroupNeedsPriceInput),priced=groups.filter(g=>!quoteGroupNeedsPriceInput(g));
  const unfinished=qq.reduce((n,q)=>n+(q.status==='cancelled'?0:q.items.filter(i=>i.unit_price==null&&i.fulfillment!=='sold_out').length),0);
@@ -6065,21 +6102,24 @@ function renderAdminQuotes(){
  const nNow=state.quotes.filter(q=>isRoundBuyer(q)&&!isFinishedOrder(q)).length;
  const nOrdered=state.quotes.filter(q=>isWholesaleCompleted(q)&&!isFinishedOrder(q)).length;
  const nFinished=state.quotes.filter(isFinishedOrder).length;
- const nActive=state.quotes.filter(q=>q.status!=='cancelled'&&!isFinishedOrder(q)).length;
+ const nActive=state.quotes.filter(q=>['requested','quoted'].includes(q.status)).length;
  const nNext=state.quotes.filter(q=>q.status==='quoted'&&q.purchase_intent==='next_round').length;
  const nHold=state.quotes.filter(q=>q.status==='quoted'&&q.purchase_intent==='on_hold').length;
  const nUndecided=state.quotes.filter(q=>q.status==='quoted'&&(!q.purchase_intent||q.purchase_intent==='undecided')).length;
  const nOther=nNext+nHold+nUndecided;
  const nCancelRequested=state.quotes.filter(q=>!!q.cancel_requested_at&&q.status!=='cancelled').length;
+ const nSupplierPending=state.supplierBatches.filter(b=>!b.ordered_at).length;
  const primaryFilters=[
   ['all','진행 중',nActive],
   ['buy_now','발주 예정',nNow],
+  ['supplier_payments','거래처 입금',nSupplierPending],
   ['wholesale_completed','발주 완료',nOrdered],
   ['finished','완료',nFinished],
   ['cancel_requested','취소 요청',nCancelRequested],
-  ['other','미확정',nOther]
+  ['other','미확정',nOther],
+  ['all_history','전체 주문',state.quotes.length]
  ];
- const secondaryKeys=['all_history','requested','quoted','confirmed','flow_new','flow_preparing','flow_pickup_ready','flow_shipped','flow_completed','flow_soldout_closed','cancelled'];
+ const secondaryKeys=['requested','quoted','confirmed','flow_new','flow_preparing','flow_pickup_ready','flow_shipped','flow_completed','flow_soldout_closed','cancelled'];
  const secondaryLabel=key=>({all_history:'전체 내역',wholesale_completed:'발주 완료',next_round:'다음 회차',on_hold:'구매 보류',undecided:'미선택'})[key]||(key.startsWith('flow_')?workflowLabels[key.slice(5)]:statusLabel[key]||key);
  const isSecondary=secondaryKeys.includes(state.filter);
  return `<section class="admin-quote-workspace">
@@ -6094,8 +6134,8 @@ function renderAdminQuotes(){
     ${secondaryKeys.map(key=>`<button type="button" class="admin-quote-secondary-tab ${state.filter===key?'active':''}" data-filter="${key}" aria-pressed="${state.filter===key}">${esc(secondaryLabel(key))}</button>`).join('')}
    </div>
   </details>
-  ${state.filter==='buy_now'?'<p class="admin-quote-context">아직 발주하지 않은 이번 회차 주문만 표시해요.</p>':state.filter==='wholesale_completed'?'<p class="admin-quote-context">발주가 끝났지만 아직 수령·배송 완료되지 않은 주문이에요.</p>':state.filter==='finished'?'<p class="admin-quote-context">픽업완료·배송완료·품절 정산 완료된 주문이에요. 기존 주문·입금·환불 기록은 그대로 보관돼요.</p>':state.filter==='all'?'<p class="admin-quote-context">픽업·배송 완료된 주문은 ‘완료’에서 확인할 수 있어요.</p>':''}
-  ${qq.length?`<div class="admin-date-toolbar admin-quote-date-toolbar">
+  ${state.filter==='buy_now'?'<p class="admin-quote-context">아직 발주하지 않은 이번 회차 주문만 표시해요.</p>':state.filter==='wholesale_completed'?'<p class="admin-quote-context">발주가 끝났지만 아직 수령·배송 완료되지 않은 주문이에요.</p>':state.filter==='finished'?'<p class="admin-quote-context">픽업완료·배송완료·품절 정산 완료된 주문이에요. 기존 주문·입금·환불 기록은 그대로 보관돼요.</p>':state.filter==='all'?'<p class="admin-quote-context">구매자가 <b>최종 주문 확정하기 전</b>의 견적·구매 의사 확인 단계만 보여요. 확정 이후는 ‘발주 예정’, ‘발주 완료’, ‘완료’ 또는 맨 끝 ‘전체 주문’에서 확인하세요.</p>':''}
+  ${state.filter==='supplier_payments'?renderSupplierPaymentCenter():qq.length?`<div class="admin-date-toolbar admin-quote-date-toolbar">
    <div><strong>주문 ${qq.length}건 · ${dayCount}일</strong>${unfinished?`<span>가격 미입력 ${unfinished}종</span>`:''}</div>
    <div class="admin-date-actions">
     <button type="button" class="date-all-btn" data-action="date-open-all">모두 펼치기</button>
@@ -7878,6 +7918,18 @@ if(a==='supplier-bulk-cancel'){
  state.supplierBulkSelected.clear();
  await loadAdmin();
  notif('‘'+batch.supplier+'’ 배송비 배분을 취소했어요. 다른 거래처는 그대로예요.');
+ return;
+}
+if(a==='open-supplier-bulk-allocations'){
+ if(!state.admin||state.page!=='admin')throw Error('관리자 로그인 후 거래처 배송비를 배분해 주세요.');
+ state.tab='quotes';state.filter='buy_now';
+ adminFoldState.set('supplier-bulk-manager',true);
+ render();
+ const manager=app.querySelector('#supplier-bulk-manager');
+ if(manager){
+  manager.open=true;
+  window.scrollTo({top:Math.max(0,window.scrollY+manager.getBoundingClientRect().top-16),behavior:'instant'});
+ }
  return;
 }
 if(a==='supplier-partial-request'){

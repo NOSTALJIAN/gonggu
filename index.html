@@ -1804,6 +1804,19 @@ body:has(.overlay) .floating-actions{opacity:0;visibility:hidden;pointer-events:
  font-size:12px;font-weight:760
 }
 .admin-quote-attention b{margin-left:3px}
+.admin-supplier-payments-center{padding-bottom:14px}
+.admin-supplier-payments-heading{padding:12px 13px;background:#f8f9fb;border:1px solid #e4e8ef;border-radius:10px}
+.admin-supplier-payments-heading h3{margin:0 0 6px;font-size:16px}
+.admin-supplier-payments-heading p{font-size:12px;line-height:1.6;margin:5px 0}
+.admin-supplier-payments-steps{display:flex;gap:5px;flex-wrap:wrap;margin:12px 0 4px}
+.admin-supplier-payments-steps span{font-size:11px;border:1px solid #e5e7eb;padding:6px 7px;border-radius:6px;background:#fff}
+.supplier-bulk-payments-title{display:flex;flex-wrap:wrap;gap:6px;align-items:baseline;margin:5px 0 11px}
+.supplier-bulk-payments-title strong{font-size:14px}
+.supplier-bulk-payments-title span{font-size:11px;color:#666}
+.supplier-bulk-completed-history{margin-top:15px;border:1px solid #e1e1e1;border-radius:8px;padding:12px}
+.supplier-bulk-completed-history>summary{cursor:pointer;font-size:13px;font-weight:780}
+.supplier-bulk-completed-history .supplier-bulk-list{margin-top:9px}
+
 .admin-quote-primary-filters{
  display:flex;align-items:center;gap:6px;flex-wrap:nowrap;
  margin:0;padding:3px 0 9px;overflow-x:auto;overscroll-behavior-x:contain;
@@ -4305,7 +4318,11 @@ function syncHeroContrast(){
 function render(){
  const categoryScrollBefore=app.querySelector('.shop-category-list')?.scrollLeft||0;
  const adminScrollPositions=['.admin-main-tabs','.admin-product-filter-list','.admin-category-list','.admin-quote-primary-filters'].map(selector=>[selector,app.querySelector(selector)?.scrollLeft||0]);
- app.querySelectorAll("details[data-fold-key]").forEach(el=>adminFoldState.set(el.dataset.foldKey,el.open));cancelAdminPhotoDrag();app.innerHTML=`<main class="shell ${state.page==='admin'?'is-admin-shell':''}">${header()}${demoNotice()}${state.page==='admin'?renderAdmin():state.page==='track'?renderTrack():renderShop()}${shopBottomNav()}<div class="floating-actions" aria-label="화면 바로가기"><button class="floating-refresh" type="button" data-action="reload-app" aria-label="최신 화면으로 새로고침" title="새로고침"><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8.1 8.1 0 0 0-15.5-2"/><path d="M4 4v5h5"/><path d="M4 13a8.1 8.1 0 0 0 15.5 2"/><path d="M20 20v-5h-5"/></svg><span>새로고침</span></button><button class="back-to-top" type="button" data-action="scroll-top" aria-label="맨 위로 이동" aria-hidden="true" tabindex="-1"><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 13 7-7 7 7M12 6v12"/></svg><span>위로</span></button></div></main>${renderModal()}`;app.querySelectorAll("details[data-fold-key]").forEach(el=>{el.open=adminFoldState.get(el.dataset.foldKey)===true});
+ app.querySelectorAll("details[data-fold-key]").forEach(el=>adminFoldState.set(el.dataset.foldKey,el.open));cancelAdminPhotoDrag();app.innerHTML=`<main class="shell ${state.page==='admin'?'is-admin-shell':''}">${header()}${demoNotice()}${state.page==='admin'?renderAdmin():state.page==='track'?renderTrack():renderShop()}${shopBottomNav()}<div class="floating-actions" aria-label="화면 바로가기"><button class="floating-refresh" type="button" data-action="reload-app" aria-label="최신 화면으로 새로고침" title="새로고침"><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8.1 8.1 0 0 0-15.5-2"/><path d="M4 4v5h5"/><path d="M4 13a8.1 8.1 0 0 0 15.5 2"/><path d="M20 20v-5h-5"/></svg><span>새로고침</span></button><button class="back-to-top" type="button" data-action="scroll-top" aria-label="맨 위로 이동" aria-hidden="true" tabindex="-1"><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 13 7-7 7 7M12 6v12"/></svg><span>위로</span></button></div></main>${renderModal()}`;app.querySelectorAll("details[data-fold-key]").forEach(el=>{
+  if(adminFoldState.has(el.dataset.foldKey))el.open=adminFoldState.get(el.dataset.foldKey)===true;
+  else if(state.page==='admin'&&state.tab==='quotes'&&state.filter==='supplier_payments'&&el.classList.contains('supplier-bulk-batch'))el.open=el.hasAttribute('open');
+  else el.open=false;
+ });
  adminScrollPositions.forEach(([selector,left])=>{const el=app.querySelector(selector);if(el)el.scrollLeft=left;});
  const categoryList=app.querySelector('.shop-category-list');
  if(categoryList)categoryList.scrollLeft=categoryScrollBefore;
@@ -5734,7 +5751,7 @@ function renderSupplierBulkManager(historyOnly=false,expanded=false){
    </details>
   </div>`;
  }).join('');
- const history=state.supplierBatchesReady?state.supplierBatches.map((batch,index)=>{
+ const supplierBatchCard=(batch,index)=>{
   const checked=supplierBatchPaymentState(batch);
   const ordered=Boolean(batch.ordered_at);
   const unpaidRequests=(batch.payers||[]).some(p=>{const invoice=supplierPartialInvoice(batch.id,p.buyer_key);return invoice&&!invoice.paid_at;});
@@ -5784,15 +5801,20 @@ function renderSupplierBulkManager(historyOnly=false,expanded=false){
        <button type="button" class="btn sm neutral supplier-bulk-cancel" data-action="supplier-bulk-cancel" data-id="${esc(batch.id)}">이 거래처 배송비 배분 취소</button>`}
    </div>
   </details>`;
- }).join(''):'';
+ };
+ const history=state.supplierBatchesReady?state.supplierBatches.map(supplierBatchCard).join(''):'';
  if(historyOnly){
   if(!state.supplierBatches.length)return expanded?'<div class="empty">아직 거래처별 배송비 배분 내역이 없어요. 먼저 발주 예정에서 거래처 배송비를 배분해 주세요.</div>':'';
   if(expanded){
    const pending=state.supplierBatches.filter(b=>!b.ordered_at);
    const completed=state.supplierBatches.filter(b=>b.ordered_at);
    return `<div class="supplier-bulk-payments" aria-label="거래처별 입금 요청 목록">
-    <div class="supplier-bulk-payments-title"><strong>발주 대기 중 ${pending.length}곳</strong><span>거래처를 열면 구매자별 입금 요청 버튼이 바로 보여요.</span></div>
-    <div class="supplier-bulk-list" style="margin-top:8px">${history}</div>
+    <div class="supplier-bulk-payments-title"><strong>입금 요청 가능한 거래처 ${pending.length}곳</strong><span>아래에서 구매자별 입금 요청과 메일 발송을 처리하세요.</span></div>
+    <div class="supplier-bulk-list" style="margin-top:8px">${pending.length?pending.map((b,index)=>supplierBatchCard(b,index)).join(''):'<div class="empty">입금 요청 대기 중인 거래처가 없어요.</div>'}</div>
+    ${completed.length?`<details class="supplier-bulk-completed-history" data-fold-key="supplier-bulk-completed-history">
+      <summary>발주 완료된 거래처 ${completed.length}곳 · 이전 내역 보기</summary>
+      <div class="supplier-bulk-list">${completed.map((b,index)=>supplierBatchCard(b,index)).join('')}</div>
+    </details>`:''}
    </div>`;
   }
   return `<details class="card supplier-bulk-history-only">
@@ -8913,7 +8935,12 @@ app.addEventListener('click',e=>{
  }
 },true);
 
-app.addEventListener('click',e=>{const orderSummary=e.target.closest('.admin-order-fold > summary');if(orderSummary){const order=orderSummary.parentElement;state.orderCardsOpen[order.dataset.adminOrderId]=!order.open;return}const summary=e.target.closest('.admin-date-group > summary');if(summary){const group=summary.parentElement;state.dateGroupsOpen[group.dataset.orderDate]=!group.open;return}const tab=e.target.closest('[data-tab]'),filter=e.target.closest('[data-filter]');if(tab){state.tab=tab.dataset.tab;if(state.tab==='requests')state.requestStatusFilter='pending';render();return}if(filter){state.filter=filter.dataset.filter;state.supplierBulkSelected.clear();render();return}click(e)});
+app.addEventListener('click',e=>{const orderSummary=e.target.closest('.admin-order-fold > summary');if(orderSummary){const order=orderSummary.parentElement;state.orderCardsOpen[order.dataset.adminOrderId]=!order.open;return}const summary=e.target.closest('.admin-date-group > summary');if(summary){const group=summary.parentElement;state.dateGroupsOpen[group.dataset.orderDate]=!group.open;return}const tab=e.target.closest('[data-tab]'),filter=e.target.closest('[data-filter]');if(tab){state.tab=tab.dataset.tab;if(state.tab==='requests')state.requestStatusFilter='pending';render();return}if(filter){state.filter=filter.dataset.filter;state.supplierBulkSelected.clear();
+ if(state.filter==='supplier_payments'){
+  for(const batch of state.supplierBatches.filter(b=>!b.ordered_at))
+   adminFoldState.set('supplier-batch-'+batch.id,true);
+ }
+ render();return}click(e)});
 app.addEventListener('submit',submit);app.addEventListener('change',change);app.addEventListener('input',input);
 app.addEventListener('focusin',e=>{
  if(e.target.id==='search')reserveShopSearchHeight();

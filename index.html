@@ -4458,6 +4458,8 @@ function buyerRoundIntent(q){
  const intent=q.purchase_intent||'undecided';
  const chosen=intent==='buy_now'?'이번 회차 구매':intent==='next_round'?'다음 회차 구매':intent==='on_hold'?'구매 보류':'아직 선택하지 않음';
  const freightReady=Boolean(q.supplier_shipping_ready)&&readyQuote(q);
+ const partialUnpaid=(state.trackSupplierPartial||[]).some(r=>!r.paid_at);
+ const partialPaid=(state.trackSupplierPartial||[]).some(r=>!!r.paid_at);
  return `<section class="purchase-round-card" aria-label="견적 이후 구매 회차 선택">
   <h3>언제 구매하실 건가요?</h3>
   <p>상품 견적을 확인하고 먼저 구매 시점을 선택해 주세요. <b>구매 의사를 받은 뒤 배송비를 계산</b>해 최종 결제금액을 안내합니다.</p>
@@ -4471,7 +4473,7 @@ function buyerRoundIntent(q){
   </div>
   ${intent==='buy_now'?`<div class="purchase-round-confirm">${freightReady?
    `<button type="button" class="btn block" data-action="confirm-quote" ${q.cancel_requested_at?'disabled':''}>최종 금액 확인 후 이번 회차 주문 확정</button>`:
-   '<div class="info">배송비 계산 대기 중 · 아직 주문 확정이나 송금을 하지 마세요.</div>'}
+   (partialUnpaid?'<div class="info">나머지 상품의 배송비는 계산 중이에요. 선입금은 위에 요청된 금액만 보내 주세요.</div>':partialPaid?'<div class="info">일부 상품 선입금 확인 완료 · 나머지 상품 배송비는 계산 중이에요.</div>':'<div class="info">배송비 계산 대기 중 · 아직 주문 확정이나 송금을 하지 마세요.</div>')}
    <p class="purchase-round-note">배송비가 확정된 다음 최종 결제금액을 확인해 주세요.</p></div>`:''}
  </section>`;
 }

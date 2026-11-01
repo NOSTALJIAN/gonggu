@@ -2482,11 +2482,20 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 :is(#approve-form,#product-form.product-clean-form) .admin-combined-photo-heading b{font-size:12px;font-weight:700;color:#292929}
 :is(#approve-form,#product-form.product-clean-form) .admin-photo-compact-hint{font-size:10px;color:#999;line-height:1.4;text-align:right}
 :is(#approve-form,#product-form.product-clean-form) .admin-combined-photo-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
-/* Nine photos fill three even rows instead of an orphan at the end. */
-:is(#approve-form,#product-form.product-clean-form) .admin-combined-photo-grid[data-photo-count="3"],
-:is(#approve-form,#product-form.product-clean-form) .admin-combined-photo-grid[data-photo-count="5"],
-:is(#approve-form,#product-form.product-clean-form) .admin-combined-photo-grid[data-photo-count="6"],
-:is(#approve-form,#product-form.product-clean-form) .admin-combined-photo-grid[data-photo-count="9"]{grid-template-columns:repeat(3,minmax(0,1fr))}
+/* Balanced grid and internal scrolling prevent 30 images from making the form excessively long. */
+:is(#approve-form,#product-form.product-clean-form) .admin-combined-photo-grid[data-photo-layout="3"]{grid-template-columns:repeat(3,minmax(0,1fr))}
+:is(#approve-form,#product-form.product-clean-form) .admin-combined-photo-grid{
+ max-height:390px;overflow-y:auto;overscroll-behavior-y:contain;
+ align-content:start;padding:2px 4px 2px 0;scrollbar-width:thin;
+}
+#suggest-form .suggest-photo-previews{
+ max-height:340px;overflow-y:auto;overscroll-behavior-y:contain;
+ align-content:start;padding-right:4px;scrollbar-width:thin;
+}
+.request-photo-gallery{
+ max-height:340px;overflow-y:auto;overscroll-behavior-y:contain;
+ align-content:start;padding-right:4px;scrollbar-width:thin;
+}
 :is(#approve-form,#product-form.product-clean-form) .admin-combined-photo{padding:3px;border:1px solid #e6e6e6;border-radius:7px}
 :is(#approve-form,#product-form.product-clean-form) .admin-combined-photo-image{border-radius:5px}
 :is(#approve-form,#product-form.product-clean-form) .admin-combined-photo figcaption{gap:0;min-height:0;margin:4px 0 1px}
@@ -4257,6 +4266,8 @@ return `<section class="content admin-workspace-content">
  </div>
 </div><div class="tabs admin-main-tabs" aria-label="관리자 메뉴"><button class="tab ${state.tab==='quotes'?'active':''}" data-tab="quotes">견적·주문</button><button class="tab ${state.tab==='requests'?'active':''}" data-tab="requests">상품 등록 신청 ${state.requests.filter(x=>x.status==='pending').length}</button><button class="tab ${state.tab==='products'?'active':''}" data-tab="products">상품·가게 관리</button><button class="tab ${state.tab==='buyers'?'active':''}" data-tab="buyers">구매자별 집계</button></div>${state.tab==='quotes'?renderAdminQuotes():state.tab==='requests'?renderAdminRequests():state.tab==='products'?renderAdminProducts():state.tab==='buyers'?renderBuyerStats():state.tab==='items'?renderProductStats():state.tab==='vendors'?renderVendorSummary():renderAdminSettings()}</section>`}
 
+// Keep the same photo allowance for buyers, approvals, and direct product editing.
+const PRODUCT_PHOTO_LIMIT=30;
 function requestPhotoPaths(r){
  const paths=[r?.photo_path,...(Array.isArray(r?.extra_photo_paths)?r.extra_photo_paths:[])];
  return paths.filter(p=>typeof p==='string'&&p.startsWith('incoming/'));
@@ -4297,6 +4308,10 @@ function adminPhotoPreview(entry){
   return `<img src="${esc(entry.src)}" alt="등록된 상품 사진" loading="lazy">`;
  return `<img src="${entry.preview}" alt="관리자가 새로 추가한 상품 사진" loading="lazy">`;
 }
+function adminPhotoGridColumns(count){
+ // Preserve the balanced three-column layouts for 3, 5, 6, 9 and larger multiples of 3.
+ return count===5||(count>0&&count%3===0)?3:4;
+}
 function adminPhotoGridMarkup(){
  return adminPhotoSequence.map((entry,i)=>`<figure class="admin-combined-photo" data-admin-photo-index="${i}" tabindex="0" aria-label="${i===0?'대표사진':(i+1)+'번째 사진'} · 드래그해서 위치 변경">
   <div class="admin-combined-photo-image" data-photo-drag-zone title="끌어서 사진 순서 변경">
@@ -4310,11 +4325,11 @@ function adminPhotoGridMarkup(){
 function renderAdminPhotoWorkspace(compact=false){
  if(compact)return `<section class="admin-combined-photo-editor">
   <div class="admin-combined-photo-heading"><b>상품 사진</b><span class="admin-photo-compact-hint">첫 번째 사진이 대표사진이에요</span></div>
-  <div class="admin-combined-photo-grid" data-admin-photo-list data-photo-count="${adminPhotoSequence.length}">${adminPhotoGridMarkup()}</div>
+  <div class="admin-combined-photo-grid" data-admin-photo-list data-photo-layout="${adminPhotoGridColumns(adminPhotoSequence.length)}">${adminPhotoGridMarkup()}</div>
   <div class="admin-combined-photo-empty ${adminPhotoSequence.length?'hidden':''}" data-admin-photo-empty>등록할 사진을 추가해 주세요.</div>
   <label class="admin-compact-photo-add">
    <span class="admin-compact-photo-button">＋ 사진 추가</span>
-   <span class="admin-compact-photo-count" data-admin-photo-count>${adminPhotoSequence.length} / 9장</span>
+   <span class="admin-compact-photo-count" data-admin-photo-count>${adminPhotoSequence.length} / ${PRODUCT_PHOTO_LIMIT}장</span>
    <input type="file" name="extra_photos" multiple accept="image/*" aria-label="상품 사진 추가">
   </label>
   <p class="admin-compact-photo-footnote">사진을 끌어서 순서 변경 · ×는 등록할 사진에서만 제외</p>
@@ -4323,16 +4338,16 @@ function renderAdminPhotoWorkspace(compact=false){
   <div class="admin-combined-photo-heading"><b>상품 사진 · 순서 편집</b><p>신청 사진과 관리자 추가 사진을 한 번에 볼 수 있어요. 사진을 누른 채 원하는 위치로 드래그해서 순서를 바꾸고, 오른쪽 위 ×로 삭제해요. <strong>첫 번째 사진이 대표사진</strong>이에요.</p></div>
   <div class="admin-combined-photo-grid" data-admin-photo-list>${adminPhotoGridMarkup()}</div>
   <div class="admin-combined-photo-empty ${adminPhotoSequence.length?'hidden':''}" data-admin-photo-empty>사진이 없어요. 아래에서 사진을 추가해 주세요.</div>
-  <label class="label admin-combined-add">사진 추가하기 (최대 9장)<input type="file" name="extra_photos" multiple accept="image/*"></label>
-  <div class="smallnote" data-admin-photo-count>${adminPhotoSequence.length} / 9장 · ×로 제거한 신청 사진 원본은 삭제되지 않아요.</div>
+  <label class="label admin-combined-add">사진 추가하기 (최대 ${PRODUCT_PHOTO_LIMIT}장)<input type="file" name="extra_photos" multiple accept="image/*"></label>
+  <div class="smallnote" data-admin-photo-count>${adminPhotoSequence.length} / ${PRODUCT_PHOTO_LIMIT}장 · ×로 제거한 신청 사진 원본은 삭제되지 않아요.</div>
  </section>`;
 }
 function updateAdminPhotoEditor(form){
  if(!form||!['approve-form','product-form'].includes(form.id))return;
  const grid=form.querySelector('[data-admin-photo-list]');
- if(grid){grid.innerHTML=adminPhotoGridMarkup();if(form.querySelector('.admin-compact-photo-add'))grid.dataset.photoCount=String(adminPhotoSequence.length);}
+ if(grid){grid.innerHTML=adminPhotoGridMarkup();if(form.querySelector('.admin-compact-photo-add'))grid.dataset.photoLayout=String(adminPhotoGridColumns(adminPhotoSequence.length));}
  const count=form.querySelector('[data-admin-photo-count]');
- if(count)count.textContent=form.querySelector('.admin-compact-photo-add')?adminPhotoSequence.length+' / 9장':adminPhotoSequence.length+' / 9장 · 맨 앞이 대표사진 · ×는 판매 상품에서만 제외';
+ if(count)count.textContent=form.querySelector('.admin-compact-photo-add')?adminPhotoSequence.length+' / '+PRODUCT_PHOTO_LIMIT+'장':adminPhotoSequence.length+' / '+PRODUCT_PHOTO_LIMIT+'장 · 맨 앞이 대표사진 · ×는 판매 상품에서만 제외';
  const empty=form.querySelector('[data-admin-photo-empty]');
  if(empty)empty.classList.toggle('hidden',adminPhotoSequence.length!==0);
  if(form.id==='approve-form')showRequestImages().catch(console.error);
@@ -4345,8 +4360,8 @@ function chooseAdminAdditionalPhotos(input){
  if(files.some(file=>!file.type?.startsWith('image/')||file.size>35*1024*1024)){
   notif('35MB 이하의 이미지 파일만 등록할 수 있어요.');return;
  }
- if(adminPhotoSequence.length+files.length>9){
-  notif('사진은 대표사진 포함 최대 9장까지 등록할 수 있어요. 먼저 ×로 불필요한 사진을 빼 주세요.');return;
+ if(adminPhotoSequence.length+files.length>PRODUCT_PHOTO_LIMIT){
+  notif('사진은 대표사진 포함 최대 '+PRODUCT_PHOTO_LIMIT+'장까지 등록할 수 있어요. 먼저 ×로 불필요한 사진을 빼 주세요.');return;
  }
  for(const file of files)adminPhotoSequence.push({kind:'new',file,preview:URL.createObjectURL(file)});
  updateAdminPhotoEditor(form);
@@ -4426,6 +4441,12 @@ function moveAdminPhotoDrag(e){
  d.grid.querySelectorAll('.is-photo-drop-target').forEach(x=>x.classList.remove('is-photo-drop-target'));
  const target=d.grid.querySelector('[data-admin-photo-index="'+d.to+'"]');
  if(target&&target!==d.card)target.classList.add('is-photo-drop-target');
+ // Scroll the photo grid first when dragging among many thumbnails.
+ const gridBox=d.grid.getBoundingClientRect();
+ if(d.grid.scrollHeight>d.grid.clientHeight+3){
+  if(e.clientY>gridBox.bottom-44)d.grid.scrollTop+=18;
+  else if(e.clientY<gridBox.top+44)d.grid.scrollTop-=18;
+ }
  const scrollArea=d.grid.closest('.sheet-product-scroll')||d.grid.closest('.sheet');
  if(scrollArea){
   const box=scrollArea.getBoundingClientRect();
@@ -4456,7 +4477,7 @@ function keyAdminPhotoMove(e){
 function validateAdminPhotoSequence(type,id){
  if(!state.admin)throw Error('관리자만 사진을 편집할 수 있어요.');
  if(adminPhotoSequence.length<1)throw Error('등록할 사진을 한 장 이상 남겨 주세요.');
- if(adminPhotoSequence.length>9)throw Error('상품 사진은 대표사진 포함 최대 9장이에요.');
+ if(adminPhotoSequence.length>PRODUCT_PHOTO_LIMIT)throw Error('상품 사진은 대표사진 포함 최대 '+PRODUCT_PHOTO_LIMIT+'장이에요.');
  const allowed=type==='approve'?requestPhotoPaths(state.requests.find(r=>r.id===id)):[];
  const oldProduct=type==='product'?selectedProd(id):null;
  const existing=new Set([oldProduct?.image_url,...(Array.isArray(oldProduct?.gallery_urls)?oldProduct.gallery_urls:[])].filter(Boolean));
@@ -4489,18 +4510,18 @@ function clearSuggestPreviews(){for(const u of suggestPreviewUrls)URL.revokeObje
 function updateSuggestPhotoPreviews(input){
  const box=$('#suggest-previews'),count=$('#suggest-photo-count'),files=[...(input.files||[])];
  clearSuggestPreviews();
- if(files.length>9||files.some(f=>!f.type?.startsWith('image/')||f.size>35*1024*1024)){
+ if(files.length>PRODUCT_PHOTO_LIMIT||files.some(f=>!f.type?.startsWith('image/')||f.size>35*1024*1024)){
   input.value='';
   if(box){box.innerHTML='';box.classList.add('hidden');}
   if(count)count.textContent='사진을 다시 선택해 주세요.';
-  notif('이미지 사진만 최대 9장, 장당 35MB 이하로 선택할 수 있어요.');
+  notif('이미지 사진만 최대 '+PRODUCT_PHOTO_LIMIT+'장, 장당 35MB 이하로 선택할 수 있어요.');
   return;
  }
- if(count)count.textContent=files.length?`${files.length}장 선택 · 첫 번째가 대표사진`:'최대 9장 · 첫 번째가 대표사진';
+ if(count)count.textContent=files.length?`${files.length}장 선택 · 첫 번째가 대표사진`:'최대 '+PRODUCT_PHOTO_LIMIT+'장 · 첫 번째가 대표사진';
  if(box){
   box.innerHTML=files.map((file,i)=>{
    const u=URL.createObjectURL(file);suggestPreviewUrls.push(u);
-   return `<figure class="suggest-photo-preview"><img src="${u}" alt="선택한 사진 ${i+1}"><figcaption>${i===0?'대표사진':'사진 '+(i+1)}</figcaption></figure>`;
+   return `<figure class="suggest-photo-preview"><img src="${u}" alt="선택한 사진 ${i+1}" loading="lazy"><figcaption>${i===0?'대표사진':'사진 '+(i+1)}</figcaption></figure>`;
   }).join('');
   box.classList.toggle('hidden',files.length===0);
  }
@@ -5916,7 +5937,7 @@ if(m.type==='suggest'){return wrap('상품 등록 신청',`
    <div class="suggest-field-label">상품 사진</div>
    <label class="suggest-photo-picker">
     <span class="suggest-picker-button" aria-hidden="true"><span>＋</span> 사진 선택</span>
-    <span id="suggest-photo-count" class="suggest-picker-count" aria-live="polite">최대 9장 · 첫 번째가 대표사진</span>
+    <span id="suggest-photo-count" class="suggest-picker-count" aria-live="polite">최대 ${PRODUCT_PHOTO_LIMIT}장 · 첫 번째가 대표사진</span>
     <input name="photo" type="file" accept="image/*" multiple required id="suggest-photo" aria-label="상품 사진 선택">
    </label>
    <div id="suggest-previews" class="suggest-photo-previews hidden" aria-label="신청 사진 미리보기"></div>
@@ -6592,7 +6613,7 @@ const publicPhotoUrl=path=>url+'/storage/v1/object/public/'+PHOTO_PUBLIC+'/'+pat
 function customerRequestFiles(d){
  const files=d.getAll('photo').filter(file=>file?.size);
  if(!files.length)throw Error('상품 사진을 한 장 이상 선택해 주세요.');
- if(files.length>9)throw Error('상품 사진은 한 번에 최대 9장까지 첨부할 수 있어요.');
+ if(files.length>PRODUCT_PHOTO_LIMIT)throw Error('상품 사진은 한 번에 최대 '+PRODUCT_PHOTO_LIMIT+'장까지 첨부할 수 있어요.');
  if(files.some(f=>!f.type?.startsWith('image/')||f.size>35*1024*1024))throw Error('각 사진은 35MB 이하의 이미지여야 해요.');
  return files;
 }

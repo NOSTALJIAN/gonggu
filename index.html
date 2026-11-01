@@ -1514,47 +1514,40 @@ body:has(.overlay) .floating-actions{opacity:0;visibility:hidden;pointer-events:
 }
 .shop-content .shop-category-tab span{font-size:10px;font-weight:450}
 
-/* iPhone category strip: five compact complete pills, edge-to-edge.
-   No reserved arrow area and no oversized fixed-width buttons. The native
-   scroll snap always finishes on a whole-pill boundary. */
+/* Storefront mobile category tabs: each pill fits its actual text and count.
+   Keep the horizontal track edge-to-edge, with no fixed five-column widths. */
 @media(max-width:719px){
  .shop-content .shop-category-carousel{
   --category-edge:18px;
   display:block;box-sizing:border-box;
   width:calc(100% + 2 * var(--category-edge));
-  max-width:none;margin:0 calc(-1 * var(--category-edge)) 8px;
-  padding:0;
+  max-width:none;margin:0 calc(-1 * var(--category-edge)) 8px;padding:0;
  }
  .shop-content .shop-category-carousel .shop-category-list{
-  display:grid;grid-auto-flow:column;
-  grid-auto-columns:calc((100% - 20px)/5);
-  align-items:center;gap:5px;
-  box-sizing:border-box;width:100%;max-width:100%;
-  min-width:0;margin:0;padding:2px 0 8px;
-  overflow-x:auto;overflow-y:hidden;
-  white-space:nowrap;scroll-snap-type:x mandatory;
-  scroll-padding-inline:0;
+  display:flex;align-items:center;gap:7px;
+  box-sizing:border-box;width:100%;max-width:100%;min-width:0;
+  margin:0;padding:2px 0 8px;
+  overflow-x:auto;overflow-y:hidden;white-space:nowrap;
+  scroll-snap-type:x proximity;scroll-padding-inline:0;
   overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;
   scrollbar-width:none;
  }
  .shop-content .shop-category-carousel .shop-category-list::-webkit-scrollbar{display:none}
  .shop-content .shop-category-carousel .shop-category-tab{
-  box-sizing:border-box;width:100%;min-width:0;min-height:32px;
-  justify-content:center;gap:2px;padding:6px 2px;
-  font-size:10.5px;font-weight:650;line-height:1.2;letter-spacing:-.04em;
-  white-space:nowrap;scroll-snap-align:start;scroll-snap-stop:normal;
+  box-sizing:border-box;
+  flex:0 0 auto;width:max-content;max-width:none;min-width:0;min-height:34px;
+  display:inline-flex;align-items:center;justify-content:center;gap:4px;
+  padding:7px 12px;
+  font-size:12px;font-weight:620;line-height:1.2;letter-spacing:normal;
+  white-space:nowrap;scroll-snap-align:start;
  }
  .shop-content .shop-category-carousel .shop-category-tab span{
-  flex:0 0 auto;font-size:9px;font-weight:500;letter-spacing:-.02em;
+  flex:0 0 auto;font-size:10px;font-weight:450;letter-spacing:normal;
  }
  .shop-content .shop-category-carousel .shop-category-step{display:none!important}
 }
 @media(max-width:519px){
  .shop-content .shop-category-carousel{--category-edge:14px}
-}
-@media(max-width:350px){
- .shop-content .shop-category-carousel .shop-category-tab{font-size:10px;padding-inline:1px}
- .shop-content .shop-category-carousel .shop-category-tab span{font-size:8px}
 }
 
 .shop-content .shop-search-wrap #search{

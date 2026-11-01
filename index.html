@@ -6379,9 +6379,17 @@ function formatWholesaleOrderCopy(rows,groupBySupplier=true,groupTitle='도매�
  for(const [supplier,records] of suppliers){
   if(output.length)output.push('');
   if(groupBySupplier)output.push(groupTitle+': '+supplier);
-  output.push('브랜드 | 품명 | 색상 | 사이즈 | 수량 | 단가');
+  // The supplier header already identifies the store. Show the brand
+  // column only when at least one buyer-facing shop name differs.
+  const normalizeStoreName=value=>String(value||'').normalize('NFKC').replace(/\s+/g,'').toLocaleLowerCase('ko');
+  const includeBrand=[...records.values()].some(row=>normalizeStoreName(row.brand)!==normalizeStoreName(supplier));
+  output.push((includeBrand?'브랜드 | ':'')+'품명 | 색상 | 사이즈 | 수량 | 단가');
   const lines=[...records.values()].sort((a,b)=>a.brand.localeCompare(b.brand,'ko')||a.name.localeCompare(b.name,'ko')||a.color.localeCompare(b.color,'ko')||a.size.localeCompare(b.size,'ko')||(a.unit??0)-(b.unit??0));
-  for(const row of lines)output.push([row.brand,row.name,row.color,row.size,row.qty+'개',row.unit===null?'단가 미등록':money(row.unit)].join(' | '));
+  for(const row of lines){
+   const brandDiffers=normalizeStoreName(row.brand)!==normalizeStoreName(supplier);
+   const values=[row.name,row.color,row.size,row.qty+'개',row.unit===null?'단가 미등록':money(row.unit)];
+   output.push((includeBrand?[brandDiffers?row.brand:'—',...values]:values).join(' | '));
+  }
   const groupQty=lines.reduce((n,row)=>n+row.qty,0);
   output.push('총 '+groupQty+'개');
   if(includeTotals){
@@ -6472,7 +6480,7 @@ function renderProcurementSheet(){
  </details>`).join('');
  return `<details id="procurement-sheet" class="procurement-sheet compact-fold" data-fold-key="procurement">
   <summary><b>이번 회차 · 도매처별 발주서</b><small>${optionCount(rows)}종 · ${qty}개 · 도매가 ${money(cost)}</small></summary>
-  <p class="procurement-sheet-intro">최종 확정 주문을 실제 도매처별로 정리했어. 발주 메시지를 복사하면 브랜드(고객용 남대문 가게명) → 품명 → 색상 → 사이즈 → 수량 → 도매 단가 순서로 전송할 수 있어.</p>
+  <p class="procurement-sheet-intro">최종 확정 주문을 실제 도매처별로 정리했어. 발주서에는 품명 → 색상 → 사이즈 → 수량 → 도매 단가를 표시하고, 도매처와 실제 가게명이 다를 때만 브랜드를 추가해.</p>
   <div class="procurement-sheet-stats">
    <div><small>확정 미발주 상품 옵션</small><b>${optionCount(rows)}종</b></div>
    <div><small>미발주 수량</small><b>${qty}개</b></div>

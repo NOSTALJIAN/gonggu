@@ -5739,12 +5739,20 @@ function renderSupplierBulkManager(historyOnly=false){
    <div class="supplier-bulk-batch-body">
     ${checked.people.map(p=>{
      const inv=supplierPartialInvoice(batch.id,p.payer.buyer_key);
+     const recipient=state.quotes.find(q=>q.id===p.payer.charged_quote_id)?.customer_email||'';
+     const mailState=inv?.email_status==='sent'?'발송 완료':
+      inv?.email_status==='submitted'?'발송 확인 중':
+      inv?.email_status==='pending'?'발송 대기':
+      inv?.email_status==='failed'?'발송 실패':
+      inv?.email_status==='skipped'?'발송 취소·건너뜀':
+      recipient?'메일 미발송':'이메일 미등록';
      const canAsk=!ordered&&!p.eligible&&p.selected.length>0&&p.selected.every(({q,item})=>
       ['quoted','confirmed'].includes(q.status)&&(q.status==='confirmed'||q.purchase_intent==='buy_now')&&
       item.unit_price!==null&&item.unit_price!==undefined&&!item.supplier_ordered_at&&item.fulfillment!=='sold_out');
      const actions=ordered?'':`<div class="row wrap" style="margin-top:6px;gap:6px">
-      <button type="button" class="btn sm secondary" data-action="supplier-partial-request" data-id="${esc(batch.id)}" data-buyer-key="${esc(p.payer.buyer_key)}" ${canAsk&&!inv?.paid_at?'':'disabled'}>${inv?'요청금액 다시 계산':'이 거래처 상품 입금 요청'}</button>
-      ${inv?`<button type="button" class="btn sm outline" data-action="supplier-partial-copy" data-id="${esc(inv.id)}" ${inv.paid_at?'disabled':''}>입금 안내 복사</button>
+      <button type="button" class="btn sm secondary" data-action="supplier-partial-request" data-id="${esc(batch.id)}" data-buyer-key="${esc(p.payer.buyer_key)}" ${canAsk&&!inv?.paid_at?'':'disabled'}>${inv?'요청금액 갱신·메일 재발송':'이 거래처 상품 입금 요청'}</button>
+      ${inv?`<button type="button" class="btn sm secondary" data-action="supplier-partial-email" data-id="${esc(inv.id)}" ${!recipient||inv.paid_at?'disabled':''}>안내 메일 ${inv.email_status==='sent'?'다시 보내기':'보내기'}</button>
+      <button type="button" class="btn sm outline" data-action="supplier-partial-copy" data-id="${esc(inv.id)}" ${inv.paid_at?'disabled':''}>입금 안내 복사</button>
       <button type="button" class="btn sm ${inv.paid_at?'neutral':'secondary'}" data-action="supplier-partial-paid" data-id="${esc(inv.id)}" ${inv.paid_at?'disabled':''}>${inv.paid_at?'입금 확인됨':'입금 확인 처리'}</button>
       <button type="button" class="btn sm neutral" data-action="supplier-partial-cancel" data-id="${esc(inv.id)}" ${inv.paid_at?'disabled':''}>요청 취소</button>`:''}
      </div>`;
@@ -5752,6 +5760,7 @@ function renderSupplierBulkManager(historyOnly=false){
       <div class="row between wrap"><span>${esc(p.buyerName)} · ${money(p.payer.amount)} 배송비</span>
       <span class="${ordered||p.eligible?'is-paid':'is-waiting'}">${ordered?'도매 발주 완료':esc(p.reason)}</span></div>
       ${inv?`<div class="smallnote" style="margin-top:5px">선입금: 상품 ${money(inv.item_total)} + 배송비 ${money(inv.freight)} = <b>${money(inv.amount)}</b> · ${inv.paid_at?'입금 확인':'요청 중'}</div>`:''}
+      ${inv?'<div class="smallnote" style="margin:5px 0;overflow-wrap:anywhere">✉️ '+(recipient?esc(recipient)+' · ':'고객 이메일 미등록 · ')+esc(mailState)+'</div>':''}
       ${actions}</div>`;
     }).join('')}
     <div class="smallnote supplier-bulk-items-count">배분 상품: ${batchItems.map(i=>esc(i.product_name)).join(' · ')||'기록 확인 필요'}</div>
@@ -7880,7 +7889,18 @@ if(a==='supplier-partial-request'){
  const invoice=await rpc('gq_admin_request_supplier_partial_v88',{p_batch_id:id,p_buyer_key:buyerKey},true);
  if(!invoice?.id)throw Error('선입금 요청이 저장되지 않았어요.');
  await refreshSupplierPartialBatch(id,b);
- notif('상품 '+money(invoice.item_total)+' + 도매배송비 '+money(invoice.freight)+' = '+money(invoice.amount)+' 요청 생성 완료. 입금 안내 복사를 눌러 고객에게 보내 주세요.');
+ const recipient=state.quotes.find(q=>q.id===invoice.charged_quote_id)?.customer_email;
+ notif(money(invoice.amount)+' 선입금 요청 저장 완료 · '+(recipient?'고객 메일 자동발송 대기 중':'고객 이메일 미등록으로 메일 미발송 · 주문 카드에서 이메일 저장 후 메일 보내기 가능'));
+ return;
+}
+if(a==='supplier-partial-email'){
+ if(!state.admin||!state.supplierBatchesReady)throw Error('관리자만 선입금 안내 메일을 보낼 수 있어요.');
+ const invoice=state.supplierPartialInvoices.find(i=>i.id===id);
+ if(!invoice||invoice.paid_at)throw Error('이미 입금된 요청은 안내 메일을 보낼 수 없어요.');
+ const result=await rpc('gq_admin_send_supplier_partial_email_v89',{p_invoice_id:invoice.id},true);
+ if(!result?.queued)throw Error('입금 안내 메일을 발송 대기열에 넣지 못했어요.');
+ await refreshSupplierPartialBatch(invoice.batch_id,b);
+ notif('선입금 안내 메일 발송 대기 중 · 실제 발송 완료 상태는 목록에서 확인해 주세요.');
  return;
 }
 if(a==='supplier-partial-copy'){

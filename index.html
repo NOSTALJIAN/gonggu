@@ -4420,9 +4420,10 @@ function buyerWholesaleStatus(q){
  return `<div class="wholesale-state-chip ${complete?'done':''}">${complete?(q.direct_1688?'✅ 1688 발주완료':'✅ 이번 회차 도매주문 완료'):done>0?`거래처별 도매주문 진행 중 (${done}/${active.length})`:(q.direct_1688?'1688 발주 전 · 옵션 변경 요청 가능':'이번 회차 도매주문 전 · 옵션 변경 요청 가능')}</div>`;
 }
 function buyerOptionRequest(q,i){
- if(q.status!=='confirmed')return '';
+ if(!['requested','quoted','confirmed'].includes(q.status))return '';
+ const instant=q.status==='requested';
  const req=i.option_request;
- const closed=Boolean(q.supplier_ordered_at||i.supplier_ordered_at||
+ const closed=Boolean(q.supplier_ordered_at||i.supplier_ordered_at||q.cancel_requested_at||
   ['sold_out','received','delivered'].includes(i.fulfillment)||!['new','preparing'].includes(q.workflow_stage||'new'));
  const recent=req?.status==='pending'?'<b>변경 요청 검토 중</b>':
    req?.status==='approved'?'<b>이전 변경 요청 승인 완료</b>':
@@ -4430,14 +4431,14 @@ function buyerOptionRequest(q,i){
     req?.status==='withdrawn'?'<b>옵션 변경 요청 취소됨</b>':'';
  const result=req?`<div class="option-request-result ${esc(req.status)}">${recent}<div>요청한 옵션: ${esc(req.requested_color)} / ${esc(req.requested_size)} · ${Number(req.requested_quantity)}개</div>${req.decision_note?`<div>안내: ${esc(req.decision_note)}</div>`:''}</div>`:'';
   const cancelButton=req?.status==='pending'?`<button type="button" class="btn block outline" style="margin:8px 0 4px" data-action="withdraw-item-options" data-id="${esc(req.id)}">옵션변경 요청 취소</button>`:'';
- if(closed)return `<div class="tiny" style="margin:7px 0">✅ 이 상품은 도매주문 완료 또는 입고 처리되어 옵션 변경 요청이 마감됐어요.</div>${result}${cancelButton}`;
+ if(closed)return `<div class="tiny" style="margin:7px 0">${q.cancel_requested_at?'취소 요청 처리 중에는 옵션을 변경할 수 없어요.':'도매주문·입고 처리된 상품은 옵션을 변경할 수 없어요.'}</div>${result}${cancelButton}`;
  if(req?.status==='pending')return result+'<div class="tiny">판매자가 승인하거나 반려하면 결과가 표시돼요. 승인 전까지 원래 옵션이 유지돼요.</div>'+cancelButton;
  const rawOptions=i.product_options&&typeof i.product_options==='object'?i.product_options:{};
  const colors=[...new Set([i.color,...Object.keys(rawOptions)])].filter(Boolean);
  const sizes=[...new Set([i.size,...(Array.isArray(rawOptions[i.color])?rawOptions[i.color]:[])])].filter(Boolean);
  const dropdown=Object.keys(rawOptions).length>0;
  return `<details class="option-request-card">
-  <summary>색상 · 사이즈 · 수량 변경 요청</summary>
+  <summary>${instant?'색상 · 사이즈 · 수량 수정':'색상 · 사이즈 · 수량 변경 요청'}</summary>
   ${result}
   <form class="option-request-form" data-buyer-option-request="${esc(i.id)}">
    ${dropdown?`<label class="label">색상<select name="color" data-buyer-option-color required>
@@ -4447,9 +4448,9 @@ function buyerOptionRequest(q,i){
     ${sizes.map(z=>`<option value="${esc(z)}" ${z===i.size?'selected':''}>${esc(z)}</option>`).join('')}</select></label>`:
     `<label class="label">색상<input name="color" maxlength="60" required value="${esc(i.color)}"></label>
     <label class="label">사이즈<input name="size" maxlength="60" required value="${esc(i.size)}"></label>`}
-   <label class="label">수량<input name="quantity" type="number" min="1" max="20" step="1" required value="${Number(i.quantity)}"></label>
-   <p class="smallnote">관리자 승인 후에만 주문 옵션과 결제금액이 변경돼요. 도매주문 완료 전까지 요청할 수 있어요.</p>
-   <button class="btn block secondary" type="submit">변경 요청 보내기</button>
+   <label class="label">수량<input name="quantity" type="number" min="1" max="20" step="1" inputmode="numeric" required value="${Number(i.quantity)}"></label>
+   <p class="smallnote">${instant?'견적 안내 전에는 바로 수정돼요.':'관리자 승인 후에 옵션과 금액이 변경돼요. 도매 발주 전까지 요청할 수 있어요.'}</p>
+   <button class="btn block secondary" type="submit">${instant?'옵션 변경 저장':'변경 요청 보내기'}</button>
   </form>
  </details>`;
 }
@@ -4484,7 +4485,7 @@ function renderAdminLowerPriceReports(q){
   </div>`).join('')}
  </div>`;
 }
-function renderTrack(){const q=state.tracking;return `<section class="content"><div class="page-intro"><span class="page-intro-kicker">미니예나 · 주문조회</span><h1>내 주문조회</h1><p>견적과 배송 진행 상황을 확인하세요.</p></div>${steps(!q?1:q.status==='requested'?1:q.status==='quoted'?2:3)}${!state.trackId||!state.trackToken?'<div class="empty">견적 내역에서 확인할 요청을 선택해 주세요.</div>':!q?'<div class="card">견적을 불러오는 중이거나 요청서를 찾지 못했어요.<div class="space"></div><button class="btn secondary" data-action="load-track">다시 불러오기</button></div>':`<div class="card"><div class="row between"><h2 style="margin:0">${esc(q.buyer_name)}님 견적</h2><span class="stagebadge">${statusLabel[q.status]}</span></div><div style="margin-top:12px"><button type="button" class="btn secondary" data-action="enable-buyer-push">🔔 주문 진행 알림 받기</button><p class="smallnote">아이폰 홈 화면에 추가한 미니예나에서 알림을 허용해 주세요. 기존 주문도 이 주문조회에서 연결하면 알림을 받을 수 있어요. 두 주소는 각각 알림을 허용해야 해요.</p></div><div class="smallnote">아기 이름(태명): ${esc(q.baby_name||'미입력 (이전 견적)')} · 접수 ${fmtDate(q.created_at)} · 견적번호 ${q.id.slice(0,8).toUpperCase()}</div><details class="track-pin-box"><summary>다른 브라우저용 조회 비밀번호 등록 · 변경</summary><p>이 주문의 조회 비밀번호를 설정하면 이름·휴대폰 번호·비밀번호로 다른 브라우저에서도 찾을 수 있어요. 이전 주문도 같은 번호로 설정하면 함께 조회돼요.</p><form id="pin-register-form"><label class="label">숫자 6자리 비밀번호<input name="lookup_pin" type="password" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" autocomplete="off" required placeholder="비밀번호 6자리"></label><label class="label">비밀번호 한 번 더<input name="lookup_pin_confirm" type="password" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" autocomplete="off" required placeholder="비밀번호 확인"></label><button class="btn block secondary" type="submit">조회 비밀번호 저장</button></form></details><div class="track-link-banner"><b>주문조회 링크를 꼭 보관해 주세요</b><p>카카오톡·네이버·사파리에서 같은 주문을 확인할 수 있어요. 카톡 ‘나와의 채팅’에 보내 두면 편해요.</p><div class="track-link-buttons"><button class="btn sm" type="button" data-action="share-track">주문조회 링크 공유</button><button class="btn sm secondary" type="button" data-action="copy-track">링크 복사</button></div><small>링크를 가진 사람은 주문 정보를 볼 수 있어요. 단체 채팅방에 보내지 마세요.</small></div><div class="info" style="background:#fff;border-color:#dedbf4"><b>수령방식: ${deliveryLabel(q)}</b>${q.delivery_method==='courier'?`<div class="smallnote" style="margin-top:4px">받는 사람: ${esc(q.recipient_name||q.buyer_name||'')} · 주소: ${esc(addressLabel(q))}${q.delivery_note?` · 요청사항: ${esc(q.delivery_note)}`:''}</div>`:''}${isBundle(q)?'<div class="smallnote">묶음배송 적용 · 이 주문의 추가 배송비는 0원이에요.</div>':''}</div>${q.delivery_change_requested_at?`<div class="noticefail" style="margin-top:9px"><b>수령방식 변경 요청 대기 중</b><div class="smallnote">요청 내용: ${q.requested_delivery_method==='pickup'?'직접수령':'택배수령'}${q.requested_delivery_method==='courier'?' · '+esc(q.requested_address_line1||''):''}</div>관리자가 승인하기 전까지 현재 수령방식과 결제금액이 유지돼요.</div>`:''}${q.delivery_change_rejected_at&&!q.delivery_change_requested_at?'<div class="noticefail">이전 수령방식 변경 요청이 반려되었어요. 필요하면 다시 요청해 주세요.</div>':''}${canChangeDelivery(q)?`<button class="btn block secondary" style="margin:12px 0 4px" data-action="edit-delivery">수령방식·주소 수정${q.delivery_change_requested_at?' (요청 수정)':''}</button>`:''}<div class="separator"></div>${q.items.map(i=>`<div class="cartline"><div class="row between"><b>${esc(i.store_name)} · ${esc(i.product_name)}</b><span>${i.quantity}개</span></div><div class="sub">${esc(i.color)} / ${esc(i.size)}</div><div class="money">${i.unit_price==null?'가격 안내 전':money(i.unit_price*i.quantity)}${i.unit_price!=null?` <span class="tiny">(${money(i.unit_price)} × ${i.quantity})</span>`:''}</div>${q.status==='confirmed'?`<div class="tiny">상태: ${itemStatusLabel(q,i)}</div>${buyerOptionRequest(q,i)}`:''}${buyerQuotedItemActions(q,i)}</div>`).join('')}<div class="separator"></div><div class="sumline"><span>상품 합계</span><b>${unknown(q)?'가격 확인 중':money(previewOrderSum(q))}</b></div><div class="sumline"><span>배송비 (고객 수령)</span><b>${q.status==='requested'&&q.delivery_method!=='courier'?'견적 안내 전':shippingLabel(q)}</b></div><div class="sumline"><span>도매 배송비 분담금</span><b>${q.status==='requested'?'견적 안내 전':q.status==='quoted'&&!q.supplier_shipping_ready?'배송비 계산 대기':supplierShippingLabel(q)}</b></div><div class="sumline total"><span>최종 결제금액</span><b>${q.status==='requested'?'견적 안내 전':q.status==='quoted'&&!settledBuyerTotal(q)?'배송비 계산 후 확정':!readyQuote(q)?'배송비 산정 중':money(totalDue(q))}</b></div>${confirmedPaymentWidget(q)}${buyerWholesaleStatus(q)}${q.status==='requested'?'<div class="info">운영자가 상품 가격을 확인 중이에요. 견적을 받으면 먼저 구매 회차를 선택해 주세요. 배송비는 구매 의사 확인 후 계산해요.</div>':q.status==='quoted'?`${buyerRoundIntent(q)}`:q.status==='confirmed'?`<div class="info"><b>📦 주문 진행: ${workflowLabel(q)}</b>${trackingInfo(q)?`<div class="smallnote" style="margin-top:5px">택배사·운송장: ${esc(trackingInfo(q))}</div>${renderShipment(q)}${isLotteShipment(q)?'<div class="smallnote" style="margin-top:4px">롯데택배 배송조회 연결 · 배송 완료 확인 시 자동 반영 (조회 지연 가능)</div>':''}`:''}${q.delivery_method==='courier'&&!trackingInfo(q)?'<div class="smallnote">이 주문에 등록된 송장번호가 아직 없어요. 묶음배송이라면 운영자에게 송장 등록 상태를 확인해 주세요.</div>':''}${q.items.some(i=>i.fulfillment==='sold_out')?`<div class="smallnote" style="margin-top:5px">품절된 상품은 결제금액에서 제외되었어요. 실제 환불은 판매자에게 확인해 주세요.${allSoldOut(q)?' 전부 품절되어 배송비도 제외돼요.':''}</div>`:''}<div class="smallnote">수령 진행 상황은 이 링크에서 새로고침하여 확인할 수 있어요.</div></div><div class="tiny">입금 확인: ${money(q.amount_paid||0)} / 환불 완료: ${money(q.amount_refunded||0)}</div>`:'<div class="noticefail">취소된 견적입니다.</div>'}${q.amount_changed_at&&['quoted','confirmed'].includes(q.status)?`<div class="noticefail" style="margin:10px 0"><b>견적 금액이 수정되었어요</b><div>견적의 물품이 제외되었거나 상품 가격·배송비가 변경됐어요. 최신 금액을 확인하고, 이미 결제했다면 차액·환불 여부를 판매자에게 확인해 주세요.</div><div class="smallnote">변경 ${fmtDate(q.amount_changed_at)}</div></div>`:''}${q.cancel_requested_at&&q.status!=='cancelled'?`<div class="noticefail"><b>취소 요청 접수됨</b><div>관리자가 확인 후 취소 여부를 처리해요. 최종 주문은 잠시 진행하지 말아 주세요.</div>${q.cancel_reason?`<div class="tiny">요청 사유: ${esc(q.cancel_reason)}</div>`:''}<button class="btn block outline" style="margin-top:12px" data-action="withdraw-cancel-request">취소 요청 철회하기</button></div>`:q.cancel_rejected_at&&q.status!=='cancelled'?'<div class="noticefail">관리자가 이전 취소 요청을 반려했어요. 여전히 취소가 필요하면 다시 요청할 수 있어요.</div>':''}
+function renderTrack(){const q=state.tracking;return `<section class="content"><div class="page-intro"><span class="page-intro-kicker">미니예나 · 주문조회</span><h1>내 주문조회</h1><p>견적과 배송 진행 상황을 확인하세요.</p></div>${steps(!q?1:q.status==='requested'?1:q.status==='quoted'?2:3)}${!state.trackId||!state.trackToken?'<div class="empty">견적 내역에서 확인할 요청을 선택해 주세요.</div>':!q?'<div class="card">견적을 불러오는 중이거나 요청서를 찾지 못했어요.<div class="space"></div><button class="btn secondary" data-action="load-track">다시 불러오기</button></div>':`<div class="card"><div class="row between"><h2 style="margin:0">${esc(q.buyer_name)}님 견적</h2><span class="stagebadge">${statusLabel[q.status]}</span></div><div style="margin-top:12px"><button type="button" class="btn secondary" data-action="enable-buyer-push">🔔 주문 진행 알림 받기</button><p class="smallnote">아이폰 홈 화면에 추가한 미니예나에서 알림을 허용해 주세요. 기존 주문도 이 주문조회에서 연결하면 알림을 받을 수 있어요. 두 주소는 각각 알림을 허용해야 해요.</p></div><div class="smallnote">아기 이름(태명): ${esc(q.baby_name||'미입력 (이전 견적)')} · 접수 ${fmtDate(q.created_at)} · 견적번호 ${q.id.slice(0,8).toUpperCase()}</div><details class="track-pin-box"><summary>다른 브라우저용 조회 비밀번호 등록 · 변경</summary><p>이 주문의 조회 비밀번호를 설정하면 이름·휴대폰 번호·비밀번호로 다른 브라우저에서도 찾을 수 있어요. 이전 주문도 같은 번호로 설정하면 함께 조회돼요.</p><form id="pin-register-form"><label class="label">숫자 6자리 비밀번호<input name="lookup_pin" type="password" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" autocomplete="off" required placeholder="비밀번호 6자리"></label><label class="label">비밀번호 한 번 더<input name="lookup_pin_confirm" type="password" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" autocomplete="off" required placeholder="비밀번호 확인"></label><button class="btn block secondary" type="submit">조회 비밀번호 저장</button></form></details><div class="track-link-banner"><b>주문조회 링크를 꼭 보관해 주세요</b><p>카카오톡·네이버·사파리에서 같은 주문을 확인할 수 있어요. 카톡 ‘나와의 채팅’에 보내 두면 편해요.</p><div class="track-link-buttons"><button class="btn sm" type="button" data-action="share-track">주문조회 링크 공유</button><button class="btn sm secondary" type="button" data-action="copy-track">링크 복사</button></div><small>링크를 가진 사람은 주문 정보를 볼 수 있어요. 단체 채팅방에 보내지 마세요.</small></div><div class="info" style="background:#fff;border-color:#dedbf4"><b>수령방식: ${deliveryLabel(q)}</b>${q.delivery_method==='courier'?`<div class="smallnote" style="margin-top:4px">받는 사람: ${esc(q.recipient_name||q.buyer_name||'')} · 주소: ${esc(addressLabel(q))}${q.delivery_note?` · 요청사항: ${esc(q.delivery_note)}`:''}</div>`:''}${isBundle(q)?'<div class="smallnote">묶음배송 적용 · 이 주문의 추가 배송비는 0원이에요.</div>':''}</div>${q.delivery_change_requested_at?`<div class="noticefail" style="margin-top:9px"><b>수령방식 변경 요청 대기 중</b><div class="smallnote">요청 내용: ${q.requested_delivery_method==='pickup'?'직접수령':'택배수령'}${q.requested_delivery_method==='courier'?' · '+esc(q.requested_address_line1||''):''}</div>관리자가 승인하기 전까지 현재 수령방식과 결제금액이 유지돼요.</div>`:''}${q.delivery_change_rejected_at&&!q.delivery_change_requested_at?'<div class="noticefail">이전 수령방식 변경 요청이 반려되었어요. 필요하면 다시 요청해 주세요.</div>':''}${canChangeDelivery(q)?`<button class="btn block secondary" style="margin:12px 0 4px" data-action="edit-delivery">수령방식·주소 수정${q.delivery_change_requested_at?' (요청 수정)':''}</button>`:''}<div class="separator"></div>${q.items.map(i=>`<div class="cartline"><div class="row between"><b>${esc(i.store_name)} · ${esc(i.product_name)}</b><span>${i.quantity}개</span></div><div class="sub">${esc(i.color)} / ${esc(i.size)}</div><div class="money">${i.unit_price==null?'가격 안내 전':money(i.unit_price*i.quantity)}${i.unit_price!=null?` <span class="tiny">(${money(i.unit_price)} × ${i.quantity})</span>`:''}</div>${q.status==='confirmed'?`<div class="tiny">상태: ${itemStatusLabel(q,i)}</div>`:''}${buyerOptionRequest(q,i)}${buyerQuotedItemActions(q,i)}</div>`).join('')}<div class="separator"></div><div class="sumline"><span>상품 합계</span><b>${unknown(q)?'가격 확인 중':money(previewOrderSum(q))}</b></div><div class="sumline"><span>배송비 (고객 수령)</span><b>${q.status==='requested'&&q.delivery_method!=='courier'?'견적 안내 전':shippingLabel(q)}</b></div><div class="sumline"><span>도매 배송비 분담금</span><b>${q.status==='requested'?'견적 안내 전':q.status==='quoted'&&!q.supplier_shipping_ready?'배송비 계산 대기':supplierShippingLabel(q)}</b></div><div class="sumline total"><span>최종 결제금액</span><b>${q.status==='requested'?'견적 안내 전':q.status==='quoted'&&!settledBuyerTotal(q)?'배송비 계산 후 확정':!readyQuote(q)?'배송비 산정 중':money(totalDue(q))}</b></div>${confirmedPaymentWidget(q)}${buyerWholesaleStatus(q)}${q.status==='requested'?'<div class="info">운영자가 상품 가격을 확인 중이에요. 견적을 받으면 먼저 구매 회차를 선택해 주세요. 배송비는 구매 의사 확인 후 계산해요.</div>':q.status==='quoted'?`${buyerRoundIntent(q)}`:q.status==='confirmed'?`<div class="info"><b>📦 주문 진행: ${workflowLabel(q)}</b>${trackingInfo(q)?`<div class="smallnote" style="margin-top:5px">택배사·운송장: ${esc(trackingInfo(q))}</div>${renderShipment(q)}${isLotteShipment(q)?'<div class="smallnote" style="margin-top:4px">롯데택배 배송조회 연결 · 배송 완료 확인 시 자동 반영 (조회 지연 가능)</div>':''}`:''}${q.delivery_method==='courier'&&!trackingInfo(q)?'<div class="smallnote">이 주문에 등록된 송장번호가 아직 없어요. 묶음배송이라면 운영자에게 송장 등록 상태를 확인해 주세요.</div>':''}${q.items.some(i=>i.fulfillment==='sold_out')?`<div class="smallnote" style="margin-top:5px">품절된 상품은 결제금액에서 제외되었어요. 실제 환불은 판매자에게 확인해 주세요.${allSoldOut(q)?' 전부 품절되어 배송비도 제외돼요.':''}</div>`:''}<div class="smallnote">수령 진행 상황은 이 링크에서 새로고침하여 확인할 수 있어요.</div></div><div class="tiny">입금 확인: ${money(q.amount_paid||0)} / 환불 완료: ${money(q.amount_refunded||0)}</div>`:'<div class="noticefail">취소된 견적입니다.</div>'}${q.amount_changed_at&&['quoted','confirmed'].includes(q.status)?`<div class="noticefail" style="margin:10px 0"><b>견적 금액이 수정되었어요</b><div>견적의 물품이 제외되었거나 상품 가격·배송비가 변경됐어요. 최신 금액을 확인하고, 이미 결제했다면 차액·환불 여부를 판매자에게 확인해 주세요.</div><div class="smallnote">변경 ${fmtDate(q.amount_changed_at)}</div></div>`:''}${q.cancel_requested_at&&q.status!=='cancelled'?`<div class="noticefail"><b>취소 요청 접수됨</b><div>관리자가 확인 후 취소 여부를 처리해요. 최종 주문은 잠시 진행하지 말아 주세요.</div>${q.cancel_reason?`<div class="tiny">요청 사유: ${esc(q.cancel_reason)}</div>`:''}<button class="btn block outline" style="margin-top:12px" data-action="withdraw-cancel-request">취소 요청 철회하기</button></div>`:q.cancel_rejected_at&&q.status!=='cancelled'?'<div class="noticefail">관리자가 이전 취소 요청을 반려했어요. 여전히 취소가 필요하면 다시 요청할 수 있어요.</div>':''}
 ${canRequestCancel(q)?`<button class="btn block outline" style="margin-top:12px" data-action="request-cancel">취소 요청하기</button>`:''}
 <button class="btn block neutral" style="margin-top:12px" data-action="copy-track">견적 확인 링크 복사</button></div>`}</section>`}
 function renderAdmin(){if(connected&&!state.admin)return `<section class="content admin-login-screen"><div class="admin-login-panel"><h1>관리자 로그인</h1><form id="login" class="admin-login-form"><label for="admin-login-email">이메일</label><input id="admin-login-email" required name="email" type="email" inputmode="email" autocomplete="email"><label for="admin-login-password">비밀번호</label><input id="admin-login-password" required name="password" type="password" autocomplete="current-password"><button class="btn block" type="submit">로그인</button></form></div></section>`;
@@ -7084,9 +7085,25 @@ async function buyerReportLowerPrice(itemId,otherUrl,otherPrice,note){
  }
 }
 async function submitBuyerOptionRequest(id,color,size,quantity){
- if(!state.tracking||state.tracking.status!=='confirmed')throw Error('최종 구매 확정 이후에 변경 요청할 수 있어요.');
- if(!connected)throw Error('실제 주문에서만 사용할 수 있어요.');
- const result=await rpc('gq_request_item_option_change_v61',{
+ const status=state.tracking?.status;
+ if(!['requested','quoted','confirmed'].includes(status))throw Error('견적 상태를 새로고침한 후 다시 시도해 주세요.');
+ if(status==='requested'){
+  if(!connected){
+   const item=demo.items.find(row=>row.id===id&&row.quote_id===state.trackId);
+   if(!item)throw Error('수정할 상품을 찾지 못했어요.');
+   Object.assign(item,{color,size,quantity});saveDemo();
+  }else{
+   const response=await rpc('gq_buyer_update_requested_item_options_v88',{
+    p_quote_id:state.trackId,p_lookup_token:state.trackToken,p_item_id:id,
+    p_color:color,p_size:size,p_quantity:quantity
+   });
+   if(response?.updated!==true)throw Error('변경된 옵션이 없어요.');
+  }
+  await reloadTracking();
+  return {instant:true};
+ }
+ if(!connected)throw Error('옵션 변경 요청은 실제 주문에서만 사용할 수 있어요.');
+ const result=await rpc('gq_request_item_option_change_v88',{
   p_quote_id:state.trackId,p_lookup_token:state.trackToken,p_item_id:id,
   p_color:color,p_size:size,p_quantity:quantity});
  if(result?.request_id)void fetch(url+'/functions/v1/gq-admin-event-push',{
@@ -7094,6 +7111,7 @@ async function submitBuyerOptionRequest(id,color,size,quantity){
   body:JSON.stringify({quote_id:state.trackId,lookup_token:state.trackToken,request_id:result.request_id,event:'option_change_request'})
  }).catch(e=>console.warn('옵션 변경 관리자 알림 전송 실패',e));
  await reloadTracking();
+ return {instant:false};
 }
 async function withdrawBuyerOptionRequest(requestId){
   if(!state.tracking?.items?.some(i=>i.option_request?.id===requestId&&i.option_request.status==='pending'))
@@ -8170,9 +8188,11 @@ if(!f.dataset.lowerPriceReport&&!f.dataset.sizeChartForm&&!f.dataset.customerEma
   const color=String(data.get('color')||'').trim(),size=String(data.get('size')||'').trim();
   const quantity=Number(data.get('quantity'));
   if(!Number.isInteger(quantity)||quantity<1||quantity>20||!color||!size)throw Error('색상·사이즈와 수량을 확인해 주세요.');
-  if(!window.confirm('변경 요청을 판매자에게 보낼까요? 승인 전에는 기존 주문이 유지돼요.'))return;
-  await submitBuyerOptionRequest(id,color,size,quantity);
-  notif('옵션 변경 요청을 보냈어요. 판매자가 확인하면 결과가 표시돼요.');
+  if(color===item.color&&size===item.size&&quantity===item.quantity)throw Error('현재 옵션과 같아요. 변경할 내용을 선택해 주세요.');
+  const instant=state.tracking?.status==='requested';
+  if(!instant&&!window.confirm('옵션 변경을 관리자에게 요청할까요? 승인 전에는 현재 옵션이 유지돼요.'))return;
+  const result=await submitBuyerOptionRequest(id,color,size,quantity);
+  notif(result?.instant?'옵션을 수정했어요. 견적 요청에 바로 반영됐어요.':'옵션 변경 요청을 보냈어요. 관리자 확인 후 반영돼요.');
  }else if(f.dataset.itemOptions){
   if(!state.admin||state.page!=='admin')throw Error('관리자 화면에서만 수정할 수 있어요.');
   const id=f.dataset.itemOptions;

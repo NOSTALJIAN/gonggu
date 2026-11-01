@@ -7912,6 +7912,8 @@ else if(f.dataset.price){
  state.dateGroupsOpen['saved|'+dayKey]=true;
  const previousScroll=window.scrollY;
  await loadAdmin();
+ // The server may already have published the quote atomically during price saving.
+ const serverAutoSent=state.quotes.filter(order=>previouslyUnpriced.has(order.id)&&order.status==='quoted'&&readyProductEstimate(order)).length;
  const autoDelivery=await autoPublishAfterSavedPrices(previouslyUnpriced);
  const activeCard=[...document.querySelectorAll('[data-admin-order-id]')].find(el=>el.dataset.adminOrderId===cardId);
  if(activeCard){
@@ -7927,7 +7929,8 @@ else if(f.dataset.price){
   state.emailSettings?.enabled?'가격 변경 알림이 예약됐어요. 여러 번 수정한 경우 약 90초간 모아 발송해요.':
   '가격 변경 메일이 대기 중이지만 자동 발송이 꺼져 있어요. 관리자 이메일 설정을 확인해 주세요.':'';
  const savedMsg=synced>0?`가격 저장 완료 · 다른 견적의 미입력 상품 ${synced}건에도 반영했어요.`:'가격을 저장했어요.';
- const autoMsg=autoDelivery.sent?` 가격이 모두 입력된 ${autoDelivery.sent}건의 견적을 자동 발송했어요.`:'';
+ const totalAutoSent=serverAutoSent+autoDelivery.sent;
+ const autoMsg=totalAutoSent?` 가격이 모두 입력된 ${totalAutoSent}건의 견적을 자동 발송했어요.`:'';
  const errorMsg=autoDelivery.errors.length?' 자동 견적 발송에 실패한 주문이 있어요. 견적 요청 화면에서 다시 보내 주세요.':'';
  notif((autoNotice?savedMsg+' '+autoNotice:savedMsg)+autoMsg+errorMsg);
 }

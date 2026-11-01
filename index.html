@@ -5301,6 +5301,7 @@ function isActiveRoundEntry(q){
  if(!q||!['requested','quoted','confirmed'].includes(q.status))return false;
  if(['next_round','on_hold'].includes(q.purchase_intent))return false;
  if(q.supplier_ordered_at||isWholesaleCompleted(q)||isFinishedOrder(q))return false;
+ if(q.status==='confirmed'&&!['new','preparing'].includes(workflowStage(q)))return false;
  if((q.items||[]).some(i=>i.supplier_ordered_at||['received','delivered'].includes(i.fulfillment)))return false;
  return true;
 }
@@ -5532,7 +5533,7 @@ function renderSameRoundCard(group){
  const quantity=rows.reduce((n,r)=>n+r.quantity,0);
  const total=group.reduce((n,q)=>n+totalDue(q),0);
  const netPaid=group.reduce((n,q)=>n+Number(q.amount_paid||0)-Number(q.amount_refunded||0),0);
- const missing=group.some(unknown);
+ const missing=group.some(q=>!readyQuote(q));
  const courier=group.filter(q=>q.delivery_method==='courier');
  const courierFees=courier.reduce((n,q)=>n+appliedShipping(q),0);
  const courierCheck=courier.length>1&&!courier.every(q=>isBundle(q))&&courierFees>3000;

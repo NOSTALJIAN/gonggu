@@ -1672,6 +1672,8 @@ body:has(.overlay) .floating-actions{opacity:0;visibility:hidden;pointer-events:
 .admin-product-cost{font-weight:700;color:#454545;white-space:nowrap}
 .admin-product-sale-price{font-size:10px;color:#444;white-space:nowrap}
 .admin-product-sale-price b{font-weight:780;color:#111}
+.admin-product-github-price{color:#505466}
+.admin-product-github-price b{color:#242b42}
 
 .admin-product-status{color:#777;white-space:nowrap}
 .admin-product-status::before{content:"";display:inline-block;vertical-align:2px;width:5px;height:5px;border-radius:50%;background:#aaa;margin-right:4px}
@@ -3363,15 +3365,41 @@ async function savePrivateProduct(productId,info){
  product.github_estimated_price=yuan!==null?Math.round(yuan*500):wholesale>0?Math.round(wholesale*1.2):null;
  }
 }
+// Admin-only comparison across both storefronts; never change customer-facing price rules.
+function adminDualEstimates(product,privateMeta){
+ const n=v=>{
+  if(v===null||v===undefined||v==='')return null;
+  const num=Number(v);
+  return Number.isFinite(num)&&num>0?Math.round(num):null;
+ };
+ const meta=privateMeta??(product?.id?state.productPrivate?.[product.id]:null);
+ let regular=n(product?.estimated_price),github=n(product?.github_estimated_price);
+ if(regular!==null&&github!==null)return {regular,github};
+ if(meta?.source_type==='1688'){
+  const yuan=n(meta.yuan_price);
+  if(yuan!==null){
+   if(regular===null)regular=Math.round(Number(meta.yuan_price)*600);
+   if(github===null)github=Math.round(Number(meta.yuan_price)*500);
+  }
+ }else if(meta?.source_type==='namdaemun'){
+  const cost=n(meta.wholesale_price);
+  if(cost!==null){
+   if(regular===null)regular=Math.round(cost*1.3/1000)*1000;
+   if(github===null)github=Math.round(cost*1.2);
+  }
+ }
+ return {regular,github};
+}
+const adminEstimateText=value=>value===null?'미등록':'약 '+money(value);
 function sourcingPreviewText(source,rawDomestic,rawYuan){
  if(source==='1688'){
   const yuan=Number(rawYuan);
   if(!String(rawYuan).trim()||!Number.isFinite(yuan)||yuan<=0)return '위안(¥) 가격을 입력하면 예상 사입원가와 고객 예상가를 계산해요.';
-  return '1688 ¥'+yuan.toLocaleString('ko-KR')+' · 예상 사입원가 약 '+money(Math.round(yuan*350))+' (×350) · 고객 예상가 약 '+money(Math.round(yuan*600))+' (×600)';
+  return '1688 ¥'+yuan.toLocaleString('ko-KR')+' · 예상 사입원가 약 '+money(Math.round(yuan*350))+' (×350) · 일반 예상가 약 '+money(Math.round(yuan*600))+' (×600) · 깃허브 예상가 약 '+money(Math.round(yuan*500))+' (×500)';
  }
  const wholesale=Number(rawDomestic);
  if(!String(rawDomestic).trim()||!Number.isFinite(wholesale)||wholesale<=0)return '도매가를 입력하면 고객 예상가를 계산해요.';
- return '도매가 '+money(wholesale)+' · 고객 예상가 약 '+money(Math.round(wholesale*1.3/1000)*1000)+' (×1.3, 1,000원 단위 반올림)';
+ return '도매가 '+money(wholesale)+' · 일반 예상가 약 '+money(Math.round(wholesale*1.3/1000)*1000)+' (×1.3, 천원 반올림) · 깃허브 예상가 약 '+money(Math.round(wholesale*1.2))+' (×1.2)';
 }
 function privateSupplierStoreName(existingId){
  const product=state.products.find(p=>p.id===existingId);
@@ -3483,15 +3511,14 @@ function privateQuoteItemInfo(item){
   const wholesale=meta.wholesale_price==null?null:Number(meta.wholesale_price);
   const is1688=meta.source_type==='1688';
   const yuan=meta.yuan_price==null?null:Number(meta.yuan_price);
-  const estimated=is1688
-   ?(yuan!==null&&yuan>0?Math.round(yuan*600):null)
-   :(wholesale!==null&&wholesale>0?Math.round(wholesale*1.3/1000)*1000:null);
+  const prices=adminDualEstimates(state.products.find(p=>p.id===item.product_id),meta);
   const privatePrice=wholesale!==null&&Number.isFinite(wholesale)?money(wholesale):'미입력';
   body=`<span>사입 경로 <b>${is1688?'중국 1688':'남대문'}</b></span>
    <span>실제 거래처 <b>${esc(supplier||'미입력')}</b></span>
    ${is1688?`<span>1688 상품 가격 <b>${yuan===null?'미입력':'¥'+esc(yuan.toLocaleString('ko-KR'))}</b></span>`:''}
    <span>${is1688?'예상 사입원가':'도매가'} <b>${privatePrice} / 개</b></span>
-   <span class="admin-order-estimate">고객 예상가 <b>${estimated==null?'미표시':'약 '+money(estimated)+' / 개'}</b></span>`;
+   <span class="admin-order-estimate">일반 예상가 <b>${adminEstimateText(prices.regular)} / 개</b></span>
+   <span class="admin-order-estimate">깃허브 예상가 <b>${adminEstimateText(prices.github)} / 개</b></span>`;
  }
  return `<div class="admin-order-private-meta" aria-label="관리자 전용 사입 정보">
   <div class="admin-order-private-meta-head">🔒 관리자 전용 · 비공개 사입 정보</div>
@@ -4921,22 +4948,6 @@ function renderAdminProducts(){
   const n=Number(raw);
   return Number.isFinite(n)&&n>0?n:null;
  };
- const expectedSalePrice=p=>{
-  const meta=state.productPrivateReady?state.productPrivate?.[p.id]:null;
-  if(meta?.source_type==='1688'){
-   const raw=meta.yuan_price;
-   const yuan=raw==null||raw===''?null:Number(raw);
-   if(yuan!==null&&Number.isFinite(yuan)&&yuan>0)return Math.round(yuan*(githubStorefront?500:600));
-  }
-  const raw=p.estimated_price;
-  const fromProduct=raw==null||raw===''?null:Number(raw);
-  if(fromProduct!==null&&Number.isFinite(fromProduct)&&fromProduct>0)return Math.round(fromProduct);
-  if(meta?.source_type==='namdaemun'){
-   const cost=meta.wholesale_price==null?null:Number(meta.wholesale_price);
-   if(cost!==null&&Number.isFinite(cost)&&cost>0)return githubStorefront?Math.round(cost*1.2):Math.round(cost*1.3/1000)*1000;
-  }
-  return null;
- };
  const shown=all.filter(p=>matchesCategory(p,activeCategory)&&(activeFilter==='all'||(activeFilter==='shown'&&isVisible(p))||(activeFilter==='hidden'&&!isVisible(p))||(activeFilter==='soldout'&&p.is_sold_out)||(activeFilter==='available'&&!p.is_sold_out)))
   .sort((a,b)=>{
    if(sortKey==='newest')return newestFirst(a,b);
@@ -5009,7 +5020,7 @@ function renderAdminProducts(){
     const storeActive=state.stores.some(st=>st.id===p.store_id&&st.active);
     const visibleToCustomer=p.published&&storeActive;
     const cost=wholesalePrice(p);
-    const sale=expectedSalePrice(p);
+    const prices=adminDualEstimates(p);
     const source=state.productPrivate?.[p.id]?.source_type;
     const colors=Object.entries(p.options||{});
     const variantCount=colors.reduce((sum,[,sizes])=>sum+(Array.isArray(sizes)?sizes.length:0),0);
@@ -5021,7 +5032,8 @@ function renderAdminProducts(){
         <b class="admin-product-name" title="${esc(p.name)}">${esc(p.name)}</b>
         <div class="admin-product-brief">
          <span class="admin-product-cost">🔒 ${source==='1688'?'사입원가':'도매가'} ${cost===null?'미입력':money(cost)}</span>
-         <span class="admin-product-sale-price">예상 판매가 <b>${sale===null?'미등록':'약 '+money(sale)}</b></span>
+         <span class="admin-product-sale-price">일반 예상가 <b>${adminEstimateText(prices.regular)}</b></span>
+         <span class="admin-product-sale-price admin-product-github-price">깃허브 예상가 <b>${adminEstimateText(prices.github)}</b></span>
          <span class="admin-product-status ${visibleToCustomer?'is-shown':'is-hidden'}">${visibleToCustomer?'전시 중':p.published?'가게 숨김':'미전시'}</span>
          <span class="admin-product-status ${p.is_sold_out?'is-soldout':'is-on-sale'}">${p.is_sold_out?'품절':'판매 가능'}</span>
         </div>

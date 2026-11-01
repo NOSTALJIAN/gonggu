@@ -7093,7 +7093,7 @@ async function submitBuyerOptionRequest(id,color,size,quantity){
    if(!item)throw Error('수정할 상품을 찾지 못했어요.');
    Object.assign(item,{color,size,quantity});saveDemo();
   }else{
-   const response=await rpc('gq_buyer_update_requested_item_options_v88',{
+   const response=await rpc('gq_buyer_edit_requested_item_v89',{
     p_quote_id:state.trackId,p_lookup_token:state.trackToken,p_item_id:id,
     p_color:color,p_size:size,p_quantity:quantity
    });

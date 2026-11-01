@@ -5307,6 +5307,13 @@ function isActiveRoundEntry(q){
 function roundOrderRoot(group){
  return [...group].sort((a,b)=>String(a.created_at||'').localeCompare(String(b.created_at||''))||String(a.id).localeCompare(String(b.id)))[0];
 }
+function sameRoundBuyerKey(q){
+ const phone=normalizeBuyerPhone(q?.contact);
+ const name=normKey(q?.buyer_name);
+ if(name&&phone)return 'phone:'+name+'|'+phone;
+ const identity=buyerIdentity(q);
+ return /^(old:|unique:)/.test(identity)?'unique:'+q.id:identity;
+}
 function sameRoundGroups(visible){
  const bundles=bundledQuoteGroups(visible,true);
  const grouped=new Map();
@@ -5314,9 +5321,9 @@ function sameRoundGroups(visible){
  // Preserve actual shipping bundles, but never merge with an unrelated delivered batch.
  for(const group of bundles){
   const eligible=group.every(isActiveRoundEntry);
-  const names=[...new Set(group.map(buyerIdentity))];
+  const names=[...new Set(group.map(sameRoundBuyerKey))];
   const identity=eligible&&names.length===1&&
-   !/^(old:|unique:)/.test(names[0])?names[0]:null;
+   !names[0].startsWith('unique:')?names[0]:null;
   const key=identity?'active:'+identity:'original:'+bundleRootId(group[0]);
   let entry=grouped.get(key);
   if(!entry){entry=[];grouped.set(key,entry);order.push(entry);}
@@ -5512,6 +5519,7 @@ function renderBundleLedger(q,idx,root){
    or imply delivery fees have already been waived. */
 function renderSameRoundCard(group){
  const root=roundOrderRoot(group);
+ const babies=[...new Set(group.map(q=>String(q.baby_name||'').trim()).filter(Boolean))];
  const products=new Map();
  for(const q of group)for(const i of q.items||[]){
   const unit=i.unit_price==null?null:Number(i.unit_price);
@@ -5532,7 +5540,7 @@ function renderSameRoundCard(group){
  const actualBundle=group.every(q=>bundleRootId(q)===bundleRootId(group[0]));
  return `<div class="card round-merged-card">
   <div class="round-merged-heading"><div>
-   <strong>${esc(root.buyer_name)} <small>아기: ${esc(root.baby_name||'미입력')}</small></strong>
+   <strong>${esc(root.buyer_name)} <small>아기: ${esc(babies.join(' · ')||'미입력')}</small></strong>
    <p>이번 회차 주문 ${group.length}건 · 상품 ${rows.length}종 / 총 ${quantity}개</p>
   </div><span>합산 보기</span></div>
   <div class="round-merged-items">${rows.map(({i,unit,quantity,quotes})=>`<div class="round-merged-item">
@@ -5725,6 +5733,7 @@ function quoteGroupNeedsPriceInput(group){return group.some(quoteNeedsPriceInput
 // start collapsed, keeping the list compact on mobile.
 function renderCollapsibleAdminOrder(group,section){
  const root=group.length>1?roundOrderRoot(group):group[0];
+ const babies=[...new Set(group.map(q=>String(q.baby_name||'').trim()).filter(Boolean))];
  const key=root.id;
  const open=state.orderCardsOpen[key]===undefined?
   group.some(q=>pendingItemOptionRequests(q).length>0):state.orderCardsOpen[key];
@@ -5752,7 +5761,7 @@ function renderCollapsibleAdminOrder(group,section){
  return `<details class="admin-order-fold ${urgent?'has-pending':''}" data-admin-order-id="${esc(key)}" ${open?'open':''}>
   <summary class="admin-order-fold-heading">
    <span class="admin-order-fold-left">
-    <strong>${esc(root.buyer_name||'주문자 미입력')} <span class="admin-order-fold-baby">아기: ${esc(root.baby_name||'미입력')}</span></strong>
+    <strong>${esc(root.buyer_name||'주문자 미입력')} <span class="admin-order-fold-baby">아기: ${esc(babies.join(' · ')||'미입력')}</span></strong>
     <span class="admin-order-fold-meta">${group.length>1?'이번 회차 '+group.length+'건 합산 · ':''}상품 ${count}종 · ${qty}개 · ${fmtDate(root.created_at)}</span>
    </span>
    <span class="admin-order-fold-right"><span class="admin-order-fold-next ${urgent?'is-urgent':''}">${esc(next)}</span></span>
@@ -7982,18 +7991,27 @@ if(a==='set-purchase-intent'){
 if(a==='show-pending-item-options'){
  const r=state.optionRequests.find(req=>req.status==='pending');
  if(!r)throw Error('확인할 옵션 변경 요청이 없어요.');
- state.filter='all';
+ const q=state.quotes.find(x=>x.id===r.quote_id);
+ if(!q)throw Error('변경 요청에 연결된 주문이 없어요. 새로고침해 주세요.');
+ state.filter=isRoundBuyer(q)?'buy_now':isWholesaleCompleted(q)?'wholesale_completed':
+  q.status==='confirmed'?'all_history':'all';
  state.dateGroupsOpen={};state.orderCardsOpen={};
- const q=state.quotes.find(q=>q.id===r.quote_id);
- if(q){
+ const visible=state.quotes.filter(x=>state.filter==='buy_now'?isRoundBuyer(x)&&!isFinishedOrder(x):
+  state.filter==='all'?x.status==='requested'||(x.status==='quoted'&&(!x.purchase_intent||x.purchase_intent==='undecided')):
+  state.filter==='wholesale_completed'?isWholesaleCompleted(x)&&!isFinishedOrder(x):true);
+ const group=state.filter==='all_history'?bundledQuoteGroups(visible).find(g=>g.some(x=>x.id===q.id)):
+  roundGroupForOrder(q,visible);
+ const root=group?.length>1?roundOrderRoot(group):q;
+ state.orderCardsOpen[root.id]=true;
+ if(state.filter==='all_history'){
   const day=receivedDayKey(q.created_at);
   state.dateGroupsOpen['saved|'+day]=true;
   state.dateGroupsOpen['pending|'+day]=true;
-  state.orderCardsOpen[q.bundle_parent_id||q.id]=true;
  }
  render();
- const pending=app.querySelector('.option-request-admin-list');
- if(pending)window.scrollTo({top:Math.max(0,window.scrollY+pending.getBoundingClientRect().top-16),behavior:'smooth'});
+ const requestButtons=[...app.querySelectorAll('.option-request-admin-list')];
+ const target=requestButtons.find(el=>el.closest('[data-admin-order-id]')?.dataset.adminOrderId===root.id)||requestButtons[0];
+ if(target)window.scrollTo({top:Math.max(0,window.scrollY+target.getBoundingClientRect().top-16),behavior:'smooth'});
  return;
 }
 if(a==='admin-approve-item-options'||a==='admin-reject-item-options'){

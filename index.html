@@ -8570,9 +8570,9 @@ app.addEventListener('touchmove',moveAdminPhotoHold,{passive:false});
 app.addEventListener('touchend',e=>endAdminPhotoHold(e),{passive:false});
 app.addEventListener('touchcancel',e=>endAdminPhotoHold(e,true),{passive:false});
 app.addEventListener('pointerdown',startAdminPhotoDrag,{passive:false});
-app.addEventListener('pointermove',moveAdminPhotoDrag,{passive:false});
-app.addEventListener('pointerup',endAdminPhotoDrag);
-app.addEventListener('pointercancel',cancelAdminPhotoDrag);
+app.addEventListener('pointermove',e=>{if(e.pointerType!=='touch')moveAdminPhotoDrag(e)},{passive:false});
+app.addEventListener('pointerup',e=>{if(e.pointerType!=='touch')endAdminPhotoDrag(e)});
+app.addEventListener('pointercancel',e=>{if(e.pointerType!=='touch')cancelAdminPhotoDrag()});
 app.addEventListener('keydown',keyAdminPhotoMove);
 window.addEventListener('scroll',updateScrollTop,{passive:true});
 document.addEventListener('visibilitychange',()=>{

@@ -3955,8 +3955,8 @@ async function miniSendTestPush(){
  if(!token)throw Error('다시 로그인해 주세요.');
  const res=await fetch(url+'/functions/v1/gq-test-push',{method:'POST',headers:{'Authorization':'Bearer '+token,'apikey':key,'Content-Type':'application/json'},body:JSON.stringify({subscription_id:sub.id,site:location.hostname==='miniyena.pages.dev'?'cloudflare':'github'})});
  const json=await res.json().catch(()=>({}));
- if(!res.ok||!json.ok||Number(json.recipients||0)<1)throw Error(json.error||'수신 가능한 기기가 없어요. 관리자 알림을 다시 연결해 주세요.');
- notif('실제 수신 대상 '+json.recipients+'대에 테스트 푸시가 접수됐어요. 아이폰 알림을 확인해 주세요.');
+ if(!res.ok||!json.ok||json.recipients===0)throw Error(json.error||'수신 가능한 기기가 없어요. 관리자 알림을 다시 연결해 주세요.');
+ notif(json.recipients!=null?'수신 대상 '+json.recipients+'대에 테스트 푸시가 접수됐어요. 실제 아이폰 알림을 확인해 주세요.':'OneSignal에 테스트 푸시가 접수됐어요. 아이폰 알림 도착 여부를 확인해 주세요.');
 }
 let miniAdminAliasSyncedId='';
 let miniAdminAliasSyncing=null;

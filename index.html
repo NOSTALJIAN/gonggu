@@ -2990,6 +2990,33 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 .admin-extra-procurement>summary:after{content:'⌄';float:right;color:#aaa}
 .admin-extra-procurement[open]>summary:after{content:'⌃'}
 .admin-extra-procurement>.procurement-sheet{margin-top:7px}
+
+/* v98: compact navigation with only one active task list. */
+.admin-workspace-content.is-quote-screen .admin-workspace-overview{display:none!important}
+.admin-workspace-content.is-quote-screen .admin-workspace-heading{margin-bottom:5px}
+.admin-workspace-content.is-quote-screen .admin-main-tabs{margin-bottom:9px!important}
+.admin-compact-stages{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;margin:0 0 7px}
+.admin-compact-stage{min-width:0;min-height:45px;padding:5px 2px;border:1px solid #e2e2e2;border-radius:6px;background:#fff;color:#444;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px}
+.admin-compact-stage span{font-size:11px;letter-spacing:-.045em;white-space:nowrap;font-weight:760;line-height:1.1}
+.admin-compact-stage b{font-size:12px;font-weight:830;line-height:1.1}
+.admin-compact-stage.active{background:#181818;border-color:#181818;color:#fff}
+.admin-workspace-content .admin-compact-archive{margin:0 0 9px!important;padding:0;border:0;border-bottom:1px solid #eee!important;background:#fff}
+.admin-workspace-content .admin-compact-archive>summary{font-size:11px;color:#888;padding:5px 0 9px;min-height:29px}
+.admin-compact-stage-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:10px 0}
+.admin-compact-stage-heading strong{font-size:16px;line-height:1.35;letter-spacing:-.04em}
+.admin-compact-stage-heading span{font-size:11px;color:#777}
+.admin-compact-more{margin:12px 0 4px;border-top:1px solid #ececec}
+.admin-compact-more>summary{font-size:11px;font-weight:740;color:#777;cursor:pointer;padding:11px 0;list-style:none;display:flex;justify-content:space-between}
+.admin-compact-more>summary:after{content:'⌄'}
+.admin-compact-more[open]>summary:after{content:'⌃'}
+.admin-compact-more>summary::-webkit-details-marker{display:none}
+.admin-compact-more>.procurement-sheet{margin:4px 0}
+.admin-workspace-content .admin-quote-workspace .admin-price-section-title{margin:10px 0 7px}
+.admin-workspace-content .admin-quote-workspace .admin-flat-order-list{gap:7px}
+.admin-workspace-content .admin-quote-workspace .admin-order-fold-heading{min-height:65px;padding:10px 11px}
+.admin-workspace-content .admin-quote-workspace .admin-order-fold-left>strong{font-size:13px}
+.admin-workspace-content .admin-quote-workspace .admin-order-fold-next{font-size:10px}
+@media(max-width:365px){.admin-compact-stage span{font-size:10px}.admin-compact-stages{gap:4px}}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -4795,7 +4822,7 @@ ${canRequestCancel(q)?`<button class="btn block outline" style="margin-top:12px"
 <button class="btn block neutral" style="margin-top:12px" data-action="copy-track">견적 확인 링크 복사</button></div>`}</section>`}
 function renderAdmin(){if(connected&&!state.admin)return `<section class="content admin-login-screen"><div class="admin-login-panel"><h1>관리자 로그인</h1><form id="login" class="admin-login-form"><label for="admin-login-email">이메일</label><input id="admin-login-email" required name="email" type="email" inputmode="email" autocomplete="email"><label for="admin-login-password">비밀번호</label><input id="admin-login-password" required name="password" type="password" autocomplete="current-password"><button class="btn block" type="submit">로그인</button></form></div></section>`;
 const nQuote=state.quotes.filter(q=>q.status==='requested').length;
-return `<section class="content admin-workspace-content">
+return `<section class="content admin-workspace-content ${state.tab==='quotes'?'is-quote-screen':''}">
 <div class="admin-workspace-top">
  <div class="admin-workspace-heading">
   <h1>관리자</h1>
@@ -6650,20 +6677,11 @@ function renderAdminQuotes(){
  const isExtra=!steps.some(s=>s[0]===state.filter);
  return `<section class="admin-quote-workspace">
   <div class="admin-quote-anchor" id="admin-quote-results"></div>
-  ${!(state.filter==='buy_now'&&task[4]==='open-supplier-bulk-allocations')?`<section class="admin-workflow-focus" aria-label="다음 처리 작업">
-   <span class="admin-workflow-focus-kicker">지금 확인할 일</span>
-   <strong>${esc(task[0])}</strong><p>${esc(task[1])}</p>
-   <button type="button" class="admin-workflow-focus-action" ${task[4]?'data-action="'+esc(task[4])+'"':'data-filter="'+esc(task[3])+'"'}>${esc(task[2])} →</button>
-  </section>`:''}
-  <div class="admin-workflow-heading"><strong>주문 처리 순서</strong><span>단계를 눌러서 이동</span></div>
-  <nav class="admin-quote-primary-filters admin-workflow-steps" aria-label="주문 처리 순서">
-   ${steps.map(([key,label,count,desc],i)=>`<button type="button" class="admin-workflow-step ${state.filter===key?'active':''}" data-filter="${key}" aria-pressed="${state.filter===key}">
-    <span class="admin-workflow-step-top"><span class="admin-workflow-step-no">${i+1}</span><b>${count}${key==='supplier_payments'?'곳':'건'}</b></span>
-    <strong>${esc(label)}</strong><small>${esc(desc)}</small>
-   </button>`).join('')}
+  <nav class="admin-compact-stages" aria-label="주문 처리 순서">
+   ${steps.map(([key,label,count])=>`<button type="button" class="admin-compact-stage ${state.filter===key?'active':''}" data-filter="${key}" aria-pressed="${state.filter===key}"><span>${esc(({all:'견적',buy_now:'배송비',supplier_payments:'입금·발주',wholesale_completed:'입고·배송'})[key]||label)}</span><b>${count}</b></button>`).join('')}
   </nav>
-  <details class="admin-quote-extra-filters admin-workflow-extra" ${isExtra?'open':''}>
-   <summary>기타 목록 · 완료 / 보류 / 전체 주문 <span class="admin-quote-extra-chevron">⌄</span></summary>
+  <details class="admin-quote-extra-filters admin-compact-archive" ${isExtra?'open':''}>
+   <summary>완료 · 보류 · 전체 주문 <span class="admin-quote-extra-chevron">⌄</span></summary>
    <div class="admin-quote-secondary-list" role="group" aria-label="기타 주문 보기">
     ${extras.map(([key,label,n])=>`<button type="button" class="admin-quote-secondary-tab ${state.filter===key?'active':''}" data-filter="${key}" aria-pressed="${state.filter===key}">${label} ${n}</button>`).join('')}
     <details class="admin-workflow-detailed-states"><summary>상태별 세부 목록 보기</summary><div class="admin-quote-secondary-list">
@@ -6671,17 +6689,13 @@ function renderAdminQuotes(){
     </div></details>
    </div>
   </details>
-  <div class="admin-workflow-current"><h2>${esc(title)}</h2><p>${esc(subtitle)}</p>
-
-  </div>
+  <div class="admin-compact-stage-heading"><strong>${esc(title)}</strong><span>${state.filter==='supplier_payments'?nSupplier:qq.length}${state.filter==='supplier_payments'?'곳':'건'}</span></div>
   ${state.filter==='supplier_payments'?renderSupplierPaymentCenter()+`<details class="admin-extra-procurement"><summary>추가 기능 · 일괄 도매 발주서</summary>${renderProcurementSheet()}</details>`:
-   qq.length?`<div class="admin-date-toolbar admin-workflow-listbar"><strong>구매자 묶음 ${groups.length}개 · 원주문 ${qq.length}건${unfinished?' · 가격 미입력 '+unfinished+'종':''}</strong>
-    <div class="admin-date-actions"><button type="button" class="date-all-btn" data-action="date-open-all">모두 펼치기</button><button type="button" class="date-all-btn" data-action="date-close-all">모두 접기</button></div>
-   </div>
-   ${state.filter==='buy_now'?renderSupplierBulkManager():state.filter==='wholesale_completed'?renderCompletedProcurementSheet():''}
+   qq.length?`   ${state.filter==='buy_now'?renderSupplierBulkManager():''}
+   ${state.filter==='wholesale_completed'?`<details class="admin-compact-more"><summary>발주 완료 발주서 보기</summary>${renderCompletedProcurementSheet()}</details>`:''}
    ${state.filter==='all'?renderAdminQuoteFlatSection(awaiting,'먼저 처리할 견적','pending')+renderAdminQuoteFlatSection(priced,'구매자 선택 대기'):
       state.filter==='all_history'?renderAdminQuoteDateSection(qq,awaiting,'pending')+renderAdminQuoteDateSection(qq,priced,'saved'):
-       renderAdminQuoteFlatSection(groups,state.filter==='buy_now'?'':title,state.filter==='pricing'?'pending':'saved')}
+       state.filter==='buy_now'?`<details class="admin-compact-more"><summary>구매자별 주문 ${groups.length}명 보기</summary>${renderAdminQuoteFlatSection(groups,'')}</details>`:renderAdminQuoteFlatSection(groups,'',state.filter==='pricing'?'pending':'saved')}
    ${['all','all_history'].includes(state.filter)?`<details class="admin-quote-price-fold"><summary>상품 금액 비교 <span class="admin-quote-extra-chevron">⌄</span></summary>${adminPriceTotalMarkup(qq)}</details>`:''}`:
    '<div class="empty">해당 단계의 주문이 없어요. 다른 단계를 선택해 주세요.</div>'}
  </section>`;

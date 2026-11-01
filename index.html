@@ -4161,6 +4161,42 @@ async function miniEnablePush(){
  await miniPushStatus();
 }
 const adminFoldState=new Map();
+// Keep the same item at the same viewport position while a saved price causes
+// the order to move between '가격 입력 필요' and '가격 저장 완료' sections.
+let adminPriceScrollAnchor=null;
+function captureAdminPriceScrollAnchor(form){
+ const pending=form.closest('.admin-pending-prices');
+ const forms=pending?[...pending.querySelectorAll('form[data-price]')]:[];
+ const next=forms[forms.indexOf(form)+1]||null;
+ const active=next||form;
+ return {
+  editedId:String(form.dataset.price),
+  nextId:next?String(next.dataset.price):'',
+  nextTop:active.getBoundingClientRect().top,
+  editedTop:form.getBoundingClientRect().top,
+  scrollY:window.scrollY
+ };
+}
+function restoreAdminPriceScrollAnchor(){
+ const anchor=adminPriceScrollAnchor;
+ if(!anchor||state.page!=='admin'||state.tab!=='quotes')return;
+ const fields=[...app.querySelectorAll('form[data-price]')];
+ const findById=id=>fields.find(el=>el.dataset.price===id);
+ const form=findById(anchor.nextId)||findById(anchor.editedId);
+ if(!form){
+  window.scrollTo({top:anchor.scrollY,behavior:'instant'});
+  return;
+ }
+ // Saving a price may move the item inside a collapsed saved-price group or
+ // a different dated order group. Expand only the ancestors of that item.
+ for(let parent=form.parentElement;parent;parent=parent.parentElement){
+  if(parent.tagName==='DETAILS'&&!parent.open)parent.open=true;
+ }
+ const targetTop=form.dataset.price===anchor.nextId?anchor.nextTop:anchor.editedTop;
+ const delta=form.getBoundingClientRect().top-targetTop;
+ if(Math.abs(delta)>1)window.scrollTo({top:Math.max(0,window.scrollY+delta),behavior:'instant'});
+}
+
 // Freeze the page beneath dialogs, including iOS standalone Safari.
 let modalPageLock=null;
 function syncModalPageLock(){
@@ -4253,6 +4289,7 @@ function render(){
  const categoryList=app.querySelector('.shop-category-list');
  if(categoryList)categoryList.scrollLeft=categoryScrollBefore;
  syncModalPageLock();
+ if(adminPriceScrollAnchor)restoreAdminPriceScrollAnchor();
  syncHeroContrast();
  scheduleEntryPush();
  updateScrollTop();updateProcurementSchedule();if(state.admin){updateSupplierBulkPreview();queueMicrotask(()=>showRequestImages().catch(console.error));queueMicrotask(()=>miniRegisterAdminAlias().catch(console.warn));queueMicrotask(()=>miniPushStatus().catch(console.warn));}}
@@ -8408,6 +8445,7 @@ else if(f.dataset.price){
  const changed=item.unit_price!==newPrice;
  const recipientSaved=Boolean(q.customer_email);
  const notifiedStatus=['quoted','confirmed'].includes(q.status);
+ adminPriceScrollAnchor=captureAdminPriceScrollAnchor(f);
  const result=await adminItemPrice(id,newPrice);
  // Keep the edited order expanded even when saving the last missing price
  // moves it from the pending section to the saved section.
@@ -8417,18 +8455,20 @@ else if(f.dataset.price){
  state.orderCardsOpen[cardId]=true;
  state.dateGroupsOpen['pending|'+dayKey]=true;
  state.dateGroupsOpen['saved|'+dayKey]=true;
- const previousScroll=window.scrollY;
  await loadAdmin();
  // The server may already have published the quote atomically during price saving.
  const serverAutoSent=state.quotes.filter(order=>previouslyUnpriced.has(order.id)&&order.status==='quoted'&&readyProductEstimate(order)).length;
  const autoDelivery=await autoPublishAfterSavedPrices(previouslyUnpriced);
- const activeCard=[...document.querySelectorAll('[data-admin-order-id]')].find(el=>el.dataset.adminOrderId===cardId);
- if(activeCard){
-  activeCard.open=true;
-  const dateGroup=activeCard.closest('[data-order-date]');
-  if(dateGroup)dateGroup.open=true;
-  window.scrollTo({top:Math.max(0,activeCard.getBoundingClientRect().top+window.scrollY-110),behavior:'auto'});
- }else window.scrollTo({top:previousScroll,behavior:'auto'});
+ // Restore the input's actual on-screen position instead of forcing a jump
+ // to the top of the order. Recheck after the browser's next layout frame.
+ const priceAnchor=adminPriceScrollAnchor;
+ restoreAdminPriceScrollAnchor();
+ requestAnimationFrame(()=>{
+  if(adminPriceScrollAnchor===priceAnchor){
+   restoreAdminPriceScrollAnchor();
+   adminPriceScrollAnchor=null;
+  }
+ });
  const synced=Number(result?.auto_updated)||0;
  const autoNotice=changed&&notifiedStatus?
   !recipientSaved?'이 주문은 수신 이메일이 없어 가격 변경 메일이 생성되지 않았어요. 이메일을 등록해 주세요.':
@@ -8442,7 +8482,7 @@ else if(f.dataset.price){
  notif((autoNotice?savedMsg+' '+autoNotice:savedMsg)+autoMsg+errorMsg);
 }
 else if(f.dataset.payment){const paid=Number(data.get('paid')),refunded=Number(data.get('refunded'));if(!Number.isInteger(paid)||!Number.isInteger(refunded)||paid<0||refunded<0)throw Error('금액을 확인해 주세요');await adminPayment(f.dataset.payment,paid,refunded);await loadAdmin();notif('입금 기록 완료')}
-}catch(ex){notif(errorText(ex))}finally{busy=false}}
+}catch(ex){if(f.dataset.price)adminPriceScrollAnchor=null;notif(errorText(ex))}finally{busy=false}}
 async function change(e){const x=e.target;
 
 if(x.matches?.('[data-size-preset-select]')){

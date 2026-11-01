@@ -4926,16 +4926,16 @@ function ciPanel(){
 }
 function ciReview(){
  if(!ciRows.length)return '';
- const pending=ciRows.filter(r=>!r.id).length;
- return '<form id="ci-save" class="ci-form"><b>'+ciRows.length+'개 상품 추출 · 미등록 '+pending+'개</b>'+
+ const pending=ciRows.filter(r=>!r.done).length;
+ return '<form id="ci-save" novalidate class="ci-form"><b>'+ciRows.length+'개 상품 추출 · 미등록 '+pending+'개</b>'+
  '<p class="smallnote">사진과 도매단가·옵션을 확인하고 수정해 주세요. 잘못 인식한 상품은 등록 체크를 해제하면 돼요.</p>'+
- ciRows.map((r,i)=>'<section class="ci-item"><div class="ci-head"><b>'+(i+1)+'번 상품'+(r.id?' · 등록완료':'')+'</b><label><input type="checkbox" name="use'+i+'" '+(r.id?'disabled':'checked')+'> 등록</label></div>'+
+ ciRows.map((r,i)=>'<section class="ci-item"><div class="ci-head"><b>'+(i+1)+'번 상품'+(r.done?' · 등록완료':'')+'</b><label><input type="checkbox" name="use'+i+'" '+(r.done?'disabled':'checked')+'> 등록</label></div>'+
  '<div class="ci-image">'+(r.preview?'<img src="'+esc(r.preview)+'" alt="추출한 상품 사진">':'상품 사진 영역 미인식 · 등록 후 사진 추가 가능')+'</div>'+
- '<label class="label">상품명<input name="name'+i+'" maxlength="100" required value="'+esc(r.name)+'" '+(r.id?'disabled':'')+'></label>'+
- '<div class="ci-cols"><label class="label">도매단가 (원)<input type="number" inputmode="numeric" name="price'+i+'" min="0" max="100000000" required value="'+(r.price===null?'':r.price)+'" '+(r.id?'disabled':'')+'></label>'+
- '<label class="label">카테고리<select name="category'+i+'" required '+(r.id?'disabled':'')+'><option value="">선택</option>'+PRODUCT_CATEGORIES.map(c=>'<option value="'+esc(c)+'" '+(c===r.category?'selected':'')+'>'+esc(c)+'</option>').join('')+'</select></label></div>'+
- '<label class="label">컬러별 사이즈<textarea name="options'+i+'" rows="3" required '+(r.id?'disabled':'')+' placeholder="크림: 6m, 12m, 18m">'+esc(r.options)+'</textarea></label>'+
- '<label class="label">소재·상품 안내<textarea name="note'+i+'" maxlength="1000" rows="2" '+(r.id?'disabled':'')+'>'+esc(r.note)+'</textarea></label></section>').join('')+
+ '<label class="label">상품명<input name="name'+i+'" maxlength="100" required value="'+esc(r.name)+'" '+(r.done?'disabled':'')+'></label>'+
+ '<div class="ci-cols"><label class="label">도매단가 (원)<input type="number" inputmode="numeric" name="price'+i+'" min="0" max="100000000" required value="'+(r.price===null?'':r.price)+'" '+(r.done?'disabled':'')+'></label>'+
+ '<label class="label">카테고리<select name="category'+i+'" required '+(r.done?'disabled':'')+'><option value="">선택</option>'+PRODUCT_CATEGORIES.map(c=>'<option value="'+esc(c)+'" '+(c===r.category?'selected':'')+'>'+esc(c)+'</option>').join('')+'</select></label></div>'+
+ '<label class="label">컬러별 사이즈<textarea name="options'+i+'" rows="3" required '+(r.done?'disabled':'')+' placeholder="크림: 6m, 12m, 18m">'+esc(r.options)+'</textarea></label>'+
+ '<label class="label">소재·상품 안내<textarea name="note'+i+'" maxlength="1000" rows="2" '+(r.done?'disabled':'')+'>'+esc(r.note)+'</textarea></label></section>').join('')+
  '<label class="ci-public"><input type="checkbox" name="publish"> 구매자 화면에 바로 공개 (기본은 미전시)</label>'+
  '<button class="btn block" type="submit" '+(pending?'':'disabled')+'>선택한 상품 일괄등록</button></form>';
 }
@@ -4987,7 +4987,7 @@ async function ciScan(form){
    const preview=file?URL.createObjectURL(file):'';
    if(preview)ciPreviews.push(preview);
    const sizes=Array.isArray(p.sizes)?p.sizes:[],colors=Array.isArray(p.colors)?p.colors:[];
-   ciRows.push({name:p.name||'',price:p.wholesale_price,category:p.category||'',options:colors.map(c=>c+': '+sizes.join(', ')).join('\n'),note:[p.fabric?'소재: '+p.fabric:'',p.note||''].filter(Boolean).join('\n').slice(0,1000),file,preview,id:null});
+   ciRows.push({name:p.name||'',price:p.wholesale_price,category:p.category||'',options:colors.map(c=>c+': '+sizes.join(', ')).join('\n'),note:[p.fabric?'소재: '+p.fabric:'',p.note||''].filter(Boolean).join('\n').slice(0,1000),file,preview,id:null,done:false});
   }
   ciUpdate();
  }
@@ -5000,7 +5000,7 @@ async function ciSave(form){
  if(!storeName||storeName.length>100)throw Error('도매거래처를 입력해 주세요.');
  const data=new FormData(form),items=[];
  for(let i=0;i<ciRows.length;i++){
-  if(ciRows[i].id||!data.has('use'+i))continue;
+  if(ciRows[i].done||!data.has('use'+i))continue;
   const name=String(data.get('name'+i)||'').trim();
   if(!name||name.length>100)throw Error((i+1)+'번 상품명을 확인해 주세요.');
   const price=String(data.get('price'+i)||'').trim();
@@ -5008,6 +5008,7 @@ async function ciSave(form){
   const category=validateProductCategory(data.get('category'+i));
   const options=parseOptions(String(data.get('options'+i)||''));
   const note=parseProductNote(data.get('note'+i));
+  Object.assign(ciRows[i],{name,price:Number(price),category,options:String(data.get('options'+i)||''),note:String(data.get('note'+i)||'')});
   items.push({row:ciRows[i],name,price:Number(price),category,options,note});
  }
  if(!items.length)throw Error('등록할 상품을 체크해 주세요.');
@@ -5033,10 +5034,10 @@ async function ciSave(form){
    }
    await savePrivateProduct(r.id,{p_supplier_name:storeName,p_source_type:'namdaemun',p_wholesale_price:item.price,p_yuan_price:null});
    if(publish)await api('/rest/v1/gq_products?id=eq.'+encodeURIComponent(r.id),{method:'PATCH',body:{published:true},admin:true});
-   count++;ciUpdate();
+   r.done=true;count++;ciUpdate();
   }catch(e){ciUpdate();throw Error(item.name+' 저장 오류 · '+count+'개 완료. 다시 저장하면 남은 상품만 처리해요: '+e.message);}
  }
- if(ciRows.every(r=>r.id)){ciReset();ciFiles=[];}
+ if(ciRows.every(r=>r.done)){ciReset();ciFiles=[];}
  await loadAdmin();notif(count+'개 상품을 등록했어요.');
 }
 

@@ -5557,7 +5557,7 @@ function renderSameRoundCard(group){
   ${actualBundle?'<div class="round-merged-note">이미 설정된 묶음배송이에요. 배송비와 배송상태는 대표 주문을 기준으로 관리하세요.</div>':'<div class="round-merged-note">같은 회차 상품을 한눈에 모은 화면이에요. 주문번호·입금·견적 안내는 기존 주문별로 보존돼요.</div>'}
   <details class="round-merged-details">
    <summary>주문별 견적·금액·옵션 수정 <span>${group.length}건 ▾</span></summary>
-   <div class="round-merged-individuals">${group.map(q=>`<details class="round-single-order">
+   <div class="round-merged-individuals">${group.map(q=>`<details class="round-single-order" data-round-order-id="${esc(q.id)}">
     <summary>${esc(q.buyer_name)} · ${esc(fmtDate(q.created_at))} <span>${esc(statusLabel[q.status]||q.status)} · ${money(previewOrderSum(q))} ▾</span></summary>
     ${renderAdminQuoteCard(q)}
    </details>`).join('')}</div>
@@ -8009,6 +8009,12 @@ if(a==='show-pending-item-options'){
   state.dateGroupsOpen['pending|'+day]=true;
  }
  render();
+ const individual=app.querySelector('.round-single-order[data-round-order-id="'+q.id+'"]');
+ if(individual){
+  individual.open=true;
+  const container=individual.closest('.round-merged-details');
+  if(container)container.open=true;
+ }
  const requestButtons=[...app.querySelectorAll('.option-request-admin-list')];
  const target=requestButtons.find(el=>el.closest('[data-admin-order-id]')?.dataset.adminOrderId===root.id)||requestButtons[0];
  if(target)window.scrollTo({top:Math.max(0,window.scrollY+target.getBoundingClientRect().top-16),behavior:'smooth'});

@@ -6295,7 +6295,7 @@ function storeSizePresets(storeId){
 }
 function sizePresetChoicesMarkup(storeId,selected=null){
  const presets=storeSizePresets(storeId),names=Object.keys(presets);
- const current=selected&&names.includes(selected)?selected:(names.includes('기본')?'기본':names[0]||'');
+ const current=selected===''?'':(selected&&names.includes(selected)?selected:(names.includes('기본')?'기본':names[0]||''));
  return {presets,current,html:`<option value="">직접 입력</option>${names.map(name=>`<option value="${esc(name)}" ${name===current?'selected':''}>${esc(name)}</option>`).join('')}`};
 }
 function sizePresetPickerMarkup(storeId){
@@ -6383,7 +6383,7 @@ function syncProductNewStoreField(form){
  const isNew=selector.value==='__new_store__';
  row.hidden=!isNew;row.style.display=isNew?'block':'none';
  field.disabled=!isNew;field.required=isNew;
- for(const action of ['save-store-default-sizes','load-store-default-sizes']){
+ for(const action of ['save-store-default-sizes','load-store-default-sizes','save-size-preset','delete-size-preset']){
   const button=form.querySelector('[data-action="'+action+'"]');
   if(button){button.hidden=isNew;button.style.display=isNew?'none':'';}
  }
@@ -7280,6 +7280,51 @@ if(a==='admin-photo-remove'||a==='admin-photo-move'){
  else moveAdminPhoto(index,Number(b.dataset.direction),form);
  return;
 }
+if(a==='save-size-preset'||a==='delete-size-preset'){
+ if(!state.admin)throw Error('관리자만 거래처 사이즈 유형을 변경할 수 있어요.');
+ const form=b.closest('form'),store=optionFormStore(form);
+ if(!form||!['approve-form','product-form'].includes(form.id)||!store)
+  throw Error('먼저 저장된 거래처를 선택해 주세요. 새 거래처는 상품을 등록한 뒤 유형을 저장할 수 있어요.');
+ const picker=form.querySelector('[data-size-preset-select]');
+ const nameField=form.querySelector('[data-size-preset-name]');
+ const current=storeSizePresets(store.id);
+ const newPresets={...current};
+ const selected=String(picker?.value||'');
+ let chosen='';
+ let payload={};
+ if(a==='save-size-preset'){
+  const name=String(nameField?.value||'').trim()||selected||'기본';
+  if(!name||name.length>20||/[<>:"\\/]/.test(name)||['__proto__','constructor','prototype'].includes(name))
+   throw Error('유형 이름을 20자 이내로 적어 주세요. 예: 베이비, 키즈');
+  const sizes=validateStoreSizes(form.querySelector('[data-bulk-editor="sizes"]')?.innerText||'');
+  if(!sizes.length)throw Error('저장할 사이즈를 먼저 입력해 주세요.');
+  if(Object.keys(newPresets).length>=12&&!Object.hasOwn(newPresets,name))
+   throw Error('한 거래처에 사이즈 유형은 최대 12개까지 저장할 수 있어요.');
+  if(Object.hasOwn(newPresets,name)&&JSON.stringify(newPresets[name])!==JSON.stringify(sizes)&&
+    !window.confirm('기존 ‘'+name+'’ 사이즈 유형을 현재 입력한 사이즈로 덮어쓸까요?'))return;
+  newPresets[name]=sizes;
+  chosen=name;
+  payload={size_presets:newPresets};
+  if(name==='기본')payload.default_sizes=sizes;
+ }else{
+  if(!selected||!Object.hasOwn(newPresets,selected))throw Error('삭제할 사이즈 유형을 선택해 주세요.');
+  if(!window.confirm('‘'+selected+'’ 사이즈 유형을 삭제할까요? 이미 등록된 상품 옵션은 변경되지 않아요.'))return;
+  delete newPresets[selected];
+  payload={size_presets:newPresets};
+  if(selected==='기본'||!Object.keys(newPresets).length)payload.default_sizes=[];
+ }
+ b.disabled=true;
+ try{
+  await putStore(payload,store.id);
+  store.size_presets={...newPresets};
+  if('default_sizes' in payload)store.default_sizes=[...payload.default_sizes];
+  loadStoreSizesIntoForm(form,chosen||null);
+  const note=form.querySelector('[data-store-sizes-note]');
+  if(note)note.textContent=a==='save-size-preset'?'이 거래처의 '+chosen+' 사이즈 유형이 저장됐어요.':'선택한 사이즈 유형을 삭제했어요.';
+  notif(a==='save-size-preset'?'‘'+store.name+'’ '+chosen+' 사이즈 유형을 저장했어요.':'사이즈 유형을 삭제했어요.');
+ }finally{b.disabled=false;}
+ return;
+}
 if(a==='save-store-default-sizes'||a==='load-store-default-sizes'){
  if(!state.admin)throw Error('관리자만 가게 기본 사이즈를 설정할 수 있어요.');
  const form=b.closest('form'),store=optionFormStore(form);
@@ -7289,8 +7334,10 @@ if(a==='save-store-default-sizes'||a==='load-store-default-sizes'){
  if(!sizes.length)throw Error('기본 사이즈를 입력해 주세요.');
  b.disabled=true;
  try{
-  await putStore({default_sizes:sizes},store.id);
+  const presets={...storeSizePresets(store.id),'기본':sizes};
+  await putStore({default_sizes:sizes,size_presets:presets},store.id);
   store.default_sizes=[...sizes];
+  store.size_presets={...presets};
   loadStoreSizesIntoForm(form);
   notif('‘'+store.name+'’ 기본 사이즈를 저장했어요. 다음 상품부터 자동으로 불러와요.');
  }finally{b.disabled=false;}
@@ -7726,7 +7773,8 @@ else if(f.id==='product-form'){
    const defaultSizes=validateStoreSizes(editor?.innerText||'');
    const variants=Object.values(product.options);
    const commonSizes=variants.length&&variants.every(sizes=>JSON.stringify(sizes)===JSON.stringify(variants[0]))?variants[0]:[];
-   const rows=await api('/rest/v1/gq_stores',{method:'POST',body:{name,active:true,default_sizes:defaultSizes.length?defaultSizes:commonSizes},admin:true});
+   const base=defaultSizes.length?defaultSizes:commonSizes;
+   const rows=await api('/rest/v1/gq_stores',{method:'POST',body:{name,active:true,default_sizes:base,size_presets:base.length?{'기본':base}:{}},admin:true});
    store=rows?.[0];
    if(!store?.id)throw Error('새 가게 등록 결과를 확인하지 못했어요. 상품 저장을 다시 시도해 주세요.');
    state.stores.push(store);
@@ -7802,6 +7850,11 @@ else if(f.dataset.price){
 else if(f.dataset.payment){const paid=Number(data.get('paid')),refunded=Number(data.get('refunded'));if(!Number.isInteger(paid)||!Number.isInteger(refunded)||paid<0||refunded<0)throw Error('금액을 확인해 주세요');await adminPayment(f.dataset.payment,paid,refunded);await loadAdmin();notif('입금 기록 완료')}
 }catch(ex){notif(errorText(ex))}finally{busy=false}}
 async function change(e){const x=e.target;
+if(x.matches?.('[data-size-preset-select]')){
+ const form=x.closest('form');
+ loadStoreSizesIntoForm(form,x.value);
+ return;
+}
 if(x.matches?.('[data-cart-option-color]')){
  const panel=x.closest('[data-cart-option-editor]'),row=x.closest('[data-cart-item]');
  const index=cartReviewIndexOfRow(row),p=selectedProd(state.cart[index]?.product_id);

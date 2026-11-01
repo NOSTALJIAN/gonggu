@@ -6122,7 +6122,7 @@ if(m.type==='product'){
    <label class="label">상품명<input name="name" maxlength="100" required value="${esc(pr?.name||'')}" placeholder="상품명 입력"></label>
    ${productCategoryInput(pr?.category,!pr||Boolean(pr.category),true)}
    ${renderAdminPhotoWorkspace(true)}
-   ${bulkOptionsBuilder(pr?.store_id||state.stores[0]?.id,true)}
+   ${bulkOptionsBuilder(pr?.store_id||null,true)}
    <label class="label approve-options-label">등록할 옵션 확인·수정
     <textarea name="options" required rows="2" placeholder="색상·사이즈를 입력하고 적용을 눌러 주세요.">${esc(lines)}</textarea>
    </label>
@@ -6517,16 +6517,17 @@ function optionFormStore(form){
 }
 
 function productStorePicker(product){
- const selectedId=product?.store_id||state.stores[0]?.id||'__new_store__';
+ const selectedId=product?.store_id||'';
  const selected=state.stores.find(store=>store.id===selectedId);
- const isNew=!selected;
+ const isNew=selectedId==='__new_store__';
  return `<div class="product-store-picker">
   <label class="label" for="product-store-search">거래처(가게)</label>
   <div class="product-store-combobox" data-product-store-picker>
    <input id="product-store-search" type="search" data-product-store-search
     role="combobox" aria-autocomplete="list" aria-haspopup="listbox" aria-controls="product-store-search-results" aria-expanded="false"
-    placeholder="가게 이름 검색" autocomplete="off" autocapitalize="off" spellcheck="false" value="${esc(selected?.name||'')}">
+    placeholder="거래처 이름 검색 후 선택" autocomplete="off" autocapitalize="off" spellcheck="false" value="${esc(selected?.name||'')}">
    <select name="store" data-store-defaults class="product-store-native-select" aria-label="선택된 거래처">
+    <option value="" ${selectedId===''?'selected':''}>거래처 미선택</option>
     <option value="__new_store__" ${isNew?'selected':''}>＋ 새 가게 직접 입력</option>
     ${state.stores.map(st=>`<option value="${esc(st.id)}" ${selected?.id===st.id?'selected':''}>${esc(st.name)}</option>`).join('')}
    </select>
@@ -6573,11 +6574,12 @@ function syncProductNewStoreField(form){
  const row=form.querySelector('.product-new-store-row');
  if(!selector||!field||!row)return;
  const isNew=selector.value==='__new_store__';
+ const hasSavedStore=!!state.stores.some(st=>st.id===selector.value);
  row.hidden=!isNew;row.style.display=isNew?'block':'none';
  field.disabled=!isNew;field.required=isNew;
  for(const action of ['save-store-default-sizes','load-store-default-sizes','add-size-preset','rename-size-preset','save-size-preset','delete-size-preset']){
   const button=form.querySelector('[data-action="'+action+'"]');
-  if(button){button.hidden=isNew;button.style.display=isNew?'none':'';}
+  if(button){button.hidden=!hasSavedStore;button.style.display=hasSavedStore?'':'none';}
  }
 }
 function validateStoreSizes(text){
@@ -8091,7 +8093,8 @@ else if(f.id==='product-form'){
  const storeSelection=String(data.get('store')||'').trim();
  const selectedStore=state.stores.find(st=>st.id===storeSelection);
  const searchedName=String(f.querySelector('[data-product-store-search]')?.value||'').trim();
- if(storeSelection!=='__new_store__'&&(!selectedStore||searchedName!==selectedStore.name))
+ if(!storeSelection)throw Error('거래처를 검색한 다음 목록에서 선택해 주세요.');
+  if(storeSelection!=='__new_store__'&&(!selectedStore||searchedName!==selectedStore.name))
   throw Error('거래처 검색 결과에서 가게 이름을 선택해 주세요.');
  const product={store_id:storeSelection==='__new_store__'?'':storeSelection,name:String(data.get('name')).trim(),category:validateProductCategory(data.get('category'),Boolean(old&&!old.category)),options:parseOptions(String(data.get('options'))),product_note:parseProductNote(data.get('product_note')),published:data.has('published'),is_sold_out:data.has('is_sold_out')};
  if(!product.name)throw Error('상품명을 입력해 주세요.');
@@ -8318,7 +8321,16 @@ function input(e){
   state.adminStoreSearch=e.target.value;
   updateAdminStoreSearch();return;
  }
- if(e.target.matches?.('[data-product-store-search]')){productStoreSearchResults(e.target);return;}
+ if(e.target.matches?.('[data-product-store-search]')){
+  const form=e.target.closest('#product-form');
+  const field=form?.querySelector('select[name="store"]');
+  const selected=state.stores.find(st=>st.id===field?.value);
+  if(field&&field.value&&selected?.name!==e.target.value){
+   field.value='';
+   field.dispatchEvent(new Event('change',{bubbles:true}));
+  }
+  productStoreSearchResults(e.target);return;
+ }
  if(['private_yuan','private_cost'].includes(e.target.name)&&e.target.closest('#product-form,#approve-form')){updatePrivateSourcingForm(e.target.closest('form'));return;}
  if(e.target.closest?.('#bulk-supplier-shipping-form')){
   updateSupplierBulkPreview();return;

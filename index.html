@@ -6179,7 +6179,7 @@ function renderAdminQuotes(){
  const nPrice=all.filter(isPricing).length,nWait=all.filter(isWaiting).length;
  const nPre=all.filter(isPre).length,nNow=all.filter(q=>isRoundBuyer(q)&&!isFinishedOrder(q)).length;
  const nOrdered=all.filter(q=>isWholesaleCompleted(q)&&!isFinishedOrder(q)).length;
- const nFinished=all.filter(isFinishedOrder).length,nOther=all.filter(isOtherRoundQuote).length;
+ const nFinished=all.filter(isFinishedOrder).length,nOther=all.filter(q=>q.status==='quoted'&&['next_round','on_hold'].includes(q.purchase_intent)).length;
  const nCancel=all.filter(q=>q.cancel_requested_at&&q.status!=='cancelled').length;
  const nSupplier=state.supplierBatches.filter(b=>!b.ordered_at).length;
  const nOptions=state.optionRequests.filter(r=>r.status==='pending').length;
@@ -6190,7 +6190,7 @@ function renderAdminQuotes(){
   state.filter==='waiting_buyer'?isWaiting(q):
   state.filter==='all_history'?true:
   state.filter==='finished'?isFinishedOrder(q):
-  state.filter==='other'?isOtherRoundQuote(q):
+  state.filter==='other'?q.status==='quoted'&&['next_round','on_hold'].includes(q.purchase_intent):
   state.filter==='buy_now'?isRoundBuyer(q)&&!isFinishedOrder(q):
   state.filter==='wholesale_completed'?isWholesaleCompleted(q)&&!isFinishedOrder(q):
   state.filter==='next_round'?q.status==='quoted'&&q.purchase_intent==='next_round':

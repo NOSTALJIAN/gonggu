@@ -2579,6 +2579,40 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
  #approve-form .approval-sourcing-fields{gap:7px}
 }
 
+
+/* Both admin product paths use one concise named size-preset picker. */
+:is(#approve-form,#product-form.product-clean-form) .size-preset-selector{
+ display:flex;align-items:flex-end;gap:9px;min-width:0;margin:0 0 8px;
+}
+:is(#approve-form,#product-form.product-clean-form) .size-preset-selector .label{
+ flex:1;min-width:0;font-size:11px;font-weight:650;color:#444;margin:0;
+}
+:is(#approve-form,#product-form.product-clean-form) .size-preset-selector select{
+ box-sizing:border-box;margin:4px 0 0;width:100%;height:43px;min-height:43px;
+ background:#fff;border:1px solid #dedede;border-radius:7px;
+ padding:8px 28px 8px 10px;color:#111;font-size:16px;
+}
+:is(#approve-form,#product-form.product-clean-form) .size-preset-caption{
+ flex:none;font-size:10px;color:#999;white-space:nowrap;padding-bottom:12px;
+}
+:is(#approve-form,#product-form.product-clean-form) .size-preset-manager{
+ margin:8px 0 1px;border:0;border-top:1px solid #eee;padding:1px 0 0;
+}
+:is(#approve-form,#product-form.product-clean-form) .size-preset-manager>summary{
+ display:block;min-height:35px;font-size:11px;color:#777;padding:8px 0;cursor:pointer;
+}
+:is(#approve-form,#product-form.product-clean-form) .size-preset-manager>.label{
+ display:block;font-size:11px;font-weight:650;color:#444;margin:5px 0 0;
+}
+:is(#approve-form,#product-form.product-clean-form) .size-preset-manager input{
+ display:block;box-sizing:border-box;width:100%;height:44px;min-height:44px;
+ margin:4px 0 0;padding:8px 10px;font-size:16px;color:#111;
+ border:1px solid #ddd;border-radius:7px;background:#fff;
+}
+:is(#approve-form,#product-form.product-clean-form) .size-preset-manager .smallnote{
+ margin:7px 0 0;font-size:10px;line-height:1.5;color:#888;
+}
+
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -6199,6 +6233,50 @@ function storeDefaultSizes(storeId){
  const best=[...profiles].sort((a,b)=>b[1]-a[1])[0];
  return best?JSON.parse(best[0]):[];
 }
+function storeSizePresets(storeId){
+ const store=state.stores.find(st=>st.id===storeId);
+ const result={};
+ if(store?.size_presets&&typeof store.size_presets==='object'&&!Array.isArray(store.size_presets)){
+  for(const [name,values] of Object.entries(store.size_presets)){
+   if(name.length>0&&name.length<=20&&Array.isArray(values)&&values.length>0&&values.length<=50&&values.every(value=>typeof value==='string')){
+    result[name]=values.slice();
+   }
+  }
+ }
+ if(!result['기본']&&Array.isArray(store?.default_sizes)&&store.default_sizes.length)result['기본']=[...store.default_sizes];
+ if(!Object.keys(result).length&&storeId){
+  const common=storeDefaultSizes(storeId);
+  if(common.length)result['기본']=common;
+ }
+ return result;
+}
+function sizePresetChoicesMarkup(storeId,selected=null){
+ const presets=storeSizePresets(storeId),names=Object.keys(presets);
+ const current=selected&&names.includes(selected)?selected:(names.includes('기본')?'기본':names[0]||'');
+ return {presets,current,html:`<option value="">직접 입력</option>${names.map(name=>`<option value="${esc(name)}" ${name===current?'selected':''}>${esc(name)}</option>`).join('')}`};
+}
+function sizePresetPickerMarkup(storeId){
+ const {current,html}=sizePresetChoicesMarkup(storeId);
+ const count=Object.keys(storeSizePresets(storeId)).length;
+ return `<div class="size-preset-selector">
+  <label class="label">사이즈 유형
+   <select data-size-preset-select aria-label="저장된 사이즈 유형 선택" title="같은 거래처의 베이비·키즈 등 사이즈 유형">${html}</select>
+  </label>
+  <span class="size-preset-caption">${count?count+'개 유형 저장됨':'저장된 유형 없음'}</span>
+ </div>
+ <details class="approval-bulk-presets size-preset-manager">
+  <summary>사이즈 유형 저장·관리</summary>
+  <label class="label">유형 이름
+   <input type="text" data-size-preset-name maxlength="20" autocomplete="off" placeholder="예: 베이비, 키즈" value="${esc(current&&current!=='기본'?current:'')}">
+  </label>
+  <div class="approval-bulk-preset-buttons">
+   <button class="btn sm secondary" type="button" data-action="save-size-preset">현재 사이즈 저장</button>
+   <button class="btn sm neutral" type="button" data-action="delete-size-preset">선택 유형 삭제</button>
+  </div>
+  <p class="smallnote" data-store-sizes-note>거래처마다 유형을 여러 개 저장하고 상품별로 불러올 수 있어요.</p>
+ </details>`;
+}
+
 function optionFormStore(form){
  const value=String(form?.querySelector('[name="store"]')?.value||'').trim();
  return state.stores.find(st=>form?.id==='product-form'?st.id===value:st.name.trim().toLowerCase()===value.toLowerCase());
@@ -6272,9 +6350,23 @@ function validateStoreSizes(text){
  if(sizes.length>50||sizes.some(size=>size.length>30||size.includes(':')))throw Error('사이즈는 50개 이하, 각 30자 이하로 입력해 주세요.');
  return sizes;
 }
-function loadStoreSizesIntoForm(form){
+function loadStoreSizesIntoForm(form,requestedName=null){
  const store=optionFormStore(form),editor=form?.querySelector('[data-bulk-editor="sizes"]');
  if(!editor)return;
+ const picker=form.querySelector('[data-size-preset-select]');
+ if(picker){
+  const {current,html,presets}=sizePresetChoicesMarkup(store?.id,requestedName);
+  picker.innerHTML=html;
+  picker.value=current;
+  editor.textContent=(presets[current]||[]).join('\n');
+  const caption=form.querySelector('.size-preset-caption');
+  if(caption)caption.textContent=Object.keys(presets).length+'개 유형 저장됨';
+  const nameField=form.querySelector('[data-size-preset-name]');
+  if(nameField)nameField.value=current&&current!=='기본'?current:'';
+  const deleteButton=form.querySelector('[data-action="delete-size-preset"]');
+  if(deleteButton)deleteButton.disabled=!store||!current;
+  return;
+ }
  const sizes=store?storeDefaultSizes(store.id):[];
  editor.textContent=sizes.join('\n');
  const note=form.querySelector('[data-store-sizes-note]');
@@ -6282,34 +6374,27 @@ function loadStoreSizesIntoForm(form){
 }
 function bulkOptionsBuilder(storeId=null,compact=false){
  if(compact){
-  const defaults=storeId?storeDefaultSizes(storeId):[];
-  const store=state.stores.find(st=>st.id===storeId);
+  const saved=sizePresetChoicesMarkup(storeId);
+  const defaults=saved.current?saved.presets[saved.current]||[]:[];
   return `<section class="bulk-option-builder approval-bulk">
    <div class="bulk-option-heading"><b>색상 · 사이즈</b><span>여러 개는 엔터 또는 쉼표로 구분</span></div>
+   ${sizePresetPickerMarkup(storeId).split('<details')[0]}
    <div class="approval-bulk-fields">
     <label class="label">컬러
      <div class="bulk-option-textbox" data-bulk-editor="colors" role="textbox" aria-multiline="true"
        aria-label="색상 한 줄에 하나씩 입력" contenteditable="plaintext-only" spellcheck="true" autocorrect="on"
        autocapitalize="off" lang="ko" data-placeholder="핑크, 크림, 블루"></div>
     </label>
-    <label class="label">공통 사이즈
+    <label class="label">사이즈
      <div class="bulk-option-textbox" data-bulk-editor="sizes" role="textbox" aria-multiline="true"
        aria-label="사이즈 한 줄에 하나씩 입력" contenteditable="plaintext-only" spellcheck="true" autocorrect="on"
        autocapitalize="off" lang="ko" data-placeholder="XS, S, M">${esc(defaults.join('\n'))}</div>
     </label>
    </div>
    <button type="button" class="btn block bulk-option-apply" data-action="bulk-options-apply">색상·사이즈 적용</button>
-   <details class="approval-bulk-presets">
-    <summary>가게 기본 사이즈 관리</summary>
-    <div class="smallnote" data-store-sizes-note>${store?esc(store.name)+' · '+(defaults.length?'기본 사이즈 불러옴':'기본 사이즈 미등록'):'가게를 선택하면 기본 사이즈를 불러와요.'}</div>
-    <div class="approval-bulk-preset-buttons">
-     <button class="btn sm secondary" type="button" data-action="save-store-default-sizes">현재 사이즈 기본값으로 저장</button>
-     <button class="btn sm neutral" type="button" data-action="load-store-default-sizes">기본 사이즈 불러오기</button>
-    </div>
-   </details>
+  ${sizePresetPickerMarkup(storeId).split('<details')[1]?'<details'+sizePresetPickerMarkup(storeId).split('<details')[1]:''}
   </section>`;
  }
-
  const defaults=storeId?storeDefaultSizes(storeId):[];
  const store=state.stores.find(st=>st.id===storeId);
  return `<div class="bulk-option-builder">

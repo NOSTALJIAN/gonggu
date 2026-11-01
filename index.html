@@ -4977,10 +4977,10 @@ async function lalaZipUpload(p,entry){
  if(!token)throw Error('관리자 로그인 세션이 만료됐어요.');
  const r=await fetch(url+'/storage/v1/object/'+PHOTO_PUBLIC+'/'+path,{
   method:'POST',headers:{apikey:key,Authorization:'Bearer '+token,'Content-Type':'image/jpeg'},body:jpeg});
- if(!r.ok&&r.status!==409){
+ if(!r.ok){
   let msg='서버 오류 '+r.status;
   try{const j=await r.json();msg=j.message||j.error||msg}catch{}
-  throw Error('사진 업로드 실패: '+msg);
+  if(!(r.status===409||/duplicate|already exists|이미 존재|resourcealreadyexists/i.test(msg)))throw Error('사진 업로드 실패: '+msg);
  }
  return out;
 }
@@ -5037,6 +5037,7 @@ async function importLalaKidsZips(files,limit){
   }
   await loadCatalog(true);
   lalaZipStatus('완료 · 상품 '+completed+'종 확인 · 사진 '+photos+'장 연결 · 기존 사진 유지/사진 없음 '+skipped+'종'+(lalaZipCancel?' · 사용자 중단':'')+(errors.length?' · 오류 '+errors.length+'건: '+errors[0]:'')+'. 미전시 상태는 그대로예요.');
+  render();
   notif('키즈 상품 사진 '+photos+'장 등록 완료');
  }finally{lalaZipBusy=false;if(input?.isConnected){input.disabled=false;input.value='';}}
 }
@@ -5123,7 +5124,7 @@ function renderAdminProducts(){
      <p class="smallnote" style="margin:9px 0">키즈사진_01~12.zip을 전부 선택하면 상품 폴더 번호로 사진을 자동 분류해요. 상품은 미전시로 유지하고, 기존에 등록된 사진은 지우지 않아요.</p>
      <label class="label">상품당 사진 수<select id="lala-zip-count"><option value="10">10장 (추천)</option><option value="20">20장</option><option value="50">최대 50장</option></select></label>
      <input id="lala-zip-files" type="file" accept=".zip,application/zip" multiple aria-label="라라랜드 키즈 ZIP 파일 선택" style="display:block;width:100%;max-width:100%;margin:8px 0;font-size:12px">
-     <p class="smallnote" id="lala-zip-status" role="status" aria-live="polite" style="overflow-wrap:anywhere">ZIP 파일을 모두 선택하면 등록을 시작해요. 완료할 때까지 이 화면을 열어 둬 주세요.</p>
+     <p class="smallnote" id="lala-zip-status" role="status" aria-live="polite" style="overflow-wrap:anywhere">${esc(lalaZipLast||'ZIP 파일을 모두 선택하면 등록을 시작해요. 완료할 때까지 이 화면을 열어 둬 주세요.')}</p>
      <button type="button" class="btn sm secondary" data-action="lala-zip-cancel">등록 중단</button>
     </details>
 <div class="admin-product-toolbar">

@@ -3041,6 +3041,15 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 .admin-workspace-content .round-order-quick-item b,
 .admin-workspace-content .compact-receipt-row b{overflow-wrap:anywhere;word-break:keep-all;line-height:1.5}
 .admin-workspace-content .round-order-quick-item b{font-size:11px;font-weight:770}
+
+/* A clear payment receipt action on each supplier buyer row. */
+.supplier-buyer-check-row{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px 10px}
+.supplier-buyer-name{font-size:12px;min-width:0;flex:1}
+.supplier-buyer-check-actions{display:flex;align-items:center;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.supplier-buyer-check-actions>span{font-size:11px;font-weight:740}
+.supplier-buyer-check-actions>.is-paid{color:#2f704b}
+.supplier-buyer-confirm{min-height:30px;padding:6px 10px;border-radius:6px;background:#171717;border:1px solid #171717;color:#fff;font-size:11px;font-weight:770}
+.supplier-buyer-confirm:disabled{background:#f5f5f5;border-color:#e2e2e2;color:#999}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -6185,6 +6194,20 @@ function supplierBatchPaymentState(batch){
  return {people:result,paid:result.filter(r=>r.eligible).length,
   partialReady,canOrder:result.length===Number(batch.people)&&result.every(r=>r.eligible)};
 }
+/* Only a buyer-selected, fully priced current order can be marked paid.
+   Partial/supplier-specific prepayment remains in its own existing flow. */
+function canConfirmSupplierBuyerFullPaid(batch,p){
+ if(!batch||batch.ordered_at||!p||p.eligible||!p.selected.length||!p.orders.length)return false;
+ const remaining=Number(p.due)-Number(p.net);
+ if(!Number.isSafeInteger(remaining)||remaining<=0)return false;
+ if(p.orders.some(q=>!readyQuote(q)||!['confirmed','quoted'].includes(q.status)||
+    (q.status==='quoted'&&q.purchase_intent!=='buy_now')||
+    q.cancel_requested_at||q.delivery_change_requested_at))return false;
+ if(p.selected.some(({q,item})=>item.fulfillment==='sold_out'||
+     q.supplier_ordered_at||item.supplier_ordered_at))return false;
+ const inv=supplierPartialInvoice(batch.id,p.payer.buyer_key);
+ return !inv||!!inv.paid_at;
+}
 function renderSupplierBulkManager(historyOnly=false,expanded=false){
  if(!state.admin||state.page!=='admin')return '';
  const allStores=[...new Set(state.quotes.filter(isRoundBuyer).flatMap(q=>(q.items||[]).map(supplierItemStore)))].filter(Boolean);
@@ -6268,6 +6291,10 @@ function renderSupplierBulkManager(historyOnly=false,expanded=false){
      const canAsk=!ordered&&!p.eligible&&p.selected.length>0&&p.selected.every(({q,item})=>
       ['quoted','confirmed'].includes(q.status)&&(q.status==='confirmed'||q.purchase_intent==='buy_now')&&
       item.unit_price!==null&&item.unit_price!==undefined&&!item.supplier_ordered_at&&item.fulfillment!=='sold_out');
+     const canConfirmFull=canConfirmSupplierBuyerFullPaid(batch,p);
+     const alreadyPaid=Boolean(p.eligible||inv?.paid_at);
+     const confirmLabel=ordered?'발주 완료':p.eligible?'✓ 입금 완료':inv?.paid_at?'✓ 선입금 확인':p.reason;
+     const confirmButton=canConfirmFull?`<button type="button" class="supplier-buyer-confirm" data-action="supplier-buyer-full-paid" data-id="${esc(batch.id)}" data-buyer-key="${esc(p.payer.buyer_key)}">입금 확인</button>`:'';
      const actions=ordered?'':`<div class="row wrap" style="margin-top:6px;gap:6px">
       <button type="button" class="btn sm secondary" data-action="supplier-partial-request" data-id="${esc(batch.id)}" data-buyer-key="${esc(p.payer.buyer_key)}" ${canAsk&&!inv?.paid_at?'':'disabled'}>${inv?'요청금액 갱신·메일 재발송':'이 거래처 상품 입금 요청'}</button>
       ${inv?`<button type="button" class="btn sm secondary" data-action="supplier-partial-email" data-id="${esc(inv.id)}" ${!recipient||inv.paid_at?'disabled':''}>안내 메일 ${inv.email_status==='sent'?'다시 보내기':'보내기'}</button>
@@ -6276,8 +6303,10 @@ function renderSupplierBulkManager(historyOnly=false,expanded=false){
       <button type="button" class="btn sm neutral" data-action="supplier-partial-cancel" data-id="${esc(inv.id)}" ${inv.paid_at?'disabled':''}>요청 취소</button>`:''}
      </div>`;
      return `<div class="supplier-bulk-person" style="display:block">
-      <div class="row between wrap"><span>${esc(p.buyerName)} · ${money(p.payer.amount)} 배송비</span>
-      <span class="${ordered||p.eligible?'is-paid':'is-waiting'}">${ordered?'도매 발주 완료':esc(p.reason)}</span></div>
+      <div class="supplier-buyer-check-row">
+       <span class="supplier-buyer-name">${esc(p.buyerName)} · ${money(p.payer.amount)} 배송비</span>
+       <span class="supplier-buyer-check-actions"><span class="${alreadyPaid||ordered?'is-paid':'is-waiting'}">${esc(confirmLabel)}</span>${confirmButton}</span>
+      </div>
       ${inv?`<div class="smallnote" style="margin-top:5px">선입금: 상품 ${money(inv.item_total)} + 배송비 ${money(inv.freight)} = <b>${money(inv.amount)}</b> · ${inv.paid_at?'입금 확인':'요청 중'}</div>`:''}
       ${inv?'<div class="smallnote" style="margin:5px 0;overflow-wrap:anywhere">✉️ '+(recipient?esc(recipient)+' · ':'고객 이메일 미등록 · ')+esc(mailState)+'</div>':''}
       ${actions}</div>`;
@@ -8525,6 +8554,27 @@ if(a==='open-supplier-bulk-allocations'){
   manager.open=true;
   window.scrollTo({top:Math.max(0,window.scrollY+manager.getBoundingClientRect().top-16),behavior:'instant'});
  }
+ return;
+}
+if(a==='supplier-buyer-full-paid'){
+ if(!state.admin||state.page!=='admin'||state.tab!=='quotes'||!state.supplierBatchesReady)
+  throw Error('관리자 입금·발주 화면에서만 입금을 확인할 수 있어요.');
+ const batch=state.supplierBatches.find(x=>x.id===id);
+ const buyerKey=String(b.dataset.buyerKey||'');
+ const payer=batch?.payers?.find(x=>x.buyer_key===buyerKey);
+ const person=batch? supplierBatchPaymentState(batch).people.find(x=>x.payer.buyer_key===buyerKey):null;
+ if(!payer||!canConfirmSupplierBuyerFullPaid(batch,person))
+  throw Error('입금액이나 주문 상태가 변경됐어요. 새로고침 후 확인해 주세요.');
+ const missing=Number(person.due)-Number(person.net);
+ const target=[...person.orders].filter(q=>q.status==='confirmed').at(-1)||person.orders.at(-1);
+ if(!target||!Number.isSafeInteger(missing)||missing<=0)throw Error('확인할 미입금액이 없어요.');
+ const next=Number(target.amount_paid||0)+missing;
+ const refunded=Number(target.amount_refunded||0);
+ if(!Number.isSafeInteger(next)||next<refunded)throw Error('입금액 계산을 확인해 주세요.');
+ if(!window.confirm(person.buyerName+'님의 전체 주문 미입금액 '+money(missing)+'을 실제 계좌에서 확인했나요?\n\n확인하면 기존 입금액에 추가 기록되고, 주문 금액을 중복 청구하지 않아요.\n이 거래처 상품만 선입금받은 경우에는 아래 선입금 요청 기능을 이용하세요.'))return;
+ await adminPayment(target.id,next,refunded);
+ await refreshSupplierPartialBatch(id,b);
+ notif(person.buyerName+'님 '+money(missing)+' 입금 확인 기록 완료');
  return;
 }
 if(a==='supplier-partial-request'){

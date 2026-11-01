@@ -2812,6 +2812,19 @@ window.miniYenaOneSignalReady = new Promise(function(resolve) {
 });
 </script>
 
+<style>
+.ci-panel{margin:12px 0 18px;border:1px solid #ddd;border-radius:10px;background:#fff;overflow:hidden}
+.ci-panel>summary{cursor:pointer;display:flex;flex-direction:column;gap:4px;padding:15px}
+.ci-panel>summary b{font-size:14px}.ci-panel>summary span{font-size:12px;color:#777}
+.ci-form{padding:0 14px 15px;display:grid;gap:11px}
+.ci-form .label{display:block;font-size:12px;font-weight:700;min-width:0}
+.ci-form input:not([type=checkbox]),.ci-form select,.ci-form textarea{box-sizing:border-box;display:block;margin-top:5px;width:100%;min-height:42px;border:1px solid #ddd;border-radius:7px;padding:8px;font-size:16px;background:#fff;color:#111}
+.ci-status{font-size:12px;color:#555}.ci-item{border:1px solid #e4e4e4;border-radius:8px;padding:11px;display:grid;gap:10px;min-width:0}
+.ci-head{display:flex;justify-content:space-between;align-items:center}.ci-head label,.ci-public{display:flex;gap:7px;align-items:center;font-size:12px}
+.ci-image{background:#f6f6f6;border-radius:7px;display:flex;align-items:center;justify-content:center;min-height:80px;font-size:11px;color:#888}
+.ci-image img{max-height:240px;max-width:100%;object-fit:contain}
+.ci-cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:9px}
+</style>
 </head>
 <body>
 <div id="app"><div class="loading">미니예나를 여는 중이에요…</div></div>
@@ -4895,6 +4908,138 @@ function updateAdminProductSearch(){
  const clear=app.querySelector('[data-action="clear-product-search"]');
  if(clear)clear.classList.toggle('hidden',!query);
 }
+
+/* AI catalog importer: buyer catalog scans are admin-only and require manual review. */
+let ciFiles=[],ciRows=[],ciPreviews=[];
+function ciReset(){ciPreviews.forEach(x=>URL.revokeObjectURL(x));ciPreviews=[];ciRows=[];}
+function ciPanel(){
+ if(!state.admin)return '';
+ return '<details id="ci-panel" class="ci-panel"><summary><b>📷 카탈로그 사진 자동등록</b><span>상품명·도매가·컬러·사이즈 자동입력</span></summary>'+
+ '<form id="ci-scan" class="ci-form">'+
+ '<label class="label">도매거래처<input name="store" list="ci-stores" required maxlength="100" placeholder="예: 라라랜드" autocomplete="off"></label>'+
+ '<datalist id="ci-stores">'+state.stores.map(s=>'<option value="'+esc(s.name)+'"></option>').join('')+'</datalist>'+
+ '<label class="label">카탈로그 사진 (최대 12장)<input id="ci-files" type="file" accept="image/*" multiple></label>'+
+ '<p class="smallnote">사진을 읽어 상품별로 나누고 대표사진을 잘라요. 가격·사이즈는 저장 전 확인할 수 있어요.</p>'+
+ '<p class="ci-status" id="ci-status" role="status">'+(ciFiles.length?ciFiles.length+'장 선택됨':'사진을 선택해 주세요.')+'</p>'+
+ '<button class="btn block" type="submit">사진 분석하기</button></form>'+
+ '<div id="ci-results">'+ciReview()+'</div></details>';
+}
+function ciReview(){
+ if(!ciRows.length)return '';
+ const pending=ciRows.filter(r=>!r.id).length;
+ return '<form id="ci-save" class="ci-form"><b>'+ciRows.length+'개 상품 추출 · 미등록 '+pending+'개</b>'+
+ '<p class="smallnote">사진과 도매단가·옵션을 확인하고 수정해 주세요. 잘못 인식한 상품은 등록 체크를 해제하면 돼요.</p>'+
+ ciRows.map((r,i)=>'<section class="ci-item"><div class="ci-head"><b>'+(i+1)+'번 상품'+(r.id?' · 등록완료':'')+'</b><label><input type="checkbox" name="use'+i+'" '+(r.id?'disabled':'checked')+'> 등록</label></div>'+
+ '<div class="ci-image">'+(r.preview?'<img src="'+esc(r.preview)+'" alt="추출한 상품 사진">':'상품 사진 영역 미인식 · 등록 후 사진 추가 가능')+'</div>'+
+ '<label class="label">상품명<input name="name'+i+'" maxlength="100" required value="'+esc(r.name)+'" '+(r.id?'disabled':'')+'></label>'+
+ '<div class="ci-cols"><label class="label">도매단가 (원)<input type="number" inputmode="numeric" name="price'+i+'" min="0" max="100000000" required value="'+(r.price===null?'':r.price)+'" '+(r.id?'disabled':'')+'></label>'+
+ '<label class="label">카테고리<select name="category'+i+'" required '+(r.id?'disabled':'')+'><option value="">선택</option>'+PRODUCT_CATEGORIES.map(c=>'<option value="'+esc(c)+'" '+(c===r.category?'selected':'')+'>'+esc(c)+'</option>').join('')+'</select></label></div>'+
+ '<label class="label">컬러별 사이즈<textarea name="options'+i+'" rows="3" required '+(r.id?'disabled':'')+' placeholder="크림: 6m, 12m, 18m">'+esc(r.options)+'</textarea></label>'+
+ '<label class="label">소재·상품 안내<textarea name="note'+i+'" maxlength="1000" rows="2" '+(r.id?'disabled':'')+'>'+esc(r.note)+'</textarea></label></section>').join('')+
+ '<label class="ci-public"><input type="checkbox" name="publish"> 구매자 화면에 바로 공개 (기본은 미전시)</label>'+
+ '<button class="btn block" type="submit" '+(pending?'':'disabled')+'>선택한 상품 일괄등록</button></form>';
+}
+function ciUpdate(){
+ const root=app.querySelector('#ci-panel');
+ if(!root)return;
+ const out=root.querySelector('#ci-results');if(out)out.innerHTML=ciReview();
+ const status=root.querySelector('#ci-status');if(status)status.textContent=ciFiles.length+'장 선택 · '+ciRows.length+'개 추출';
+}
+async function ciDataUrl(file){
+ if(!file?.type?.startsWith('image/')||file.size>35*1024*1024)throw Error('사진은 장당 35MB 이하의 이미지만 가능해요.');
+ const image=await toJpeg(file);
+ return await new Promise((resolve,reject)=>{const f=new FileReader();f.onload=()=>resolve(f.result);f.onerror=()=>reject(Error('사진을 읽지 못했어요.'));f.readAsDataURL(image);});
+}
+async function ciCrop(file,coords){
+ if(!Array.isArray(coords)||coords.length!==4)return null;
+ const [a,b,c,d]=coords;
+ if(![a,b,c,d].every(x=>Number.isFinite(x)&&x>=0&&x<=1000)||c<=a||d<=b)return null;
+ const src=URL.createObjectURL(file),img=new Image();
+ try{
+  await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=()=>reject(Error('사진을 열 수 없어요.'));img.src=src;});
+  const x=Math.floor(img.naturalWidth*a/1000),y=Math.floor(img.naturalHeight*b/1000);
+  const w=Math.min(img.naturalWidth-x,Math.round(img.naturalWidth*(c-a)/1000));
+  const h=Math.min(img.naturalHeight-y,Math.round(img.naturalHeight*(d-b)/1000));
+  if(w<35||h<35)return null;
+  const scale=Math.min(1,1400/Math.max(w,h)),canvas=document.createElement('canvas');
+  canvas.width=Math.max(1,Math.round(w*scale));canvas.height=Math.max(1,Math.round(h*scale));
+  canvas.getContext('2d').drawImage(img,x,y,w,h,0,0,canvas.width,canvas.height);
+  const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',.85));
+  return blob?new File([blob],'item.jpg',{type:'image/jpeg'}):null;
+ }finally{URL.revokeObjectURL(src);}
+}
+async function ciScan(form){
+ if(!state.admin||!connected)throw Error('관리자 로그인 후 사용할 수 있어요.');
+ const store=String(new FormData(form).get('store')||'').trim();
+ if(!store||store.length>100)throw Error('도매거래처를 입력해 주세요.');
+ if(!ciFiles.length)throw Error('카탈로그 사진을 선택해 주세요.');
+ if(!window.confirm(ciFiles.length+'장 사진을 AI로 분석할까요? API 사용료가 발생할 수 있어요.'))return;
+ ciReset();
+ const status=form.querySelector('#ci-status');
+ for(let i=0;i<ciFiles.length;i++){
+  if(status)status.textContent=(i+1)+' / '+ciFiles.length+'장 분석 중';
+  const token=await getToken();if(!token)throw Error('관리자 로그인이 필요해요.');
+  const result=await fetch(url+'/functions/v1/gq-catalog-extract',{method:'POST',headers:{apikey:key,Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({image_data_url:await ciDataUrl(ciFiles[i])})});
+  const body=await result.json().catch(()=>({}));
+  if(!result.ok)throw Error(body.error||'카탈로그 분석 오류 ('+result.status+')');
+  for(const p of body.products||[]){
+   const file=await ciCrop(ciFiles[i],p.photo_box);
+   const preview=file?URL.createObjectURL(file):'';
+   if(preview)ciPreviews.push(preview);
+   const sizes=Array.isArray(p.sizes)?p.sizes:[],colors=Array.isArray(p.colors)?p.colors:[];
+   ciRows.push({name:p.name||'',price:p.wholesale_price,category:p.category||'',options:colors.map(c=>c+': '+sizes.join(', ')).join('\n'),note:[p.fabric?'소재: '+p.fabric:'',p.note||''].filter(Boolean).join('\n').slice(0,1000),file,preview,id:null});
+  }
+  ciUpdate();
+ }
+ if(!ciRows.length)throw Error('상품을 인식하지 못했어요. 더 선명한 카탈로그를 올려 주세요.');
+ notif(ciRows.length+'개 상품이 추출됐어요. 확인 후 저장해 주세요.');
+}
+async function ciSave(form){
+ if(!state.admin||!state.productPrivateReady)throw Error('관리자 사입정보 연결을 확인해 주세요.');
+ const storeName=String(app.querySelector('#ci-scan [name="store"]')?.value||'').trim();
+ if(!storeName||storeName.length>100)throw Error('도매거래처를 입력해 주세요.');
+ const data=new FormData(form),items=[];
+ for(let i=0;i<ciRows.length;i++){
+  if(ciRows[i].id||!data.has('use'+i))continue;
+  const name=String(data.get('name'+i)||'').trim();
+  if(!name||name.length>100)throw Error((i+1)+'번 상품명을 확인해 주세요.');
+  const price=String(data.get('price'+i)||'').trim();
+  if(!/^(0|[1-9][0-9]{0,8})$/.test(price)||Number(price)>100000000)throw Error(name+': 도매단가를 확인해 주세요.');
+  const category=validateProductCategory(data.get('category'+i));
+  const options=parseOptions(String(data.get('options'+i)||''));
+  const note=parseProductNote(data.get('note'+i));
+  items.push({row:ciRows[i],name,price:Number(price),category,options,note});
+ }
+ if(!items.length)throw Error('등록할 상품을 체크해 주세요.');
+ let store=state.stores.find(x=>x.name.trim().toLocaleLowerCase('ko-KR')===storeName.toLocaleLowerCase('ko-KR'));
+ const duplicates=items.filter(x=>state.products.some(p=>p.store_id===store?.id&&p.name===x.name)||items.filter(y=>y.name===x.name).length>1);
+ if(duplicates.length&&!window.confirm('이름이 중복된 상품이 있어요: '+[...new Set(duplicates.map(x=>x.name))].join(', ')+'\n그래도 등록할까요?'))return;
+ const publish=data.has('publish');
+ if(!window.confirm(storeName+' · '+items.length+'개를 '+(publish?'공개':'미전시')+'로 등록할까요?'))return;
+ if(!store){
+  const sizes=Object.values(items[0].options)[0]||[];
+  const rows=await api('/rest/v1/gq_stores',{method:'POST',body:{name:storeName,active:true,default_sizes:sizes,size_presets:sizes.length?{'기본':sizes}:{}},admin:true});
+  store=rows?.[0];if(!store?.id)throw Error('거래처 등록 결과를 확인할 수 없어요.');
+  state.stores.push(store);
+ }
+ let count=0;
+ for(const item of items){
+  const r=item.row;
+  const status=app.querySelector('#ci-status');if(status)status.textContent=(count+1)+' / '+items.length+'개 저장 중: '+item.name;
+  try{
+   if(!r.id){
+    const photo=r.file?publicPhotoUrl(await uploadPhoto(r.file,PHOTO_PUBLIC,true)):null;
+    r.id=await putProduct({store_id:store.id,name:item.name,category:item.category,options:item.options,product_note:item.note,published:false,is_sold_out:false,image_url:photo,gallery_urls:[]});
+   }
+   await savePrivateProduct(r.id,{p_supplier_name:storeName,p_source_type:'namdaemun',p_wholesale_price:item.price,p_yuan_price:null});
+   if(publish)await api('/rest/v1/gq_products?id=eq.'+encodeURIComponent(r.id),{method:'PATCH',body:{published:true},admin:true});
+   count++;ciUpdate();
+  }catch(e){ciUpdate();throw Error(item.name+' 저장 오류 · '+count+'개 완료. 다시 저장하면 남은 상품만 처리해요: '+e.message);}
+ }
+ if(ciRows.every(r=>r.id)){ciReset();ciFiles=[];}
+ await loadAdmin();notif(count+'개 상품을 등록했어요.');
+}
+
 function renderAdminProducts(){
  const all=state.products;
  const isVisible=p=>Boolean(p.published&&state.stores.some(st=>st.id===p.store_id&&st.active));
@@ -4951,6 +5096,7 @@ function renderAdminProducts(){
  const storeSearchQuery=String(state.adminStoreSearch||'').trim().toLocaleLowerCase('ko-KR');
  const matchingStores=state.stores.filter(st=>String(st.name||'').toLocaleLowerCase('ko-KR').includes(storeSearchQuery));
  return `<section class="admin-catalog-panel" id="admin-catalog">
+${ciPanel()}
 <details class="card" style="margin:12px 0"><summary style="cursor:pointer;font-weight:800;padding:8px 0">🔔 신상 알림 보내기</summary><form id="new-arrival-push-form" style="margin-top:14px"><p class="smallnote">기존 주소와 새 주소에서 알림을 허용한 모든 기기에 보내요. 두 주소 모두 구독했다면 각각 받을 수 있어요.</p><label class="label">알림 제목<input name="title" maxlength="60" required value="미니예나 신상 업데이트"></label><label class="label">알림 내용<textarea name="message" maxlength="200" required>새로운 아기옷이 올라왔어요. 미니예나에서 구경해 보세요!</textarea></label><p class="smallnote">알림을 누르면 해당 주소의 상품 목록으로 이동해요.</p><button type="submit" class="btn block">신상 알림 보내기</button><p id="new-arrival-push-result" class="smallnote" role="status" aria-live="polite"></p></form></details>
   <div class="admin-catalog-switch" role="group" aria-label="관리자 상품 및 거래처 화면 전환">
    <button type="button" class="admin-catalog-switch-btn ${!storesView?'active':''}" data-action="catalog-view" data-view="products" aria-pressed="${!storesView}">상품 <span>${all.length}</span></button>
@@ -8169,7 +8315,7 @@ else if(a==='delete-product-request'){
  notif('1688 도매배송비 0원 확정 완료! 구매자에게 최종 주문을 안내할 수 있어요.');
  }else if(a==='publish-quote'){const direct=isDirect1688Admin(state.quotes.find(q=>q.id===id));if(!window.confirm(direct?'1688 상품 가격과 배송비를 확인했나요? 견적 발송 후 구매자가 바로 주문을 확정할 수 있어요.':'상품 가격을 확인했나요? 고객에게 먼저 견적을 보내고 이번 회차 구매·다음 회차 구매·보류 선택을 받을게요. 배송비는 답변을 받은 뒤 계산해요.'))return;await adminPublish(id);await loadAdmin();notif(direct?'1688 견적을 보냈어요. 구매자가 바로 주문을 확정할 수 있어요.':'견적을 보냈어요. 구매 회차 선택을 받은 후 배송비를 배분해 주세요.')}else if(a==='confirm-quote'){if(!window.confirm('이 견적으로 최종 주문을 확정할까요?'))return;await confirmFinalQuote();notif('최종 주문이 확정됐어요!')}else if(a==='export-csv'){csv()}else if(a==='copy-vendors'){await copy(vendorText())}else if(a==='logout'){session=null;localStorage.removeItem(SESS);state.admin=false;state.productPrivate={};state.productPrivateReady=false;render()} }catch(ex){notif(errorText(ex))}}
 async function submit(e){const f=e.target;
-if(!f.dataset.lowerPriceReport&&!f.dataset.sizeChartForm&&!f.dataset.customerEmail&&!['new-arrival-push-form','gmail-settings-form','hero-photo-form','reject-request-form','admin-pin-form','pin-register-form','pin-lookup-form','import-track-form','pick','request','store-form','product-form','login','suggest-form','approve-form','bundle-form','edit-delivery-form','bulk-supplier-shipping-form'].includes(f.id)&&!f.dataset.itemOptions&&!f.dataset.buyerOptionRequest&&!f.dataset.price&&!f.dataset.payment&&!f.dataset.shipping&&!f.dataset.supplierShipping&&!f.dataset.ship&&!f.dataset.bundleShip)return;e.preventDefault();if(busy)return;busy=true;const data=new FormData(f);try{if(f.dataset.lowerPriceReport){
+if(!f.dataset.lowerPriceReport&&!f.dataset.sizeChartForm&&!f.dataset.customerEmail&&!['new-arrival-push-form','gmail-settings-form','hero-photo-form','reject-request-form','admin-pin-form','pin-register-form','pin-lookup-form','import-track-form','ci-scan','ci-save','pick','request','store-form','product-form','login','suggest-form','approve-form','bundle-form','edit-delivery-form','bulk-supplier-shipping-form'].includes(f.id)&&!f.dataset.itemOptions&&!f.dataset.buyerOptionRequest&&!f.dataset.price&&!f.dataset.payment&&!f.dataset.shipping&&!f.dataset.supplierShipping&&!f.dataset.ship&&!f.dataset.bundleShip)return;e.preventDefault();if(busy)return;busy=true;const data=new FormData(f);try{if(f.dataset.lowerPriceReport){
  const itemId=String(f.dataset.lowerPriceReport||'');
  const otherUrl=String(data.get('other_url')||'').trim();
  const priceRaw=String(data.get('other_price')??'').trim();
@@ -8309,6 +8455,8 @@ else if(f.id==='approve-form'){await approveSuggestion(data);clearAdminSelectedP
 else if(f.id==='edit-delivery-form'){
  const pending=await updateBuyerDelivery(data);state.modal=null;render();notif(pending?'관리자에게 수령방식 변경 요청을 보냈어요':'수령방식 수정이 저장됐어요. 택배 3,000원 / 직접수령 0원이 자동 적용돼요.');
 }else if(f.id==='new-arrival-push-form'){await miniSendNewArrival(f);}
+else if(f.id==='ci-scan'){await ciScan(f);}
+else if(f.id==='ci-save'){await ciSave(f);}
 else if(f.id==='pick'){const pr=selectedProd(state.modal.id);if(!pr||pr.is_sold_out||!pr.published||!state.stores.some(st=>st.id===pr.store_id&&st.active))throw Error('품절되었거나 판매가 종료된 상품이에요.');const color=data.get('color'),size=data.get('size'),quantity=Number(data.get('qty'));if(!pr?.options[color]?.includes(size)||quantity<1||quantity>20)throw Error('옵션을 다시 확인해 주세요');const same=state.cart.find(x=>x.product_id===pr.id&&x.color===color&&x.size===size);if(same)same.quantity+=quantity;else state.cart.push({product_id:pr.id,store_id:pr.store_id,product_name:pr.name,color,size,quantity});saveCart();state.modal=null;render();notif('장바구니에 담았어요')}
 else if(f.id==='request'){if(state.cart.some(c=>{const p=selectedProd(c.product_id);return !p||p.is_sold_out||!p.published||!state.stores.some(st=>st.id===p.store_id&&st.active)}))throw Error('품절되거나 전시가 종료된 상품이 장바구니에 있어요. 해당 상품을 삭제하고 다시 요청해 주세요.');const name=String(data.get('name')||'').trim(),baby=String(data.get('baby')||'').trim(),contact=String(data.get('contact')||'').trim(),email=normalizeCustomerEmail(data.get('email')),note=String(data.get('note')||'').trim();if(!name||!baby)throw Error('주문자 이름과 아기 이름(태명)을 모두 입력해 주세요');customerPhoneLocal(contact);const lookupPin=customerLookupPin(data.get('lookup_pin'));if(lookupPin!==String(data.get('lookup_pin_confirm')||''))throw Error('주문조회 비밀번호가 서로 달라요.');const method=String(data.get('delivery_method')||'');if(!['pickup','courier'].includes(method))throw Error('수령방식을 선택해 주세요');
  const delivery={delivery_method:method,recipient_name:String(data.get('recipient_name')||'').trim(),postal_code:String(data.get('postal_code')||'').trim(),address_line1:String(data.get('address_line1')||'').trim(),address_line2:String(data.get('address_line2')||'').trim(),delivery_note:String(data.get('delivery_note')||'').trim()};
@@ -8430,6 +8578,11 @@ else if(f.dataset.price){
 else if(f.dataset.payment){const paid=Number(data.get('paid')),refunded=Number(data.get('refunded'));if(!Number.isInteger(paid)||!Number.isInteger(refunded)||paid<0||refunded<0)throw Error('금액을 확인해 주세요');await adminPayment(f.dataset.payment,paid,refunded);await loadAdmin();notif('입금 기록 완료')}
 }catch(ex){notif(errorText(ex))}finally{busy=false}}
 async function change(e){const x=e.target;
+if(x.id==='ci-files'){
+ const files=[...(x.files||[])];
+ if(files.length>12||files.some(f=>!f.type?.startsWith('image/')||f.size>35*1024*1024)){x.value='';notif('사진은 최대 12장, 장당 35MB 이하여야 해요.');return;}
+ ciFiles=files;ciReset();ciUpdate();return;
+}
 if(x.matches?.('[data-size-preset-select]')){
  const form=x.closest('form');
  loadStoreSizesIntoForm(form,x.value);

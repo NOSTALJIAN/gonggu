@@ -4457,10 +4457,11 @@ function buyerOptionRequest(q,i){
 
 function buyerQuotedItemActions(q,i){
  if(!['quoted','confirmed'].includes(q.status))return '';
+ if(!githubStorefront && q.status!=='quoted')return '';
  const disabled=q.cancel_requested_at?'disabled':'';
  return `<div class="buyer-quote-item-actions">
   ${q.status==='quoted'?`<button type="button" class="btn sm outline" data-action="remove-quoted-item" data-id="${esc(i.id)}" ${disabled}>견적에서 물품 삭제</button>`:''}
-  <details class="buyer-lower-price-details">
+  ${githubStorefront?`<details class="buyer-lower-price-details">
    <summary>다른 사이트가 더 저렴해요</summary>
    <form data-lower-price-report="${esc(i.id)}" class="buyer-lower-price-form">
     <label class="label">다른 사이트 상품 링크 <span class="tiny">(선택)</span><input type="url" name="other_url" maxlength="1000" placeholder="https://..." inputmode="url" autocomplete="off"></label>
@@ -4469,7 +4470,7 @@ function buyerQuotedItemActions(q,i){
     <p class="smallnote">가격·링크·비교 내용 중 하나만 입력해도 돼요. 관리자에게 제보되며 견적은 자동으로 할인되지 않아요.</p>
     <button type="submit" class="btn sm secondary">가격 정보 보내기</button>
    </form>
-  </details>
+  </details>`:''}
  </div>`;
 }
 function renderAdminLowerPriceReports(q){

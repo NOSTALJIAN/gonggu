@@ -4896,6 +4896,151 @@ function updateAdminProductSearch(){
  if(clear)clear.classList.toggle('hidden',!query);
 }
 
+
+// Local ZIP photo matching for LaLa Land 2026 winter. No paid image/OCR API.
+// Reads ZIP directory ranges via File.slice: safe for selecting 12 x 400MB files.
+const lalaKidsNames=[null,'록시 털 모자','록시 발 워머','베니 털 자켓','하이후드 머플러',
+'모리 털 가방',null,'코코 체크 점퍼','키즈 클로버 니트비니','베베 레트로 오리니트',
+'베어 가디건','노즈 조끼','롬 체크 바지','롬도 체크 스커트','라고 맨투맨',
+'레고 조거바지','퐁실 베어 맨투맨','말랑 조거바지','키즈 덤블 맨투맨',
+'하리보 티','밸런스 폴라티','두잇 ST 폴라티','포트 주머니티',
+'포타 라글란 티','별 후드 랩바티','그레잇 맨투맨','드림 맨투맨',
+'캐롯 맨투맨','캣츠 맨투맨','포베어 맨투맨','포근 롤업 바지',
+'데일리 레깅스','퍼지 ST 바지','버블 골덴 바지','카멜 다트 바지',
+'딘딘 체크 바지','모던 ST 바지','코드 카고바지','플레이 조거바지',
+'레이 조거바지','도트 조거바지','포니 레깅스','맘 올라 덤블점퍼'];
+let lalaZipBusy=false,lalaZipCancel=false,lalaZipLast='';
+function lalaZipStatus(msg){
+ lalaZipLast=String(msg);
+ const el=app.querySelector('#lala-zip-status');if(el)el.textContent=lalaZipLast;
+}
+async function lalaReadZip(file){
+ const buffer=await file.slice(Math.max(0,file.size-65558)).arrayBuffer();
+ const tail=new DataView(buffer);let end=-1;
+ for(let i=buffer.byteLength-22;i>=0;i--)if(tail.getUint32(i,true)===0x06054b50){end=i;break;}
+ if(end<0)throw Error(file.name+': 정상적인 ZIP 파일이 아니에요.');
+ const len=tail.getUint32(end+12,true),pos=tail.getUint32(end+16,true);
+ if(len>10000000||pos+len>file.size)throw Error(file.name+': ZIP 목록이 잘못됐어요.');
+ const dir=await file.slice(pos,pos+len).arrayBuffer(),v=new DataView(dir),b=new Uint8Array(dir);
+ const decode=new TextDecoder('utf-8');const list=[];let p=0;
+ while(p+46<=dir.byteLength&&v.getUint32(p,true)===0x02014b50){
+  const method=v.getUint16(p+10,true),size=v.getUint32(p+20,true);
+  const n=v.getUint16(p+28,true),ex=v.getUint16(p+30,true),c=v.getUint16(p+32,true);
+  if(p+46+n+ex+c>dir.byteLength)throw Error(file.name+': ZIP 목록이 손상됐어요.');
+  const name=decode.decode(b.slice(p+46,p+46+n)),local=v.getUint32(p+42,true);
+  p+=46+n+ex+c;
+  const m=name.match(/^(키즈 바닥컷|키즈 착샷)\/(\d{1,2})\.[^/]+\/([^/]+\.jpe?g)$/i);
+  if(!m)continue;
+  if(method!==0)throw Error(file.name+': 압축된 ZIP 방식은 지원하지 않아요. 터미널에서 만든 분할 ZIP(-0)을 이용해 주세요.');
+  list.push({file,album:m[1],num:Number(m[2]),filename:m[3],name,local,size});
+ }
+ return list;
+}
+function lalaPhotoOrder(a,b){
+ const x=a.filename.match(/^(\d+)(?:-(\d+))?\.jpg$/i),y=b.filename.match(/^(\d+)(?:-(\d+))?\.jpg$/i);
+ if(Boolean(x)!==Boolean(y))return x?-1:1;
+ if(x&&y)return Number(x[1])-Number(y[1])||Number(x[2]||0)-Number(y[2]||0);
+ return a.filename.localeCompare(b.filename,'ko',{numeric:true});
+}
+function lalaPickZipPhotos(all,num,limit,kind){
+ let floor=all.filter(e=>e.num===num&&e.album==='키즈 바닥컷').sort(lalaPhotoOrder);
+ let model=all.filter(e=>e.num===num&&e.album==='키즈 착샷').sort(lalaPhotoOrder);
+ if(num===6){
+  // Vendor's two color-price variants are in one folder. Use only verified
+  // single-color floor images; never attach ambiguous outfit photos.
+  const allowed=kind==='flower'?[2,3,4,5,10,12,14,16]:[6,7,8,9,18];
+  floor=floor.filter(e=>allowed.includes(Number(e.filename.match(/^(\d+)/)?.[1])));
+  model=[];
+ }
+ const count=Math.min(floor.length,Math.ceil(limit*.6));
+ const selected=[...floor.slice(0,count),...model.slice(0,limit-count)];
+ if(selected.length<limit)selected.push(...floor.slice(count,count+limit-selected.length));
+ return selected.slice(0,limit);
+}
+async function lalaZipPhotoBlob(entry){
+ const header=new DataView(await entry.file.slice(entry.local,entry.local+30).arrayBuffer());
+ if(header.byteLength<30||header.getUint32(0,true)!==0x04034b50)throw Error('ZIP 사진이 손상됐어요.');
+ const at=entry.local+30+header.getUint16(26,true)+header.getUint16(28,true);
+ if(at+entry.size>entry.file.size)throw Error('ZIP 사진 범위가 잘못됐어요.');
+ return entry.file.slice(at,at+entry.size,'image/jpeg');
+}
+async function lalaZipPath(p,e){
+ const data=new TextEncoder().encode('miniyena-kids26|'+p.id+'|'+e.name);
+ const hash=new Uint8Array(await crypto.subtle.digest('SHA-256',data));
+ hash[6]=(hash[6]&15)|80;hash[8]=(hash[8]&63)|128;
+ const h=Array.from(hash.slice(0,16),v=>v.toString(16).padStart(2,'0')).join('');
+ return 'covers/'+[h.slice(0,8),h.slice(8,12),h.slice(12,16),h.slice(16,20),h.slice(20,32)].join('-')+'.jpg';
+}
+async function lalaZipUpload(p,entry){
+ const path=await lalaZipPath(p,entry),out=publicPhotoUrl(path);
+ const jpeg=await toJpeg(await lalaZipPhotoBlob(entry)),token=await getToken();
+ if(!token)throw Error('관리자 로그인 세션이 만료됐어요.');
+ const r=await fetch(url+'/storage/v1/object/'+PHOTO_PUBLIC+'/'+path,{
+  method:'POST',headers:{apikey:key,Authorization:'Bearer '+token,'Content-Type':'image/jpeg'},body:jpeg});
+ if(!r.ok&&r.status!==409){
+  let msg='서버 오류 '+r.status;
+  try{const j=await r.json();msg=j.message||j.error||msg}catch{}
+  throw Error('사진 업로드 실패: '+msg);
+ }
+ return out;
+}
+async function importLalaKidsZips(files,limit){
+ if(!state.admin||!connected)throw Error('관리자 로그인이 필요해요.');
+ if(lalaZipBusy)throw Error('이미 ZIP 사진 등록 중이에요.');
+ if(files.length<1||files.length>30)throw Error('ZIP 파일은 1~30개를 선택해 주세요.');
+ lalaZipBusy=true;lalaZipCancel=false;
+ const input=app.querySelector('#lala-zip-files');if(input)input.disabled=true;
+ try{
+  const store=state.stores.find(x=>x.name.trim()==='라라랜드');
+  if(!store)throw Error('라라랜드 거래처가 등록돼 있지 않아요.');
+  let entries=[];
+  for(let i=0;i<files.length;i++){
+   lalaZipStatus('ZIP 폴더 확인 '+(i+1)+'/'+files.length+' · '+files[i].name);
+   entries.push(...await lalaReadZip(files[i]));
+  }
+  if(!entries.length)throw Error('ZIP 안에서 키즈 바닥컷·착샷 폴더를 찾지 못했어요.');
+  const prods=state.products.filter(p=>p.store_id===store.id),tasks=[],errors=[];
+  for(let n=1;n<=42;n++){
+   const names=n===6?[['애니 덤블 점퍼 (퍼플 꽃)','flower'],['애니 덤블 점퍼 (블루 공룡)','blue']]:[[lalaKidsNames[n],'']];
+   for(const [name,kind] of names){
+    const p=prods.find(p=>p.name===name);
+    if(p)tasks.push({p,num:n,kind});
+   }
+  }
+  let completed=0,photos=0,skipped=0;
+  for(const item of tasks){
+   if(lalaZipCancel)break;
+   const product=item.p;
+   // Keep existing, already-photographed legacy products unchanged.
+   if(!String(product.product_note||'').includes('카탈로그: 라라랜드 26겨울 Kids ')&&product.image_url){skipped++;continue;}
+   const chosen=lalaPickZipPhotos(entries,item.num,limit,item.kind);
+   if(!chosen.length){skipped++;continue;}
+   const existing=productPhotoUrls(product),updated=[...existing];
+   for(const entry of chosen){
+    if(lalaZipCancel||updated.length>=50)break;
+    const photoUrl=publicPhotoUrl(await lalaZipPath(product,entry));
+    if(updated.includes(photoUrl))continue;
+    try{
+     lalaZipStatus('등록 중 '+(completed+1)+'/'+tasks.length+' · '+product.name+' · '+(photos+1)+'장 완료');
+     updated.push(await lalaZipUpload(product,entry));photos++;
+    }catch(e){errors.push(product.name+' ('+entry.filename+'): '+e.message);break;}
+   }
+   if(updated.length>existing.length){
+    try{
+     const body={image_url:updated[0],gallery_urls:updated.slice(1,50)};
+     const response=await api('/rest/v1/gq_products?id=eq.'+encodeURIComponent(product.id),{method:'PATCH',body,admin:true});
+     if(!Array.isArray(response)||response.length!==1)throw Error('상품 사진 저장을 확인하지 못했어요.');
+     product.image_url=body.image_url;product.gallery_urls=body.gallery_urls;
+    }catch(e){errors.push(product.name+' 저장: '+e.message);}
+   }
+   completed++;
+  }
+  await loadCatalog(true);
+  lalaZipStatus('완료 · 상품 '+completed+'종 확인 · 사진 '+photos+'장 연결 · 기존 사진 유지/사진 없음 '+skipped+'종'+(lalaZipCancel?' · 사용자 중단':'')+(errors.length?' · 오류 '+errors.length+'건: '+errors[0]:'')+'. 미전시 상태는 그대로예요.');
+  notif('키즈 상품 사진 '+photos+'장 등록 완료');
+ }finally{lalaZipBusy=false;if(input?.isConnected){input.disabled=false;input.value='';}}
+}
+
 function renderAdminProducts(){
  const all=state.products;
  const isVisible=p=>Boolean(p.published&&state.stores.some(st=>st.id===p.store_id&&st.active));
@@ -4973,7 +5118,15 @@ function renderAdminProducts(){
    </details>
   `:`
    <div class="sectiontitle admin-catalog-section-title admin-catalog-compact-title"><div><h2>상품 목록</h2></div><button class="btn sm" data-action="add-product">+ 상품 등록</button></div>
-   <div class="admin-product-toolbar">
+   <details class="card" style="margin:10px 0 14px;padding:12px">
+     <summary style="cursor:pointer;font-size:13px;font-weight:800">📦 라라랜드 키즈 ZIP 사진 자동연결</summary>
+     <p class="smallnote" style="margin:9px 0">키즈사진_01~12.zip을 전부 선택하면 상품 폴더 번호로 사진을 자동 분류해요. 상품은 미전시로 유지하고, 기존에 등록된 사진은 지우지 않아요.</p>
+     <label class="label">상품당 사진 수<select id="lala-zip-count"><option value="10">10장 (추천)</option><option value="20">20장</option><option value="50">최대 50장</option></select></label>
+     <input id="lala-zip-files" type="file" accept=".zip,application/zip" multiple aria-label="라라랜드 키즈 ZIP 파일 선택" style="display:block;width:100%;max-width:100%;margin:8px 0;font-size:12px">
+     <p class="smallnote" id="lala-zip-status" role="status" aria-live="polite" style="overflow-wrap:anywhere">ZIP 파일을 모두 선택하면 등록을 시작해요. 완료할 때까지 이 화면을 열어 둬 주세요.</p>
+     <button type="button" class="btn sm secondary" data-action="lala-zip-cancel">등록 중단</button>
+    </details>
+<div class="admin-product-toolbar">
     <div class="admin-product-search-box">
      <label class="sr-only" for="admin-product-search">상품 검색</label>
      <div class="admin-product-search-row">
@@ -7514,6 +7667,7 @@ async function click(e){
  if(e.target.matches?.('[data-product-store-search]')){productStoreSearchResults(e.target,true);return;}
  if(!e.target.closest?.('[data-product-store-picker]'))closeProductStoreSearch(app.querySelector('#product-form'));
  const pg=e.target.closest('[data-page]');if(pg){goto(pg.dataset.page);if(pg.classList.contains('brand-home'))window.scrollTo({top:0,behavior:'auto'});return}const b=e.target.closest('[data-action]');if(!b)return;const a=b.dataset.action,id=b.dataset.id;try{
+if(a==='lala-zip-cancel'){lalaZipCancel=true;lalaZipStatus('중단 요청됨 · 현재 작업을 마치고 멈춰요.');return;}
 if(a==='shop-filter-toggle'){
  if(state.page!=='shop')return;
  state.shopFiltersOpen=!state.shopFiltersOpen;
@@ -8431,6 +8585,13 @@ else if(f.dataset.price){
 else if(f.dataset.payment){const paid=Number(data.get('paid')),refunded=Number(data.get('refunded'));if(!Number.isInteger(paid)||!Number.isInteger(refunded)||paid<0||refunded<0)throw Error('금액을 확인해 주세요');await adminPayment(f.dataset.payment,paid,refunded);await loadAdmin();notif('입금 기록 완료')}
 }catch(ex){notif(errorText(ex))}finally{busy=false}}
 async function change(e){const x=e.target;
+if(x.id==='lala-zip-files'){
+ const files=Array.from(x.files||[]).sort((a,b)=>a.name.localeCompare(b.name,'ko',{numeric:true}));
+ try{await importLalaKidsZips(files,Number(app.querySelector('#lala-zip-count')?.value)||10)}
+ catch(e){lalaZipStatus('등록 오류: '+e.message);notif('ZIP 등록 오류: '+e.message)}
+ return;
+}
+
 if(x.matches?.('[data-size-preset-select]')){
  const form=x.closest('form');
  loadStoreSizesIntoForm(form,x.value);

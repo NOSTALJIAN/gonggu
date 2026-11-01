@@ -3629,12 +3629,15 @@ function renderAdminEmailEditor(kind,item){
   <p>이메일을 변경해도 과거 알림은 자동 발송되지 않아요. 이후 상태 변경부터 적용돼요.</p>
  </section>`;
 }
-async function refreshSupplierPartialBatch(batchId){
- const target=[...app.querySelectorAll('[data-supplier-batch-id]')].find(x=>x.dataset.supplierBatchId===batchId);
+async function refreshSupplierPartialBatch(batchId,button=null){
+ const targets=[...app.querySelectorAll('[data-supplier-batch-id]')].filter(x=>x.dataset.supplierBatchId===batchId);
+ const target=button?.closest('[data-supplier-batch-id]')||targets[0]||null;
+ const position=target?targets.indexOf(target):0;
  const before=target?target.getBoundingClientRect().top:0;
  const scrollY=window.scrollY;
  await loadAdmin();
- const after=[...app.querySelectorAll('[data-supplier-batch-id]')].find(x=>x.dataset.supplierBatchId===batchId);
+ const newTargets=[...app.querySelectorAll('[data-supplier-batch-id]')].filter(x=>x.dataset.supplierBatchId===batchId);
+ const after=newTargets[Math.max(0,Math.min(position,newTargets.length-1))];
  if(after){
   after.open=true;
   const parent=after.closest('.supplier-bulk-history-only');
@@ -5727,7 +5730,7 @@ function renderSupplierBulkManager(historyOnly=false){
    <summary><span><strong>${esc(batch.supplier||'거래처')} · ${ordered?'도매 발주 완료':'발주 대기'}</strong>
     <small>${batch.people}명 · ${batchItems.length}종 · 배송비 ${money(batch.total)} · 1인 ${shareText}</small>
     <small>${fmtDate(batch.created_at)}</small></span>
-    <em>${ordered?'완료':checked.paid+'/'+batch.people+'명 입금 확인'}</em>
+    <em>${ordered?'완료':checked.people.filter(p=>supplierPartialInvoice(batch.id,p.payer.buyer_key)?.paid_at).length?checked.people.filter(p=>supplierPartialInvoice(batch.id,p.payer.buyer_key)?.paid_at).length+'/'+batch.people+'명 선입금 확인':checked.paid+'/'+batch.people+'명 전체 입금 확인'}</em>
    </summary>
    <div class="supplier-bulk-batch-body">
     ${checked.people.map(p=>{
@@ -5747,7 +5750,7 @@ function renderSupplierBulkManager(historyOnly=false){
       ${actions}</div>`;
     }).join('')}
     <div class="smallnote supplier-bulk-items-count">배분 상품: ${batchItems.map(i=>esc(i.product_name)).join(' · ')||'기록 확인 필요'}</div>
-    <p class="smallnote">이 거래처에 체크한 상품만 발주 처리해요. 구매자 입금은 해당 주문의 상품·배송비 전체 금액을 확인해요.</p>
+    <p class="smallnote">전체 주문 입금 또는 해당 거래처 상품·배송비 선입금 중 선택할 수 있어요. 다른 거래처 상품은 그대로 유지해요.</p>
     ${ordered?`<div class="supplier-bulk-done">이 거래처 발주 완료: ${fmtDate(batch.ordered_at)}</div>`:
       `<button type="button" class="btn block" data-action="supplier-bulk-ordered" data-id="${esc(batch.id)}" ${checked.canOrder?'':'disabled'}>전체 주문 입금 확인 → 도매 발주 완료</button>
        <button type="button" class="btn block secondary" style="margin-top:7px" data-action="supplier-bulk-ordered-partial" data-id="${esc(batch.id)}" ${checked.partialReady?'':'disabled'}>이 거래처만 선입금 확인 → 발주 완료</button>
@@ -7871,7 +7874,7 @@ if(a==='supplier-partial-request'){
  if(existing?.paid_at)throw Error('입금 완료한 요청은 다시 생성할 수 없어요.');
  const invoice=await rpc('gq_admin_request_supplier_partial_v88',{p_batch_id:id,p_buyer_key:buyerKey},true);
  if(!invoice?.id)throw Error('선입금 요청이 저장되지 않았어요.');
- await refreshSupplierPartialBatch(id);
+ await refreshSupplierPartialBatch(id,b);
  notif('상품 '+money(invoice.item_total)+' + 도매배송비 '+money(invoice.freight)+' = '+money(invoice.amount)+' 요청 생성 완료. 입금 안내 복사를 눌러 고객에게 보내 주세요.');
  return;
 }
@@ -7890,7 +7893,7 @@ if(a==='supplier-partial-paid'){
  if(!window.confirm((quote?.buyer_name||'구매자')+'님의 '+money(invoice.amount)+'이 실제 계좌에 입금됐나요?\n\n확인하면 해당 주문의 누적 입금액에 자동 합산됩니다. 기존 입금·환불 관리 화면에 이 금액을 다시 추가하지 마세요.'))return;
  const result=await rpc('gq_admin_record_supplier_partial_paid_v88',{p_invoice_id:invoice.id},true);
  if(!result?.paid)throw Error('입금 확인 내역을 저장하지 못했어요.');
- await refreshSupplierPartialBatch(invoice.batch_id);
+ await refreshSupplierPartialBatch(invoice.batch_id,b);
  notif('선입금 '+money(invoice.amount)+' 확인 완료 · 누적 입금액에 반영했어요.');
  return;
 }
@@ -7901,7 +7904,7 @@ if(a==='supplier-bulk-ordered-partial'){
  if(!window.confirm('‘'+batch.supplier+'’ 거래처에 선택한 상품 '+batch.item_ids.length+'종을 실제 발주했나요?\n\n선입금 확인된 이 거래처의 상품만 발주 완료로 처리하고 다른 거래처 상품은 그대로 둡니다.'))return;
  const result=await rpc('gq_admin_mark_supplier_item_batch_partial_v88',{p_batch_id:id},true);
  if(!result?.ordered)throw Error('거래처 도매 발주 결과를 확인하지 못했어요.');
- await refreshSupplierPartialBatch(id);
+ await refreshSupplierPartialBatch(id,b);
  notif('이 거래처 '+Number(result.items||0)+'종만 도매 발주 완료했어요.');
  return;
 }

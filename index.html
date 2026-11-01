@@ -3034,6 +3034,13 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 .supplier-bulk-items-compact>summary{font-size:10px;color:#777;cursor:pointer;padding:9px 0}
 .supplier-bulk-items-compact>div{font-size:11px;color:#777;line-height:1.6;padding:5px 0 10px}
 .admin-quote-workspace .admin-compact-note{font-size:11px;color:#777;margin:5px 0 12px}
+
+/* Namdaemun shop and product on one line, options below. */
+.admin-workspace-content .compact-order-product b,
+.admin-workspace-content .round-simple-product b,
+.admin-workspace-content .round-order-quick-item b,
+.admin-workspace-content .compact-receipt-row b{overflow-wrap:anywhere;word-break:keep-all;line-height:1.5}
+.admin-workspace-content .round-order-quick-item b{font-size:11px;font-weight:770}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -5692,6 +5699,11 @@ function roundGroupTask(group){
  if(paid<total)return {title:'입금 '+money(total-paid)+' 확인 필요',hint:'받은 금액을 주문별로 입력하세요.',action:'round-open-orders',label:'입금 수정'};
  return {title:'입금 완료 · 도매 발주 확인',hint:'거래처별 입금·발주에서 발주 상태를 확인하세요.',filter:'supplier_payments',label:'거래처 발주 보기'};
 }
+/* Buyer-visible Namdaemun shop name, not private actual wholesale supplier. */
+function adminOrderItemName(i){
+ const store=String(i.store_name||'').trim();
+ return (store?esc(store)+' · ':'')+esc(i.product_name||'상품명 미입력');
+}
 function renderRoundQuickOrder(q,index){
  const due=totalDue(q);
  const paid=(Number(q.amount_paid)||0)-(Number(q.amount_refunded)||0);
@@ -5700,11 +5712,11 @@ function renderRoundQuickOrder(q,index){
   <summary><span>${index+1}번째 주문 · ${esc(fmtDate(q.created_at))}</span><b>${money(due)} · ${esc(status)} ⌄</b></summary>
   <div class="round-order-quick-content">
    <div class="round-order-quick-line"><span>입금 ${money(paid)}</span><b>${due<=paid?'입금 완료':'남은 금액 '+money(due-paid)}</b></div>
-   ${(q.items||[]).map(i=>`<div class="round-order-quick-item"><span>${esc(i.product_name)}<small>${esc(i.color)} / ${esc(i.size)} · ${i.quantity}개</small></span><b>${i.unit_price==null?'미정':money(Number(i.unit_price)*Number(i.quantity))}</b></div>`).join('')}
+   ${(q.items||[]).map(i=>`<div class="round-order-quick-item"><span><b>${adminOrderItemName(i)}</b><small>${esc(i.color)} / ${esc(i.size)} · ${i.quantity}개</small></span><b>${i.unit_price==null?'미정':money(Number(i.unit_price)*Number(i.quantity))}</b></div>`).join('')}
    <button type="button" class="btn sm secondary" data-action="copy-customer-link" data-id="${esc(q.id)}">고객 확인 링크 복사</button>
    ${q.status==='requested'?`<button type="button" class="btn sm secondary" data-action="publish-quote" data-id="${esc(q.id)}" ${readyProductEstimate(q)?'':'disabled'}>견적 안내하기</button>`:''}
    <details class="round-order-tool"><summary>가격·옵션 수정</summary>
-    ${(q.items||[]).map(i=>`<div class="round-order-price-row"><span>${esc(i.product_name)} · ${esc(i.color)} / ${esc(i.size)}</span>
+    ${(q.items||[]).map(i=>`<div class="round-order-price-row"><span>${adminOrderItemName(i)} · ${esc(i.color)} / ${esc(i.size)}</span>
      <form class="round-order-price-form" data-price="${esc(i.id)}">
       <input type="number" name="price" min="0" max="100000000" inputmode="numeric" value="${i.unit_price??''}" aria-label="${esc(i.product_name)} 판매가">
       <button class="btn sm secondary" type="submit">저장</button>
@@ -5740,7 +5752,7 @@ function renderSameRoundCard(group){
  const mix=new Set(group.map(q=>q.delivery_method||'unknown')).size>1;
  return `<div class="round-simple">
   <div class="round-simple-products">${rows.map(({i,quantity})=>`<div class="round-simple-product">
-   <span><b>${esc(i.product_name)}</b><small>${esc(i.color)} / ${esc(i.size)} · ${esc(i.store_name)}</small></span>
+   <span><b>${adminOrderItemName(i)}</b><small>${esc(i.color)} / ${esc(i.size)}</small></span>
    <span><strong>${quantity}개</strong><small>${i.unit_price==null?'가격 미정':money(Number(i.unit_price)*quantity)}</small></span>
   </div>`).join('')}</div>
   <div class="round-simple-payment">
@@ -5879,7 +5891,7 @@ function renderAdminQuoteCard(q){
  return `<div class="card ordercard compact-order-card" data-compact-order="${esc(q.id)}">
   <div class="compact-order-top"><strong>${(q.items||[]).length}종 · ${qty}개</strong><span>${esc(deliveryLabel(q))} · ${esc(statusLabel[q.status]||q.status)}</span></div>
   <div class="compact-order-products">${(q.items||[]).map(i=>`<div class="compact-order-product">
-   <span><b>${esc(i.product_name)}</b><small>${esc(i.color)} / ${esc(i.size)} · ${Number(i.quantity)||0}개${i.fulfillment==='sold_out'?' · 품절':''}</small></span>
+   <span><b>${adminOrderItemName(i)}</b><small>${esc(i.color)} / ${esc(i.size)} · ${Number(i.quantity)||0}개${i.fulfillment==='sold_out'?' · 품절':''}</small></span>
    <strong>${i.unit_price==null?'가격 미정':money(Number(i.unit_price)*(Number(i.quantity)||0))}</strong>
   </div>`).join('')}</div>
   <div class="compact-order-money">
@@ -5896,7 +5908,7 @@ function renderAdminQuoteCard(q){
    <details class="compact-order-tool" data-compact-tool="prices">
     <summary>가격·옵션 수정</summary>
     <div class="compact-tool-content">
-     ${(q.items||[]).map(i=>`<div class="compact-edit-item"><span>${esc(i.product_name)} · ${esc(i.color)} / ${esc(i.size)}</span>
+     ${(q.items||[]).map(i=>`<div class="compact-edit-item"><span>${adminOrderItemName(i)} · ${esc(i.color)} / ${esc(i.size)}</span>
       <form class="compact-price-form" data-price="${esc(i.id)}">
        <input name="price" type="number" min="0" max="100000000" step="1" inputmode="numeric" value="${i.unit_price??''}" placeholder="판매가" aria-label="${esc(i.product_name)} 판매가" ${q.status==='cancelled'?'disabled':''}>
        <button type="submit" class="btn sm secondary" ${q.status==='cancelled'?'disabled':''}>저장</button>
@@ -5921,7 +5933,7 @@ function renderAdminQuoteCard(q){
     <summary>입고·배송 처리</summary>
     <div class="compact-tool-content">
      ${q.status==='confirmed'?`<div class="compact-receipts">
-      ${active.map(i=>`<div class="compact-receipt-row"><span><b>${esc(i.product_name)}</b><small>${esc(i.color)} / ${esc(i.size)} · ${i.quantity}개</small></span>
+      ${active.map(i=>`<div class="compact-receipt-row"><span><b>${adminOrderItemName(i)}</b><small>${esc(i.color)} / ${esc(i.size)} · ${i.quantity}개</small></span>
        <span>${itemFulfillmentControl(q,i)}</span></div>`).join('')}
      </div>${adminWorkflow(q)}`:'<p class="smallnote">주문 확정 후 입고·배송을 관리할 수 있어요.</p>'}
     </div>

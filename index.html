@@ -2756,6 +2756,34 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 #product-form.product-clean-form .approval-bulk-presets .smallnote{font-size:10px}
 #product-form.product-clean-form .product-note-help{display:none}
 
+/* Align the alternate buying supplier control with the source select.
+   Do not apply the 44px input style to its checkbox. */
+:is(#approve-form,#product-form.product-clean-form) .approval-sourcing-fields>.private-supplier-choice{
+ display:contents;
+}
+:is(#approve-form,#product-form.product-clean-form) .approval-sourcing-fields .private-supplier-toggle{
+ grid-column:2;align-self:end;box-sizing:border-box;
+ display:flex;align-items:center;justify-content:flex-start;
+ height:44px;min-height:44px;min-width:0;margin:0!important;padding:0 0 0 4px;
+ gap:8px;font-size:12px;font-weight:650;line-height:1.15;white-space:nowrap;
+}
+:is(#approve-form,#product-form.product-clean-form) .approval-sourcing-fields .private-supplier-toggle input[type="checkbox"]{
+ appearance:auto;-webkit-appearance:checkbox;
+ display:block;box-sizing:border-box;flex:0 0 19px;
+ width:19px;min-width:19px;max-width:19px;
+ height:19px;min-height:19px;max-height:19px;
+ margin:0!important;padding:0!important;vertical-align:middle;
+ border-radius:4px;accent-color:#171717;
+}
+:is(#approve-form,#product-form.product-clean-form) .approval-sourcing-fields .private-supplier-row{
+ grid-column:1/-1;display:block;margin:2px 0 0;
+ font-size:11px;font-weight:650;
+}
+:is(#approve-form,#product-form.product-clean-form) .approval-sourcing-fields .private-supplier-row[hidden]{display:none!important}
+:is(#approve-form,#product-form.product-clean-form) .approval-sourcing-fields .private-supplier-row input{
+ height:44px;min-height:44px;margin-top:5px;
+}
+
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -3361,7 +3389,6 @@ function privateSupplierFields(existingId){
  const other=!!previous&&(!base||previous.toLocaleLowerCase('ko-KR')!==base.toLocaleLowerCase('ko-KR'));
  return `<div class="private-supplier-choice">
   <label class="stageradio private-supplier-toggle"><input type="checkbox" name="private_supplier_override" data-private-supplier-override ${other?'checked':''}> 다른 거래처</label>
-  <p class="smallnote private-supplier-default" data-private-supplier-default>${base?esc(base)+' 자동 적용':'상품 거래처 자동 적용'}</p>
   <label class="label private-supplier-row" data-private-supplier-row ${other?'':'hidden'}>
    사입처명
    <input name="private_supplier" maxlength="150" autocomplete="off" value="${esc(other?previous:'')}" placeholder="실제 사입하는 거래처명" ${other?'required':'disabled'}>
@@ -3374,13 +3401,6 @@ function updatePrivateSupplierForm(form){
  const row=form.querySelector('[data-private-supplier-row]');
  const field=form.querySelector('[name="private_supplier"]');
  if(checkbox&&row&&field){row.hidden=!checkbox.checked;field.disabled=!checkbox.checked;field.required=checkbox.checked;}
- const note=form.querySelector('[data-private-supplier-default]');
- if(note){
-  const shop=form.id==='approve-form'?String(form.querySelector('[name="store"]')?.value||'').trim():
-   form.querySelector('select[name="store"]')?.value==='__new_store__'?String(form.querySelector('[name="new_store_name"]')?.value||'').trim():
-   String(state.stores.find(s=>s.id===form.querySelector('select[name="store"]')?.value)?.name||'').trim();
-  note.textContent=shop?shop+' 자동 적용':'상품 거래처 자동 적용';
- }
 }
 function updatePrivateSourcingForm(form){
  if(!form)return;

@@ -3894,8 +3894,20 @@ async function miniPushStatus(){
  const subscribed=!!(check?.ok&&check.client?.User?.PushSubscription?.optedIn&&check.client.User.PushSubscription.id);
  const aliasReady=subscribed?await miniRegisterAdminAlias():false;
  if(!state.admin||(!node?.isConnected&&!summary?.isConnected))return;
- if(aliasReady)update('기기 연결됨','이 기기의 관리자 구독 ID가 서버에 개별 등록됐어요. 상품 요청 알림은 기기별로 발송됩니다.');
- else if(subscribed)update('관리자 연결 필요','기기 알림은 허용됐지만 관리자 수신 대상 연결이 완료되지 않았어요.');
+ if(aliasReady){
+  const siteKey=location.hostname==='miniyena.pages.dev'?'cloudflare':'github';
+  let health=null;
+  try{health=await rpc('gq_admin_push_health_v85',{p_site:siteKey},true)}
+  catch(error){console.warn('관리자 푸시 전달 이력 조회 실패',error)}
+  if(!state.admin||(!node?.isConnected&&!summary?.isConnected))return;
+  const failed=Number(health?.failed||0),waiting=Number(health?.waiting||0),accepted=Number(health?.accepted||0);
+  if(failed>0)update('최근 발송 실패 '+failed+'건',
+    '최근 24시간 동안 푸시 '+failed+'건이 수신 대상 확인 또는 전송에 실패했어요. 관리자 알림을 다시 연결하고 아래 ‘내 기기에 테스트 알림’을 눌러 주세요.');
+  else if(waiting>0)update('알림 재시도 대기 '+waiting+'건',
+    '관리자 기기가 등록됐지만 일부 알림을 다시 보내는 중이에요. 실제 수신 여부는 아래 테스트 알림으로 확인해 주세요.');
+  else update('기기 등록됨'+(accepted?' · 전송 '+accepted+'건':''),
+    '알림 허용과 서버 기기 등록을 확인했어요. 실제 수신 여부는 아래 ‘내 기기에 테스트 알림’으로 확인해 주세요.');
+ }else if(subscribed)update('관리자 연결 필요','기기 알림은 허용됐지만 관리자 수신 대상 연결이 완료되지 않았어요. 관리자 알림을 다시 연결해 주세요.');
  else update('구독 연결 필요','알림 권한은 허용됐지만 현재 주소의 푸시 구독 확인이 필요해요.');
  const btn=node?.closest('.pushbox')?.querySelector('[data-action="enable-admin-push"]');
  if(btn)btn.textContent=aliasReady?'알림 다시 연결':'관리자 알림 연결하기';
@@ -3943,8 +3955,8 @@ async function miniSendTestPush(){
  if(!token)throw Error('다시 로그인해 주세요.');
  const res=await fetch(url+'/functions/v1/gq-test-push',{method:'POST',headers:{'Authorization':'Bearer '+token,'apikey':key,'Content-Type':'application/json'},body:JSON.stringify({subscription_id:sub.id,site:location.hostname==='miniyena.pages.dev'?'cloudflare':'github'})});
  const json=await res.json().catch(()=>({}));
- if(!res.ok||!json.ok)throw Error(json.error||'테스트 알림을 보내지 못했어요.');
- notif('테스트 알림을 보냈어요. 아이폰 알림을 확인해 주세요.');
+ if(!res.ok||!json.ok||Number(json.recipients||0)<1)throw Error(json.error||'수신 가능한 기기가 없어요. 관리자 알림을 다시 연결해 주세요.');
+ notif('실제 수신 대상 '+json.recipients+'대에 테스트 푸시가 접수됐어요. 아이폰 알림을 확인해 주세요.');
 }
 let miniAdminAliasSyncedId='';
 let miniAdminAliasSyncing=null;
@@ -3992,10 +4004,18 @@ async function miniEnablePush(){
  if(!result.ok)throw Error(result.error || 'OneSignal을 초기화하지 못했어요.');
  if(!result.client.Notifications.isPushSupported())throw Error('이 환경에서는 푸시 알림을 지원하지 않아요.');
  if(!result.client.Notifications.permission) await result.client.Notifications.requestPermission();
- if(result.client.Notifications.permission && !result.client.User.PushSubscription.optedIn) await result.client.User.PushSubscription.optIn();
- if(!result.client.User.PushSubscription.optedIn)throw Error('알림 허용이 완료되지 않았어요. 권한 상태를 확인해 주세요.');
- await miniRegisterAdminAlias();
- miniPushStatus();
+ if(result.client.Notifications.permission){
+  // Reconnect is an explicit user action: refresh OneSignal's push subscription,
+  // not merely the local database registration, which can become stale on iOS.
+  if(result.client.User.PushSubscription.optedIn){
+   await result.client.User.PushSubscription.optOut();
+  }
+  await result.client.User.PushSubscription.optIn();
+ }
+ if(!result.client.User.PushSubscription.optedIn||!result.client.User.PushSubscription.id)throw Error('알림 구독을 다시 만들지 못했어요. 기기 설정을 확인해 주세요.');
+ miniAdminAliasSyncedId='';
+ if(!await miniRegisterAdminAlias())throw Error('관리자 알림 서버 등록에 실패했어요. 다시 연결해 주세요.');
+ await miniPushStatus();
 }
 const adminFoldState=new Map();
 // Freeze the page beneath dialogs, including iOS standalone Safari.
@@ -6071,6 +6091,7 @@ function renderAdminSettings(){return `<section class="card pushbox pushbox-sett
  <summary><span class="admin-push-summary-title">🔔 관리자 알림</span><span class="admin-push-summary-hint"><span id="mini-push-summary-state" aria-live="polite">연결 확인 중</span> <span class="admin-push-chevron" aria-hidden="true">⌄</span></span></summary>
  <div class="admin-push-body">
   <p id="mini-push-state" class="pushstate" aria-live="polite">알림 상태 확인 중…</p>
+  <p class="smallnote">견적·상품 등록·최종 주문 확정·취소·옵션·배송지 변경 요청 알림은 서버에서 발송해요. 알림을 다시 연결한 뒤 꼭 테스트해 주세요.</p>
   <button type="button" class="btn secondary" data-action="enable-admin-push">알림 연결 · 다시 연결</button>
   <div class="admin-push-test-buttons"><button type="button" class="btn secondary" data-action="send-test-push">내 기기에 테스트 알림</button><button type="button" class="btn secondary" data-action="send-buyer-test-push">구매자 주문 알림 테스트</button></div>
  </div>
@@ -7824,7 +7845,7 @@ if(a==='toggle-product-soldout'||a==='toggle-product-display'){
  return;
 }
 if(a==='enable-buyer-push'){await miniEnableBuyerPush();notif('이 기기의 주문 알림이 활성화됐어요.');return;}
-if(a==='enable-admin-push'){await miniEnablePush();notif('관리자 자동 알림 연결을 요청했어요. 구매 회차 변경으로 확인해 주세요.');return;}
+if(a==='enable-admin-push'){await miniEnablePush();notif('관리자 알림을 다시 연결했어요. ‘내 기기에 테스트 알림’을 눌러 실제 수신을 확인해 주세요.');return;}
 if(a==='send-test-push'){await miniSendTestPush();return;}
 if(a==='send-buyer-test-push'){await miniSendBuyerTestPush();return;}
 if(a==='bundle-sync-shipment'){

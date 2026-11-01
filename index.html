@@ -2983,14 +2983,6 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 .compact-original-detail>.ordercard{border:0!important;box-shadow:none!important;padding:5px 0!important;margin:0!important}
 
 
-/* Keep rarely used procurement worksheet out of the main four-step flow. */
-.admin-extra-procurement{margin:16px 0 5px;border-top:1px solid #e8e8e8}
-.admin-extra-procurement>summary{padding:13px 1px;font-size:11px;font-weight:700;color:#777;cursor:pointer;list-style:none}
-.admin-extra-procurement>summary::-webkit-details-marker{display:none}
-.admin-extra-procurement>summary:after{content:'⌄';float:right;color:#aaa}
-.admin-extra-procurement[open]>summary:after{content:'⌃'}
-.admin-extra-procurement>.procurement-sheet{margin-top:7px}
-
 /* v98: compact navigation with only one active task list. */
 .admin-workspace-content.is-quote-screen .admin-workspace-overview{display:none!important}
 .admin-workspace-content.is-quote-screen .admin-workspace-heading{margin-bottom:5px}
@@ -6738,7 +6730,7 @@ function renderAdminQuotes(){
    </div>
   </details>
   <div class="admin-compact-stage-heading"><strong>${esc(title)}</strong><span>${state.filter==='supplier_payments'?nSupplier:qq.length}${state.filter==='supplier_payments'?'곳':'건'}</span></div>
-  ${state.filter==='supplier_payments'?renderSupplierPaymentCenter()+`<details class="admin-extra-procurement"><summary>추가 기능 · 일괄 도매 발주서</summary>${renderProcurementSheet()}</details>`:
+  ${state.filter==='supplier_payments'?renderSupplierPaymentCenter():
    qq.length?`   ${state.filter==='buy_now'?renderSupplierBulkManager():''}
    ${state.filter==='wholesale_completed'?`<details class="admin-compact-more"><summary>발주 완료 발주서 보기</summary>${renderCompletedProcurementSheet()}</details>`:''}
    ${state.filter==='all'?renderAdminQuoteFlatSection(awaiting,'먼저 처리할 견적','pending')+renderAdminQuoteFlatSection(priced,'구매자 선택 대기'):

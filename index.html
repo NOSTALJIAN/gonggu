@@ -2802,6 +2802,49 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
  height:44px;min-height:44px;margin-top:5px;
 }
 
+
+/* v92: clear four-step admin workflow, priority action, and nonnested order list */
+.admin-workspace-content .admin-workflow-focus{display:flex;flex-direction:column;align-items:flex-start;gap:5px;margin:3px 0 18px;padding:13px 14px;border:1px solid #e4e4e4;border-radius:9px;background:#fafafa}
+.admin-workflow-focus-kicker{font-size:11px;color:#777;font-weight:740}
+.admin-workflow-focus>strong{font-size:16px;line-height:1.4;font-weight:850;letter-spacing:-.03em}
+.admin-workflow-focus>p{margin:0;font-size:12px;color:#666;line-height:1.55}
+.admin-workflow-focus-action{margin-top:6px;padding:8px 13px;border:0;border-radius:6px;background:#171717;color:#fff;font-size:12px;font-weight:750;min-height:38px}
+.admin-workflow-heading{display:flex;justify-content:space-between;align-items:baseline;gap:7px;margin-bottom:9px}
+.admin-workflow-heading strong{font-size:14px;font-weight:850}
+.admin-workflow-heading span{font-size:10px;color:#888}
+.admin-workspace-content .admin-workflow-steps{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;overflow:visible;padding:0;margin:0 0 11px}
+.admin-workspace-content .admin-workflow-step{min-width:0;width:100%;min-height:89px;padding:10px 11px;display:flex;flex-direction:column;align-items:stretch;gap:5px;border:1px solid #e0e0e0;border-radius:8px;background:#fff;color:#222;text-align:left}
+.admin-workflow-step.active{background:#171717!important;color:#fff!important;border-color:#171717!important}
+.admin-workflow-step-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.admin-workflow-step-no{width:20px;height:20px;display:inline-grid;place-items:center;border-radius:5px;background:#f0f0f0;color:#555;font-size:11px;font-weight:830}
+.admin-workflow-step-top>b{font-size:13px;font-weight:830}
+.admin-workflow-step>strong{font-size:13px;line-height:1.3}
+.admin-workflow-step>small{font-size:10px;color:#888;line-height:1.3}
+.admin-workflow-step.active .admin-workflow-step-no{background:#494949;color:#fff}
+.admin-workflow-step.active>small{color:#ccc}
+.admin-workspace-content .admin-workflow-extra{border:1px solid #ececec;border-radius:7px;margin:0 0 12px;background:#fff}
+.admin-workspace-content .admin-workflow-extra>summary{padding:9px 11px;min-height:36px;font-size:11px;color:#777}
+.admin-workflow-detailed-states{flex:1 1 100%;font-size:11px;color:#777;padding:6px 0}
+.admin-workflow-detailed-states>summary{cursor:pointer;font-weight:700}
+.admin-workflow-detailed-states>.admin-quote-secondary-list{padding:8px 0 0;border:0}
+.admin-workflow-current{border-top:1px solid #eee;padding:15px 0 11px}
+.admin-workflow-current h2{margin:0 0 4px;font-size:17px;letter-spacing:-.04em}
+.admin-workflow-current p{margin:0;font-size:12px;color:#666;line-height:1.55}
+.admin-workflow-inline-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.admin-workflow-inline-actions button{min-width:0;min-height:40px;padding:7px 5px;border:1px solid #ddd;border-radius:6px;background:#fff;font-size:11px;font-weight:770}
+.admin-workflow-inline-actions button:first-child{background:#171717;color:#fff;border-color:#171717}
+.admin-workflow-listbar{display:flex;justify-content:space-between;align-items:center;gap:9px;flex-wrap:wrap;margin:6px 0 10px}
+.admin-workflow-listbar>strong{font-size:12px;color:#555}
+.admin-flat-order-list{display:grid;gap:8px}
+.admin-flat-order-list>.admin-order-fold{margin:0;border:1px solid #e2e2e2;border-radius:7px;overflow:hidden}
+.admin-flat-order-list .admin-order-fold-heading{min-height:73px;padding:11px 12px;row-gap:7px}
+.admin-flat-order-list .admin-order-fold-left>strong{font-size:14px}
+.admin-flat-order-list .admin-order-fold-meta{font-size:10px}
+.admin-order-fold-next{font-size:11px;color:#676767;line-height:1.45;font-weight:750}
+.admin-order-fold-next.is-urgent{color:#94452f}
+.admin-flat-order-list .admin-order-fold-right{display:block}
+@media(max-width:390px){.admin-workflow-step{padding:9px!important}.admin-workflow-step>strong{font-size:12px}.admin-workflow-focus>strong{font-size:15px}.admin-workflow-inline-actions button{font-size:10px}}
+
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -5569,35 +5612,41 @@ function quoteGroupNeedsPriceInput(group){return group.some(quoteNeedsPriceInput
 function renderCollapsibleAdminOrder(group,section){
  const root=group.find(q=>q.id===bundleRootId(q))||group[0];
  const key=root.id;
- const open=state.orderCardsOpen[key]===undefined?(section==='pending'||group.some(q=>pendingItemOptionRequests(q).length>0)):state.orderCardsOpen[key];
- const uniqueItems=group.reduce((count,q)=>count+(q.items||[]).length,0);
- const qty=group.reduce((count,q)=>count+(q.items||[]).reduce((sum,i)=>sum+Number(i.quantity||0),0),0);
- const pending=group.reduce((count,q)=>count+(q.status==='cancelled'?0:(q.items||[]).filter(i=>i.unit_price==null&&i.fulfillment!=='sold_out').length),0);
- const attention=group.some(q=>(q.cancel_requested_at&&q.status!=='cancelled')||q.delivery_change_requested_at||pendingItemOptionRequests(q).length>0);
- const states=[...new Set(group.map(q=>q.status))];
- const stateText=states.length===1?statusLabel[states[0]]||states[0]:'상태 혼합';
- const stage=group.length===1&&root.status==='confirmed'?workflowLabel(root):'';
- const activeItems=group.flatMap(q=>q.items||[]).filter(i=>i.fulfillment!=='sold_out');
- const assigned=activeItems.filter(i=>supplierItemBatch(i.id)).length;
- const supplierOrdered=activeItems.filter(i=>i.supplier_ordered_at).length;
- return `<details class="admin-order-fold ${pending?'has-pending':''}" data-admin-order-id="${esc(key)}" ${open?'open':''}>
-   <summary class="admin-order-fold-heading">
-    <span class="admin-order-fold-left">
-     <strong>${esc(root.buyer_name||'주문자 미입력')} <span class="admin-order-fold-baby">아기: ${esc(root.baby_name||'미입력')}</span></strong>
-     <span class="admin-order-fold-meta">${group.length>1?group.length+'건 묶음배송 · ':''}상품 ${uniqueItems}종 · 총 ${qty}개 · ${fmtDate(root.created_at)}</span>
-    </span>
-    <span class="admin-order-fold-right">
-     <span class="admin-order-fold-status">${esc(stateText)}${stage?' · '+esc(stage):''}</span>
-     ${group.length===1?intentBadge(root):''}
-     ${group.some(q=>pendingItemOptionRequests(q).length)?'<span class="admin-order-fold-alert">옵션 변경 요청 확인</span>':''}
-     ${supplierOrdered?`<span class="admin-order-fold-ordered">도매 발주 ${supplierOrdered}/${activeItems.length}종 완료</span>`:assigned?`<span class="admin-order-fold-batched">거래처별 배분 ${assigned}종</span>`:''}
-     ${pending?`<span class="admin-order-fold-alert">가격 미입력 ${pending}종</span>`:attention?'<span class="admin-order-fold-alert">요청 확인 필요</span>':''}
-    </span>
-    <span class="admin-order-fold-chevron" aria-hidden="true"></span>
-   </summary>
-   <div class="admin-order-fold-body">
-    ${group.length>1?renderBundleCard(group):renderAdminQuoteCard(group[0])}
-   </div>
+ const open=state.orderCardsOpen[key]===undefined?
+  group.some(q=>pendingItemOptionRequests(q).length>0):state.orderCardsOpen[key];
+ const count=group.reduce((n,q)=>n+(q.items||[]).length,0);
+ const qty=group.reduce((n,q)=>n+(q.items||[]).reduce((m,i)=>m+Number(i.quantity||0),0),0);
+ const missing=group.reduce((n,q)=>n+(q.status==='cancelled'?0:(q.items||[]).filter(i=>i.unit_price==null&&i.fulfillment!=='sold_out').length),0);
+ const cancel=group.some(q=>q.cancel_requested_at&&q.status!=='cancelled');
+ const options=group.some(q=>pendingItemOptionRequests(q).length>0);
+ const delivery=group.some(q=>q.delivery_change_requested_at);
+ const ordered=group.flatMap(q=>q.items||[]).some(i=>i.supplier_ordered_at);
+ const assigned=group.flatMap(q=>q.items||[]).some(i=>supplierItemBatch(i.id));
+ let next='상세 확인';
+ if(cancel)next='취소 요청 확인';
+ else if(options)next='옵션 변경 요청 확인';
+ else if(delivery)next='수령방식 변경 확인';
+ else if(missing)next='판매가 입력 필요 '+missing+'종';
+ else if(group.some(q=>q.status==='requested'))next='견적 안내 확인';
+ else if(group.some(q=>q.status==='quoted'&&q.purchase_intent==='buy_now'))next='이번 회차 구매 · 배송비 확인';
+ else if(group.some(q=>q.status==='quoted'&&q.purchase_intent==='next_round'))next='다음 회차 대기';
+ else if(group.some(q=>q.status==='quoted'&&q.purchase_intent==='on_hold'))next='구매 보류';
+ else if(group.some(q=>q.status==='quoted'))next='구매자 선택 기다리는 중';
+ else if(group.some(q=>q.status==='confirmed'))next=ordered?'발주 완료 · 입고 관리':assigned?'입금 확인 · 도매 발주':'배송비 · 발주 준비';
+ else if(group.every(q=>q.status==='cancelled'))next='취소된 주문';
+ const urgent=!!(cancel||options||delivery||missing);
+ return `<details class="admin-order-fold ${urgent?'has-pending':''}" data-admin-order-id="${esc(key)}" ${open?'open':''}>
+  <summary class="admin-order-fold-heading">
+   <span class="admin-order-fold-left">
+    <strong>${esc(root.buyer_name||'주문자 미입력')} <span class="admin-order-fold-baby">아기: ${esc(root.baby_name||'미입력')}</span></strong>
+    <span class="admin-order-fold-meta">${group.length>1?group.length+'건 묶음 · ':''}상품 ${count}종 · ${qty}개 · ${fmtDate(root.created_at)}</span>
+   </span>
+   <span class="admin-order-fold-right"><span class="admin-order-fold-next ${urgent?'is-urgent':''}">${esc(next)}</span></span>
+   <span class="admin-order-fold-chevron" aria-hidden="true"></span>
+  </summary>
+  <div class="admin-order-fold-body">
+   ${group.length>1?renderBundleCard(group):renderAdminQuoteCard(group[0])}
+  </div>
  </details>`;
 }
 function renderAdminQuoteDateSection(visible,groups,section,defaultDoneOpen=false){
@@ -6114,67 +6163,113 @@ function renderSupplierPaymentCenter(){
   ${renderSupplierBulkManager(true,true)}
  </section>`;
 }
+function renderAdminQuoteFlatSection(groups,title,section='saved'){
+ if(!groups.length)return '';
+ const sorted=[...groups].sort((a,b)=>String(b[0]?.created_at||'').localeCompare(String(a[0]?.created_at||'')));
+ return `<section class="admin-price-section ${section==='pending'?'is-pending':'is-saved'}">
+  <div class="admin-price-section-title"><h3>${esc(title)}</h3><span>${groups.length}건</span></div>
+  <div class="admin-date-orders admin-flat-order-list">${sorted.map(g=>renderCollapsibleAdminOrder(g,section)).join('')}</div>
+ </section>`;
+}
 function renderAdminQuotes(){
- const qq=state.quotes.filter(q=>state.filter==='all'?['requested','quoted'].includes(q.status):(state.filter==='all_history'?true:state.filter==='finished'?isFinishedOrder(q):state.filter==='other'?isOtherRoundQuote(q):state.filter==='buy_now'?isRoundBuyer(q)&&!isFinishedOrder(q):state.filter==='wholesale_completed'?isWholesaleCompleted(q)&&!isFinishedOrder(q):state.filter==='next_round'?q.status==='quoted'&&q.purchase_intent==='next_round':state.filter==='on_hold'?q.status==='quoted'&&q.purchase_intent==='on_hold':state.filter==='undecided'?q.status==='quoted'&&(!q.purchase_intent||q.purchase_intent==='undecided'):state.filter==='cancel_requested'?!!q.cancel_requested_at&&q.status!=='cancelled':state.filter.startsWith('flow_')?q.status==='confirmed'&&workflowStage(q)===state.filter.slice(5):q.status===state.filter));
+ const all=state.quotes;
+ const isPre=q=>q.status==='requested'||(q.status==='quoted'&&(!q.purchase_intent||q.purchase_intent==='undecided'));
+ const isPricing=q=>q.status==='requested'||(q.status==='quoted'&&quoteNeedsPriceInput(q));
+ const isWaiting=q=>q.status==='quoted'&&(!q.purchase_intent||q.purchase_intent==='undecided')&&!quoteNeedsPriceInput(q);
+ const nPrice=all.filter(isPricing).length,nWait=all.filter(isWaiting).length;
+ const nPre=all.filter(isPre).length,nNow=all.filter(q=>isRoundBuyer(q)&&!isFinishedOrder(q)).length;
+ const nOrdered=all.filter(q=>isWholesaleCompleted(q)&&!isFinishedOrder(q)).length;
+ const nFinished=all.filter(isFinishedOrder).length,nOther=all.filter(isOtherRoundQuote).length;
+ const nCancel=all.filter(q=>q.cancel_requested_at&&q.status!=='cancelled').length;
+ const nSupplier=state.supplierBatches.filter(b=>!b.ordered_at).length;
+ const nOptions=state.optionRequests.filter(r=>r.status==='pending').length;
+ const nFee=state.productPrivateReady&&state.supplierBatchesReady?
+  all.filter(isRoundBuyer).reduce((n,q)=>n+(q.items||[]).filter(i=>supplierBulkAvailableItem(q,i)).length,0):0;
+ const qq=all.filter(q=>state.filter==='all'?isPre(q):
+  state.filter==='pricing'?isPricing(q):
+  state.filter==='waiting_buyer'?isWaiting(q):
+  state.filter==='all_history'?true:
+  state.filter==='finished'?isFinishedOrder(q):
+  state.filter==='other'?isOtherRoundQuote(q):
+  state.filter==='buy_now'?isRoundBuyer(q)&&!isFinishedOrder(q):
+  state.filter==='wholesale_completed'?isWholesaleCompleted(q)&&!isFinishedOrder(q):
+  state.filter==='next_round'?q.status==='quoted'&&q.purchase_intent==='next_round':
+  state.filter==='on_hold'?q.status==='quoted'&&q.purchase_intent==='on_hold':
+  state.filter==='undecided'?q.status==='quoted'&&(!q.purchase_intent||q.purchase_intent==='undecided'):
+  state.filter==='cancel_requested'?!!q.cancel_requested_at&&q.status!=='cancelled':
+  state.filter.startsWith('flow_')?q.status==='confirmed'&&workflowStage(q)===state.filter.slice(5):q.status===state.filter);
  const groups=['buy_now','wholesale_completed'].includes(state.filter)?qq.map(q=>[q]):bundledQuoteGroups(qq,['all','finished'].includes(state.filter));
- const awaiting=groups.filter(quoteGroupNeedsPriceInput),priced=groups.filter(g=>!quoteGroupNeedsPriceInput(g));
+ const awaiting=groups.filter(g=>g.some(q=>q.status==='requested'||quoteNeedsPriceInput(q)));
+ const priced=groups.filter(g=>!awaiting.includes(g));
  const unfinished=qq.reduce((n,q)=>n+(q.status==='cancelled'?0:q.items.filter(i=>i.unit_price==null&&i.fulfillment!=='sold_out').length),0);
- const dayCount=new Set(qq.map(q=>receivedDayKey(q.created_at))).size;
- const optionPending=state.optionRequests.filter(r=>r.status==='pending').length;
- const nNow=state.quotes.filter(q=>isRoundBuyer(q)&&!isFinishedOrder(q)).length;
- const nOrdered=state.quotes.filter(q=>isWholesaleCompleted(q)&&!isFinishedOrder(q)).length;
- const nFinished=state.quotes.filter(isFinishedOrder).length;
- const nActive=state.quotes.filter(q=>['requested','quoted'].includes(q.status)).length;
- const nNext=state.quotes.filter(q=>q.status==='quoted'&&q.purchase_intent==='next_round').length;
- const nHold=state.quotes.filter(q=>q.status==='quoted'&&q.purchase_intent==='on_hold').length;
- const nUndecided=state.quotes.filter(q=>q.status==='quoted'&&(!q.purchase_intent||q.purchase_intent==='undecided')).length;
- const nOther=nNext+nHold+nUndecided;
- const nCancelRequested=state.quotes.filter(q=>!!q.cancel_requested_at&&q.status!=='cancelled').length;
- const nSupplierPending=state.supplierBatches.filter(b=>!b.ordered_at).length;
- const primaryFilters=[
-  ['all','진행 중',nActive],
-  ['buy_now','발주 예정',nNow],
-  ['supplier_payments','거래처 입금',nSupplierPending],
-  ['wholesale_completed','발주 완료',nOrdered],
-  ['finished','완료',nFinished],
-  ['cancel_requested','취소 요청',nCancelRequested],
-  ['other','미확정',nOther],
-  ['all_history','전체 주문',state.quotes.length]
+ const steps=[
+  ['all','견적·선택',nPre,'가격 안내·선택 확인'],
+  ['buy_now','배송비 배분',nNow,'이번 회차 구매'],
+  ['supplier_payments','입금·발주',nSupplier,'거래처별 처리'],
+  ['wholesale_completed','입고·배송',nOrdered,'발주 완료 후']
  ];
+ const extras=[['pricing','가격·견적 확인',nPrice],['waiting_buyer','구매 선택 대기',nWait],['finished','완료',nFinished],['other','보류·다음 회차',nOther],['cancel_requested','취소 요청',nCancel],['all_history','전체 주문',all.length]];
  const secondaryKeys=['requested','quoted','confirmed','flow_new','flow_preparing','flow_pickup_ready','flow_shipped','flow_completed','flow_soldout_closed','cancelled'];
- const secondaryLabel=key=>({all_history:'전체 내역',wholesale_completed:'발주 완료',next_round:'다음 회차',on_hold:'구매 보류',undecided:'미선택'})[key]||(key.startsWith('flow_')?workflowLabels[key.slice(5)]:statusLabel[key]||key);
- const isSecondary=secondaryKeys.includes(state.filter);
+ const secondaryLabel=k=>k.startsWith('flow_')?workflowLabels[k.slice(5)]:statusLabel[k]||k;
+ let task=['고객 응답과 새 주문을 확인하세요','추가로 처리할 작업이 없으면 전체 주문을 볼 수 있어요.','전체 주문 보기','all_history',''];
+ if(nWait)task=['구매자 선택 대기 중',nWait+'건은 고객의 이번 회차 선택을 기다리는 중이에요.','선택 대기 보기','waiting_buyer',''];
+ if(nOrdered)task=['발주 후 입고·배송 확인','발주한 주문 '+nOrdered+'건의 입고·픽업·택배 진행을 확인하세요.','입고·배송 보기','wholesale_completed',''];
+ if(nNow)task=['이번 회차 발주 준비',nNow+'건의 거래처 배송비와 입금·발주 상태를 확인하세요.','발주 준비 보기','buy_now',''];
+ if(nSupplier)task=['거래처 입금·발주 처리',nSupplier+'곳의 구매자별 입금 요청과 입금 확인을 진행하세요.','입금 처리 보기','supplier_payments',''];
+ if(nFee)task=['도매배송비부터 배분하세요','이번 회차 상품 '+nFee+'종의 배송비가 아직 배분되지 않았어요.','배송비 배분하기','','open-supplier-bulk-allocations'];
+ if(nPrice)task=['견적 먼저 확인하기',nPrice+'건의 판매가 입력 또는 견적 발송을 확인하세요.','견적 확인하기','pricing',''];
+ if(nCancel)task=['취소 요청 먼저 확인',nCancel+'건의 취소 요청을 확인하세요.','취소 요청 보기','cancel_requested',''];
+ if(nOptions)task=['옵션 변경 요청 먼저 확인',nOptions+'건의 옵션 변경 요청을 검토하세요.','변경 요청 보기','','show-pending-item-options'];
+ const titles={
+  all:['견적 안내 · 구매 선택','판매가를 확인해 견적을 보내고, 구매자가 이번 회차를 선택하기를 기다려요.'],
+  pricing:['가격 · 견적 확인','판매가를 확인하고 견적 안내를 마무리할 주문이에요.'],
+  waiting_buyer:['고객 구매 선택 대기','견적은 안내됐고 고객의 선택만 기다리고 있어요.'],
+  buy_now:['배송비 배분 · 발주 준비','이번 회차 구매를 선택한 상품을 모아 거래처별로 배송비를 배분하세요.'],
+  supplier_payments:['거래처별 입금 · 발주','구매자별 입금 요청과 확인 후 실제 도매 발주를 완료하세요.'],
+  wholesale_completed:['입고 · 배송 처리','발주한 상품의 입고, 픽업, 택배 진행을 관리하세요.'],
+  finished:['완료된 주문','픽업·배송·정산이 끝난 주문이에요.'],
+  other:['보류 · 다음 회차','이번 회차에 구매하지 않는 주문이에요.'],
+  all_history:['전체 주문 내역','지난 주문을 포함해 모든 주문을 확인하세요.'],
+  cancel_requested:['취소 요청','고객의 취소 요청을 확인하세요.']
+ };
+ const [title,subtitle]=titles[state.filter]||[secondaryLabel(state.filter),'선택한 상태의 주문이에요.'];
+ const isExtra=!steps.some(s=>s[0]===state.filter);
  return `<section class="admin-quote-workspace">
   <div class="admin-quote-anchor" id="admin-quote-results"></div>
-  ${optionPending?`<button class="admin-quote-attention" type="button" data-action="show-pending-item-options">옵션 변경 요청 <b>${optionPending}건</b> 확인하기 ↗</button>`:''}
-  <nav class="admin-quote-primary-filters" aria-label="구매 회차별 주문 필터">
-   ${primaryFilters.map(([key,label,count])=>`<button type="button" class="admin-quote-quick-tab ${state.filter===key?'active':''}" data-filter="${key}" aria-pressed="${state.filter===key}">${label}<span>${count}</span></button>`).join('')}
+  <section class="admin-workflow-focus" aria-label="다음 처리 작업">
+   <span class="admin-workflow-focus-kicker">지금 확인할 일</span>
+   <strong>${esc(task[0])}</strong><p>${esc(task[1])}</p>
+   <button type="button" class="admin-workflow-focus-action" ${task[4]?'data-action="'+esc(task[4])+'"':'data-filter="'+esc(task[3])+'"'}>${esc(task[2])} →</button>
+  </section>
+  <div class="admin-workflow-heading"><strong>주문 처리 순서</strong><span>단계를 눌러서 이동</span></div>
+  <nav class="admin-quote-primary-filters admin-workflow-steps" aria-label="주문 처리 순서">
+   ${steps.map(([key,label,count,desc],i)=>`<button type="button" class="admin-workflow-step ${state.filter===key?'active':''}" data-filter="${key}" aria-pressed="${state.filter===key}">
+    <span class="admin-workflow-step-top"><span class="admin-workflow-step-no">${i+1}</span><b>${count}${key==='supplier_payments'?'곳':'건'}</b></span>
+    <strong>${esc(label)}</strong><small>${esc(desc)}</small>
+   </button>`).join('')}
   </nav>
-  <details class="admin-quote-extra-filters" ${isSecondary?'open':''}>
-   <summary>세부 상태별 보기 ${isSecondary?`<strong>· ${esc(secondaryLabel(state.filter))}</strong>`:''}<span class="admin-quote-extra-chevron">⌄</span></summary>
-   <div class="admin-quote-secondary-list" role="group" aria-label="견적, 배송, 취소 단계별 주문 보기">
-    ${secondaryKeys.map(key=>`<button type="button" class="admin-quote-secondary-tab ${state.filter===key?'active':''}" data-filter="${key}" aria-pressed="${state.filter===key}">${esc(secondaryLabel(key))}</button>`).join('')}
+  <details class="admin-quote-extra-filters admin-workflow-extra" ${isExtra?'open':''}>
+   <summary>기타 목록 · 완료 / 보류 / 전체 주문 <span class="admin-quote-extra-chevron">⌄</span></summary>
+   <div class="admin-quote-secondary-list" role="group" aria-label="기타 주문 보기">
+    ${extras.map(([key,label,n])=>`<button type="button" class="admin-quote-secondary-tab ${state.filter===key?'active':''}" data-filter="${key}" aria-pressed="${state.filter===key}">${label} ${n}</button>`).join('')}
+    <details class="admin-workflow-detailed-states"><summary>상태별 세부 목록 보기</summary><div class="admin-quote-secondary-list">
+     ${secondaryKeys.map(key=>`<button type="button" class="admin-quote-secondary-tab ${state.filter===key?'active':''}" data-filter="${key}" aria-pressed="${state.filter===key}">${esc(secondaryLabel(key))}</button>`).join('')}
+    </div></details>
    </div>
   </details>
-  ${state.filter==='buy_now'?'<p class="admin-quote-context">아직 발주하지 않은 이번 회차 주문만 표시해요.</p>':state.filter==='wholesale_completed'?'<p class="admin-quote-context">발주가 끝났지만 아직 수령·배송 완료되지 않은 주문이에요.</p>':state.filter==='finished'?'<p class="admin-quote-context">픽업완료·배송완료·품절 정산 완료된 주문이에요. 기존 주문·입금·환불 기록은 그대로 보관돼요.</p>':state.filter==='all'?'<p class="admin-quote-context">구매자가 <b>최종 주문 확정하기 전</b>의 견적·구매 의사 확인 단계만 보여요. 확정 이후는 ‘발주 예정’, ‘발주 완료’, ‘완료’ 또는 맨 끝 ‘전체 주문’에서 확인하세요.</p>':''}
-  ${state.filter==='supplier_payments'?renderSupplierPaymentCenter():qq.length?`<div class="admin-date-toolbar admin-quote-date-toolbar">
-   <div><strong>주문 ${qq.length}건 · ${dayCount}일</strong>${unfinished?`<span>가격 미입력 ${unfinished}종</span>`:''}</div>
-   <div class="admin-date-actions">
-    <button type="button" class="date-all-btn" data-action="date-open-all">모두 펼치기</button>
-    <button type="button" class="date-all-btn" data-action="date-close-all">모두 접기</button>
-   </div>
+  <div class="admin-workflow-current"><h2>${esc(title)}</h2><p>${esc(subtitle)}</p>
+   ${state.filter==='buy_now'?`<div class="admin-workflow-inline-actions"><button type="button" data-action="open-supplier-bulk-allocations">배송비 배분하기</button><button type="button" data-filter="supplier_payments">입금·발주 진행 ${nSupplier}곳</button></div>`:''}
   </div>
-  ${state.filter==='buy_now'?renderProcurementSheet()+renderSupplierBulkManager():state.filter==='wholesale_completed'?renderCompletedProcurementSheet():''}
-  ${renderAdminQuoteDateSection(qq,awaiting,'pending')}
-  ${renderAdminQuoteDateSection(qq,priced,'saved',!awaiting.length)}
-  <details class="admin-quote-price-fold" data-fold-key="quote-amount-comparison">
-   <summary>상품 금액 비교 <span class="admin-quote-extra-chevron">⌄</span></summary>
-   ${adminPriceTotalMarkup(qq)}
-  </details>`:'<div class="empty">해당 상태의 견적이 없어요.</div>'}
-  <details class="admin-quote-guide">
-   <summary>주문 처리 순서 안내 <span class="admin-quote-extra-chevron">⌄</span></summary>
-   <p>① 판매가 입력 및 견적 안내 → ② 고객 회차 선택 → ③ 이번 회차 배송비 계산 → ④ 결제금액 안내 후 최종 주문 확정</p>
-  </details>
+  ${state.filter==='supplier_payments'?renderSupplierPaymentCenter():
+   qq.length?`<div class="admin-date-toolbar admin-workflow-listbar"><strong>주문 ${qq.length}건${unfinished?' · 가격 미입력 '+unfinished+'종':''}</strong>
+    <div class="admin-date-actions"><button type="button" class="date-all-btn" data-action="date-open-all">모두 펼치기</button><button type="button" class="date-all-btn" data-action="date-close-all">모두 접기</button></div>
+   </div>
+   ${state.filter==='buy_now'?renderSupplierBulkManager()+renderProcurementSheet():state.filter==='wholesale_completed'?renderCompletedProcurementSheet():''}
+   ${state.filter==='all'?renderAdminQuoteFlatSection(awaiting,'먼저 처리할 견적','pending')+renderAdminQuoteFlatSection(priced,'구매자 선택 대기'):
+      state.filter==='all_history'?renderAdminQuoteDateSection(qq,awaiting,'pending')+renderAdminQuoteDateSection(qq,priced,'saved'):
+       renderAdminQuoteFlatSection(groups,title,state.filter==='pricing'?'pending':'saved')}
+   ${['all','all_history'].includes(state.filter)?`<details class="admin-quote-price-fold"><summary>상품 금액 비교 <span class="admin-quote-extra-chevron">⌄</span></summary>${adminPriceTotalMarkup(qq)}</details>`:''}`:
+   '<div class="empty">해당 단계의 주문이 없어요. 다른 단계를 선택해 주세요.</div>'}
  </section>`;
 }
 function renderBuyerOrderDetail(q){

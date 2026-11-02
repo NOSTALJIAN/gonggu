@@ -6754,7 +6754,7 @@ function renderAdminQuoteCard(q){
    <div><span>최종 결제금액</span><b>${finalReady?money(due):'배송비 배분 후 확정'}</b></div>
    <div><span>받은 금액</span><b>${money(paid)}</b></div>
    ${paymentWaiver(q)?`<div><span>관리자 차액 인정</span><b>${money(paymentWaiver(q))}</b></div>`:''}
-   ${priced&&q.status==='confirmed'?`<div class="compact-order-payment-status">${orderPaymentParts(q).goodsMissing?'상품대금 미입금 '+money(orderPaymentParts(q).goodsMissing):'상품대금 입금 완료'}${orderPaymentParts(q).shippingMissing?' · 택배비 '+money(orderPaymentParts(q).shippingMissing)+' 별도':''}</div>`:''}
+   ${priced&&q.status==='confirmed'?`<div class="compact-order-payment-status">${supplierFreightOnlyDue(q)>0?'상품값·택배비 입금 확인 · 도매배송비 '+money(supplierFreightOnlyDue(q))+' 미입금':(orderPaymentParts(q).goodsMissing?'상품대금·도매배송비 미입금 '+money(orderPaymentParts(q).goodsMissing):'상품대금 입금 완료')+(orderPaymentParts(q).shippingMissing?' · 택배비 '+money(orderPaymentParts(q).shippingMissing)+' 별도':'')}</div>`:''}
    <div class="compact-order-balance"><span>남은 금액</span><b>${finalReady?money(balanceDue(q)):'입금 요청 전'}</b></div>
    ${priced&&paid>due?`<p class="compact-order-warning">초과 입금 ${money(paid-due)} · 환불 여부 확인</p>`:''}
   </div>
@@ -7110,6 +7110,16 @@ function orderPaymentParts(q){
  const goods=previewOrderSum(q)+supplierShippingShare(q),shipping=appliedShipping(q);
  const received=Math.max(0,Number(q.amount_paid||0)-Number(q.amount_refunded||0));
  const waived=paymentWaiver(q),settled=received+waived;
+ const split=paymentSplitAmounts(q);
+ // Honor verified per-category receipts when no refund allocation is needed.
+ // Legacy totals retain the original fallback until the admin categorizes them.
+ if(!split.legacy&&q.paid_goods_amount!=null&&q.paid_delivery_amount!=null&&
+    q.paid_freight_amount!=null&&Number(q.amount_refunded||0)===0){
+  const dueGoods=Math.max(0,goods-split.goods-split.freight);
+  const dueShipping=Math.max(0,shipping-split.delivery);
+  return {goods,shipping,received,waived,goodsMissing:Math.max(0,dueGoods-waived),
+   shippingMissing:Math.max(0,dueShipping-Math.max(0,waived-dueGoods))};
+ }
  return {goods,shipping,received,waived,goodsMissing:Math.max(0,goods-settled),
   shippingMissing:Math.max(0,shipping-Math.max(0,settled-goods))};
 }

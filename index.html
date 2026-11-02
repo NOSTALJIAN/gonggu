@@ -3298,6 +3298,10 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 .order-payment-received{border-top:1px solid #e4e4e5;margin-top:6px;padding-top:7px;color:#777;font-size:11px}
 .order-payment-quick{width:100%;min-height:40px!important;font-size:12px!important}
 .compact-order-payment-status{font-size:12px;color:#356d52;padding:7px 0;line-height:1.5}
+.admin-payment-waiver{display:flex;flex-direction:column;gap:6px;margin:10px 0;padding:11px 12px;border:1px solid #e0e2e5;border-radius:10px;background:#fafafa}
+.admin-payment-waiver b{font-size:12px;color:#333}
+.admin-payment-waiver small{font-size:11px;color:#666;line-height:1.5}
+.admin-payment-waiver .btn{align-self:stretch;white-space:normal}
 
 /* Show individual payment balances to buyers, without treating courier fees as unpaid merchandise. */
 .confirmed-payment-parts{display:flex;flex-direction:column;gap:7px;margin:10px 0}
@@ -3676,7 +3680,8 @@ const workflowLabel=q=>workflowStage(q)==='completed'?(q.delivery_method==='pick
 const saleItems=q=>(q.items||[]).filter(i=>i.fulfillment!=='sold_out');
 const allReceived=q=>saleItems(q).length>0&&saleItems(q).every(i=>i.fulfillment==='received'||i.fulfillment==='delivered');
 const refundDue=q=>Math.max(0,Number(q.amount_paid||0)-Number(q.amount_refunded||0)-totalDue(q));
-const balanceDue=q=>Math.max(0,totalDue(q)-Number(q.amount_paid||0)+Number(q.amount_refunded||0));
+const paymentWaiver=q=>Math.max(0,Number(q?.payment_waived_amount||0));
+const balanceDue=q=>Math.max(0,totalDue(q)-Number(q.amount_paid||0)+Number(q.amount_refunded||0)-paymentWaiver(q));
 const trackingInfo=q=>(q.tracking_carrier&&q.tracking_number)?`${q.tracking_carrier} · ${q.tracking_number}`:'';
 const isLotteShipment=q=>!!q.tracking_number&&/^(롯데택배|롯데|롯데글로벌로지스|lotte|lotteglobal)$/i.test(String(q.tracking_carrier||'').replace(/\s+/g,''));
 
@@ -5086,7 +5091,7 @@ function confirmedPaymentWidget(q){
   <div><span>상품대금${supplierShippingShare(q)?' · 도매 배송비 포함':''}</span><strong>${p.goodsMissing?'남은 '+money(p.goodsMissing):'입금 완료'}</strong></div>
   ${p.shipping>0?`<div><span>택배비 · 별도 정산</span><strong>${p.shippingMissing?'남은 '+money(p.shippingMissing):'입금 완료'}</strong></div>`:''}
  </div><div class="confirmed-payment-total"><span>${paid?'추가 입금할 금액':!p.goodsMissing&&p.shippingMissing?'택배비 잔액 (별도)':'현재 남은 입금액'}</span><strong>${money(due)}</strong></div>`}
- <p class="confirmed-payment-note">${paid?'입금이 모두 확인됐어요. 중복 송금하지 마세요.':q.cancel_requested_at?'취소 요청이 접수되어 있어요. 입금 전에 관리자에게 확인해 주세요.':due!==null&&!p.goodsMissing&&p.shippingMissing?'상품대금 입금 완료! 택배비는 별도로 정산해요. 합배송 시 택배비가 조정될 수 있어요.':'입금 확인은 관리자가 처리해요. 송금 후 주문조회에서 입금 확인 상태를 확인해 주세요.'}</p>
+ <p class="confirmed-payment-note">${paid&&paymentWaiver(q)>0?'관리자가 차액을 인정하여 정산이 완료됐어요. 추가 입금하지 않아도 돼요.':paid?'입금이 모두 확인됐어요. 중복 송금하지 마세요.':q.cancel_requested_at?'취소 요청이 접수되어 있어요. 입금 전에 관리자에게 확인해 주세요.':due!==null&&!p.goodsMissing&&p.shippingMissing?'상품대금 입금 완료! 택배비는 별도로 정산해요. 합배송 시 택배비가 조정될 수 있어요.':'입금 확인은 관리자가 처리해요. 송금 후 주문조회에서 입금 확인 상태를 확인해 주세요.'}</p>
  ${q.amount_changed_at?'<p class="confirmed-payment-note">주문 금액이 변경된 적이 있어요. 입금 전 최신 금액을 확인해 주세요.</p>':''}
  </section>`;
 }
@@ -6303,6 +6308,7 @@ function renderRoundQuickOrder(q,index){
      <label>환불한 금액<input type="number" name="refunded" min="0" inputmode="numeric" value="${Number(q.amount_refunded)||0}" required></label>
      <button class="btn sm secondary" type="submit">입금·환불 저장</button>
     </form>
+    ${renderPaymentWaiverControl(q)}
    </details>
    ${renderAdminItemOptionRequests(q)}
    <details class="round-order-tool round-order-advanced"><summary>기타 설정 · 이메일 / 수령 / 배송 / 상태</summary>${renderAdminQuoteCard(q)}</details>
@@ -6474,7 +6480,7 @@ function renderAdminMiscTools(q){
 
 function compactQuoteNextTask(q){
  const active=(q.items||[]).filter(i=>i.fulfillment!=='sold_out');
- const unpaid=Math.max(0,totalDue(q)-(Number(q.amount_paid)||0)+(Number(q.amount_refunded)||0));
+ const unpaid=balanceDue(q);
  const pendingBatch=state.supplierBatches.some(b=>!b.ordered_at&&(b.item_ids||[]).some(id=>active.some(i=>i.id===id)));
  const supplierDone=active.length>0&&active.every(i=>q.supplier_ordered_at||i.supplier_ordered_at||state.supplierBatches.some(b=>b.ordered_at&&(b.item_ids||[]).includes(i.id)));
  const stage=workflowStage(q);
@@ -6534,8 +6540,9 @@ function renderAdminQuoteCard(q){
    </div>`:''}
    <div><span>결제금액</span><b>${priced?money(due):'확인 중'}</b></div>
    <div><span>받은 금액</span><b>${money(paid)}</b></div>
+   ${paymentWaiver(q)?`<div><span>관리자 차액 인정</span><b>${money(paymentWaiver(q))}</b></div>`:''}
    ${priced&&q.status==='confirmed'?`<div class="compact-order-payment-status">${orderPaymentParts(q).goodsMissing?'상품대금 미입금 '+money(orderPaymentParts(q).goodsMissing):'상품대금 입금 완료'}${orderPaymentParts(q).shippingMissing?' · 택배비 '+money(orderPaymentParts(q).shippingMissing)+' 별도':''}</div>`:''}
-   <div class="compact-order-balance"><span>남은 금액</span><b>${priced?money(Math.max(0,due-paid)):'확인 필요'}</b></div>
+   <div class="compact-order-balance"><span>남은 금액</span><b>${priced?money(balanceDue(q)):'확인 필요'}</b></div>
    ${priced&&paid>due?`<p class="compact-order-warning">초과 입금 ${money(paid-due)} · 환불 여부 확인</p>`:''}
   </div>
   <div class="compact-order-next ${urgent?'is-urgent':''}">
@@ -6793,8 +6800,9 @@ async function handleMergeShippingSubmit(f,data){
 function orderPaymentParts(q){
  const goods=previewOrderSum(q)+supplierShippingShare(q),shipping=appliedShipping(q);
  const received=Math.max(0,Number(q.amount_paid||0)-Number(q.amount_refunded||0));
- return {goods,shipping,received,goodsMissing:Math.max(0,goods-received),
-  shippingMissing:Math.max(0,shipping-Math.max(0,received-goods))};
+ const waived=paymentWaiver(q),settled=received+waived;
+ return {goods,shipping,received,waived,goodsMissing:Math.max(0,goods-settled),
+  shippingMissing:Math.max(0,shipping-Math.max(0,settled-goods))};
 }
 function adminCanRecordPayment(q){
  return Boolean(q&&(
@@ -6803,7 +6811,15 @@ function adminCanRecordPayment(q){
 }
 function orderOutstanding(q){
  if(!adminCanRecordPayment(q))return null;
- return Math.max(0,totalDue(q)-Number(q.amount_paid||0)+Number(q.amount_refunded||0));
+ return balanceDue(q);
+}
+function renderPaymentWaiverControl(q){
+ if(!state.admin||!adminCanRecordPayment(q))return '';
+ const waived=paymentWaiver(q),missing=balanceDue(q),received=Math.max(0,Number(q.amount_paid||0)-Number(q.amount_refunded||0));
+ if(waived>0)return `<div class="admin-payment-waiver"><b>✓ 관리자 차액 인정 ${money(waived)}</b><small>실제 입금 ${money(received)} · 남은 요청 ${money(missing)} · ${q.payment_waived_at?fmtDate(q.payment_waived_at):'기록 완료'}</small><button type="button" class="btn sm outline" data-action="revoke-payment-shortfall" data-id="${esc(q.id)}">차액 인정 취소</button></div>`;
+ if(received<=0||missing<=0||!['quoted','confirmed'].includes(q.status))return '';
+ if(q.status==='quoted'&&!adminConfirmEligible(q))return '<p class="smallnote">주문확정 조건 확인 후 차액 인정이 가능해요.</p>';
+ return `<div class="admin-payment-waiver"><b>실제 입금 ${money(received)} · 부족 ${money(missing)}</b><small>이번 건만 추가로 받지 않고 마감해요. 실제 입금액은 변경하지 않아요.</small><button type="button" class="btn sm secondary" data-action="accept-payment-shortfall" data-id="${esc(q.id)}">이번 건 차액 ${money(missing)} 인정 · 정산 완료</button></div>`;
 }
 function renderOrderDepositControl(q){
  const missing=orderOutstanding(q),p=orderPaymentParts(q);
@@ -6812,11 +6828,12 @@ function renderOrderDepositControl(q){
   <div class="order-payment-split">
    <div class="order-payment-line"><span>상품대금${supplierShippingShare(q)?' (도매 배송비 포함)':''}</span><strong class="${p.goodsMissing?'pending':'paid'}">${p.goodsMissing?'미입금 '+money(p.goodsMissing):'입금 완료'} <small>${money(p.goods)}</small></strong></div>
    ${p.shipping>0?`<div class="order-payment-line"><span>택배비 · 별도</span><strong class="${p.shippingMissing?'pending':'paid'}">${p.shippingMissing?'미입금 '+money(p.shippingMissing):'입금 완료'} <small>${money(p.shipping)}</small></strong></div>`:''}
-   <div class="order-payment-received">수령 ${money(p.received)} · 전체 결제금액 ${money(totalDue(q))}</div>
+   <div class="order-payment-received">실제 입금 ${money(p.received)} ${p.waived?'· 관리자 차액 인정 '+money(p.waived):''} · 전체 결제금액 ${money(totalDue(q))}</div>
   </div>
   ${p.goodsMissing>0?`<button class="btn sm order-payment-quick" data-action="mark-order-payment-part" data-part="goods" data-id="${esc(q.id)}">상품대금 ${money(p.goodsMissing)} 입금 확인</button>`:''}
   ${!p.goodsMissing&&p.shippingMissing>0?`<button class="btn sm secondary order-payment-quick" data-action="mark-order-payment-part" data-part="shipping" data-id="${esc(q.id)}">택배비 ${money(p.shippingMissing)} 입금 확인</button>`:''}
   <details class="related-deposit-edit" data-fold-key="direct-payment-${esc(q.id)}"><summary>금액 직접 수정 · 부분입금/환불</summary><form data-payment="${esc(q.id)}"><label>누적 입금액<input name="paid" type="number" min="0" step="1" inputmode="numeric" required value="${Number(q.amount_paid||0)}"></label><label>누적 환불액<input name="refunded" type="number" min="0" step="1" inputmode="numeric" required value="${Number(q.amount_refunded||0)}"></label><button class="btn sm secondary" type="submit">이 주문에 저장</button></form></details>
+  ${renderPaymentWaiverControl(q)}
  </div>`;
 }
 function renderOtherBuyerDeposits(group){
@@ -6972,7 +6989,7 @@ function supplierBatchPaymentState(batch){
    (rootIds.has(q.id)||rootIds.has(q.bundle_parent_id)));
   // Customer courier fees are collected separately and must not block supplier orders.
   const due=orders.reduce((sum,q)=>sum+previewOrderSum(q)+supplierShippingShare(q),0);
-  const net=orders.reduce((sum,q)=>sum+Number(q.amount_paid||0)-Number(q.amount_refunded||0),0);
+  const net=orders.reduce((sum,q)=>sum+Number(q.amount_paid||0)-Number(q.amount_refunded||0)+paymentWaiver(q),0);
   const selectedReady=selected.length>0&&selected.every(({q,item})=>
    q.status==='confirmed'&&item.fulfillment!=='sold_out'&&
    !item.supplier_ordered_at&&!q.supplier_ordered_at&&
@@ -9332,6 +9349,37 @@ async function click(e){
  if(e.target.matches?.('[data-product-store-search]')){productStoreSearchResults(e.target,true);return;}
  if(!e.target.closest?.('[data-product-store-picker]'))closeProductStoreSearch(app.querySelector('#product-form'));
  const pg=e.target.closest('[data-page]');if(pg){goto(pg.dataset.page);if(pg.classList.contains('brand-home'))window.scrollTo({top:0,behavior:'auto'});return}const b=e.target.closest('[data-action]');if(!b)return;const a=b.dataset.action,id=b.dataset.id;try{
+if(a==='accept-payment-shortfall'||a==='revoke-payment-shortfall'){
+ if(!connected||!state.admin||state.page!=='admin')throw Error('관리자만 차액을 인정할 수 있어요.');
+ if(busy)return;
+ const q=state.quotes.find(x=>x.id===id);
+ if(!q||!adminCanRecordPayment(q))throw Error('입금 및 주문 상태를 먼저 확인해 주세요.');
+ const cancel=a==='revoke-payment-shortfall';
+ const net=Number(q.amount_paid||0)-Number(q.amount_refunded||0),missing=balanceDue(q),old=paymentWaiver(q);
+ if(cancel?!old:net<=0||missing<=0)throw Error('차액 인정 대상이 아니에요. 먼저 실제 입금액을 저장해 주세요.');
+ if(!cancel&&q.status==='quoted'&&!adminConfirmEligible(q))throw Error('주문 확정 조건을 먼저 확인해 주세요.');
+ const msg=cancel?(q.buyer_name+'님 차액 인정 '+money(old)+'을 취소할까요?'):
+ (q.buyer_name+'님 · '+fmtDate(q.created_at)+' 주문\n최종 결제금액 '+money(totalDue(q))+'\n실제 입금 '+money(net)+'\n이번에 면제할 차액 '+money(missing)+'\n\n실제 입금액은 변경하지 않고 부족분만 인정합니다.'+(q.status==='quoted'?' 관리자 주문확정도 진행해요.':'' )+'\n진행할까요?');
+ if(!window.confirm(msg))return;
+ busy=true;b.disabled=true;
+ const savedY=window.scrollY;let recorded=false;
+ state.orderCardsOpen[q.bundle_parent_id||q.id]=true;
+ adminFoldState.set('compact-payment-'+id,true);adminFoldState.set('direct-payment-'+id,true);
+ try{
+  await api('/rest/v1/gq_quotes?id=eq.'+encodeURIComponent(id),{method:'PATCH',admin:true,body:{
+    payment_waived_amount:cancel?0:old+missing,payment_waived_at:cancel?null:new Date().toISOString(),
+    payment_waived_by:cancel?null:(session?.user?.id||null)}});
+  recorded=true;
+  if(!cancel&&q.status==='quoted'){
+   const confirmed=await rpc('gq_admin_confirm_quote_v97',{p_quote_id:q.id,p_acknowledged:true},true);
+   if(confirmed!==true)throw Error('관리자 최종 확정을 확인하지 못했어요.');
+  }
+  await loadAdmin();window.scrollTo({top:savedY,behavior:'instant'});
+  notif(cancel?'차액 인정 취소 · 실제 입금내역 유지':'관리자 차액 인정 완료 · 추가 입금 없이 정산');
+ }catch(e){if(recorded)await loadAdmin();throw Error(recorded?'차액은 저장됐으나 후속 처리가 실패했어요: '+errorText(e):errorText(e));}
+ finally{busy=false;b.disabled=false;}
+ return;
+}
 if(a==='admin-confirm-order'){
  if(!connected||!state.admin||state.page!=='admin')throw Error('관리자 로그인 후 수동 확정할 수 있어요.');
  if(busy)return;

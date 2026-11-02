@@ -3124,8 +3124,8 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 .admin-page-heading{display:flex;justify-content:space-between;align-items:baseline;margin:0 1px 12px;gap:10px}
 .admin-page-heading h2{font-size:19px;letter-spacing:-.5px;margin:0}
 .admin-page-heading>span{font-size:11px;color:#92929b}
-.admin-home-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
-.admin-home-tile{border:1px solid #e8e8ec;background:#fff;border-radius:13px;text-align:left;padding:15px 14px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.admin-home-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:minmax(100px,1fr);align-items:stretch;gap:9px}
+.admin-home-tile{border:1px solid #e8e8ec;background:#fff;border-radius:13px;text-align:left;padding:15px 14px;display:flex;flex-direction:column;justify-content:center;gap:7px;min-width:0;min-height:100px;height:100%;box-sizing:border-box}
 .admin-home-tile span{color:#686872;font-size:12px;font-weight:650}
 .admin-home-tile strong{font-size:26px;font-weight:820;line-height:1.15;color:#222}
 .admin-home-tile small{font-size:11px;color:#999;margin-left:2px}
@@ -5352,7 +5352,7 @@ function renderAdminHome(){
     ${tile('견적 대기',requested,'quotes','pricing')}
     ${tile('구매 선택 대기',pendingBuyers,'quotes','waiting_buyer')}
     ${tile('최종확정 대기',pendingFinal,'quotes','final_confirmation')}
-    <button type="button" class="admin-home-tile admin-home-preparing-trigger" data-action="home-preparing-toggle" aria-expanded="${state.homePreparingOpen===true}" aria-controls="admin-home-preparing-list"><span>발주 준비</span><strong>${preparing}<small>건</small></strong><span class="admin-home-tile-hint">${state.homePreparingOpen===true?'목록 접기':'확정 주문 보기'}</span></button>
+    <button type="button" class="admin-home-tile admin-home-preparing-trigger" data-action="home-preparing-toggle" aria-expanded="${state.homePreparingOpen===true}" aria-controls="admin-home-preparing-list"><span>발주 준비</span><strong>${preparing}<small>건</small></strong></button>
     ${tile('입고·배송',shipping,'quotes','wholesale_completed')}
   </div>
   ${state.homePreparingOpen===true?renderAdminHomePreparingList(all.filter(q=>q.status==='confirmed'&&!isWholesaleCompleted(q)&&!isFinishedOrder(q))):''}

@@ -3564,6 +3564,7 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 .admin-home-preparing-row-title b .admin-order-gh-badge{vertical-align:2px}
 @media (max-width:390px){.admin-order-gh-badge{height:16px;min-width:18px}}
 
+.admin-preproc-note{font-size:12px;line-height:1.6;color:#6f7272;margin:5px 0 12px;padding:8px 10px;background:#f6f7f6;border-radius:8px}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -5523,7 +5524,7 @@ function renderAdminHomePreparingList(quotes){
   }).join('')||'<p class="smallnote">최종 확정된 발주 준비 주문이 없어요.</p>'}
   </div>
   <div class="admin-home-preparing-actions">
-   <button type="button" data-tab="quotes" data-nav-filter="preparing_orders">발주 준비 전체 ${rows.length}건 보기</button>
+   <button type="button" data-tab="quotes" data-nav-filter="preparing_orders">입금·발주 전체 ${rows.length}건 보기</button>
   </div>
  </section>`;
 }
@@ -5533,7 +5534,7 @@ function renderAdminHome(){
  const requested=all.filter(q=>q.status==='requested').length;
  const pendingBuyers=all.filter(q=>q.status==='quoted'&&(!q.purchase_intent||q.purchase_intent==='undecided')&&!quoteNeedsPriceInput(q)).length;
  const pendingFinal=all.filter(q=>q.status==='quoted'&&q.purchase_intent==='buy_now'&&!quoteNeedsPriceInput(q)).length;
- const preparing=all.filter(q=>q.status==='confirmed'&&!isWholesaleCompleted(q)&&!isFinishedOrder(q)).length;
+ const preparing=all.filter(adminOrderNeedsPaymentOrProcurement).length;
  const shipping=all.filter(q=>isWholesaleCompleted(q)&&!isFinishedOrder(q)).length;
  const deliveryChanges=all.filter(q=>q.delivery_change_requested_at).length;
  const cancellations=all.filter(q=>q.cancel_requested_at).length;
@@ -5546,7 +5547,7 @@ function renderAdminHome(){
     ${tile('견적 대기',requested,'quotes','pricing')}
     ${tile('구매 선택 대기',pendingBuyers,'quotes','waiting_buyer')}
     ${tile('배송비·입금 대기',pendingFinal,'quotes','final_confirmation')}
-    <button type="button" class="admin-home-tile admin-home-preparing-trigger" data-action="home-preparing-toggle" aria-expanded="${state.homePreparingOpen===true}" aria-controls="admin-home-preparing-list"><span>발주 준비</span><strong>${preparing}<small>건</small></strong></button>
+    <button type="button" class="admin-home-tile admin-home-preparing-trigger" data-action="home-preparing-toggle" aria-expanded="${state.homePreparingOpen===true}" aria-controls="admin-home-preparing-list"><span>입금·발주 대기</span><strong>${preparing}<small>건</small></strong></button>
     ${tile('입고·배송',shipping,'quotes','wholesale_completed')}
   </div>
   ${state.homePreparingOpen===true?renderAdminHomePreparingList(all.filter(q=>q.status==='confirmed'&&!isWholesaleCompleted(q)&&!isFinishedOrder(q))):''}
@@ -8073,6 +8074,10 @@ function updateAdminOrderSearch(){
  const clear=app.querySelector('[data-action="clear-admin-order-search"]');
  if(clear)clear.classList.toggle('hidden',!query);
 }
+/* Confirmed orders awaiting payment/wholesale were previously only under 상세 상태 / 전체. */
+function adminOrderNeedsPaymentOrProcurement(q){
+ return q?.status==='confirmed'&&!isWholesaleCompleted(q)&&!isFinishedOrder(q);
+}
 function renderAdminQuotes(){
  const all=state.quotes;
  const isPre=q=>q.status==='requested'||(q.status==='quoted'&&(!q.purchase_intent||q.purchase_intent==='undecided'));
@@ -8081,6 +8086,7 @@ function renderAdminQuotes(){
  const isFinalWaiting=q=>q.status==='quoted'&&q.purchase_intent==='buy_now'&&!quoteNeedsPriceInput(q);
  const count=fn=>all.filter(fn).length;
  const nPre=count(isPre),nPrice=count(isPricing),nWaiting=count(isWaiting),nFinalWaiting=count(isFinalWaiting);
+ const nPaymentProcurement=count(adminOrderNeedsPaymentOrProcurement);
  const nDelivery=count(q=>isWholesaleCompleted(q)&&!isFinishedOrder(q));
  const nFinished=count(isFinishedOrder);
  const nCancel=count(q=>q.cancel_requested_at&&q.status!=='cancelled');
@@ -8094,7 +8100,7 @@ function renderAdminQuotes(){
   filter==='finished'?isFinishedOrder(q):
   filter==='other'?q.status==='quoted'&&['next_round','on_hold'].includes(q.purchase_intent):
   filter==='buy_now'?isRoundBuyer(q)&&!isFinishedOrder(q):
-  filter==='preparing_orders'?q.status==='confirmed'&&!isWholesaleCompleted(q)&&!isFinishedOrder(q):
+  filter==='preparing_orders'?adminOrderNeedsPaymentOrProcurement(q):
   filter==='wholesale_completed'?isWholesaleCompleted(q)&&!isFinishedOrder(q):
   filter==='next_round'?q.status==='quoted'&&q.purchase_intent==='next_round':
   filter==='on_hold'?q.status==='quoted'&&q.purchase_intent==='on_hold':
@@ -8105,8 +8111,8 @@ function renderAdminQuotes(){
   bundledQuoteGroups(qq,['all_history','finished'].includes(filter)):sameRoundGroups(qq);
  const waiting=groups.filter(g=>g.some(q=>q.status==='requested'||quoteNeedsPriceInput(q)));
  const priced=groups.filter(g=>!waiting.includes(g));
- const tabs=[['pricing','견적',nPrice],['waiting_buyer','구매 선택',nWaiting],['final_confirmation','확정 대기',nFinalWaiting],['wholesale_completed','입고·배송',nDelivery],['all_history','전체',all.length]];
- const extras=[['all','견적·선택',nPre],['buy_now','구매 진행',count(q=>isRoundBuyer(q)&&!isFinishedOrder(q))],['preparing_orders','발주 준비',count(q=>q.status==='confirmed'&&!isWholesaleCompleted(q)&&!isFinishedOrder(q))],['finished','완료',nFinished],['other','보류·다음 회차',nOther],['cancel_requested','취소 요청',nCancel],['requested','견적 요청',count(q=>q.status==='requested')],['quoted','견적 안내',count(q=>q.status==='quoted')],['confirmed','주문 확정',count(q=>q.status==='confirmed')]];
+ const tabs=[['pricing','견적',nPrice],['waiting_buyer','구매 선택',nWaiting],['final_confirmation','확정 대기',nFinalWaiting],['preparing_orders','입금·발주',nPaymentProcurement],['wholesale_completed','입고·배송',nDelivery],['all_history','전체',all.length]];
+ const extras=[['all','견적·선택',nPre],['buy_now','구매 진행',count(q=>isRoundBuyer(q)&&!isFinishedOrder(q))],['finished','완료',nFinished],['other','보류·다음 회차',nOther],['cancel_requested','취소 요청',nCancel],['requested','견적 요청',count(q=>q.status==='requested')],['quoted','견적 안내',count(q=>q.status==='quoted')],['confirmed','주문 확정',count(q=>q.status==='confirmed')]];
  const detailKeys=['flow_new','flow_preparing','flow_pickup_ready','flow_shipped','flow_completed','flow_soldout_closed','cancelled'];
  const extraActive=!tabs.some(([key])=>key===filter);
  const title=[...tabs,...extras].find(([key])=>key===filter)?.[1]||(
@@ -8131,6 +8137,7 @@ function renderAdminQuotes(){
    </div>
   </details>
   <div class="admin-orders-list-title"><strong>${esc(title)}</strong><span>${qq.length}건</span></div>
+  ${filter==='preparing_orders'?'<p class="admin-preproc-note">주문 확정 후 입금 확인과 도매 발주를 처리하는 단계예요. 발주가 완료되면 ‘입고·배송’으로 넘어가요.</p>':''}
   ${qq.length?filter==='all'?renderAdminQuoteFlatSection(waiting,'가격 확인','pending')+renderAdminQuoteFlatSection(priced,'구매 선택 대기'):
       renderAdminQuoteFlatSection(groups,'',filter==='pricing'?'pending':'saved'):
       '<div class="empty">해당 주문이 없어요.</div>'}

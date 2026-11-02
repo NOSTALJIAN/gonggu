@@ -3540,6 +3540,17 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 .supplier-shipping-batched .admin-fee-source-breakdown{margin:9px 0}
 
 .admin-fee-source-inline{display:block;margin-top:2px;color:#2b6545!important;font-weight:650!important;font-size:10px!important;line-height:1.5;overflow-wrap:anywhere}
+
+.supplier-freight-notify-routes{font-size:11px;line-height:1.65;color:#59645b;background:#f2f5f2;border-radius:7px;padding:8px 9px}
+.supplier-freight-notify-progress{font-size:11px;color:#416d50;line-height:1.6}
+.supplier-freight-notify-warning{border:1px solid #ecd9b8;background:#fff8ee;border-radius:8px;padding:8px;font-size:11px;line-height:1.6;color:#9a6128}
+.supplier-freight-email-form{display:flex;flex-direction:column;align-items:stretch;gap:7px;margin-top:7px}
+.supplier-freight-email-form label{font-size:12px;font-weight:700;color:#555}
+.supplier-freight-email-form input{display:block;width:100%;min-height:42px;margin-top:4px}
+.supplier-freight-email-form button{align-self:flex-start}
+.supplier-freight-notify-fallback{margin-top:3px}
+.supplier-freight-notify-fallback>summary{font-size:11px;color:#858585;cursor:pointer}
+.supplier-freight-notify-fallback>.btn{margin-top:7px}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -3721,7 +3732,7 @@ const demo=read(DEMO,initDemo());
 const saveDemo=()=>localStorage.setItem(DEMO,JSON.stringify(demo));
 let session=read(SESS,null),busy=false,refreshing=null;
 const p=new URLSearchParams(location.search);
-const state={page:['admin','track'].includes(p.get('page'))?p.get('page'):'shop',tab:'home',adminOrderSearch:'',stores:[],products:[],requests:[],quotes:[],cart:read(CART,[]),modal:null,search:'',shopCategory:'all',shopSort:'newest',shopStore:'all',shopFiltersOpen:false,adminCategory:'all',trackId:p.get('id')||'',trackToken:p.get('token')||'',tracking:null,receipts:read(TRACK,[]),notice:'',filter:'pricing',admin:false,heroPhotoUrl:null,heroStoreId:null,dateGroupsOpen:{},orderCardsOpen:{},supplierBulkSelected:new Set(),supplierBulkStoreId:'',supplierBatches:[],supplierBatchesReady:false,supplierBatchesError:'',supplierPartialInvoices:[],trackSupplierPartial:[],lowerPriceReports:[],optionRequests:[],optionRequestsReady:false,optionRequestsError:'',requestStatusFilter:'pending',adminCatalogView:'products',adminCatalogFilter:'all',adminProductSort:'newest',adminProductSearch:'',productPrivate:{},productPrivateReady:false,emailSettings:null,emailSettingsReady:false,emailSettingsError:'',adminPinIds:new Set(),phoneLookupReady:null,pinLookupNotice:''};
+const state={page:['admin','track'].includes(p.get('page'))?p.get('page'):'shop',tab:'home',adminOrderSearch:'',stores:[],products:[],requests:[],quotes:[],cart:read(CART,[]),modal:null,search:'',shopCategory:'all',shopSort:'newest',shopStore:'all',shopFiltersOpen:false,adminCategory:'all',trackId:p.get('id')||'',trackToken:p.get('token')||'',tracking:null,receipts:read(TRACK,[]),notice:'',filter:'pricing',admin:false,heroPhotoUrl:null,heroStoreId:null,dateGroupsOpen:{},orderCardsOpen:{},supplierBulkSelected:new Set(),supplierBulkStoreId:'',supplierBatches:[],supplierBatchesReady:false,supplierBatchesError:'',supplierPartialInvoices:[],trackSupplierPartial:[],lowerPriceReports:[],optionRequests:[],optionRequestsReady:false,optionRequestsError:'',requestStatusFilter:'pending',adminCatalogView:'products',adminCatalogFilter:'all',adminProductSort:'newest',adminProductSearch:'',productPrivate:{},productPrivateReady:false,emailSettings:null,emailSettingsReady:false,emailSettingsError:'',supplierFreightNotify:{},supplierFreightNotifyReady:false,adminPinIds:new Set(),phoneLookupReady:null,pinLookupNotice:''};
 
 const PRODUCT_CATEGORIES=['바디수트','세트','상의','하의','아우터','원피스','스커트','모자','양말','악세서리','잡화'];
 const validProductCategory=x=>PRODUCT_CATEGORIES.includes(String(x||'').trim());
@@ -4356,6 +4367,17 @@ async function loadAdminEmailSettings(){
   console.warn('이메일 발송 설정을 확인하지 못했어요.',e);
  }
 }
+async function loadSupplierFreightNotifyStatus(){
+ if(!state.admin||!connected){state.supplierFreightNotify={};state.supplierFreightNotifyReady=false;return;}
+ try{
+  const info=await rpc('gq_admin_supplier_freight_notify_status_v103',{},true);
+  state.supplierFreightNotify=info&&typeof info==='object'&&!Array.isArray(info)?info:{};
+  state.supplierFreightNotifyReady=true;
+ }catch(e){
+  state.supplierFreightNotify={};state.supplierFreightNotifyReady=false;
+  console.warn('배송비 분담금 알림 상태 조회 실패',e);
+ }
+}
 function normalizeCustomerEmail(raw,allowEmpty=false){
  const email=String(raw||'').trim().toLowerCase();
  if(!email&&allowEmpty)return '';
@@ -4568,7 +4590,7 @@ if(!adminRequestSeenAt&&rr.length){
   try{localStorage.setItem(ADMIN_REQUEST_SEEN_KEY,JSON.stringify(newestRequestAt))}catch(_){}
  }
 }
-await loadAdminProductPrivate();await loadAdminSupplierBatches();render();await Promise.all([loadAdminShipping(),loadAdminPinStatus(),loadAdminEmailSettings(),loadAdminOptionRequests(),loadAdminLowerPriceReports()]);render()}catch(e){
+await loadAdminProductPrivate();await loadAdminSupplierBatches();render();await Promise.all([loadAdminShipping(),loadAdminPinStatus(),loadAdminEmailSettings(),loadSupplierFreightNotifyStatus(),loadAdminOptionRequests(),loadAdminLowerPriceReports()]);render()}catch(e){
  // A transient catalog/database error is not an admin logout. Only a missing
  // session, an explicit authorization denial, or an auth failure clears access.
  if(!session||e?.message==='관리자 권한이 없습니다'||e?.status===401)state.admin=false;
@@ -7083,17 +7105,44 @@ function supplierFreightPaymentNotice(q){
   '이번에 추가로 입금할 금액: '+money(due)+'\n누적 실제 입금액: '+money(Number(q.amount_paid||0)-Number(q.amount_refunded||0))+
   '\n'+miniPaymentLabel()+'\n\n상품대금과 고객 수령 택배비를 다시 청구하는 것이 아니에요. 이미 송금했다면 중복으로 보내지 마시고 관리자에게 알려 주세요.\n\n주문조회: '+trackLink(q.id,q.lookup_token);
 }
+function supplierFreightNotificationState(q){
+ const m=state.supplierFreightNotify?.[q.id]||{};
+ const hasEmail=m.email_registered===true||(!state.supplierFreightNotifyReady&&!!q.customer_email);
+ const pushCount=Number(m.push_subscribers||0);
+ const gmailReady=Boolean(state.emailSettings?.enabled&&state.emailSettings?.connected);
+ const emailReady=hasEmail&&gmailReady;
+ const known=Boolean(state.supplierFreightNotifyReady&&state.emailSettingsReady);
+ const mailLabels={pending:'이메일 발송 대기',submitted:'이메일 발송 처리 중',sent:'이메일 발송 처리 완료',failed:'이메일 발송 실패',skipped:'이메일 발송 제외'};
+ const pushLabels={pending:'앱 알림 발송 대기',processing:'앱 알림 발송 처리 중',sent:'앱 알림 발송 처리 완료',failed:'앱 알림 발송 실패'};
+ const routes=[];
+ if(emailReady)routes.push('이메일 자동 안내');
+ else if(hasEmail&&!gmailReady)routes.push('Gmail 자동 발송 설정 확인 필요');
+ else routes.push('구매자 이메일 미등록');
+ routes.push(pushCount>0?'앱 알림 연결 '+pushCount+'개':'앱 알림 미연결');
+ return {m,hasEmail,pushCount,gmailReady,emailReady,known,hasRoute:emailReady||pushCount>0,
+  routes:routes.join(' · '),
+  progress:[
+   emailReady?(mailLabels[m.mail_status]||'이메일 발송 상태 확인 중'):(hasEmail?'메일 발송 설정 확인 필요':'이메일 없음'),
+   pushCount>0?(pushLabels[m.push_status]||'앱 알림 발송 상태 확인 중'):'앱 알림 미연결'
+  ].join(' · ')};
+}
 function renderSupplierFreightRequestControl(q){
  if(!state.admin||!q||q.status!=='confirmed'||supplierShippingShare(q)<=0)return '';
  const due=supplierFreightOnlyDue(q),requested=Number(q.supplier_freight_request_amount||0);
  const active=activeSupplierFreightRequest(q)>0;
- const heading='<div class="supplier-freight-payment-title"><b>도매 배송비 분담금 입금 요청</b><small>상품값·고객 택배비와 별도 · 주문별 분담금</small></div>';
+ const delivery=supplierFreightNotificationState(q);
+ const heading='<div class="supplier-freight-payment-title"><b>도매 배송비 분담금 자동 입금 안내</b><small>상품값·고객 택배비와 별도 · 입금 요청 시 이메일·앱 알림 자동 등록</small></div>';
+ const channels='<div class="supplier-freight-notify-routes">'+esc(delivery.routes)+'</div>';
+ const emailForm=!delivery.hasEmail&&due>0?'<form class="supplier-freight-email-form" data-customer-email="quote" data-id="'+esc(q.id)+'"><label>구매자 이메일 등록<input type="email" name="email" placeholder="example@email.com" maxlength="254" autocomplete="off" required></label><button class="btn sm secondary" type="submit">이메일 저장</button></form>':'';
+ const fallback='<details class="supplier-freight-notify-fallback"><summary>수동 안내가 필요한 경우</summary><button type="button" class="btn sm neutral" data-action="supplier-freight-copy" data-id="'+esc(q.id)+'">입금 안내문 복사</button></details>';
  const buttons=due>0?
-  (active?'<strong>요청 중 · 현재 남은 '+money(due)+'</strong><div class="row wrap"><button type="button" class="btn sm secondary" data-action="supplier-freight-copy" data-id="'+esc(q.id)+'">입금 안내 복사</button><button type="button" class="btn sm neutral" data-action="supplier-freight-cancel" data-id="'+esc(q.id)+'">요청 취소</button></div>'
-  :'<p>추가 입금 필요 '+money(due)+' · 실제 입금액은 변경되지 않아요.</p><button type="button" class="btn sm secondary" data-action="supplier-freight-request" data-id="'+esc(q.id)+'">분담금 '+money(due)+' 입금 요청</button>')
-  :requested>0?'<small>현재 추가 요청할 도매 배송비가 없어요. (완납·면제 또는 금액 변경)</small><button type="button" class="btn sm neutral" data-action="supplier-freight-cancel" data-id="'+esc(q.id)+'">기존 요청 삭제</button>'
-  :'<small>상품대금과 고객 수령 택배비를 받은 뒤, 도매 배송비만 남으면 요청할 수 있어요.</small>';
- return '<div class="supplier-freight-payment-request">'+heading+buttons+'</div>';
+  (active?'<strong>입금 요청 중 · 남은 '+money(due)+'</strong><div class="supplier-freight-notify-progress">'+esc(delivery.progress)+'</div><div class="row wrap"><button type="button" class="btn sm neutral" data-action="supplier-freight-cancel" data-id="'+esc(q.id)+'">입금 요청 취소</button></div>'+fallback
+  :'<p>추가 입금 필요 '+money(due)+' · 구매자에게 자동 안내를 발송해요.</p>'+
+    (delivery.known&&!delivery.hasRoute?'<div class="supplier-freight-notify-warning">이메일 또는 앱 알림 수신 연결이 필요해요. 아래에서 이메일을 등록하거나 구매자가 주문조회에서 알림을 켜야 해요.</div>':'')+
+    '<button type="button" class="btn sm secondary" data-action="supplier-freight-request" data-id="'+esc(q.id)+'" '+(delivery.known&&!delivery.hasRoute?'disabled':'')+'>분담금 '+money(due)+' 자동 입금 안내 보내기</button>'+emailForm)
+  :requested>0?'<small>추가 요청할 도매 배송비가 없어요. (완납·면제 또는 금액 변경)</small><button type="button" class="btn sm neutral" data-action="supplier-freight-cancel" data-id="'+esc(q.id)+'">기존 요청 삭제</button>'
+  :'<small>상품대금과 고객 수령 택배비를 받은 뒤, 도매 배송비만 남으면 자동으로 안내할 수 있어요.</small>';
+ return '<div class="supplier-freight-payment-request">'+heading+channels+buttons+'</div>';
 }
 function renderBuyerSupplierFreightRequest(q){
  const due=activeSupplierFreightRequest(q);
@@ -10278,9 +10327,11 @@ if(a==='supplier-freight-request'||a==='supplier-freight-cancel'||a==='supplier-
  }
  if(busy)return;
  if(!cancel&&due<=0)throw Error('상품대금·고객 택배비 입금 후 남은 도매 배송비가 있는지 확인해 주세요.');
+ const channel=supplierFreightNotificationState(q);
+ if(!cancel&&channel.known&&!channel.hasRoute)throw Error('이 구매자에게 보낼 이메일 또는 연결된 앱 알림이 없어요. 먼저 이메일을 등록해 주세요.');
  if(!window.confirm(cancel?
   q.buyer_name+'님의 도매 배송비 입금 요청을 취소할까요? 이미 전달한 안내문은 직접 취소 안내해 주세요.':
-  q.buyer_name+'님에게 도매 배송비 분담금 '+money(due)+'만 별도로 요청할까요?\n상품값과 고객 택배비는 다시 청구하지 않으며, 요청을 저장해도 실제 입금액은 변경되지 않아요.'))return;
+  q.buyer_name+'님에게 도매 배송비 분담금 '+money(due)+' 입금 안내를 자동으로 보낼까요?\n' +channel.routes+'\n상품값과 고객 택배비는 다시 청구하지 않고 입금액도 변경하지 않아요.'))return;
  busy=true;b.disabled=true;
  try{
   const reply=await rpc('gq_admin_set_supplier_freight_request_v102',{p_quote_id:id,p_cancel:cancel},true);
@@ -10288,7 +10339,7 @@ if(a==='supplier-freight-request'||a==='supplier-freight-cancel'||a==='supplier-
    throw Error('도매 배송비 입금 요청 저장 결과가 일치하지 않아요.');
   state.orderCardsOpen[q.bundle_parent_id||q.id]=true;
   await loadAdmin();
-  notif(cancel?'분담 배송비 입금 요청 취소 완료':'분담 배송비 '+money(due)+' 입금 요청 저장 완료 · 고객 주문조회에 표시돼요. 안내 복사를 눌러 전달하세요.');
+  notif(cancel?'분담 배송비 입금 요청 취소 완료':'도매 배송비 '+money(due)+' 입금 요청 저장 완료 · 고객 이메일·앱 알림 자동 발송 대기열에 등록했어요. 발송 상태는 주문 카드에서 확인해 주세요.');
  }finally{busy=false;if(b.isConnected)b.disabled=false;}
  return;
 }

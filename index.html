@@ -6931,7 +6931,7 @@ function renderSupplierBulkManager(historyOnly=false,expanded=false){
    <summary><span><strong>${esc(batch.supplier||'거래처')} · ${ordered?'도매 발주 완료':'발주 대기'}</strong>
     <small>${batch.people}명 · ${batchItems.length}종 · 배송비 ${money(batch.total)} · 1인 ${shareText}</small>
     </span>
-    <em>${ordered?'완료':checked.people.filter(p=>supplierPartialInvoice(batch.id,p.payer.buyer_key)?.paid_at).length?checked.people.filter(p=>supplierPartialInvoice(batch.id,p.payer.buyer_key)?.paid_at).length+'/'+batch.people+'명 선입금 확인':checked.paid+'/'+batch.people+'명 전체 입금 확인'}</em>
+    <em>${ordered?'완료':checked.people.filter(p=>supplierPartialInvoice(batch.id,p.payer.buyer_key)?.paid_at).length?checked.people.filter(p=>supplierPartialInvoice(batch.id,p.payer.buyer_key)?.paid_at).length+'/'+batch.people+'명 선입금 확인':checked.paid+'/'+batch.people+'명 발주 준비 완료'}</em>
     <button type="button" class="btn sm secondary supplier-bulk-copy-btn" data-action="copy-supplier-batch-procurement" data-id="${esc(batch.id)}" aria-label="${esc(batch.supplier||'거래처')} 발주서 복사">발주서 복사</button>
    </summary>
    <div class="supplier-bulk-batch-body">
@@ -6991,7 +6991,7 @@ function renderSupplierBulkManager(historyOnly=false,expanded=false){
     }).join('')}
     <details class="supplier-bulk-items-compact"><summary>배분 상품 ${batchItems.length}종 보기</summary><div>${batchItems.map(i=>'<div class="supplier-bulk-batch-item">남대문 '+esc(i.store_name||'가게명 미입력')+' · '+esc(i.product_name)+'</div>').join('')||'기록 확인 필요'}</div></details>
     ${ordered?`<div class="supplier-bulk-done">이 거래처 발주 완료: ${fmtDate(batch.ordered_at)}</div>`:
-      `<button type="button" class="btn block" data-action="supplier-bulk-ordered" data-id="${esc(batch.id)}" ${checked.canOrder&&!unpaidRequests?'':'disabled'}>전체 주문 입금 확인 → 도매 발주 완료</button>
+      `<button type="button" class="btn block" data-action="supplier-bulk-ordered" data-id="${esc(batch.id)}" ${checked.canOrder&&!unpaidRequests?'':'disabled'}>상품대금 확인 → 도매 발주 완료</button>
        <button type="button" class="btn block secondary" style="margin-top:7px" data-action="supplier-bulk-ordered-partial" data-id="${esc(batch.id)}" ${checked.partialReady?'':'disabled'}>이 거래처만 선입금 확인 → 발주 완료</button>
 
        <button type="button" class="btn sm neutral supplier-bulk-cancel" data-action="supplier-bulk-cancel" data-id="${esc(batch.id)}">이 거래처 배송비 배분 취소</button>`}

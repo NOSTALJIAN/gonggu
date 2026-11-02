@@ -7045,7 +7045,7 @@ function renderAdminQuoteCard(q){
   <div class="compact-order-next ${urgent?'is-urgent':''}">
    <strong>${esc(task.text)}</strong>
    <button type="button" class="compact-order-next-btn" ${command}>${esc(task.label)} →</button>
-   ${finalReady&&balanceDue(q)>0&&!q.cancel_requested_at&&!q.delivery_change_requested_at?`<button type="button" class="btn secondary compact-payment-request-btn" data-action="copy-payment-notice" data-id="${esc(q.id)}">입금 요청 안내 복사 · ${money(balanceDue(q))}</button>`:''}
+   ${finalReady&&balanceDue(q)>0&&!q.cancel_requested_at&&!q.delivery_change_requested_at?`<button type="button" class="btn secondary compact-payment-request-btn" data-action="send-final-payment-request" data-id="${esc(q.id)}">입금 요청 자동발송 · ${money(balanceDue(q))}</button>`:''}
    ${renderCompactInlinePayment(q,finalReady)}
    ${supplierFreightOnlyDue(q)>0?renderSupplierFreightRequestControl(q):''}
    ${adminConfirmButton(q)}
@@ -10802,6 +10802,15 @@ if(a==='scroll-top'){window.scrollTo({top:0,behavior:window.matchMedia('(prefers
 if(a==='copy-payment-account'||a==='copy-payment-details'){
  if(state.page!=='track'||!buyerFinalPaymentReady(state.tracking))throw Error('이번 회차 구매 신청과 배송비 배분 후 계좌를 확인할 수 있어요.');
  await copy(a==='copy-payment-account'?MINI_PAYMENT_ACCOUNT:miniPaymentLabel());return;
+}
+if(a==='send-final-payment-request'){
+ if(!state.admin||state.page!=='admin')throw Error('관리자만 입금 요청을 보낼 수 있어요.');
+ const q=state.quotes.find(row=>row.id===id);
+ if(!q||balanceDue(q)<=0)throw Error('미입금 주문을 찾지 못했어요.');
+ if(!window.confirm(esc(q.buyer_name||'구매자')+'님에게 '+money(balanceDue(q))+' 입금 요청을 이메일과 앱 알림으로 보낼까요?'))return;
+ const result=await rpc('gq_admin_request_final_payment_v110',{p_quote_id:id},true);
+ notif((result.queued_email?'이메일 발송 대기 등록':'이메일 미등록')+' · '+(result.queued_push?'앱 알림 발송 대기 등록':'앱 알림 연결 정보 없음')+' · 실제 도착 여부는 수신 환경에 따라 달라요.');
+ return;
 }
 if(a==='copy-final-payment-notice'){
  if(!state.admin||state.page!=='admin')throw Error('관리자만 최종 입금 안내를 복사할 수 있어요.');

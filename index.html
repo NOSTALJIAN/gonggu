@@ -3321,6 +3321,13 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 .supplier-buyer-request-box>small{font-size:11px;line-height:1.5;color:#666}
 .supplier-buyer-request-box .supplier-request-warning{color:#956a29}
 .supplier-request-main{font-size:13px!important;min-height:42px!important}
+/* Distinguish unconfirmed quotes from settled orders in buyer statistics. */
+.buyer-pending-quote-list{border-top:1px solid #e3e3e3;margin-top:12px;padding-top:9px}
+.buyer-pending-quote-list>.stats-summary{color:#765523;font-size:13px}
+.buyer-pending-quote-list .stat-detail{margin-top:9px}
+.buyer-pending-quote-list .row.between{gap:10px;align-items:center}
+.buyer-pending-quote-list .row.between b{min-width:0;font-size:12px}
+.buyer-pending-quote-list .row.between strong{white-space:nowrap;font-size:13px}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -7545,7 +7552,9 @@ function renderBuyerStats(){
   <div class="tile"><small>확정 주문금액</small><strong style="font-size:14px">${money(confirmedAmount)}</strong></div>
  </div>
  <input id="stat-search" type="search" placeholder="확정 구매자·아기 이름·연락처 검색">
- <div class="statlist">${groups.map(g=>`<div class="statcard" data-stats-entry>
+ <div class="statlist">${groups.map(g=>{const waiting=state.quotes.filter(q=>
+  ['requested','quoted'].includes(q.status)&&buyerIdentity(q)===g.key);
+  return `<div class="statcard" data-stats-entry>
   <div class="row between">
    <div><b>${esc(g.name)} <span class="chip purple">${esc(g.baby||'아기 이름 미입력')}</span></b>
     <div class="tiny">${esc(g.contact||'연락처 미입력')} · 확정 주문 ${g.confirmed}건</div>
@@ -7566,7 +7575,16 @@ function renderBuyerStats(){
    </button>
    ${renderOrderDepositControl(q)}`).join('')}
   </details>
- </div>`).join('')||'<div class="empty">아직 확정된 구매자가 없어요.</div>'}</div>`;
+  ${waiting.length?`<details class="buyer-pending-quote-list">
+   <summary class="stats-summary"><span>미확정 견적 ${waiting.length}건 · 확정 주문에 포함되지 않음</span><span class="tiny">펼치기 ▾</span></summary>
+   ${waiting.map(q=>`<button type="button" class="stat-detail stat-order-open" data-action="buyer-order-details" data-id="${esc(q.id)}">
+    <div class="row between"><b>${q.status==='quoted'&&q.purchase_intent==='buy_now'?'이번 회차 구매 희망 · 최종확정 대기':q.status==='requested'?'견적 요청':'견적 안내 완료'} · ${esc(fmtDate(q.created_at))}</b><strong>${unknown(q)?'상품금액 확인 중':money(previewOrderSum(q))}</strong></div>
+    ${buyerOrderProductPreview(q)}
+    <span class="stat-order-more">미확정 견적 상세 보기 <span aria-hidden="true">→</span></span>
+   </button>`).join('')}
+   <p class="smallnote">위 금액은 상품 합계예요. 배송비와 최종 주문 여부는 견적 상세에서 확인해 주세요.</p>
+  </details>`:''}
+ </div>`}).join('')||'<div class="empty">아직 확정된 구매자가 없어요.</div>'}</div>`;
 }
 function productStatsStoreGroups(){
  const byStore=new Map();

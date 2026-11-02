@@ -3166,6 +3166,11 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 .related-deposit-edit button{grid-column:span 2}
 .statcard>.related-deposit-payment,.statcard .related-deposit-payment{background:#fafafa;padding:8px 10px;border-radius:8px;margin-bottom:9px}
 
+.supplier-individual-deposits{border:1px solid #e7e7e7;background:#fafafa;border-radius:9px;padding:7px 11px;margin:9px 0}
+.supplier-individual-deposits>summary{cursor:pointer;list-style:none;font-size:11px;font-weight:750;padding:5px 0;color:#444}
+.supplier-individual-deposits>summary::-webkit-details-marker{display:none}
+.supplier-individual-deposit{border-top:1px solid #ededed;padding:9px 0;display:flex;flex-direction:column;gap:4px}
+.supplier-individual-deposit>b{font-size:11px}
 /* Delivery change review: isolated from the old full-order editor. */
 .delivery-review-list{display:grid;gap:10px}
 .delivery-review-card{border:1px solid #e2e2e6;background:#fff;border-radius:13px;padding:14px;min-width:0;color:#222}
@@ -6736,10 +6741,16 @@ function supplierBatchPaymentState(batch){
 }
 /* Only a buyer-selected, fully priced current order can be marked paid.
    Partial/supplier-specific prepayment remains in its own existing flow. */
+function supplierBuyerSingleUnpaidTarget(p){
+ if(!p)return null;
+ const remaining=Number(p.due)-Number(p.net);
+ const unpaid=p.orders.filter(q=>q.status==='confirmed'&&readyQuote(q)&&(orderOutstanding(q)||0)>0);
+ return unpaid.length===1&&Number.isSafeInteger(remaining)&&remaining>0&&orderOutstanding(unpaid[0])===remaining?unpaid[0]:null;
+}
 function canConfirmSupplierBuyerFullPaid(batch,p){
  if(!batch||batch.ordered_at||!p||p.eligible||!p.selected.length||!p.orders.length)return false;
  const remaining=Number(p.due)-Number(p.net);
- if(!Number.isSafeInteger(remaining)||remaining<=0)return false;
+ if(!Number.isSafeInteger(remaining)||remaining<=0||!supplierBuyerSingleUnpaidTarget(p))return false;
  if(p.orders.some(q=>!readyQuote(q)||!['confirmed','quoted'].includes(q.status)||
     (q.status==='quoted'&&q.purchase_intent!=='buy_now')||
     q.cancel_requested_at||q.delivery_change_requested_at))return false;
@@ -6832,6 +6843,8 @@ function renderSupplierBulkManager(historyOnly=false,expanded=false){
       ['quoted','confirmed'].includes(q.status)&&(q.status==='confirmed'||q.purchase_intent==='buy_now')&&
       item.unit_price!==null&&item.unit_price!==undefined&&!item.supplier_ordered_at&&item.fulfillment!=='sold_out');
      const canConfirmFull=canConfirmSupplierBuyerFullPaid(batch,p);
+     const unpaidOrders=p.orders.filter(q=>q.status==='confirmed'&&readyQuote(q)&&(orderOutstanding(q)||0)>0);
+     const showOrderPayments=!ordered&&!canConfirmFull&&unpaidOrders.length>0;
      const alreadyPaid=Boolean(p.eligible||inv?.paid_at);
      const confirmLabel=ordered?'발주 완료':p.eligible?'✓ 입금 완료':inv?.paid_at?'✓ 선입금 확인':p.reason;
      const confirmButton=canConfirmFull?`<button type="button" class="supplier-buyer-confirm" data-action="supplier-buyer-full-paid" data-id="${esc(batch.id)}" data-buyer-key="${esc(p.payer.buyer_key)}">입금 확인</button>`:'';
@@ -6847,6 +6860,7 @@ function renderSupplierBulkManager(historyOnly=false,expanded=false){
        <span class="supplier-buyer-name">${esc(p.buyerName)} · ${money(p.payer.amount)} 배송비</span>
        <span class="supplier-buyer-check-actions"><span class="${alreadyPaid||ordered?'is-paid':'is-waiting'}">${esc(confirmLabel)}</span>${confirmButton}</span>
       </div>
+      ${showOrderPayments?`<details class="supplier-individual-deposits" open><summary>주문별 입금 확인 · ${unpaidOrders.length}건</summary>${unpaidOrders.map(q=>`<div class="supplier-individual-deposit"><b>${fmtDate(q.created_at)} · ${money(totalDue(q))}</b>${renderOrderDepositControl(q)}</div>`).join('')}</details>`:''}
       ${inv?`<div class="smallnote" style="margin-top:5px">선입금: 상품 ${money(inv.item_total)} + 배송비 ${money(inv.freight)} = <b>${money(inv.amount)}</b> · ${inv.paid_at?'입금 확인':'요청 중'}</div>`:''}
       ${inv?'<div class="smallnote" style="margin:5px 0;overflow-wrap:anywhere">✉️ '+(recipient?esc(recipient)+' · ':'고객 이메일 미등록 · ')+esc(mailState)+'</div>':''}
       ${actions}</div>`;
@@ -9105,7 +9119,7 @@ if(a==='supplier-buyer-full-paid'){
  if(!payer||!canConfirmSupplierBuyerFullPaid(batch,person))
   throw Error('입금액이나 주문 상태가 변경됐어요. 새로고침 후 확인해 주세요.');
  const missing=Number(person.due)-Number(person.net);
- const target=[...person.orders].filter(q=>q.status==='confirmed').at(-1)||person.orders.at(-1);
+ const target=supplierBuyerSingleUnpaidTarget(person);
  if(!target||!Number.isSafeInteger(missing)||missing<=0)throw Error('확인할 미입금액이 없어요.');
  const next=Number(target.amount_paid||0)+missing;
  const refunded=Number(target.amount_refunded||0);

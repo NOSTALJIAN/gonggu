@@ -10700,10 +10700,7 @@ if(a==='mark-order-payment-part'){
    await adminPayment(id,newPaid,refunded);
    await loadAdmin();
    const updated=state.quotes.find(x=>x.id===id);
-   if(q.status==='quoted'&&updated?.status==='confirmed'&&state.tab==='quotes'&&state.filter==='final_confirmation'){
-    state.filter='buy_now';
-    render();
-   }
+   // Keep the admin on the current payment/order filter after automatic confirmation.
    window.scrollTo({top:oldY,behavior:'instant'});
    notif(updated?.status==='confirmed'&&q.status==='quoted'?'입금 기록 완료 · 최종 주문확정으로 자동 변경됐어요.':kind+' '+money(amount)+' 입금 확인 완료');
   }finally{busy=false;b.disabled=false;}
@@ -11662,10 +11659,7 @@ else if(f.dataset.payment){
  await adminPayment(quoteId,paid,refunded,split);
  await loadAdmin();
  const updated=state.quotes.find(x=>x.id===quoteId);
- if(q.status==='quoted'&&updated?.status==='confirmed'&&state.tab==='quotes'&&state.filter==='final_confirmation'){
-  state.filter='buy_now';
-  render();
- }
+ // Keep the admin on the same list after payment; do not open the broad purchase-progress view.
  window.scrollTo({top:priorY,behavior:'instant'});
  if(f.dataset.fullPaymentConfirmed){
   state.modal={type:'payment-save-success',buyer:buyerLabel(q),amount:paid-refunded,confirmed:updated?.status==='confirmed'};

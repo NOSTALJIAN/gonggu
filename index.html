@@ -4930,13 +4930,12 @@ const buyerLabel=q=>String(q.buyer_name||'이름 미입력')+' · '+(q.baby_name
    notification_origin is an email-link fallback and must not be used to
    identify which storefront a buyer submitted their order on. */
 function adminGithubOrderIcon(q){
- if(!state.admin||!['github','cloudflare'].includes(q?.price_channel))return '';
- return '<span class="admin-order-gh-badge" title="'+(q.price_channel==='github'?'GitHub':'Cloudflare')+' 주소에서 접수한 주문" aria-label="외부 링크 접수 주문">'+(q.price_channel==='github'?'GH':'CF')+'</span>';
+ if(!state.admin||q?.price_channel!=='github')return '';
+ return '<span class="admin-order-gh-badge" title="GitHub 링크로 접수한 주문" aria-label="GitHub 링크 접수">맘❤️</span>';
 }
 function adminGithubGroupIcon(quotes){
- if(!state.admin||!Array.isArray(quotes))return '';
- const channels=[...new Set(quotes.map(q=>q.price_channel).filter(c=>c==='github'||c==='cloudflare'))];
- return channels.map(c=>'<span class="admin-order-gh-badge" title="'+(c==='github'?'GitHub':'Cloudflare')+' 주소에서 접수한 주문 포함" aria-label="'+c+' 접수 주문">'+(c==='github'?'GH':'CF')+'</span>').join(' ');
+ if(!state.admin||!Array.isArray(quotes)||!quotes.some(q=>q.price_channel==='github'))return '';
+ return '<span class="admin-order-gh-badge" title="GitHub 링크로 접수한 주문 포함" aria-label="GitHub 링크 접수 포함">맘❤️</span>';
 }
 
 const normKey=x=>String(x||'').trim().replace(/\s+/g,'').toLowerCase();

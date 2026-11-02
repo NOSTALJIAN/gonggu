@@ -3285,6 +3285,19 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 .compact-order-cost-lines>div{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:#666;margin:5px 0}
 .compact-order-cost-lines b{font-size:12px;color:#333;white-space:nowrap}
 
+
+/* Product money and customer courier fee have separate receipt states. */
+.related-deposit-payment{display:flex;flex-direction:column;align-items:stretch;gap:8px}
+.order-payment-split{width:100%;background:#f7f7f8;border-radius:10px;padding:10px 12px}
+.order-payment-line{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;font-size:12px;padding:5px 0}
+.order-payment-line span{color:#555;min-width:0}
+.order-payment-line strong{text-align:right;font-size:12px}
+.order-payment-line strong small{color:#888;display:block;font-size:11px;font-weight:500}
+.order-payment-line strong.paid{color:#26704d}
+.order-payment-line strong.pending{color:#9a6221}
+.order-payment-received{border-top:1px solid #e4e4e5;margin-top:6px;padding-top:7px;color:#777;font-size:11px}
+.order-payment-quick{width:100%;min-height:40px!important;font-size:12px!important}
+.compact-order-payment-status{font-size:12px;color:#356d52;padding:7px 0;line-height:1.5}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -6298,7 +6311,10 @@ function compactQuoteNextTask(q){
   return {text:'주문확정 상태 확인',label:'상세 보기',tool:'advanced'};
  }
  if(q.status==='confirmed'){
-  if(unpaid>0)return {text:'입금 '+money(unpaid)+' 확인 필요',label:'입금 기록 수정',tool:'payment'};
+  if(unpaid>0){const p=orderPaymentParts(q);
+   if(p.goodsMissing===0&&p.shippingMissing>0)return {text:'상품대금 입금 완료 · 택배비 '+money(p.shippingMissing)+' 별도',label:'택배비 관리',tool:'payment'};
+   return {text:'상품대금 '+money(p.goodsMissing)+' 입금 확인 필요',label:'입금 관리',tool:'payment'};
+  }
   if(pendingBatch)return {text:'입금 완료 · 거래처 발주 대기',label:'거래처 발주 처리',filter:'supplier_payments'};
   if(!supplierDone)return {text:'입금 완료 · 발주 준비',label:'거래처 발주 화면',filter:'supplier_payments'};
   if(stage==='new')return {text:'발주 완료 · 상품 준비 시작',label:'상품 준비 시작',action:'set-workflow',stage:'preparing'};
@@ -6334,7 +6350,8 @@ function renderAdminQuoteCard(q){
     ${supplierShippingShare(q)>0?`<div><span>도매 배송비</span><b>${money(supplierShippingShare(q))}</b></div>`:''}
    </div>`:''}
    <div><span>결제금액</span><b>${priced?money(due):'확인 중'}</b></div>
-   <div><span>입금액</span><b>${money(paid)}</b></div>
+   <div><span>받은 금액</span><b>${money(paid)}</b></div>
+   ${priced&&q.status==='confirmed'?`<div class="compact-order-payment-status">${orderPaymentParts(q).goodsMissing?'상품대금 미입금 '+money(orderPaymentParts(q).goodsMissing):'상품대금 입금 완료'}${orderPaymentParts(q).shippingMissing?' · 택배비 '+money(orderPaymentParts(q).shippingMissing)+' 별도':''}</div>`:''}
    <div class="compact-order-balance"><span>남은 금액</span><b>${priced?money(Math.max(0,due-paid)):'확인 필요'}</b></div>
    ${priced&&paid>due?`<p class="compact-order-warning">초과 입금 ${money(paid-due)} · 환불 여부 확인</p>`:''}
   </div>
@@ -6359,11 +6376,7 @@ function renderAdminQuoteCard(q){
    <details class="compact-order-tool" data-compact-tool="payment">
     <summary>입금·환불</summary>
     <div class="compact-tool-content">
-     <form data-payment="${esc(q.id)}" class="compact-payment-form">
-      <label>누적 입금액<input name="paid" type="number" min="0" step="1" inputmode="numeric" value="${Number(q.amount_paid)||0}" required></label>
-      <label>누적 환불액<input name="refunded" type="number" min="0" step="1" inputmode="numeric" value="${Number(q.amount_refunded)||0}" required></label>
-      <button type="submit" class="btn sm secondary">입금·환불 저장</button>
-     </form>
+     ${q.status==='confirmed'?renderOrderDepositControl(q):'<p class="tiny">주문 확정 후 입금을 확인할 수 있어요.</p>'}
      <p class="tiny">실제로 받은 금액을 기록해요. 저장만으로 송금되지는 않아요.</p>
     </div>
    </details>
@@ -6593,17 +6606,28 @@ async function handleMergeShippingSubmit(f,data){
   window.alert('기존 택배비 중복 입금 여부를 확인해 주세요. 실제 환불 후 환불액을 기록해야 해요. (중복 가능 배송비 '+money(Number(result.possible_refund))+')');
 }
 
+function orderPaymentParts(q){
+ const goods=previewOrderSum(q)+supplierShippingShare(q),shipping=appliedShipping(q);
+ const received=Math.max(0,Number(q.amount_paid||0)-Number(q.amount_refunded||0));
+ return {goods,shipping,received,goodsMissing:Math.max(0,goods-received),
+  shippingMissing:Math.max(0,shipping-Math.max(0,received-goods))};
+}
 function orderOutstanding(q){
  if(q.status!=='confirmed'||!readyQuote(q))return null;
  return Math.max(0,totalDue(q)-Number(q.amount_paid||0)+Number(q.amount_refunded||0));
 }
 function renderOrderDepositControl(q){
- const missing=orderOutstanding(q),net=Number(q.amount_paid||0)-Number(q.amount_refunded||0);
+ const missing=orderOutstanding(q),p=orderPaymentParts(q);
  if(missing===null)return '<span class="related-deposit-info">결제금액 미확정</span>';
  return `<div class="related-deposit-payment">
-  <span class="related-deposit-info">${missing?'미입금 '+money(missing):'입금 확인'} · 수령 ${money(net)}</span>
-  ${missing?`<button class="btn sm" type="button" data-action="mark-deposit-paid" data-id="${esc(q.id)}">${money(missing)} 입금 확인</button>`:''}
-  <details class="related-deposit-edit"><summary>금액 직접 수정</summary><form data-payment="${esc(q.id)}"><label>누적 입금액<input name="paid" type="number" min="0" step="1" inputmode="numeric" required value="${Number(q.amount_paid||0)}"></label><label>누적 환불액<input name="refunded" type="number" min="0" step="1" inputmode="numeric" required value="${Number(q.amount_refunded||0)}"></label><button class="btn sm secondary" type="submit">이 주문에 저장</button></form></details>
+  <div class="order-payment-split">
+   <div class="order-payment-line"><span>상품대금${supplierShippingShare(q)?' (도매 배송비 포함)':''}</span><strong class="${p.goodsMissing?'pending':'paid'}">${p.goodsMissing?'미입금 '+money(p.goodsMissing):'입금 완료'} <small>${money(p.goods)}</small></strong></div>
+   ${p.shipping>0?`<div class="order-payment-line"><span>택배비 · 별도</span><strong class="${p.shippingMissing?'pending':'paid'}">${p.shippingMissing?'미입금 '+money(p.shippingMissing):'입금 완료'} <small>${money(p.shipping)}</small></strong></div>`:''}
+   <div class="order-payment-received">수령 ${money(p.received)} · 전체 결제금액 ${money(totalDue(q))}</div>
+  </div>
+  ${p.goodsMissing>0?`<button class="btn sm order-payment-quick" data-action="mark-order-payment-part" data-part="goods" data-id="${esc(q.id)}">상품대금 ${money(p.goodsMissing)} 입금 확인</button>`:''}
+  ${!p.goodsMissing&&p.shippingMissing>0?`<button class="btn sm secondary order-payment-quick" data-action="mark-order-payment-part" data-part="shipping" data-id="${esc(q.id)}">택배비 ${money(p.shippingMissing)} 입금 확인</button>`:''}
+  <details class="related-deposit-edit"><summary>금액 직접 수정 · 부분입금/환불</summary><form data-payment="${esc(q.id)}"><label>누적 입금액<input name="paid" type="number" min="0" step="1" inputmode="numeric" required value="${Number(q.amount_paid||0)}"></label><label>누적 환불액<input name="refunded" type="number" min="0" step="1" inputmode="numeric" required value="${Number(q.amount_refunded||0)}"></label><button class="btn sm secondary" type="submit">이 주문에 저장</button></form></details>
  </div>`;
 }
 function renderOtherBuyerDeposits(group){
@@ -6669,7 +6693,9 @@ function renderCollapsibleAdminOrder(group,section){
  const canSumPayments=confirmedOrders.length>0&&confirmedOrders.every(readyQuote);
  const confirmedDue=canSumPayments?confirmedOrders.reduce((sum,q)=>sum+totalDue(q),0):0;
  const confirmedPaid=confirmedOrders.reduce((sum,q)=>sum+Math.max(0,Number(q.amount_paid||0)-Number(q.amount_refunded||0)),0);
- const paymentMark=!canSumPayments?'':confirmedDue>0&&confirmedPaid>=confirmedDue?'입금 확인':confirmedPaid>0?'부분 입금':'미입금';
+ const onePart=confirmedOrders.length===1&&canSumPayments?orderPaymentParts(confirmedOrders[0]):null;
+ const paymentMark=onePart&&onePart.goodsMissing===0&&onePart.shippingMissing>0?'상품 입금 완료 · 택배비 별도':
+  !canSumPayments?'':confirmedDue>0&&confirmedPaid>=confirmedDue?'입금 확인':confirmedPaid>0?'부분 입금':'미입금';
  const relatedBuyerOrders=renderOtherBuyerDeposits(group);
  return `<details class="admin-order-fold ${urgent?'has-pending':''}" data-admin-order-id="${esc(key)}" ${open?'open':''}>
   <summary class="admin-order-fold-heading">
@@ -9258,7 +9284,27 @@ if(a==='supplier-bulk-ordered'){
  notif('‘'+batch.supplier+'’ 거래처 상품 '+Number(result.items||0)+'종을 도매 발주 완료 처리했어요.');
  return;
 }
-if(a==='mark-deposit-paid'){
+if(a==='mark-order-payment-part'){
+  if(!state.admin||state.page!=='admin')throw Error('관리자만 입금 확인할 수 있어요.');
+  if(busy)return;
+  const q=state.quotes.find(q=>q.id===id),part=String(b.dataset.part||'');
+  if(!q||q.status!=='confirmed'||!readyQuote(q)||!['goods','shipping'].includes(part))throw Error('주문과 입금 구분을 확인해 주세요.');
+  const p=orderPaymentParts(q);
+  if(part==='shipping'&&p.goodsMissing>0)throw Error('상품대금을 먼저 확인해 주세요.');
+  const amount=part==='goods'?p.goodsMissing:p.shippingMissing;
+  if(!Number.isInteger(amount)||amount<=0)throw Error('이미 입금 확인된 금액이에요.');
+  const kind=part==='goods'?'상품대금':'택배비';
+  const newPaid=Number(q.amount_paid||0)+amount,refunded=Number(q.amount_refunded||0);
+  if(!Number.isInteger(newPaid)||newPaid>1000000000)throw Error('누적 입금액이 올바르지 않아요.');
+  if(!window.confirm(q.buyer_name+'님 · '+fmtDate(q.created_at)+' 주문\n'+kind+' '+money(amount)+'을 실제로 입금받았나요?\n\n이 주문의 누적 입금액만 '+money(newPaid)+'으로 기록해요.'))return;
+  busy=true;b.disabled=true;
+  try{const oldY=window.scrollY;state.orderCardsOpen[q.bundle_parent_id||q.id]=true;
+   await adminPayment(id,newPaid,refunded);await loadAdmin();window.scrollTo({top:oldY,behavior:'instant'});
+   notif(kind+' '+money(amount)+' 입금 확인 완료');
+  }finally{busy=false;b.disabled=false;}
+  return;
+ }
+ if(a==='mark-deposit-paid'){
  if(!state.admin||state.page!=='admin')throw Error('관리자만 입금 확인할 수 있어요.');
  if(busy)return;
  const q=state.quotes.find(q=>q.id===id);

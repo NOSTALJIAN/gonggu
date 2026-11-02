@@ -6370,7 +6370,7 @@ function renderBundleCard(group){
  <div class="bundle-items">${group.flatMap(q=>q.items.map(i=>({q,i}))).sort((a,b)=>Number(a.i.unit_price!=null)-Number(b.i.unit_price!=null)).map(({q,i})=>`<div class="bundle-item"><div class="bundle-item-main"><b>${esc(i.store_name)} · ${esc(i.product_name)}</b><div class="tiny">${esc(i.color)} / ${esc(i.size)} · ${i.quantity}개${q===root?'':' · 추가 주문'}</div>${privateQuoteItemInfo(i)}${supplierItemProgress(i)}</div><div class="bundle-item-side"><strong>${i.unit_price==null?'가격 미정':money(i.unit_price*i.quantity)}</strong>${q.status==='confirmed'?(i.fulfillment==='sold_out'?'<span class="workflow-stage">품절</span>':group.every(x=>['new','preparing'].includes(workflowStage(x)))?itemFulfillmentControl(q,i):''):`<small>${esc(statusLabel[q.status]||q.status)}</small>`}</div></div>`).join('')}</div>
  ${adminPriceTotalMarkup(group,true)}
  <div class="sumline"><span>총 상품금액</span><strong>${group.some(unknown)?'일부 가격 미정':money(group.reduce((n,q)=>n+previewOrderSum(q),0))}</strong></div><div class="sumline"><span>고객 배송비 합계 (한 번)</span><strong>${money(group.reduce((n,q)=>n+appliedShipping(q),0))}</strong></div><div class="sumline"><span>도매 배송비 분담금 합계</span><strong>${money(group.reduce((n,q)=>n+supplierShippingShare(q),0))}</strong></div><div class="sumline total"><span>묶음 결제금액</span><strong>${costKnown?money(due):'견적 작성 중'}</strong></div>
- <div class="smallnote">입금 합계 ${money(paid)} · 환불 완료 ${money(refunded)} · 잔여 결제액 ${money(Math.max(0,due-paid+refunded))}</div>
+ <div class="smallnote">입금 합계 ${money(paid)} · 환불 완료 ${money(refunded)} · 잔여 결제액 ${money(group.reduce((n,q)=>n+balanceDue(q),0))}${group.some(q=>paymentWaiver(q)>0)?' · 관리자 차액 인정 '+money(group.reduce((n,q)=>n+paymentWaiver(q),0)):''}</div>
  ${refundCheck?`<div class="noticefail">주문별로 추가 확인할 환불액 합계 ${money(refundCheck)}. 실제 환불 후 주문별 정산에 기록해 주세요.</div>`:''}
  ${bundleWorkControls(group)}
  <details class="bundle-children"><summary>주문별 입금·가격 관리 <span class="bundle-expand-note">(${group.length}건 · 필요할 때만 펼치기)</span></summary><div class="bundle-children-inner">${group.map((q,idx)=>renderBundleLedger(q,idx,root)).join('')}</div></details>
@@ -7819,6 +7819,7 @@ function renderBuyerOrderDetail(q){
    ${row('누적 입금액',money(paid))}
    ${row('누적 환불액',money(refunded))}
    ${row('환불 차감 수령액',money(paid-refunded))}
+    ${paymentWaiver(q)?row('관리자 차액 인정',money(paymentWaiver(q))):''}
    ${q.status==='confirmed'?`<div class="buyer-order-detail-row buyer-order-detail-strong"><span>현재 미입금액</span><strong>${unknown(q)?'금액 미정':money(balanceDue(q))}</strong></div>`:''}
   </section>
   <section class="buyer-order-detail-section"><h3>수령 · 배송</h3>

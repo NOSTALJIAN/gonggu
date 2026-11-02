@@ -3311,6 +3311,16 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 .supplier-bulk-controls strong{min-width:0}
 .supplier-bulk-bulk-actions{display:flex;align-items:center;gap:6px;flex-shrink:0;margin-left:auto}
 .supplier-bulk-bulk-actions .btn{font-size:12px;min-height:37px;padding:7px 10px;white-space:nowrap}
+/* Easy-to-find per-buyer payment action in the wholesale batch list. */
+.supplier-buyer-order-details{display:grid;gap:7px;margin:11px 0}
+.supplier-buyer-order-line{background:#f7f7f8;border-radius:7px;padding:10px 11px}
+.supplier-buyer-order-line>strong{display:block;font-size:12px;line-height:1.5;color:#333}
+.supplier-buyer-order-line>small{display:block;font-size:11px;color:#777;line-height:1.5;margin-top:3px}
+.supplier-buyer-request-box{display:grid;gap:8px;border:1px solid #d9d9d9;border-radius:10px;padding:12px;margin:10px 0}
+.supplier-buyer-request-box>strong{font-size:13px;font-weight:850}
+.supplier-buyer-request-box>small{font-size:11px;line-height:1.5;color:#666}
+.supplier-buyer-request-box .supplier-request-warning{color:#956a29}
+.supplier-request-main{font-size:13px!important;min-height:42px!important}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -6965,7 +6975,7 @@ function renderSupplierBulkManager(historyOnly=false,expanded=false){
       <div class="supplier-buyer-order-details">
        ${selectedQuotes.map(q=>`<div class="supplier-buyer-order-line">
         <strong>${esc(fmtDate(q.created_at))} · ${q.status==='confirmed'?'최종 주문확정':q.status==='quoted'&&q.purchase_intent==='buy_now'?'구매 의사 확인 · 최종 주문확정 대기':esc(statusLabel[q.status]||q.status)}</strong>
-        <small>오뜨베베 상품 ${money(p.selected.filter(x=>x.q.id===q.id).reduce((n,x)=>n+Number(x.item.unit_price||0)*Number(x.item.quantity||0),0))} · 주문 입금기록 ${money(Number(q.amount_paid||0)-Number(q.amount_refunded||0))}${q.status==='confirmed'&&appliedShipping(q)>0?' · 고객 택배비 '+(orderPaymentParts(q).shippingMissing?'미입금 '+money(orderPaymentParts(q).shippingMissing):'입금완료'):''}</small>
+        <small>해당 도매처 상품 ${money(p.selected.filter(x=>x.q.id===q.id).reduce((n,x)=>n+Number(x.item.unit_price||0)*Number(x.item.quantity||0),0))} · 주문 입금기록 ${money(Number(q.amount_paid||0)-Number(q.amount_refunded||0))}${q.status==='confirmed'&&appliedShipping(q)>0?' · 고객 택배비 '+(orderPaymentParts(q).shippingMissing?'미입금 '+money(orderPaymentParts(q).shippingMissing):'입금완료'):''}</small>
        </div>`).join('')}
       </div>
       ${!ordered&&!p.eligible&&!inv?.paid_at?`<div class="supplier-buyer-request-box">
@@ -9267,7 +9277,12 @@ if(a==='supplier-buyer-full-paid'){
 if(a==='supplier-partial-request'){
  if(!state.admin||!state.supplierBatchesReady)throw Error('관리자 배송비 배분 화면에서만 선입금을 요청할 수 있어요.');
  const buyerKey=String(b.dataset.buyerKey||'');
- if(!state.supplierBatches.some(batch=>batch.id===id&&batch.payers?.some(p=>p.buyer_key===buyerKey)))throw Error('배분된 거래처와 구매자가 일치하지 않아요.');
+ const batch=state.supplierBatches.find(batch=>batch.id===id&&batch.payers?.some(p=>p.buyer_key===buyerKey));
+ if(!batch||batch.ordered_at)throw Error('해당 도매처의 발주 대기 내역을 찾지 못했어요.');
+ const person=supplierBatchPaymentState(batch).people.find(p=>p.payer.buyer_key===buyerKey);
+ if(!person||!person.selected.length)throw Error('입금 요청할 상품을 찾지 못했어요.');
+ if([...new Map(person.selected.map(x=>[x.q.id,x.q])).values()].some(q=>Number(q.amount_paid||0)>Number(q.amount_refunded||0)))
+  throw Error('이미 입금된 주문이 포함되어 있어요. 중복 청구되지 않도록 먼저 주문별 입금액을 확인해 주세요.');
  const existing=supplierPartialInvoice(id,buyerKey);
  if(existing?.paid_at)throw Error('입금 완료한 요청은 다시 생성할 수 없어요.');
  const invoice=await rpc('gq_admin_request_supplier_partial_v88',{p_batch_id:id,p_buyer_key:buyerKey},true);

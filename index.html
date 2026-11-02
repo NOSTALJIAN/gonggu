@@ -8713,6 +8713,7 @@ function adminPricePopupEstimateRow(item){
   '</div></div>';
 }
 function modal(){const m=state.modal;if(!m)return '';const wrap=(title,body,stickyProductSave=false)=>stickyProductSave?`<div class="overlay" id="overlay"><div class="sheet sheet-product-editor product-editor-clean swipe-dismiss-sheet" role="dialog" aria-modal="true"><div class="sheet-drag-handle" aria-hidden="true"></div><div class="sheethead"><h2>${title}</h2><button class="close" data-action="close">×</button></div><div class="sheet-product-scroll">${body}</div><div class="sheet-product-save"><button class="btn block" type="submit" form="product-form">상품 저장</button></div></div></div>`:`<div class="overlay" id="overlay"><div class="sheet${['myquotes','suggest','cart','pick','product-photos','approve'].includes(m.type)?' swipe-dismiss-sheet':''}${m.type==='myquotes'?' myquotes-swipe-sheet':''}${m.type==='suggest'?' suggest-sheet':''}${m.type==='cart'?' cart-swipe-sheet':''}${m.type==='approve'?' approve-sheet':''}" role="dialog" aria-modal="true">${['myquotes','suggest','cart','pick','product-photos','approve'].includes(m.type)?'<div class="sheet-drag-handle" aria-hidden="true"></div>':''}<div class="sheethead"><h2>${title}</h2><button class="close" data-action="close">×</button></div>${body}</div></div>`;
+if(m.type==='payment-save-success'&&state.admin)return wrap('입금 처리 완료','<div style="padding:12px 4px 22px"><p style="font-size:18px;font-weight:700;margin:0 0 12px">'+esc(m.buyer)+'</p><p style="font-size:22px;font-weight:800;margin:0 0 12px">'+money(m.amount)+' 입금 확인 완료</p><p class="smallnote">'+(m.confirmed?'주문도 자동 확정됐어요.':'입금 내역이 저장됐어요.')+'</p><button type="button" class="btn block" data-action="close">확인</button></div>');
 if(m.type==='entry-push')return wrap('신상·주문 알림 받기',renderEntryPushBody());
 if(m.type==='admin-delivery-queue'&&state.admin)return wrap('수령방식 변경 요청',renderAdminDeliveryQueue());
 if(m.type==='admin-option-requests'&&state.admin&&state.page==='admin')return wrap('옵션 변경 요청',adminOptionRequestsModalBody(m));
@@ -11647,7 +11648,10 @@ else if(f.dataset.payment){
   render();
  }
  window.scrollTo({top:priorY,behavior:'instant'});
- notif(updated?.status==='confirmed'&&q.status==='quoted'?'입금 저장 완료 · 최종 주문확정으로 자동 변경됐어요.':'이 주문의 입금 기록을 저장했어요.');
+ if(f.dataset.fullPaymentConfirmed){
+  state.modal={type:'payment-save-success',buyer:buyerLabel(q),amount:paid-refunded,confirmed:updated?.status==='confirmed'};
+  render();
+ }else notif(updated?.status==='confirmed'&&q.status==='quoted'?'입금 저장 완료 · 최종 주문확정으로 자동 변경됐어요.':'이 주문의 입금 기록을 저장했어요.');
 }
 }catch(ex){if(f.dataset.price)adminPriceScrollAnchor=null;notif(errorText(ex))}finally{busy=false}}
 async function change(e){const x=e.target;

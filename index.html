@@ -3539,6 +3539,7 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 .admin-payment-popup-head .admin-fee-source-breakdown{width:100%;margin:0;padding:6px 0;gap:2px}
 .supplier-shipping-batched .admin-fee-source-breakdown{margin:9px 0}
 
+.admin-fee-source-inline{display:block;margin-top:2px;color:#2b6545!important;font-weight:650!important;font-size:10px!important;line-height:1.5;overflow-wrap:anywhere}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -6980,6 +6981,14 @@ function adminSupplierFeeParts(q){
  if(unassigned>0)rows.push({name:'개별 입력·조정 (거래처 미지정)',amount:unassigned});
  return {rows,total,loading:false,mismatch:unassigned<0};
 }
+function adminSupplierFeeInline(q){
+ const data=adminSupplierFeeParts(q);
+ if(!state.admin||data.total<=0)return '';
+ const label=data.loading?'거래처별 배분 내역 확인 필요':
+  data.rows.map(row=>row.name+' '+money(row.amount)).join(' · ')+
+  (data.mismatch?' · 배분 합계 불일치':'');
+ return '<small class="admin-fee-source-inline">'+esc(label)+'</small>';
+}
 function adminSupplierFeeBreakdown(q,kind='list'){
  const data=adminSupplierFeeParts(q);
  if(!state.admin||data.total<=0)return '';
@@ -7014,7 +7023,7 @@ function paymentSplitMarkup(q){
  ];
  return '<div class="payment-split-fields">'+fields.map(([key,title,due,paid])=>
   '<label class="payment-split-field"><span class="payment-split-name">'+title+
-  '<small>결제금 '+money(Math.max(0,due))+'</small>'+ (key==='freight'?adminSupplierFeeBreakdown(q,'compact'):'')+'</span>'+
+  '<small>결제금 '+money(Math.max(0,due))+'</small>'+ (key==='freight'?adminSupplierFeeInline(q):'')+'</span>'+
   '<span class="payment-split-input"><input name="paid_'+key+'" type="number" inputmode="numeric" min="0" max="1000000000" step="1" value="'+paid+'" required aria-label="'+title+' 받은 금액 (원)"><i>원</i></span></label>'
  ).join('')+'</div>'+
  '<div class="payment-split-total"><span>받은 금액 합계</span><strong data-payment-live-total>'+money(Number(q.amount_paid||0))+'</strong></div>'+

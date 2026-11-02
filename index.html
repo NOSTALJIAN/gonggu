@@ -4864,11 +4864,21 @@ await loadAdminProductPrivate();await loadAdminSupplierBatches();render();await 
  if(!session||e?.message==='관리자 권한이 없습니다'||e?.status===401)state.admin=false;
  render();throw e}}
 async function loadPublic(){await loadCatalog(false);render()}
+async function uploadHeroGif(file){
+ if(!connected||!state.admin)throw Error('관리자 로그인 후 GIF를 등록해 주세요.');
+ if(file.type!=='image/gif'||!file.size||file.size>15*1024*1024)throw Error('15MB 이하 GIF 파일만 등록할 수 있어요.');
+ const path='covers/'+uuid()+'.gif';
+ const token=await getToken();
+ const res=await fetch(url+'/storage/v1/object/'+PHOTO_PUBLIC+'/'+path,{method:'POST',headers:{apikey:key,Authorization:'Bearer '+token,'Content-Type':'image/gif'},body:file});
+ if(!res.ok){let msg='GIF 업로드 실패';try{const j=await res.json();msg=j.message||j.error||msg}catch{}throw Error(msg)}
+ return path;
+}
 async function saveHeroPhoto(file){
  if(!state.admin||!connected||!session)throw Error('관리자 로그인 후 사진을 변경해 주세요.');
  if(!file?.size)throw Error('메인 사진을 선택해 주세요.');
  // Reuse normal covers/ insertion instead of an unauthorized homepage/ upsert.
- const photoPath=await uploadPhoto(file,PHOTO_PUBLIC,true);
+ if(file.type==='image/gif'&&file.size>15*1024*1024)throw Error('움직이는 GIF는 15MB 이하로 올려 주세요.');
+ const photoPath=file.type==='image/gif'?await uploadHeroGif(file):await uploadPhoto(file,PHOTO_PUBLIC,true);
  const settings={name:HERO_META_PREFIX+photoPath,active:true};
  try {
   const suffix=state.heroStoreId?'?id=eq.'+encodeURIComponent(state.heroStoreId):'';
@@ -8690,7 +8700,7 @@ function renderAdminSettings(){return `<section class="card pushbox pushbox-sett
   <button type="button" class="btn secondary" data-action="enable-admin-push">알림 연결 · 다시 연결</button>
   <div class="admin-push-test-buttons"><button type="button" class="btn secondary" data-action="send-test-push">내 기기에 테스트 알림</button><button type="button" class="btn secondary" data-action="send-buyer-test-push">구매자 주문 알림 테스트</button></div>
  </div>
- </details></section>${renderEmailNotificationSettings()}<div class="card hero-photo-settings"><h3>메인 사진 관리</h3><p class="smallnote">현재는 정해진 주기로 자동 변경되지 않아요. 설정한 사진은 다음에 바꾸기 전까지 유지돼요.</p><div class="hero-settings-preview">${currentHeroPhotoUrl()?`<img src="${esc(currentHeroPhotoUrl())}" alt="현재 메인 사진">`:'<div class="hero-settings-placeholder">등록된 상품 사진이 없어요.</div>'}</div><button class="btn block secondary" type="button" data-action="random-hero-photo">🎲 랜덤 상품 사진으로 변경</button><p class="smallnote">고객에게 전시 중인 판매 가능 상품에서 대표사진을 랜덤으로 선택해 저장해요.</p><form id="hero-photo-form"><label class="label">새 메인 사진 선택<input type="file" name="hero_photo" id="hero-photo-input" accept="image/*" required></label><p class="smallnote">세로형 사진을 추천해요. 원본이 커도 자동으로 크기를 줄여 저장해요.</p><button class="btn block" type="submit">메인 사진 변경하기</button></form>${state.heroPhotoUrl?'<button class="btn block secondary" style="margin-top:9px" type="button" data-action="reset-hero-photo">기존 자동 사진으로 되돌리기</button>':''}</div><div class="card"><h3>고객에게 보낼 주소</h3><p class="smallnote">상품 고르고 견적 요청을 보낼 수 있는 링크예요.</p><div class="info nooverflow">${esc(publicLink())}</div><button class="btn block" data-action="copy-shop-link">주문 링크 복사</button><div class="separator"></div><button class="btn block secondary" data-action="export-csv">주문 내역 CSV 저장</button>${connected?'<button class="btn block neutral" style="margin-top:9px" data-action="logout">관리자 로그아웃</button>':''}<p class="smallnote">가격·주문별 배송비·품절·상품 준비·입금 상태는 관리자 전용입니다. 아직 견적만 요청한 상품은 확정 주문 수량에 포함되지 않아요.</p></div>`}
+ </details></section>${renderEmailNotificationSettings()}<div class="card hero-photo-settings"><h3>메인 사진 관리</h3><p class="smallnote">현재는 정해진 주기로 자동 변경되지 않아요. 설정한 사진은 다음에 바꾸기 전까지 유지돼요.</p><div class="hero-settings-preview">${currentHeroPhotoUrl()?`<img src="${esc(currentHeroPhotoUrl())}" alt="현재 메인 사진">`:'<div class="hero-settings-placeholder">등록된 상품 사진이 없어요.</div>'}</div><button class="btn block secondary" type="button" data-action="random-hero-photo">🎲 랜덤 상품 사진으로 변경</button><p class="smallnote">고객에게 전시 중인 판매 가능 상품에서 대표사진을 랜덤으로 선택해 저장해요.</p><form id="hero-photo-form"><label class="label">새 메인 사진 선택<input type="file" name="hero_photo" id="hero-photo-input" accept="image/jpeg,image/png,image/webp,image/gif" required></label><p class="smallnote">세로형 사진을 추천해요. GIF는 움직임 그대로 저장돼요(최대 15MB). 일반 사진은 JPG로 최적화해요.</p><button class="btn block" type="submit">메인 사진 변경하기</button></form>${state.heroPhotoUrl?'<button class="btn block secondary" style="margin-top:9px" type="button" data-action="reset-hero-photo">기존 자동 사진으로 되돌리기</button>':''}</div><div class="card"><h3>고객에게 보낼 주소</h3><p class="smallnote">상품 고르고 견적 요청을 보낼 수 있는 링크예요.</p><div class="info nooverflow">${esc(publicLink())}</div><button class="btn block" data-action="copy-shop-link">주문 링크 복사</button><div class="separator"></div><button class="btn block secondary" data-action="export-csv">주문 내역 CSV 저장</button>${connected?'<button class="btn block neutral" style="margin-top:9px" data-action="logout">관리자 로그아웃</button>':''}<p class="smallnote">가격·주문별 배송비·품절·상품 준비·입금 상태는 관리자 전용입니다. 아직 견적만 요청한 상품은 확정 주문 수량에 포함되지 않아요.</p></div>`}
 /* Regular and GitHub storefront estimates are shown for admin reference only.
    Keep entered unit_price independent of either estimate. */
 function adminPricePopupEstimateRow(item){

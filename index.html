@@ -4016,6 +4016,74 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
  .admin-reorganized .admin-orders-page .admin-orders-filterbar button{font-size:11px;padding:7px 2px;gap:3px}
 }
 
+
+/* Compact bundle order management: never show wholesale price cards and fulfillment
+   forms on every row; open per-item controls in one small dialog. */
+.admin-orders-page .admin-order-fold-body:has(.bundle-compact-overview){padding:0 12px 15px}
+.bundle-compact-overview{min-width:0;padding:9px 0 0}
+.bundle-compact-summary{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 0 12px}
+.bundle-compact-summary>span{display:flex;flex-direction:column;gap:3px;min-width:0}
+.bundle-compact-summary strong{font-size:13px;color:#222;line-height:1.4}
+.bundle-compact-summary small{font-size:11px;color:#888}
+.bundle-compact-summary>button{flex:none;min-height:36px;border:1px solid #dedede;border-radius:9px;padding:7px 11px;background:#fff;font-size:12px;font-weight:740;color:#333}
+.bundle-compact-stats{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 13px}
+.bundle-compact-stats>span{font-size:10px;padding:5px 8px;border-radius:6px;background:#f4f4f4;color:#666}
+.bundle-compact-stats b{font-size:10px;color:#333}
+.bundle-compact-items{border-top:1px solid #eee}
+.bundle-compact-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid #f0f0f0;min-width:0}
+.bundle-compact-product{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1}
+.bundle-compact-product strong{font-size:12px;color:#222;line-height:1.48;overflow-wrap:anywhere;font-weight:760}
+.bundle-compact-product small{font-size:11px;color:#898989;line-height:1.4}
+.bundle-compact-product-side{display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex:none;text-align:right}
+.bundle-compact-status{font-size:10px;font-weight:740;color:#666;line-height:1.4}
+.bundle-compact-status.is-done{color:#47735a}
+.bundle-compact-status.is-warning{color:#a65d3c}
+.bundle-compact-status.is-pending{color:#9b6f3b}
+.bundle-compact-product-side>button{min-height:30px;padding:4px 10px;border:1px solid #e4e4e4;background:#fff;border-radius:7px;color:#4a4a4a;font-size:11px;font-weight:750}
+.bundle-compact-footer{padding:13px 1px 3px;display:flex;flex-direction:column;gap:8px}
+.bundle-compact-footer>div{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:12px;color:#777}
+.bundle-compact-footer strong{font-size:13px;color:#282828;font-variant-numeric:tabular-nums}
+.bundle-compact-footer .bundle-compact-outstanding{padding-top:9px;border-top:1px solid #ebebeb;font-weight:760}
+.bundle-compact-outstanding .is-paid{color:#3f6f56}
+.bundle-compact-outstanding .is-due{color:#a34e36}
+.bundle-compact-alert{background:#fff8f0;border:1px solid #f0e3d3;border-radius:8px;padding:8px 10px;font-size:11px;line-height:1.5;color:#835629;margin:6px 0 10px}
+.bundle-compact-alert button{font-size:11px;color:inherit;text-decoration:underline;border:0;background:none}
+.bundle-item-modal{padding:2px 0 18px}
+.bundle-item-modal-title{display:flex;flex-direction:column;gap:7px;padding:5px 0 16px}
+.bundle-item-modal-title b{font-size:16px;line-height:1.4;color:#202020}
+.bundle-item-modal-title span{font-size:12px;color:#777}
+.bundle-item-modal-state{display:flex;align-items:center;justify-content:space-between;gap:8px;background:#f6f6f6;padding:13px 12px;border-radius:10px;font-size:12px;margin-bottom:17px}
+.bundle-item-modal-state strong{font-size:13px;color:#333}
+.bundle-item-modal-control{padding:0 0 16px;border-bottom:1px solid #eee}
+.bundle-item-modal-control h3,.bundle-manage-work h3,.bundle-manage-orders h3{font-size:13px;margin:0 0 12px;font-weight:800}
+.bundle-item-modal-control .item-receipt-actions{display:flex;flex-direction:column;gap:8px}
+.bundle-item-modal-control .statusselect{min-height:43px}
+.bundle-item-modal-extra{border-bottom:1px solid #eee;padding:13px 0}
+.bundle-item-modal-extra>summary{font-size:12px;font-weight:740;cursor:pointer;color:#454545;padding:6px 0}
+.bundle-item-modal-extra .admin-private-item-info{max-width:100%;margin-top:10px}
+.bundle-item-modal-price-form{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin:13px 0}
+.bundle-item-modal-price-form label{font-size:11px;display:flex;flex-direction:column;gap:6px;flex:1;min-width:130px}
+.bundle-item-modal-price-form input{width:100%;min-height:40px;border:1px solid #ddd;border-radius:8px}
+.bundle-manage-modal{padding-bottom:18px}
+.bundle-manage-header{display:flex;flex-direction:column;gap:4px;padding:2px 0 15px}
+.bundle-manage-header strong{font-size:16px}
+.bundle-manage-header small{font-size:11px;color:#888}
+.bundle-manage-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;margin-bottom:19px}
+.bundle-manage-metrics>div{display:flex;flex-direction:column;gap:6px;background:#f6f6f6;padding:12px 8px;border-radius:9px;min-width:0}
+.bundle-manage-metrics span{font-size:10px;color:#777}
+.bundle-manage-metrics b{font-size:12px;color:#222;overflow-wrap:anywhere}
+.bundle-manage-work{padding:12px 0;border-top:1px solid #eee}
+.bundle-manage-orders{border-top:1px solid #eee;padding-top:16px}
+.bundle-manage-order-row{display:flex;justify-content:space-between;align-items:center;gap:10px;border-bottom:1px solid #eee;padding:9px 0}
+.bundle-manage-order-row>span{display:flex;flex-direction:column;gap:3px}
+.bundle-manage-order-row strong{font-size:12px}
+.bundle-manage-order-row small{font-size:11px;color:#777}
+.bundle-manage-order-row button{border:1px solid #ddd;border-radius:8px;background:#fff;min-height:35px;padding:6px 10px;font-size:11px;font-weight:700;white-space:nowrap}
+.bundle-manage-legacy{border-top:1px solid #eee;padding:14px 0;margin-top:7px}
+.bundle-manage-legacy>summary{font-size:11px;font-weight:700;color:#777;cursor:pointer}
+.bundle-manage-legacy .bundle-summary-card{margin:13px 0 0}
+.bundle-order-edit-popup{padding-bottom:20px}
+
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -7186,7 +7254,101 @@ function renderSameRoundCard(group){
   </details>
  </div>`;
 }
+
+/* Administrator overview for a bundled order: essentials first, long controls only on demand. */
+function adminBundleItemStatus(q,i){
+ if(i.fulfillment==='sold_out')return {label:'품절 · 환불 확인',kind:'warning'};
+ if(i.fulfillment==='delivered'||workflowStage(q)==='completed')return {label:q.delivery_method==='pickup'?'픽업 완료':'배송 완료',kind:'done'};
+ if(i.fulfillment==='received')return {label:'입고 완료',kind:'done'};
+ if(workflowStage(q)==='shipped')return {label:'배송 중',kind:'progress'};
+ if(q.status==='requested')return {label:'견적 대기',kind:'pending'};
+ if(q.status==='quoted')return {label:'주문 확정 대기',kind:'pending'};
+ const meta=state.productPrivateReady?state.productPrivate[i.product_id]:null;
+ const direct1688=isDirect1688ProductMeta(meta);
+ const batch=supplierItemBatch(i.id);
+ const ordered=!!(i.supplier_ordered_at||batch?.ordered_at||(!direct1688&&q.supplier_ordered_at));
+ if(ordered)return {label:'발주 완료 · 입고 대기',kind:'progress'};
+ if(direct1688)return {label:'1688 발주 대기',kind:'pending'};
+ return {label:'발주 대기',kind:'pending'};
+}
 function renderBundleCard(group){
+ const root=group.find(q=>q.id===bundleRootId(q))||group[0];
+ const items=group.flatMap(q=>(q.items||[]).map(i=>({q,i})));
+ const qty=items.reduce((sum,{i})=>sum+Math.max(0,Number(i.quantity)||0),0);
+ const ordered=items.filter(({q,i})=>adminBundleItemStatus(q,i).label.startsWith('발주 완료')).length;
+ const received=items.filter(({i})=>['received','delivered'].includes(i.fulfillment)).length;
+ const pending=items.filter(({q,i})=>adminBundleItemStatus(q,i).kind==='pending').length;
+ const dueKnown=group.every(readyQuote);
+ const total=group.reduce((sum,q)=>sum+totalDue(q),0);
+ const paid=group.reduce((sum,q)=>sum+Number(q.amount_paid||0)-Number(q.amount_refunded||0),0);
+ const remaining=group.reduce((sum,q)=>sum+balanceDue(q),0);
+ const waiver=group.reduce((sum,q)=>sum+paymentWaiver(q),0);
+ const refunds=group.reduce((sum,q)=>sum+refundDue(q),0);
+ const alertCount=group.reduce((sum,q)=>sum+pendingItemOptionRequests(q).length+(q.cancel_requested_at?1:0)+(q.delivery_change_requested_at?1:0),0);
+ return `<section class="bundle-compact-overview" aria-label="묶음 주문 간단 관리">
+  <div class="bundle-compact-summary">
+   <span><strong>📦 묶음배송 ${group.length}건</strong><small>상품 ${items.length}종 · ${qty}개</small></span>
+   <button type="button" data-action="admin-bundle-manage" data-id="${esc(root.id)}">묶음 관리 <span aria-hidden="true">›</span></button>
+  </div>
+  ${alertCount?`<div class="bundle-compact-alert">확인할 요청 ${alertCount}건 · <button type="button" data-action="admin-bundle-manage" data-id="${esc(root.id)}">요청 확인</button></div>`:''}
+  <div class="bundle-compact-stats"><span>발주 완료 <b>${ordered}종</b></span><span>입고 완료 <b>${received}종</b></span>${pending?`<span>발주·확정 대기 <b>${pending}종</b></span>`:''}</div>
+  <div class="bundle-compact-items">
+    ${items.map(({q,i})=>{
+      const status=adminBundleItemStatus(q,i);
+      return `<div class="bundle-compact-item">
+       <div class="bundle-compact-product"><strong>${adminOrderItemName(i)}</strong><small>${esc(i.color||'-')} / ${esc(i.size||'-')} · ${Number(i.quantity)||0}개</small></div>
+       <div class="bundle-compact-product-side"><span class="bundle-compact-status is-${status.kind}">${esc(status.label)}</span><button type="button" data-action="admin-bundle-item" data-id="${esc(i.id)}">관리</button></div>
+      </div>`;
+    }).join('')}
+  </div>
+  <div class="bundle-compact-footer">
+   <div><span>총 결제금액</span><strong>${dueKnown?money(total):'금액 확인 중'}</strong></div>
+   <div><span>입금</span><strong>${money(paid)}${waiver?' · 차액 인정 '+money(waiver):''}</strong></div>
+   <div class="bundle-compact-outstanding"><span>${remaining?'남은 금액':'결제 상태'}</span><strong class="${remaining?'is-due':'is-paid'}">${remaining?money(remaining):'✓ 입금 완료'}</strong></div>
+   ${refunds?`<p class="bundle-compact-alert">추가 환불 확인 ${money(refunds)} · 묶음 관리에서 처리</p>`:''}
+  </div>
+ </section>`;
+}
+function renderBundleItemPopup(quote,item){
+ const status=adminBundleItemStatus(quote,item);
+ const canEdit=canEditAdminOrderItem(quote,item);
+ return `<div class="bundle-item-modal">
+  <div class="bundle-item-modal-title"><b>${adminOrderItemName(item)}</b><span>${esc(item.color||'-')} / ${esc(item.size||'-')} · ${Number(item.quantity)||0}개</span></div>
+  <div class="bundle-item-modal-state"><span>현재 상태</span><strong>${esc(status.label)}</strong></div>
+  <div class="bundle-item-modal-control">
+   <h3>입고 · 상품 상태</h3>
+   ${quote.status==='confirmed'?itemFulfillmentControl(quote,item):`<p>${esc(status.label)}</p>`}
+   ${supplierItemProgress(item)}
+   ${renderAdminItemOptionRequests(quote)}
+  </div>
+  <details class="bundle-item-modal-extra"><summary>사입처 · 도매가 상세 보기</summary>${privateQuoteItemInfo(item)}</details>
+  ${canEdit?`<details class="bundle-item-modal-extra"><summary>옵션·판매가 수정</summary>
+    ${adminOrderOptionEditor(quote,item)}
+    <form data-price="${esc(item.id)}" class="bundle-item-modal-price-form">
+     <label>판매가 (개당)<input name="price" type="number" min="0" max="100000000" step="1" value="${item.unit_price??''}" required></label>
+     <button type="submit" class="btn secondary">판매가 저장</button>
+    </form>
+   </details>`:''}
+ </div>`;
+}
+function renderBundleManagePopup(group){
+ const root=group.find(q=>q.id===bundleRootId(q))||group[0];
+ const total=group.reduce((n,q)=>n+totalDue(q),0);
+ const net=group.reduce((n,q)=>n+Number(q.amount_paid||0)-Number(q.amount_refunded||0),0);
+ const outstanding=group.reduce((n,q)=>n+balanceDue(q),0);
+ return `<div class="bundle-manage-modal">
+   <div class="bundle-manage-header"><strong>${esc(root.buyer_name||'주문자')} · ${group.length}건 묶음</strong><small>${esc(deliveryLabel(root))} · ${group.flatMap(q=>q.items||[]).length}종</small></div>
+   <div class="bundle-manage-metrics"><div><span>결제금액</span><b>${money(total)}</b></div><div><span>실제 입금</span><b>${money(net)}</b></div><div><span>남은 금액</span><b>${money(outstanding)}</b></div></div>
+   ${group.some(q=>q.cancel_requested_at||q.delivery_change_requested_at)?`<div class="bundle-manage-request">${group.filter(q=>q.delivery_change_requested_at).map(q=>`<button type="button" class="btn secondary" data-action="review-delivery" data-id="${esc(q.id)}">수령방식 변경 요청 확인</button>`).join('')}${group.filter(q=>q.cancel_requested_at).map(q=>`<p>${esc(q.buyer_name)} 취소 요청 · 아래 주문별 상세에서 확인</p>`).join('')}</div>`:''}
+   <div class="bundle-manage-work"><h3>묶음 배송 진행</h3>${bundleWorkControls(group)}</div>
+   <div class="bundle-manage-orders"><h3>주문별 입금·가격 관리</h3>
+    ${group.map((q,index)=>`<div class="bundle-manage-order-row"><span><strong>${index+1}번째 주문</strong><small>${(q.items||[]).length}종 · ${money(totalDue(q))}</small></span><button type="button" data-action="admin-bundle-order-edit" data-id="${esc(q.id)}">관리 ›</button></div>`).join('')}
+   </div>
+   <details class="bundle-manage-legacy"><summary>추가 고급 관리 · 원가 비교 / 전체 내역</summary>${renderBundleCardLegacy(group)}</details>
+ </div>`;
+}
+
+function renderBundleCardLegacy(group){
  const root=group.find(q=>q.id===bundleRootId(q))||group[0];
  const qty=group.reduce((n,q)=>n+q.items.reduce((m,i)=>m+Number(i.quantity||0),0),0);
  const paid=group.reduce((n,q)=>n+Number(q.amount_paid||0),0);
@@ -9253,6 +9415,21 @@ if(m.type==='admin-option-requests'&&state.admin&&state.page==='admin')return wr
     <p class="admin-history-modal-note">현재 발주 전인 거래처의 배송비 배분·입금 수정만 표시해요. 발주 완료 기록은 삭제하지 않고 보관해요.</p>
     ${renderSupplierBulkManager(true,false,true)||'<p class="smallnote">수정할 진행 중 거래처가 없어요.</p>'}
    </div>`);
+if(m.type==='admin-bundle-item'&&state.admin&&state.page==='admin'){
+ const record=state.quotes.flatMap(q=>(q.items||[]).map(item=>({q,item}))).find(row=>row.item.id===m.id);
+ return record?wrap('상품 관리',renderBundleItemPopup(record.q,record.item)):wrap('상품 관리','<p class="smallnote">상품 정보를 다시 불러와 주세요.</p>');
+}
+if(m.type==='admin-bundle-manage'&&state.admin&&state.page==='admin'){
+ const root=state.quotes.find(q=>q.id===m.id);
+ const group=root?state.quotes.filter(q=>q.status!=='cancelled'&&bundleRootId(q)===bundleRootId(root)):[];
+ return group.length?wrap('묶음배송 관리',renderBundleManagePopup(group)):wrap('묶음배송 관리','<p class="smallnote">묶음 주문을 찾지 못했어요.</p>');
+}
+if(m.type==='admin-bundle-order-edit'&&state.admin&&state.page==='admin'){
+ const q=state.quotes.find(x=>x.id===m.id);
+ if(!q)return wrap('주문별 관리','<p>주문을 찾지 못했어요.</p>');
+ const parent=state.quotes.find(x=>x.id===bundleRootId(q))||q;
+ return wrap('주문별 관리',`<div class="bundle-order-edit-popup">${renderBundleLedger(q,0,parent)}</div>`);
+}
 if(m.type==='admin-delivery-review'&&state.admin){const q=state.quotes.find(x=>x.id===m.id);return wrap('수령방식 변경 요청',q?.delivery_change_requested_at?renderAdminDeliveryRequest(q):'<div class="empty">이미 처리된 요청이에요.</div>');}
 if(m.type==='admin-price-edit'){
  if(!state.admin||state.page!=='admin')return '';
@@ -11350,6 +11527,20 @@ if(a==='supplier-freight-request'||a==='supplier-freight-cancel'||a==='supplier-
   await loadAdmin();
   notif(cancel?'분담 배송비 입금 요청 취소 완료 · 발송된 안내가 있었다면 취소 알림도 예약했어요.':'도매 배송비 '+money(due)+' 입금 요청 저장 완료 · 고객 이메일·앱 알림 자동 발송 대기열에 등록했어요. 발송 상태는 주문 카드에서 확인해 주세요.');
  }finally{busy=false;if(b.isConnected)b.disabled=false;}
+ return;
+}
+if(a==='admin-bundle-item'||a==='admin-bundle-manage'||a==='admin-bundle-order-edit'){
+ if(!state.admin||state.page!=='admin'||state.tab!=='quotes')throw Error('관리자 주문관리에서 열어 주세요.');
+ if(a==='admin-bundle-item'){
+  if(!state.quotes.some(q=>(q.items||[]).some(i=>i.id===id)))throw Error('상품을 찾지 못했어요.');
+  modalOpen('admin-bundle-item',id);
+ }else if(a==='admin-bundle-manage'){
+  if(!state.quotes.some(q=>q.id===id))throw Error('묶음 주문을 찾지 못했어요.');
+  modalOpen('admin-bundle-manage',id);
+ }else{
+  if(!state.quotes.some(q=>q.id===id))throw Error('주문을 찾지 못했어요.');
+  modalOpen('admin-bundle-order-edit',id);
+ }
  return;
 }
 if(a==='admin-price-popup'){

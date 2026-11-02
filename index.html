@@ -3792,6 +3792,16 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 }
 @media(min-width:720px){.admin-reorganized .admin-orders-filterbar{grid-template-columns:repeat(6,minmax(0,1fr))}}
 
+
+/* Clarify same-buyer grouped orders vs confirmed combined shipment. */
+.round-shipping-consolidation{display:flex;flex-direction:column;gap:8px;margin:12px 0 8px;padding:13px 12px;border:1px solid #ead9c1;background:#fff9f2;border-radius:10px;min-width:0}
+.round-shipping-consolidation>strong{font-size:12px;color:#754d2e;line-height:1.5}
+.round-shipping-consolidation-line{display:flex;align-items:baseline;justify-content:space-between;gap:9px;font-size:12px;color:#5d5248}
+.round-shipping-consolidation-line b{white-space:nowrap;font-weight:800;color:#322922;font-variant-numeric:tabular-nums}
+.round-shipping-consolidation small{font-size:10px;line-height:1.65;color:#876d59}
+.round-shipping-consolidation .round-shipping-consolidation-refund{color:#784b31}
+.round-shipping-consolidation-button{display:flex;align-items:center;justify-content:center;min-height:39px;width:100%;border:0;border-radius:8px;background:#272727;color:#fff;font-size:12px;font-weight:800;padding:9px 12px}
+
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -6774,6 +6784,11 @@ function renderSameRoundCard(group){
  const courier=group.filter(q=>q.delivery_method==='courier');
  const courierFees=courier.reduce((n,q)=>n+appliedShipping(q),0);
  const warn=courier.length>1&&!courier.every(q=>isBundle(q))&&courierFees>3000;
+ const mergeEligible=warn&&group.some(q=>shippingMergeEligible(q)&&shippingMergeCandidates(q).length>1);
+ const mergePrimary=mergeEligible?group.find(q=>shippingMergeEligible(q)&&shippingMergeCandidates(q).length>1):null;
+ const capturedDelivery=group.reduce((sum,q)=>sum+Math.max(0,Number(q.paid_delivery_amount||0)),0);
+ const expectedBundleDelivery=courier.length>0?Math.max(...courier.map(q=>appliedShipping(q))):0;
+ const excessDelivery=Math.max(0,capturedDelivery-expectedBundleDelivery);
  const mix=new Set(group.map(q=>q.delivery_method||'unknown')).size>1;
  return `<div class="round-simple">
   <div class="round-simple-products">${rows.map(({i,quantity})=>`<div class="round-simple-product">
@@ -6792,7 +6807,15 @@ function renderSameRoundCard(group){
    <button type="button" class="round-simple-next-button" ${task.action?'data-action="'+esc(task.action)+'"':'data-filter="'+esc(task.filter)+'"'} ${task.id?'data-id="'+esc(task.id)+'"':''}>${esc(task.label)} →</button>
    ${group.filter(q=>q.status==='quoted').map(q=>adminConfirmButton(q)).filter(Boolean).join('')}
   </div>
-  ${warn?`<p class="round-merged-warning">고객 택배비가 ${money(courierFees)}로 여러 주문에 있어요. 묶음배송 시 중복 여부를 확인하세요.</p>`:''}
+  ${warn?`<div class="round-shipping-consolidation" role="note">
+   <strong>택배비가 주문마다 따로 계산돼 있어요</strong>
+   <div class="round-shipping-consolidation-line"><span>현재 주문 ${courier.length}건 배송비</span><b>${money(courierFees)}</b></div>
+   <div class="round-shipping-consolidation-line"><span>한 번에 보내면</span><b>${money(expectedBundleDelivery)} (1회)</b></div>
+   <small>이 목록은 같은 구매자 주문을 모아 보여주는 것뿐, 아직 실제 합배송 설정은 되지 않았어요.</small>
+   ${mergePrimary?`<button class="round-shipping-consolidation-button" type="button" data-action="merge-shipping" data-id="${esc(mergePrimary.id)}">택배 한 번으로 묶기</button>`:''}
+   ${excessDelivery>0?`<small class="round-shipping-consolidation-refund">이미 받은 택배비 중 ${money(excessDelivery)}은 중복일 수 있어요. 합배송 후 환불 또는 다른 미입금 항목과의 정산을 확인해 주세요. 실제 입금·환불 기록은 자동 변경되지 않아요.</small>`:
+    '<small>이미 택배비를 받았다면 합배송 후 초과 입금 여부를 확인해 주세요. 금액은 자동 환불되지 않아요.</small>'}
+  </div>`:''}
   ${mix?'<p class="round-merged-warning">직접수령·택배수령이 섞여 있어요. 주문별 수령방식을 확인하세요.</p>':''}
   <details class="round-merged-details"><summary>주문별 수정 · 견적 / 옵션 / 입금 <span>${group.length}건</span></summary>
    <div class="round-merged-individuals">${group.map((q,i)=>renderRoundQuickOrder(q,i)).join('')}</div>
@@ -7506,13 +7529,14 @@ function renderCollapsibleAdminOrder(group,section){
   <summary class="admin-order-fold-heading">
    <span class="admin-order-fold-left">
     <strong>${esc(root.buyer_name||'주문자 미입력')} ${adminGithubGroupIcon(group)} <span class="admin-order-fold-baby">아기: ${esc(babies.join(' · ')||'미입력')}</span></strong>
-    <span class="admin-order-fold-meta">${group.length>1?'이번 회차 '+group.length+'건 합산 · ':''}상품 ${count}종 · ${qty}개 · ${fmtDate(root.created_at)}${paymentMark?` <b class="admin-order-payment-chip ${paymentMark==='입금 확인'?'paid':''}">${paymentMark}</b>`:''}</span>
+    <span class="admin-order-fold-meta">${group.length>1?(group.every(q=>bundleRootId(q)===bundleRootId(group[0]))?'묶음배송 '+group.length+'건 · ':'주문 '+group.length+'건 함께 보기 · '):''}상품 ${count}종 · ${qty}개 · ${fmtDate(root.created_at)}${paymentMark?` <b class="admin-order-payment-chip ${paymentMark==='입금 확인'?'paid':''}">${paymentMark}</b>`:''}</span>
    </span>
    <span class="admin-order-fold-right"><span class="admin-order-fold-next ${urgent?'is-urgent':''}">${esc(next)}</span></span>
    <span class="admin-order-fold-chevron" aria-hidden="true"></span>
   </summary>
   <div class="admin-order-fold-body">
-   ${renderShippingMergeButton(group)}
+   ${group.length>1&&group.filter(q=>q.delivery_method==='courier').length>1&&
+     group.reduce((n,q)=>n+appliedShipping(q),0)>3000?'':renderShippingMergeButton(group)}
    ${group.length>1?(group.every(q=>bundleRootId(q)===bundleRootId(group[0]))?renderBundleCard(group):renderSameRoundCard(group)):renderAdminQuoteCard(group[0])}
   </div>
  </details>`;

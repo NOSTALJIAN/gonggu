@@ -3321,6 +3321,44 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 .admin-override-confirm>summary{font-size:11px;color:#858585;font-weight:600;cursor:pointer}
 .admin-override-confirm .smallnote{padding:5px 0;font-size:11px}
 .admin-override-confirm>.admin-manual-confirm-action{width:100%;font-size:12px}
+.admin-option-request-shortcuts{border:1px solid #e5e5e5;padding:12px;border-radius:10px;display:flex;flex-direction:column;gap:8px;margin:8px 0}
+.admin-option-request-shortcuts>b{font-size:12px}
+.admin-option-request-shortcuts .btn{text-align:left}
+.admin-options-review{display:flex;flex-direction:column;gap:13px;padding:2px 1px 15px}
+.admin-options-review-overview{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.admin-options-review-overview b{font-size:13px}
+.admin-options-review-overview span{font-size:11px;color:#888}
+.admin-options-review-picker{display:flex;gap:8px;max-height:135px;overflow:auto;padding:0 1px 4px}
+.admin-options-review-picker button{min-width:126px;max-width:175px;text-align:left;background:#fafafa;border:1px solid #e1e1e1;border-radius:10px;padding:9px 11px;color:#333;display:flex;flex-direction:column;gap:1px}
+.admin-options-review-picker button.active{border-color:#222;background:#f1f1f1}
+.admin-options-review-picker button b{font-size:12px}
+.admin-options-review-picker button small{font-size:11px;color:#777;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.admin-options-review-card{border:1px solid #e1e1e1;border-radius:12px;padding:13px;background:#fff}
+.admin-options-review-buyer{display:flex;flex-direction:column;gap:1px}
+.admin-options-review-buyer strong{font-size:15px}
+.admin-options-review-buyer small{font-size:11px;color:#888}
+.admin-options-review-product{font-size:13px;font-weight:770;margin:11px 0 9px}
+.admin-options-review-compare{display:grid;grid-template-columns:minmax(0,1fr) 16px minmax(0,1fr);gap:6px;align-items:center}
+.admin-options-review-compare>div:not(.admin-options-review-arrow){border:1px solid #e7e7e7;border-radius:10px;background:#fafafa;padding:11px;display:flex;flex-direction:column;gap:3px;min-width:0}
+.admin-options-review-compare>div:last-child{background:#f3f3f3;border-color:#d7d7d7}
+.admin-options-review-compare small{color:#777;font-size:10px}
+.admin-options-review-compare b{font-size:13px;line-height:1.35;overflow-wrap:anywhere}
+.admin-options-review-compare span{font-size:12px}
+.admin-options-review-arrow{text-align:center;color:#888;font-size:16px}
+.admin-options-review-prices{display:flex;flex-direction:column;gap:3px;margin-top:12px;padding-top:11px;border-top:1px solid #eaeaea}
+.admin-options-review-prices>span{display:flex;justify-content:space-between;gap:8px;font-size:12px}
+.admin-options-review-prices>small{font-size:10px;color:#888}
+.admin-options-review-actions{display:flex;flex-direction:column;gap:8px}
+.admin-options-review-actions .btn,.admin-options-review-decision .btn{border-radius:9px;min-height:45px}
+.admin-options-review-decision{display:flex;flex-direction:column;gap:9px;border:1px solid #dadada;border-radius:11px;padding:13px;background:#fafafa}
+.admin-options-review-decision h3{margin:0;font-size:14px}
+.admin-options-review-decision p{font-size:12px;line-height:1.6;margin:0 0 5px}
+.admin-options-review-decision label{font-size:12px}
+.admin-options-review-decision textarea{margin-top:6px;font-size:16px}
+.admin-options-review-footer-note{font-size:11px;color:#858585;line-height:1.6;margin:0}
+.admin-options-review-done{background:#f7f7f7;border:1px solid #e0e0e0;border-radius:11px;padding:19px 14px;text-align:center}
+.admin-options-review-done strong{font-size:14px}
+.admin-options-review-done p{font-size:12px;color:#777;margin:7px 0 0}
 .supplier-freight-payment-request,.buyer-supplier-freight-request{border:1px solid #dedede;border-radius:11px;padding:12px;margin:13px 0;background:#fafafa;color:#272727;display:flex;flex-direction:column;gap:8px}
 .supplier-freight-payment-title{display:flex;flex-direction:column;gap:4px}
 .supplier-freight-payment-title b,.buyer-supplier-freight-request>b{font-size:13px;font-weight:820}
@@ -6440,24 +6478,15 @@ function pendingItemOptionRequests(q){return (state.optionRequests||[]).filter(r
 function renderAdminItemOptionRequests(q){
  const reqs=pendingItemOptionRequests(q);
  if(!state.optionRequestsReady)return state.optionRequestsError
-  ?`<div class="noticefail">옵션 변경 요청 확인 실패: ${esc(state.optionRequestsError)}. 발주 전 새로고침으로 확인해 주세요.</div>`
-  :'<div class="smallnote">옵션 변경 요청을 확인하고 있어요.</div>';
+  ?`<div class="noticefail">옵션 변경 요청 확인 실패: ${esc(state.optionRequestsError)}. 새로고침 후 확인해 주세요.</div>`
+  :'<div class="smallnote">옵션 변경 요청 확인 중이에요.</div>';
  if(!reqs.length)return '';
- return `<div class="option-request-admin-list"><h4>⚠️ 고객 옵션 변경 요청 ${reqs.length}건 · 확인 필요</h4>
-  ${reqs.map(r=>{
-   const item=q.items.find(i=>i.id===r.item_id);
-   return `<section class="option-request-admin">
-    <h4>${esc(item?.store_name||'거래처')} · ${esc(item?.product_name||'상품')}</h4>
-    <p>기존: ${esc(r.old_color)} / ${esc(r.old_size)} · ${Number(r.old_quantity)}개</p>
-    <p><b>요청: ${esc(r.requested_color)} / ${esc(r.requested_size)} · ${Number(r.requested_quantity)}개</b></p>
-    ${item?.unit_price!=null&&r.requested_quantity!==r.old_quantity?`<p>상품금액: ${money(item.unit_price*r.old_quantity)} → ${money(item.unit_price*r.requested_quantity)} (배송비 제외)</p>`:''}
-    <small class="smallnote">접수: ${fmtDate(r.requested_at)} · 승인 후에만 변경 반영</small>
-    <div class="row wrap" style="margin-top:9px">
-      <button type="button" class="btn sm" data-action="admin-approve-item-options" data-id="${esc(r.id)}">옵션 변경 승인</button>
-      <button type="button" class="btn sm neutral" data-action="admin-reject-item-options" data-id="${esc(r.id)}">요청 반려</button>
-    </div>
-   </section>`;
-  }).join('')}
+ return `<div class="admin-option-request-shortcuts">
+ <b>옵션 변경 요청 ${reqs.length}건</b>
+ ${reqs.map(r=>{
+  const item=(q.items||[]).find(i=>i.id===r.item_id);
+  return `<button type="button" class="btn sm secondary" data-action="admin-option-open" data-id="${esc(r.id)}">${esc(item?.product_name||'상품')} · 변경 확인</button>`;
+ }).join('')}
  </div>`;
 }
 function renderWholesaleCompletionAdmin(q){
@@ -8149,6 +8178,7 @@ function renderAdminSettings(){return `<section class="card pushbox pushbox-sett
 function modal(){const m=state.modal;if(!m)return '';const wrap=(title,body,stickyProductSave=false)=>stickyProductSave?`<div class="overlay" id="overlay"><div class="sheet sheet-product-editor product-editor-clean swipe-dismiss-sheet" role="dialog" aria-modal="true"><div class="sheet-drag-handle" aria-hidden="true"></div><div class="sheethead"><h2>${title}</h2><button class="close" data-action="close">×</button></div><div class="sheet-product-scroll">${body}</div><div class="sheet-product-save"><button class="btn block" type="submit" form="product-form">상품 저장</button></div></div></div>`:`<div class="overlay" id="overlay"><div class="sheet${['myquotes','suggest','cart','pick','product-photos','approve'].includes(m.type)?' swipe-dismiss-sheet':''}${m.type==='myquotes'?' myquotes-swipe-sheet':''}${m.type==='suggest'?' suggest-sheet':''}${m.type==='cart'?' cart-swipe-sheet':''}${m.type==='approve'?' approve-sheet':''}" role="dialog" aria-modal="true">${['myquotes','suggest','cart','pick','product-photos','approve'].includes(m.type)?'<div class="sheet-drag-handle" aria-hidden="true"></div>':''}<div class="sheethead"><h2>${title}</h2><button class="close" data-action="close">×</button></div>${body}</div></div>`;
 if(m.type==='entry-push')return wrap('신상·주문 알림 받기',renderEntryPushBody());
 if(m.type==='admin-delivery-queue'&&state.admin)return wrap('수령방식 변경 요청',renderAdminDeliveryQueue());
+if(m.type==='admin-option-requests'&&state.admin&&state.page==='admin')return wrap('옵션 변경 요청',adminOptionRequestsModalBody(m));
 if(m.type==='admin-delivery-review'&&state.admin){const q=state.quotes.find(x=>x.id===m.id);return wrap('수령방식 변경 요청',q?.delivery_change_requested_at?renderAdminDeliveryRequest(q):'<div class="empty">이미 처리된 요청이에요.</div>');}
 if(m.type==='admin-payment-edit'){
  if(!state.admin||state.page!=='admin')return '';
@@ -8371,6 +8401,55 @@ if(m.type==='myquotes'){return wrap('내 견적 · 주문조회',`
  </details>
  <p class="order-lookup-privacy">조회 비밀번호와 주문 링크는 다른 사람과 공유하지 마세요.</p>
  `)}return ''}
+function adminOptionRequestsModalBody(m){
+ const pending=(state.optionRequests||[]).filter(r=>r.status==='pending');
+ if(!state.optionRequestsReady)return `<div class="admin-options-review">
+ <p class="smallnote">${state.optionRequestsError?'옵션 변경 요청 조회 실패: '+esc(state.optionRequestsError):'옵션 변경 요청을 불러오는 중이에요.'}</p>
+ <button type="button" class="btn block secondary" data-action="admin-option-refresh">다시 확인</button></div>`;
+ if(!pending.length)return '<div class="admin-options-review"><div class="admin-options-review-done"><strong>✓ 옵션 변경 요청을 모두 처리했어요.</strong><p>현재 미처리 요청이 없어요.</p></div><button type="button" class="btn block" data-action="close">닫기</button></div>';
+ const selected=pending.find(r=>r.id===m.id)||pending[0];
+ const q=state.quotes.find(order=>order.id===selected.quote_id);
+ const item=(q?.items||[]).find(i=>i.id===selected.item_id);
+ const current=Number(item?.quantity||selected.old_quantity||0),requested=Number(selected.requested_quantity||0);
+ const before=Number(item?.unit_price)==null?null:Number(item?.unit_price);
+ const beforeTotal=q&&readyQuote(q)?totalDue(q):null;
+ const afterTotal=beforeTotal!==null&&Number.isFinite(before)&&item?beforeTotal+(requested-current)*before:null;
+ const action=m.optionAction||'';
+ const selectedIndex=pending.findIndex(r=>r.id===selected.id)+1;
+ return `<div class="admin-options-review">
+  <div class="admin-options-review-overview"><b>처리 대기 ${pending.length}건</b><span>${selectedIndex} / ${pending.length}번째 요청</span></div>
+  ${pending.length>1?`<div class="admin-options-review-picker" aria-label="미처리 옵션 변경 요청 선택">
+   ${pending.map((r,i)=>{
+    const order=state.quotes.find(x=>x.id===r.quote_id);
+    const product=(order?.items||[]).find(x=>x.id===r.item_id);
+    return `<button type="button" class="${r.id===selected.id?'active':''}" data-action="admin-option-select" data-id="${esc(r.id)}"><b>${i+1}. ${esc(order?.buyer_name||'구매자')}</b><small>${esc(product?.product_name||'상품 확인 필요')}</small></button>`;
+   }).join('')}
+  </div>`:''}
+  ${!q||!item?'<p class="noticefail">원래 주문이나 상품을 찾지 못했어요. 목록을 새로고침한 뒤 다시 확인해 주세요.</p>':
+  `<section class="admin-options-review-card">
+   <div class="admin-options-review-buyer"><strong>${esc(q.buyer_name)} ${q.baby_name?'· '+esc(q.baby_name):''}</strong><small>요청 접수 ${esc(fmtDate(selected.requested_at))}</small></div>
+   <div class="admin-options-review-product">${esc(item.store_name||'거래처')} · ${esc(item.product_name||'상품')}</div>
+   <div class="admin-options-review-compare">
+    <div><small>기존 옵션</small><b>${esc(item.color)} / ${esc(item.size)}</b><span>${current}개</span></div>
+    <div class="admin-options-review-arrow" aria-hidden="true">→</div>
+    <div><small>변경 요청</small><b>${esc(selected.requested_color)} / ${esc(selected.requested_size)}</b><span>${requested}개</span></div>
+   </div>
+   ${afterTotal!==null?`<div class="admin-options-review-prices"><span>변경 전 결제금액 <b>${money(beforeTotal)}</b></span><span>승인 후 예상금액 <b>${money(afterTotal)}</b></span><small>배송비 등 변경 가능성은 별도로 확인해 주세요.</small></div>`:''}
+  </section>
+  ${action==='approve'||action==='reject'?
+    `<form id="admin-option-decision-form" class="admin-options-review-decision" data-request-id="${esc(selected.id)}">
+     <input type="hidden" name="request_id" value="${esc(selected.id)}">
+     <input type="hidden" name="decision" value="${action}">
+     <h3>${action==='approve'?'이 변경을 승인할까요?':'이 변경 요청을 반려할까요?'}</h3>
+     ${action==='approve'?'<p>승인하면 요청한 색상·사이즈·수량이 주문에 반영돼요. 결제 차액과 기존 입금액을 확인해 주세요.</p>':
+      '<label class="label">구매자에게 안내할 반려 사유 (선택)<textarea name="note" maxlength="300" rows="3" placeholder="예: 요청하신 사이즈가 품절되어 변경이 어렵습니다."></textarea></label>'}
+     <button type="submit" class="btn block ${action==='reject'?'neutral':''}">${action==='approve'?'옵션 변경 최종 승인':'반려 사유 저장 · 요청 반려'}</button>
+     <button type="button" class="btn block secondary" data-action="admin-option-cancel-decision">이전 화면으로</button>
+    </form>`:
+    '<div class="admin-options-review-actions"><button type="button" class="btn block" data-action="admin-option-choose" data-decision="approve">이 요청 승인</button><button type="button" class="btn block neutral" data-action="admin-option-choose" data-decision="reject">이 요청 반려</button></div>'}`}
+  <p class="admin-options-review-footer-note">승인 또는 반려 후에도 팝업에서 다음 미처리 요청을 계속 확인할 수 있어요.</p>
+ </div>`;
+}
 function renderModal(){return modal()}
 // Keep checkout inputs untouched when removing items. Never store customer
 // form values or the six-digit lookup PIN in localStorage.
@@ -9657,57 +9736,37 @@ if(a==='set-purchase-intent'){
  notif(next==='buy_now'?'구매 의사가 전달됐어요. 배송비 계산 후 최종 금액을 안내받아요.':next==='next_round'?'다음 회차 구매로 저장했어요.':'구매 보류로 저장했어요.');
  return;
 }
-if(a==='show-pending-item-options'){
- const r=state.optionRequests.find(req=>req.status==='pending');
- if(!r)throw Error('확인할 옵션 변경 요청이 없어요.');
- const q=state.quotes.find(x=>x.id===r.quote_id);
- if(!q)throw Error('변경 요청에 연결된 주문이 없어요. 새로고침해 주세요.');
- state.tab='quotes';
- state.filter='all_history';
- state.dateGroupsOpen={};state.orderCardsOpen={};
- const visible=state.quotes.filter(x=>state.filter==='buy_now'?isRoundBuyer(x)&&!isFinishedOrder(x):
-  state.filter==='all'?x.status==='requested'||(x.status==='quoted'&&(!x.purchase_intent||x.purchase_intent==='undecided')):
-  state.filter==='wholesale_completed'?isWholesaleCompleted(x)&&!isFinishedOrder(x):true);
- const group=state.filter==='all_history'?bundledQuoteGroups(visible).find(g=>g.some(x=>x.id===q.id)):
-  roundGroupForOrder(q,visible);
- const root=group?.length>1?roundOrderRoot(group):q;
- state.orderCardsOpen[root.id]=true;
- if(state.filter==='all_history'){
-  const day=receivedDayKey(q.created_at);
-  state.dateGroupsOpen['saved|'+day]=true;
-  state.dateGroupsOpen['pending|'+day]=true;
- }
- render();
- const individual=app.querySelector('.round-single-order[data-round-order-id="'+q.id+'"]');
- if(individual){
-  individual.open=true;
-  const container=individual.closest('.round-merged-details');
-  if(container)container.open=true;
- }
- const requestButtons=[...app.querySelectorAll('.option-request-admin-list')];
- const target=requestButtons.find(el=>el.closest('[data-admin-order-id]')?.dataset.adminOrderId===root.id)||requestButtons[0];
- if(target)window.scrollTo({top:Math.max(0,window.scrollY+target.getBoundingClientRect().top-16),behavior:'smooth'});
+if(a==='show-pending-item-options'||a==='admin-option-open'||a==='admin-approve-item-options'||a==='admin-reject-item-options'){
+ if(!state.admin||state.page!=='admin')throw Error('관리자만 옵션 변경 요청을 처리할 수 있어요.');
+ const selected=a==='show-pending-item-options'?
+  state.optionRequests.find(req=>req.status==='pending'):state.optionRequests.find(req=>req.id===id&&req.status==='pending');
+ if(!selected)throw Error('미처리 옵션 변경 요청이 없어요. 새로고침 후 확인해 주세요.');
+ modalOpen('admin-option-requests',selected.id);
  return;
 }
-if(a==='admin-approve-item-options'||a==='admin-reject-item-options'){
- if(!state.admin)throw Error('관리자만 옵션 변경 요청을 처리할 수 있어요.');
- const req=state.optionRequests.find(r=>r.id===id&&r.status==='pending');
- const q=state.quotes.find(q=>q.id===req?.quote_id),item=q?.items.find(i=>i.id===req?.item_id);
- if(!req||!q||!item)throw Error('요청 정보가 오래됐어요. 관리자 새로고침을 눌러 주세요.');
- const approve=a==='admin-approve-item-options';
- const oldTotal=totalDue(q),newTotal=oldTotal+(Number(item.unit_price)||0)*(Number(req.requested_quantity)-Number(item.quantity));
- const desc=`${q.buyer_name} · ${item.product_name}\n${item.color} / ${item.size} ×${item.quantity} → ${req.requested_color} / ${req.requested_size} ×${req.requested_quantity}`;
- if(approve&&!window.confirm(`상품 옵션 변경을 승인할까요?\n${desc}\n결제금액: ${money(oldTotal)} → ${money(newTotal)}\n입금·환불 차액을 확인해 주세요.`))return;
- let note='';
- if(!approve){
-  const typed=window.prompt(`요청을 반려할까요?\n${desc}\n\n고객에게 전달할 사유를 입력해 주세요. (선택)`,'');
-  if(typed===null)return;
-  note=typed.slice(0,300);
-  if(!window.confirm('정말 반려하고 고객에게 안내할까요?'))return;
- }
- await rpc('gq_admin_decide_item_option_request_v61',{p_request_id:id,p_approve:approve,p_note:note},true);
- await loadAdmin();
- notif(approve?'옵션 변경을 승인하고 주문에 반영했어요. 고객에게 이메일이 발송돼요.':'옵션 변경을 반려했어요. 고객에게 이메일이 발송돼요.');
+if(a==='admin-option-select'){
+ if(state.modal?.type!=='admin-option-requests')throw Error('옵션 변경 요청 팝업에서 선택해 주세요.');
+ if(!state.optionRequests.some(r=>r.id===id&&r.status==='pending'))throw Error('이미 처리된 요청이에요.');
+ state.modal.id=id;state.modal.optionAction=null;render();
+ return;
+}
+if(a==='admin-option-choose'){
+ if(state.modal?.type!=='admin-option-requests'||!state.optionRequests.some(r=>r.id===state.modal.id&&r.status==='pending'))
+  throw Error('확인할 옵션 변경 요청이 없어요.');
+ const decision=String(b.dataset.decision||'');
+ if(!['approve','reject'].includes(decision))throw Error('승인 또는 반려를 선택해 주세요.');
+ state.modal.optionAction=decision;render();return;
+}
+if(a==='admin-option-cancel-decision'){
+ if(state.modal?.type!=='admin-option-requests')return;
+ state.modal.optionAction=null;render();return;
+}
+if(a==='admin-option-refresh'){
+ if(!state.admin||state.modal?.type!=='admin-option-requests')throw Error('관리자 옵션 요청 화면에서 새로고침해 주세요.');
+ if(busy)return;
+ busy=true;b.disabled=true;
+ try{await loadAdminOptionRequests();render();}
+ finally{busy=false;if(b.isConnected)b.disabled=false;}
  return;
 }
 if(a==='complete-wholesale-round'){
@@ -10553,7 +10612,24 @@ async function submit(e){const f=e.target;
 // All in-app forms are handled by JavaScript. Never allow a native browser GET
 // to replace ?page=admin and appear to sign the administrator out.
 e.preventDefault();
-if(!f.dataset.lowerPriceReport&&!f.dataset.sizeChartForm&&!f.dataset.customerEmail&&!['new-arrival-push-form','gmail-settings-form','hero-photo-form','reject-request-form','admin-pin-form','pin-register-form','pin-lookup-form','import-track-form','pick','request','store-form','product-form','login','suggest-form','approve-form','bundle-form','merge-shipping-form','edit-delivery-form','bulk-supplier-shipping-form','admin-payment-popup-form'].includes(f.id)&&!f.dataset.itemOptions&&!f.dataset.buyerOptionRequest&&!f.dataset.price&&!f.dataset.payment&&!f.dataset.shipping&&!f.dataset.supplierShipping&&!f.dataset.ship&&!f.dataset.bundleShip)return;if(busy)return;busy=true;const data=new FormData(f);try{if(f.id==='admin-payment-popup-form'){
+if(!f.dataset.lowerPriceReport&&!f.dataset.sizeChartForm&&!f.dataset.customerEmail&&!['new-arrival-push-form','gmail-settings-form','hero-photo-form','reject-request-form','admin-pin-form','pin-register-form','pin-lookup-form','import-track-form','pick','request','store-form','product-form','login','suggest-form','approve-form','bundle-form','merge-shipping-form','edit-delivery-form','bulk-supplier-shipping-form','admin-payment-popup-form','admin-option-decision-form'].includes(f.id)&&!f.dataset.itemOptions&&!f.dataset.buyerOptionRequest&&!f.dataset.price&&!f.dataset.payment&&!f.dataset.shipping&&!f.dataset.supplierShipping&&!f.dataset.ship&&!f.dataset.bundleShip)return;if(busy)return;busy=true;const data=new FormData(f);try{if(f.id==='admin-option-decision-form'){
+ if(!state.admin||state.page!=='admin'||state.modal?.type!=='admin-option-requests')
+  throw Error('관리자 옵션 변경 요청 팝업에서 다시 시도해 주세요.');
+ const requestId=String(data.get('request_id')||''),decision=String(data.get('decision')||'');
+ const req=state.optionRequests.find(r=>r.id===requestId&&r.status==='pending');
+ if(!req||state.modal.id!==requestId||state.modal.optionAction!==decision)
+  throw Error('선택한 요청이 바뀌었어요. 다시 확인해 주세요.');
+ const quote=state.quotes.find(q=>q.id===req.quote_id),item=(quote?.items||[]).find(x=>x.id===req.item_id);
+ if(!quote||!item)throw Error('주문 상품을 확인할 수 없어요. 새로고침 후 다시 시도해 주세요.');
+ if(!['approve','reject'].includes(decision))throw Error('승인 또는 반려를 선택해 주세요.');
+ const note=decision==='reject'?String(data.get('note')||'').trim():'';
+ if(note.length>300)throw Error('반려 사유는 300자 이내로 입력해 주세요.');
+ const result=await rpc('gq_admin_decide_item_option_request_v61',{p_request_id:requestId,p_approve:decision==='approve',p_note:note},true);
+ if(!result)throw Error('옵션 변경 처리 결과를 확인할 수 없어요. 새로고침 후 확인해 주세요.');
+ state.modal.optionAction=null;
+ await loadAdmin();
+ notif(decision==='approve'?'옵션 변경 승인 완료 · 주문에 반영했어요. 다음 요청을 확인하세요.':'요청 반려 완료 · 다음 요청을 확인하세요.');
+}else if(f.id==='admin-payment-popup-form'){
  if(!state.admin||state.page!=='admin'||state.modal?.type!=='admin-payment-edit'||state.modal.id!==f.dataset.quoteId)
   throw Error('관리자 입금 수정 창에서 다시 시도해 주세요.');
  const id=state.modal.id,q=state.quotes.find(x=>x.id===id);

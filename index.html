@@ -5193,7 +5193,7 @@ function intentBadge(q){
  const intent=q.status==='confirmed'?'buy_now':q.purchase_intent||'undecided';
  if(q.status==='cancelled'||q.status==='requested')return '';
  if(isDirect1688Admin(q))return `<span class="purchase-intent-chip ${q.status==='confirmed'?'now':'wait'}">1688 · ${q.status==='confirmed'?'주문 확정':'주문 확정 대기'}</span>`;
- const label=intent==='buy_now'?(q.status==='confirmed'?'이번 구매 확정':'이번 회차 구매 희망'):intent==='next_round'?'다음 회차 구매':intent==='on_hold'?'구매 보류':'구매 회차 미선택';
+ const label=intent==='buy_now'?(q.status==='confirmed'?'이번 구매 확정':'이번 회차 구매 신청'):intent==='next_round'?'다음 회차 구매':intent==='on_hold'?'구매 보류':'구매 회차 미선택';
  const color=intent==='buy_now'?'now':['next_round','on_hold'].includes(intent)?'later':'wait';
  return `<span class="purchase-intent-chip ${color}">${label}</span>`;
 }
@@ -5404,7 +5404,7 @@ function renderAdminHome(){
   <div class="admin-home-stats">
     ${tile('견적 대기',requested,'quotes','pricing')}
     ${tile('구매 선택 대기',pendingBuyers,'quotes','waiting_buyer')}
-    ${tile('최종확정 대기',pendingFinal,'quotes','final_confirmation')}
+    ${tile('배송비·입금 대기',pendingFinal,'quotes','final_confirmation')}
     <button type="button" class="admin-home-tile admin-home-preparing-trigger" data-action="home-preparing-toggle" aria-expanded="${state.homePreparingOpen===true}" aria-controls="admin-home-preparing-list"><span>발주 준비</span><strong>${preparing}<small>건</small></strong></button>
     ${tile('입고·배송',shipping,'quotes','wholesale_completed')}
   </div>
@@ -7798,8 +7798,8 @@ function renderSupplierPaymentCenter(){
   ${!state.supplierBatchesReady?`<p class="noticefail">${esc(state.supplierBatchesError||'배분 내역을 불러오지 못했어요. 새로고침해 주세요.')}</p>`:''}
   ${state.supplierBatchesReady&&openBatches.length?`<div class="supplier-payment-waiting-confirm">
    <strong>배송비 배분 완료 ${openBatches.length}곳 · 도매 발주 전</strong>
-   ${waiting.length?`${waiting.map(({batch,count})=>`<div class="supplier-payment-waiting-row"><b>${esc(batch.supplier||'거래처')}</b><span>구매자 최종확정 대기 ${count}건</span></div>`).join('')}
-    <button type="button" data-tab="quotes" data-nav-filter="final_confirmation">확정 대기 주문 확인</button>`:'<p class="smallnote">구매자 최종확정 대기 주문이 없어요. 아래에서 입금 및 발주를 처리하세요.</p>'}
+   ${waiting.length?`${waiting.map(({batch,count})=>`<div class="supplier-payment-waiting-row"><b>${esc(batch.supplier||'거래처')}</b><span>입금·주문확정 대기 ${count}건</span></div>`).join('')}
+    <button type="button" data-tab="quotes" data-nav-filter="final_confirmation">입금 대기 주문 확인</button>`:'<p class="smallnote">입금 대기 주문이 없어요. 아래에서 입금 및 발주를 처리하세요.</p>'}
    </div>`:''}
   ${state.supplierBatchesReady&&!openBatches.length?'<p class="admin-compact-note">현재 도매 발주 대기 중인 거래처가 없어요.</p>':''}
   ${state.supplierBatchesReady&&openBatches.length&&!pending.length?'<p class="admin-compact-note">현재 최종확정된 주문은 없어요. 위에서 구매확정 대기 주문을 확인하세요.</p>':''}
@@ -8007,7 +8007,7 @@ function renderBuyerStats(){
   ${waiting.length?`<details class="buyer-pending-quote-list">
    <summary class="stats-summary"><span>미확정 견적 ${waiting.length}건 · 확정 주문에 포함되지 않음</span><span class="tiny">펼치기 ▾</span></summary>
    ${waiting.map(q=>`<button type="button" class="stat-detail stat-order-open" data-action="buyer-order-details" data-id="${esc(q.id)}">
-    <div class="row between"><b>${q.status==='quoted'&&q.purchase_intent==='buy_now'?'이번 회차 구매 희망 · 최종확정 대기':q.status==='requested'?'견적 요청':'견적 안내 완료'} · ${esc(fmtDate(q.created_at))}</b><strong>${unknown(q)?'상품금액 확인 중':money(previewOrderSum(q))}</strong></div>
+    <div class="row between"><b>${q.status==='quoted'&&q.purchase_intent==='buy_now'?'이번 회차 구매 신청 · 배송비·입금 대기':q.status==='requested'?'견적 요청':'견적 안내 완료'} · ${esc(fmtDate(q.created_at))}</b><strong>${unknown(q)?'상품금액 확인 중':money(previewOrderSum(q))}</strong></div>
     ${buyerOrderProductPreview(q)}
     <span class="stat-order-more">미확정 견적 상세 보기 <span aria-hidden="true">→</span></span>
    </button>`).join('')}

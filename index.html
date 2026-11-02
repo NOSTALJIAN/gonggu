@@ -6211,7 +6211,7 @@ function adminConfirmEligible(q){
  return Boolean(state.admin&&q&&q.status==='quoted'&&
   !['next_round','on_hold'].includes(q.purchase_intent)&&
   !q.cancel_requested_at&&!q.delivery_change_requested_at&&
-  readyQuote(q)&&adminFreightReady(q)&&
+  readyQuote(q)&&
   (q.items||[]).some(i=>i.fulfillment!=='sold_out')&&
   pendingItemOptionRequests(q).length===0);
 }
@@ -9160,10 +9160,13 @@ if(a==='admin-confirm-order'){
  if(!adminConfirmEligible(q))throw Error('이 주문은 아직 관리자 확정 조건을 충족하지 못했어요. 금액·도매배송비·요청사항을 확인해 주세요.');
  const total=totalDue(q),recorded=Number(q.amount_paid||0)-Number(q.amount_refunded||0);
  const unrecorded=Math.max(0,total-recorded);
+ const freightPending=!q.supplier_shipping_manual_confirmed_at&&
+  (q.items||[]).some(i=>i.fulfillment!=='sold_out'&&!supplierItemBatch(i.id));
  const notice=q.buyer_name+'님 · '+fmtDate(q.created_at)+' 주문\n'+
   '최종 결제금액: '+money(total)+'\n'+
   '앱에 기록된 입금액: '+money(recorded)+'\n'+
   (unrecorded?'기록상 남은 금액: '+money(unrecorded)+'\n':'')+
+  (freightPending?'⚠️ 일부 상품은 도매배송비 배분 전입니다. 추후 결제금액이 달라질 수 있어요.\n':'')+
   '\n구매자가 이번 회차 구매에 동의했고, 실제 입금 내역을 직접 확인했나요?'+
   '\n\n[확인]을 누르면 구매자 대신 최종 주문을 확정합니다.'+
   '\n입금 기록은 변경되지 않으며 실제 입금을 확인하지 않았다면 진행하지 마세요.';

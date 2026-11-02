@@ -8411,7 +8411,7 @@ function adminOptionRequestsModalBody(m){
  const q=state.quotes.find(order=>order.id===selected.quote_id);
  const item=(q?.items||[]).find(i=>i.id===selected.item_id);
  const current=Number(item?.quantity||selected.old_quantity||0),requested=Number(selected.requested_quantity||0);
- const before=Number(item?.unit_price)==null?null:Number(item?.unit_price);
+ const before=item?.unit_price==null?null:Number(item.unit_price);
  const beforeTotal=q&&readyQuote(q)?totalDue(q):null;
  const afterTotal=beforeTotal!==null&&Number.isFinite(before)&&item?beforeTotal+(requested-current)*before:null;
  const action=m.optionAction||'';

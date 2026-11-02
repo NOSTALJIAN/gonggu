@@ -7088,7 +7088,7 @@ function orderOutstanding(q){
  return balanceDue(q);
 }
 function supplierFreightOnlyDue(q){
- if(!q||q.status!=='confirmed'||!readyQuote(q)||paymentWaiver(q)>0||supplierShippingShare(q)<=0)return 0;
+ if(!q||!(q.status==='confirmed'||q.status==='quoted'&&q.purchase_intent==='buy_now'&&adminFreightReady(q))||!readyQuote(q)||paymentWaiver(q)>0||supplierShippingShare(q)<=0)return 0;
  const net=Number(q.amount_paid||0)-Number(q.amount_refunded||0);
  const base=previewOrderSum(q)+appliedShipping(q);
  if(net<base)return 0;
@@ -7127,7 +7127,7 @@ function supplierFreightNotificationState(q){
   ].join(' · ')};
 }
 function renderSupplierFreightRequestControl(q){
- if(!state.admin||!q||q.status!=='confirmed'||supplierShippingShare(q)<=0)return '';
+ if(!state.admin||!q||!(q.status==='confirmed'||q.status==='quoted'&&q.purchase_intent==='buy_now'&&adminFreightReady(q))||supplierShippingShare(q)<=0)return '';
  const due=supplierFreightOnlyDue(q),requested=Number(q.supplier_freight_request_amount||0);
  const active=activeSupplierFreightRequest(q)>0;
  const delivery=supplierFreightNotificationState(q);

@@ -3973,6 +3973,19 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 .admin-filter-modal-choice.active strong{color:#fff}
 .admin-filter-modal-all{width:100%;min-height:44px;border:0;background:#f3f3f3;color:#333;border-radius:10px;font-size:13px;font-weight:800;margin-top:13px}
 
+/* Wholesale: only outstanding items in the workspace, history in a popup. */
+.admin-supplier-payments-center .admin-supplier-overview{margin:0 0 15px}
+.admin-supplier-payments-center .admin-work-clear{display:flex;align-items:center;gap:10px;padding:15px 13px;border:1px solid #eee;background:#fafafa;border-radius:12px;margin:10px 0 16px;font-size:12px;font-weight:700;color:#6b6b6b}
+.admin-work-clear>span:first-child{display:grid;place-items:center;border-radius:50%;width:22px;height:22px;background:#e9f0eb;color:#456951;font-weight:800}
+.admin-previous-orders-link{display:flex;align-items:center;justify-content:space-between;width:100%;min-height:47px;margin:18px 0 4px;padding:12px 13px;border:1px solid #eaeaea;border-radius:11px;background:#fff;font-size:12px;color:#454545;text-align:left;font-weight:720}
+.admin-previous-orders-link strong{font-size:12px;color:#777;white-space:nowrap;font-weight:650}
+.admin-history-modal{padding-bottom:22px}
+.admin-history-modal-note{font-size:11px;color:#777;line-height:1.6;margin:0 0 15px}
+.admin-history-supplier-list{display:flex;flex-direction:column;gap:9px}
+.admin-history-modal .supplier-bulk-batch{margin:0;border-radius:11px;overflow:hidden}
+.admin-history-modal .supplier-bulk-batch>summary{padding:13px 11px}
+.admin-supplier-payments-center .supplier-order-clean-actions:has([data-action="complete-china-procurement"]){grid-template-columns:1fr}
+
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -8167,7 +8180,7 @@ function renderSupplierFreightDoneStep(store,progress,customerList){
   '<details class="supplier-freight-completed-buyers"><summary>배분 완료된 구매자 내역 보기</summary>'+
   customerList+'</details>';
 }
-function renderSupplierBulkManager(historyOnly=false,expanded=false){
+function renderSupplierBulkManager(historyOnly=false,expanded=false,modalHistory=false){
  if(!state.admin||state.page!=='admin')return '';
  const progress=supplierFreightProgress();
  // Completed suppliers remain available under "입금·발주"; do not keep them
@@ -8331,6 +8344,7 @@ function renderSupplierBulkManager(historyOnly=false,expanded=false){
     </details>`:''}
    </div>`;
   }
+  if(modalHistory)return `<div class="admin-history-supplier-list supplier-bulk-list">${history}</div>`;
   return `<details class="card supplier-bulk-history-only">
    <summary style="cursor:pointer;font-weight:800;font-size:15px">거래처별 배송비 · 입금·발주 현황 (${state.supplierBatches.length}건) ▾</summary>
    <div class="supplier-bulk-list" style="margin-top:14px">${history}</div>
@@ -8750,10 +8764,10 @@ function renderSupplierPaymentCenter(){
   const china=chinaPendingProcurementGroups();
   const chinaQty=china.reduce((n,g)=>n+g.qty,0);
   return `<section class="admin-supplier-payments-center">
-  <div class="supplier-order-clean-head"><strong>전체 미발주</strong><span>남대문 ${domestic.length}곳 · 중국 ${chinaQty}개</span></div>
-  <div class="supplier-order-clean-head"><strong>중국 사입 · 1688</strong><span>미발주 ${chinaQty}개</span></div>
+  <div class="supplier-order-clean-head admin-supplier-overview"><strong>발주 대기</strong><span>남대문 ${domestic.length}곳 · 중국 ${chinaQty}개</span></div>
+  ${china.length?'<div class="supplier-order-clean-head"><strong>중국 사입 · 1688</strong><span>미발주 '+chinaQty+'개</span></div>':''}
   ${!state.productPrivateReady?'<p class="noticefail">사입 경로 정보를 불러오지 못했어요. 새로고침 후 확인해 주세요.</p>':''}
-  <div class="supplier-order-clean-list">${china.length?china.map(g=>`<details class="supplier-order-clean-card" data-fold-key="china-order-${esc(g.supplier)}">
+  ${china.length?`<div class="supplier-order-clean-list">${china.map(g=>`<details class="supplier-order-clean-card" data-fold-key="china-order-${esc(g.supplier)}">
     <summary><span><b>🇨🇳 ${esc(g.supplier)} · 직접 사입</b><small>${g.products.length}종 · 총 ${g.qty}개 · 주문 ${g.buyers}건</small></span><span class="supplier-order-clean-progress">미발주　⌄</span></summary>
     <div class="supplier-order-clean-body">
       <p class="supplier-order-clean-note">상품별 수량 요약 · 남대문 도매배송비 배분 제외</p>
@@ -8763,10 +8777,10 @@ function renderSupplierPaymentCenter(){
       </div>
       ${!chinaProcurementCanComplete(g)?'<p class="supplier-order-clean-finish-note">발주 완료는 주문 확정·상품대금 입금·변경 요청 확인 후 활성화돼요.</p>':''}
     </div>
-  </details>`).join(''):'<div class="empty">중국 사입 미발주 상품이 없어요.</div>'}</div>
-  <div class="supplier-order-clean-head"><strong>남대문 발주해야 할 거래처</strong><span>${domestic.length}곳</span></div>
+  </details>`).join('')}</div>`:''}
+  ${domestic.length?'<div class="supplier-order-clean-head"><strong>남대문 발주할 거래처</strong><span>'+domestic.length+'곳</span></div>':''}
   ${!state.supplierBatchesReady?'<p class="noticefail">남대문 배송비 배분 내역을 불러오지 못했어요. 새로고침해 주세요.</p>':''}
-  <div class="supplier-order-clean-list">${domestic.length?domestic.map(({b,items,eligible,qty,buyers,ready,canOrder})=>`<details class="supplier-order-clean-card" data-fold-key="supplier-order-clean-${esc(b.id)}">
+  ${domestic.length?`<div class="supplier-order-clean-list">${domestic.map(({b,items,eligible,qty,buyers,ready,canOrder})=>`<details class="supplier-order-clean-card" data-fold-key="supplier-order-clean-${esc(b.id)}">
   <summary><span><b>${esc(b.supplier||'거래처')}</b><small>${items.length}종 · ${qty}개 · 주문 ${buyers}건</small></span><span class="supplier-order-clean-progress">${ready}/${buyers}건 입금확인　⌄</span></summary>
   <div class="supplier-order-clean-body">
    <p class="supplier-order-clean-note">입금 확인 ${eligible.length}종 · 확인 대기 ${items.length-eligible.length}종</p>
@@ -8778,8 +8792,9 @@ function renderSupplierPaymentCenter(){
    <p class="supplier-order-clean-hint">발주서에는 확정 대기 이후의 미발주 상품 ${items.length}종 · ${qty}개가 모두 포함돼요. 입금 여부는 상관없어요.</p>
    ${!canOrder?'<p class="supplier-order-clean-finish-note">발주 완료 처리는 해당 거래처의 주문 확정과 상품대금 입금 확인이 모두 끝나야 활성화돼요.</p>':''}
   </div>
-  </details>`).join(''):'<div class="empty">남대문 발주 대기 중인 거래처가 없어요.</div>'}</div>
-  <details class="supplier-order-actions-fold" data-fold-key="supplier-order-actions-fold"><summary>입금 확인 · 이전 발주 내역 등 상세 관리</summary><p class="supplier-order-actions-guide">위 목록은 전체 미발주 상품이고, 이 상세 화면은 최종 확정된 주문만 보여줘요. 발주서 복사는 위 거래처 카드에서 해주세요.</p>${renderSupplierBulkManager(true,true)}</details>
+  </details>`).join('')}</div>`:''}
+  ${!domestic.length&&!china.length&&state.supplierBatchesReady&&state.productPrivateReady?'<div class="admin-work-clear"><span aria-hidden="true">✓</span><span>현재 발주할 상품이 없어요.</span></div>':''}
+  ${state.supplierBatches.length?`<button type="button" class="admin-previous-orders-link" data-action="open-admin-wholesale-history"><span>이전 발주 · 입금 상세 내역</span><strong>${state.supplierBatches.length}건 <span aria-hidden="true">›</span></strong></button>`:''}
   </section>`;
 }
 function renderAdminQuoteFlatSection(groups,title,section='saved'){
@@ -9187,6 +9202,11 @@ if(m.type==='entry-push')return wrap('신상·주문 알림 받기',renderEntryP
 if(m.type==='admin-delivery-queue'&&state.admin)return wrap('수령방식 변경 요청',renderAdminDeliveryQueue());
 if(m.type==='admin-option-requests'&&state.admin&&state.page==='admin')return wrap('옵션 변경 요청',adminOptionRequestsModalBody(m));
  if(m.type==='admin-order-filters'&&state.admin&&state.page==='admin'&&state.tab==='quotes')return wrap('주문 상세 필터',renderAdminOrderFilterModal());
+ if(m.type==='admin-wholesale-history'&&state.admin&&state.page==='admin'&&state.tab==='payments')
+  return wrap('이전 발주 · 정산 내역',`<div class="admin-history-modal">
+    <p class="admin-history-modal-note">거래처별 이전 발주·배송비·입금 내역이에요. 거래처를 펼쳐 상세 내용을 확인할 수 있어요.</p>
+    ${renderSupplierBulkManager(true,false,true)||'<p class="smallnote">저장된 거래처 기록이 없어요.</p>'}
+   </div>`);
 if(m.type==='admin-delivery-review'&&state.admin){const q=state.quotes.find(x=>x.id===m.id);return wrap('수령방식 변경 요청',q?.delivery_change_requested_at?renderAdminDeliveryRequest(q):'<div class="empty">이미 처리된 요청이에요.</div>');}
 if(m.type==='admin-price-edit'){
  if(!state.admin||state.page!=='admin')return '';
@@ -10810,6 +10830,10 @@ if(a==='set-purchase-intent'){
 if(a==='open-admin-order-filters'){
  if(!state.admin||state.page!=='admin'||state.tab!=='quotes')throw Error('관리자 주문 화면에서 상세 필터를 열어 주세요.');
  modalOpen('admin-order-filters');return;
+}
+if(a==='open-admin-wholesale-history'){
+ if(!state.admin||state.page!=='admin'||state.tab!=='payments')throw Error('관리자 도매 화면에서 이전 발주 내역을 열어 주세요.');
+ modalOpen('admin-wholesale-history');return;
 }
 if(a==='show-pending-item-options'||a==='admin-option-open'||a==='admin-approve-item-options'||a==='admin-reject-item-options'){
  if(!state.admin||state.page!=='admin')throw Error('관리자만 옵션 변경 요청을 처리할 수 있어요.');

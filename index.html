@@ -10044,6 +10044,30 @@ if(a==='review-delivery'){
  if(!state.quotes.some(q=>q.id===id&&q.delivery_change_requested_at))throw Error('이미 처리된 요청이에요. 새로고침해 주세요.');
  modalOpen('admin-delivery-review',id);return;
 }
+if(a==='supplier-freight-request'||a==='supplier-freight-cancel'||a==='supplier-freight-copy'){
+ if(!state.admin||state.page!=='admin')throw Error('관리자 화면에서만 도매 배송비 입금을 요청할 수 있어요.');
+ const q=state.quotes.find(x=>x.id===id);
+ if(!q)throw Error('주문을 찾지 못했어요.');
+ const due=supplierFreightOnlyDue(q),cancel=a==='supplier-freight-cancel';
+ if(a==='supplier-freight-copy'){
+  await copy(supplierFreightPaymentNotice(q));return;
+ }
+ if(busy)return;
+ if(!cancel&&due<=0)throw Error('상품대금·고객 택배비 입금 후 남은 도매 배송비가 있는지 확인해 주세요.');
+ if(!window.confirm(cancel?
+  q.buyer_name+'님의 도매 배송비 입금 요청을 취소할까요? 이미 전달한 안내문은 직접 취소 안내해 주세요.':
+  q.buyer_name+'님에게 도매 배송비 분담금 '+money(due)+'만 별도로 요청할까요?\n상품값과 고객 택배비는 다시 청구하지 않으며, 요청을 저장해도 실제 입금액은 변경되지 않아요.'))return;
+ busy=true;b.disabled=true;
+ try{
+  const reply=await rpc('gq_admin_set_supplier_freight_request_v102',{p_quote_id:id,p_cancel:cancel},true);
+  if(cancel?reply?.cancelled!==true:reply?.requested!==true||Number(reply.amount)!==due)
+   throw Error('도매 배송비 입금 요청 저장 결과가 일치하지 않아요.');
+  state.orderCardsOpen[q.bundle_parent_id||q.id]=true;
+  await loadAdmin();
+  notif(cancel?'분담 배송비 입금 요청 취소 완료':'분담 배송비 '+money(due)+' 입금 요청 저장 완료 · 고객 주문조회에 표시돼요. 안내 복사를 눌러 전달하세요.');
+ }finally{busy=false;if(b.isConnected)b.disabled=false;}
+ return;
+}
 if(a==='compact-open-tool'){
  if(b.dataset.tool==='payment'){
   modalOpen('admin-payment-edit',id);

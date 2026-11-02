@@ -7161,8 +7161,9 @@ function renderSupplierBulkManager(historyOnly=false,expanded=false){
  if(historyOnly){
   if(!state.supplierBatches.length)return expanded?'<div class="empty">아직 거래처별 배송비 배분 내역이 없어요. 먼저 발주 예정에서 거래처 배송비를 배분해 주세요.</div>':'';
   if(expanded){
-   const pending=state.supplierBatches.filter(b=>!b.ordered_at);
-   const completed=state.supplierBatches.filter(b=>b.ordered_at);
+   const hasConfirmed=b=>supplierBatchPaymentState(b).people.some(p=>p.selected.some(x=>x.q.status==='confirmed'));
+   const pending=state.supplierBatches.filter(b=>!b.ordered_at&&hasConfirmed(b));
+   const completed=state.supplierBatches.filter(b=>b.ordered_at&&hasConfirmed(b));
    return `<div class="supplier-bulk-payments" aria-label="거래처별 입금 요청 목록">
 
     <div class="supplier-bulk-list" style="margin-top:8px">${pending.length?pending.map((b,index)=>supplierBatchCard(b,index)).join(''):'<div class="empty">입금 요청 대기 중인 거래처가 없어요.</div>'}</div>
@@ -7485,8 +7486,9 @@ function isOtherRoundQuote(q){
  return q.status==='quoted'&&['next_round','on_hold','undecided'].includes(q.purchase_intent||'undecided');
 }
 function renderSupplierPaymentCenter(){
- const pending=state.supplierBatches.filter(b=>!b.ordered_at);
+ const pending=state.supplierBatches.filter(b=>!b.ordered_at&&supplierBatchPaymentState(b).people.some(p=>p.selected.some(x=>x.q.status==='confirmed')));
  return `<section class="admin-supplier-payments-center">
+  <p class="admin-compact-note">최종 확정된 주문만 표시돼요. 확정 대기 주문은 주문 관리에서 확인할 수 있어요.</p>
   ${!state.supplierBatchesReady?`<p class="noticefail">${esc(state.supplierBatchesError||'배분 내역을 불러오지 못했어요. 새로고침해 주세요.')}</p>`:''}
   ${state.supplierBatchesReady&&!pending.length?'<p class="admin-compact-note">발주 대기 중인 거래처가 없어요.</p>':''}
   ${renderSupplierBulkManager(true,true)}
@@ -9305,11 +9307,12 @@ if(a==='copy-supplier-batch-procurement'){
  // Buttons are in <summary> to remain visible even while a batch is collapsed.
  // Cancelling the native summary activation prevents an unwanted open/close jump.
  e.preventDefault();
- if(!state.admin||state.page!=='admin'||state.tab!=='quotes'||!state.supplierBatchesReady)
+ if(!state.admin||state.page!=='admin'||!['quotes','payments'].includes(state.tab)||!state.supplierBatchesReady)
   throw Error('관리자 거래처별 입금·발주 화면에서 복사해 주세요.');
  const batch=state.supplierBatches.find(x=>x.id===id);
  if(!batch)throw Error('거래처 배분을 찾지 못했어요. 새로고침 후 다시 복사해 주세요.');
- const rows=supplierBatchProcurementRows(batch);
+ const rows=supplierBatchProcurementRows(batch).filter(r=>!(state.tab==='payments'&&state.filter==='supplier_payments')||r.q.status==='confirmed');
+ if(!rows.length)throw Error('최종 확정된 상품이 없어 발주서에 포함할 수 없어요.');
  const invalid=rows.filter(r=>r.q.status==='cancelled'||r.item.fulfillment==='sold_out');
  if(invalid.length&&!window.confirm('취소·품절 처리된 상품 '+invalid.length+'종이 포함되어 있어요. 원래 배분된 전체 상품으로 발주서를 복사할까요?'))return;
  const missing=rows.filter(r=>r.unit===null).length;

@@ -3144,6 +3144,46 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 .admin-manager-body .admin-quote-workspace{margin:0}
 @media(max-width:400px){.admin-reorganized{padding:10px 10px 24px!important}.admin-manager-nav{gap:2px;padding:3px}.admin-manager-nav button{font-size:11px;min-height:38px}}
 
+
+/* Order management: searchable compact list; advanced state filters tucked away. */
+.admin-orders-page .admin-orders-search{position:relative;margin-bottom:13px}
+.admin-orders-page .admin-orders-search input{border:1px solid #e5e5eb;border-radius:10px;min-height:42px;padding:9px 38px 9px 13px;font-size:13px;background:#fff}
+.admin-orders-page .admin-orders-search button{position:absolute;right:7px;top:5px;width:30px;height:30px;border:0;background:none;color:#85858e;font-size:20px}
+.admin-orders-filterbar{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;margin:0 0 9px}
+.admin-orders-filterbar button{border:1px solid #e5e5e9;background:#fff;color:#555;border-radius:10px;padding:8px 2px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:3px;min-height:52px;font-weight:720;font-size:11px;white-space:nowrap}
+.admin-orders-filterbar button b{font-size:13px;color:inherit;line-height:1.2}
+.admin-orders-filterbar button.active{border-color:#29292e;background:#29292e;color:#fff}
+.admin-more-filters{border:0;margin:0 0 16px;padding:0}
+.admin-more-filters>summary{font-size:11px;font-weight:680;color:#888;cursor:pointer;list-style:none;text-align:right;padding:4px 2px}
+.admin-more-filters>summary::after{content:" ⌄"}
+.admin-more-filter-items{display:flex;flex-wrap:wrap;gap:6px;margin:7px 0 11px}
+.admin-more-filter-items>button,.admin-more-subfilters button{font-size:11px;background:#fff;border:1px solid #e5e5e9;border-radius:8px;padding:7px 9px;color:#666}
+.admin-more-filter-items>button.active,.admin-more-subfilters button.active{background:#333;color:#fff}
+.admin-more-subfilters{width:100%;font-size:11px;color:#888;margin:7px 0}
+.admin-more-subfilters summary{cursor:pointer}
+.admin-orders-list-title{display:flex;align-items:center;justify-content:space-between;margin:8px 2px 11px}
+.admin-orders-list-title strong{font-size:15px;color:#24242a}
+.admin-orders-list-title span,.admin-orders-match{font-size:11px;color:#8a8a92}
+.admin-orders-page .admin-price-section{margin:0 0 12px}
+.admin-orders-page .admin-price-section-title{margin:6px 2px 11px}
+.admin-orders-page .admin-date-orders{display:grid;gap:8px}
+.admin-orders-page .admin-order-fold{margin:0;border-radius:12px;border:1px solid #e6e6eb;background:#fff;overflow:hidden;box-shadow:none}
+.admin-orders-page .admin-order-fold-heading{padding:13px 12px;gap:8px}
+.admin-orders-page .admin-order-fold-left>strong{font-size:14px}
+.admin-orders-page .admin-order-fold-meta{font-size:11px;color:#93939c}
+.admin-orders-page .admin-order-fold-next{font-size:11px;font-weight:700;border-radius:7px}
+.admin-orders-page .admin-order-fold-body{padding:3px 10px 11px}
+.admin-orders-page .compact-order-card{box-shadow:none;border:0;margin:0;padding:5px 2px}
+.admin-orders-page .compact-order-products{padding:0;margin-bottom:10px}
+.admin-orders-page .compact-order-next{margin-top:11px}
+.admin-orders-page .compact-order-next>span{display:none}
+.admin-orders-page .compact-order-next-btn{font-size:12px;white-space:nowrap}
+.admin-orders-page .compact-order-tools{margin-top:12px}
+.admin-orders-page .compact-order-tool>summary{font-size:12px;padding:11px 7px}
+.admin-orders-page .compact-order-tool .compact-original-detail{overflow-x:hidden}
+.admin-orders-page .admin-price-section-title .sub{display:none}
+@media(max-width:360px){.admin-orders-filterbar{gap:3px}.admin-orders-filterbar button{font-size:10px}}
+
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -3325,7 +3365,7 @@ const demo=read(DEMO,initDemo());
 const saveDemo=()=>localStorage.setItem(DEMO,JSON.stringify(demo));
 let session=read(SESS,null),busy=false,refreshing=null;
 const p=new URLSearchParams(location.search);
-const state={page:['admin','track'].includes(p.get('page'))?p.get('page'):'shop',tab:'home',stores:[],products:[],requests:[],quotes:[],cart:read(CART,[]),modal:null,search:'',shopCategory:'all',shopSort:'newest',shopStore:'all',shopFiltersOpen:false,adminCategory:'all',trackId:p.get('id')||'',trackToken:p.get('token')||'',tracking:null,receipts:read(TRACK,[]),notice:'',filter:'all',admin:false,heroPhotoUrl:null,heroStoreId:null,dateGroupsOpen:{},orderCardsOpen:{},supplierBulkSelected:new Set(),supplierBulkStoreId:'',supplierBatches:[],supplierBatchesReady:false,supplierBatchesError:'',supplierPartialInvoices:[],trackSupplierPartial:[],lowerPriceReports:[],optionRequests:[],optionRequestsReady:false,optionRequestsError:'',requestStatusFilter:'pending',adminCatalogView:'products',adminCatalogFilter:'all',adminProductSort:'newest',adminProductSearch:'',productPrivate:{},productPrivateReady:false,emailSettings:null,emailSettingsReady:false,emailSettingsError:'',adminPinIds:new Set(),phoneLookupReady:null,pinLookupNotice:''};
+const state={page:['admin','track'].includes(p.get('page'))?p.get('page'):'shop',tab:'home',adminOrderSearch:'',stores:[],products:[],requests:[],quotes:[],cart:read(CART,[]),modal:null,search:'',shopCategory:'all',shopSort:'newest',shopStore:'all',shopFiltersOpen:false,adminCategory:'all',trackId:p.get('id')||'',trackToken:p.get('token')||'',tracking:null,receipts:read(TRACK,[]),notice:'',filter:'pricing',admin:false,heroPhotoUrl:null,heroStoreId:null,dateGroupsOpen:{},orderCardsOpen:{},supplierBulkSelected:new Set(),supplierBulkStoreId:'',supplierBatches:[],supplierBatchesReady:false,supplierBatchesError:'',supplierPartialInvoices:[],trackSupplierPartial:[],lowerPriceReports:[],optionRequests:[],optionRequestsReady:false,optionRequestsError:'',requestStatusFilter:'pending',adminCatalogView:'products',adminCatalogFilter:'all',adminProductSort:'newest',adminProductSearch:'',productPrivate:{},productPrivateReady:false,emailSettings:null,emailSettingsReady:false,emailSettingsError:'',adminPinIds:new Set(),phoneLookupReady:null,pinLookupNotice:''};
 
 const PRODUCT_CATEGORIES=['바디수트','세트','상의','하의','아우터','원피스','스커트','모자','양말','악세서리','잡화'];
 const validProductCategory=x=>PRODUCT_CATEGORIES.includes(String(x||'').trim());
@@ -4670,6 +4710,7 @@ function render(){
   else el.open=false;
  });
  adminScrollPositions.forEach(([selector,left])=>{const el=app.querySelector(selector);if(el)el.scrollLeft=left;});
+ if(state.page==='admin'&&state.tab==='quotes')updateAdminOrderSearch();
  const categoryList=app.querySelector('.shop-category-list');
  if(categoryList)categoryList.scrollLeft=categoryScrollBefore;
  // Mobile filter row scrolls horizontally: show the selected filter even
@@ -5942,7 +5983,7 @@ function renderRoundQuickOrder(q,index){
    ${(q.items||[]).map(i=>`<div class="round-order-quick-item"><span><b>${adminOrderItemName(i)}</b><small>${esc(i.color)} / ${esc(i.size)} · ${i.quantity}개</small></span><b>${i.unit_price==null?'미정':money(Number(i.unit_price)*Number(i.quantity))}</b></div>`).join('')}
    <button type="button" class="btn sm secondary" data-action="copy-customer-link" data-id="${esc(q.id)}">고객 확인 링크 복사</button>
    ${q.status==='requested'?`<button type="button" class="btn sm secondary" data-action="publish-quote" data-id="${esc(q.id)}" ${readyProductEstimate(q)?'':'disabled'}>견적 안내하기</button>`:''}
-   <details class="round-order-tool"><summary>가격·옵션 수정</summary>
+   <details class="round-order-tool"><summary>가격·옵션</summary>
     ${(q.items||[]).map(i=>`<div class="round-order-price-row"><span>${adminOrderItemName(i)} · ${esc(i.color)} / ${esc(i.size)}</span>
      <form class="round-order-price-form" data-price="${esc(i.id)}">
       <input type="number" name="price" min="0" max="100000000" inputmode="numeric" value="${i.unit_price??''}" aria-label="${esc(i.product_name)} 판매가">
@@ -6128,7 +6169,7 @@ function renderAdminQuoteCard(q){
    ${priced&&paid>due?`<p class="compact-order-warning">초과 입금 ${money(paid-due)} · 환불 여부 확인</p>`:''}
   </div>
   <div class="compact-order-next ${urgent?'is-urgent':''}">
-   <span>지금 할 일</span><strong>${esc(task.text)}</strong>
+   <strong>${esc(task.text)}</strong>
    <button type="button" class="compact-order-next-btn" ${command}>${esc(task.label)} →</button>
   </div>
   <div class="compact-order-tools">
@@ -6146,7 +6187,7 @@ function renderAdminQuoteCard(q){
     </div>
    </details>
    <details class="compact-order-tool" data-compact-tool="payment">
-    <summary>입금·환불 수정</summary>
+    <summary>입금·환불</summary>
     <div class="compact-tool-content">
      <form data-payment="${esc(q.id)}" class="compact-payment-form">
       <label>누적 입금액<input name="paid" type="number" min="0" step="1" inputmode="numeric" value="${Number(q.amount_paid)||0}" required></label>
@@ -6157,7 +6198,7 @@ function renderAdminQuoteCard(q){
     </div>
    </details>
    <details class="compact-order-tool" data-compact-tool="shipping">
-    <summary>입고·배송 처리</summary>
+    <summary>입고·배송</summary>
     <div class="compact-tool-content">
      ${q.status==='confirmed'?`<div class="compact-receipts">
       ${active.map(i=>`<div class="compact-receipt-row"><span><b>${adminOrderItemName(i)}</b><small>${esc(i.color)} / ${esc(i.size)} · ${i.quantity}개</small></span>
@@ -6166,7 +6207,7 @@ function renderAdminQuoteCard(q){
     </div>
    </details>
    <details class="compact-order-tool" data-compact-tool="advanced">
-    <summary>기타 설정 · 이메일 / 수령 / 배송비</summary>
+    <summary>기타 관리</summary>
     <div class="compact-tool-content compact-original-detail">${renderAdminQuoteLegacy(q)}</div>
    </details>
   </div>
@@ -6992,94 +7033,85 @@ function renderAdminQuoteFlatSection(groups,title,section='saved'){
   <div class="admin-date-orders admin-flat-order-list">${sorted.map(g=>renderCollapsibleAdminOrder(g,section)).join('')}</div>
  </section>`;
 }
+
+function updateAdminOrderSearch(){
+ const query=String(state.adminOrderSearch||'').trim().toLocaleLowerCase('ko-KR');
+ let shown=0;
+ app.querySelectorAll('.admin-order-fold').forEach(card=>{
+  const matches=!query||String(card.textContent||'').toLocaleLowerCase('ko-KR').includes(query);
+  card.classList.toggle('hidden',!matches);
+  if(matches)shown++;
+ });
+ const empty=app.querySelector('#admin-order-search-empty');
+ if(empty)empty.classList.toggle('hidden',!query||shown>0);
+ const match=app.querySelector('#admin-order-search-match');
+ if(match)match.textContent=query?shown+'개 주문 검색됨':'';
+ const clear=app.querySelector('[data-action="clear-admin-order-search"]');
+ if(clear)clear.classList.toggle('hidden',!query);
+}
 function renderAdminQuotes(){
  const all=state.quotes;
  const isPre=q=>q.status==='requested'||(q.status==='quoted'&&(!q.purchase_intent||q.purchase_intent==='undecided'));
  const isPricing=q=>q.status==='requested'||(q.status==='quoted'&&quoteNeedsPriceInput(q));
  const isWaiting=q=>q.status==='quoted'&&(!q.purchase_intent||q.purchase_intent==='undecided')&&!quoteNeedsPriceInput(q);
- const nPrice=all.filter(isPricing).length,nWait=all.filter(isWaiting).length;
- const nPre=all.filter(isPre).length,nNow=all.filter(q=>isRoundBuyer(q)&&!isFinishedOrder(q)).length;
- const nOrdered=all.filter(q=>isWholesaleCompleted(q)&&!isFinishedOrder(q)).length;
- const nFinished=all.filter(isFinishedOrder).length,nOther=all.filter(q=>q.status==='quoted'&&['next_round','on_hold'].includes(q.purchase_intent)).length;
- const nCancel=all.filter(q=>q.cancel_requested_at&&q.status!=='cancelled').length;
- const nSupplier=state.supplierBatches.filter(b=>!b.ordered_at).length;
- const nOptions=state.optionRequests.filter(r=>r.status==='pending').length;
- const nFee=state.productPrivateReady&&state.supplierBatchesReady?
-  all.filter(isRoundBuyer).reduce((n,q)=>n+(q.items||[]).filter(i=>supplierBulkAvailableItem(q,i)).length,0):0;
- const qq=all.filter(q=>state.filter==='all'?isPre(q):
-  state.filter==='pricing'?isPricing(q):
-  state.filter==='waiting_buyer'?isWaiting(q):
-  state.filter==='all_history'?true:
-  state.filter==='finished'?isFinishedOrder(q):
-  state.filter==='other'?q.status==='quoted'&&['next_round','on_hold'].includes(q.purchase_intent):
-  state.filter==='buy_now'?isRoundBuyer(q)&&!isFinishedOrder(q):
-  state.filter==='wholesale_completed'?isWholesaleCompleted(q)&&!isFinishedOrder(q):
-  state.filter==='next_round'?q.status==='quoted'&&q.purchase_intent==='next_round':
-  state.filter==='on_hold'?q.status==='quoted'&&q.purchase_intent==='on_hold':
-  state.filter==='undecided'?q.status==='quoted'&&(!q.purchase_intent||q.purchase_intent==='undecided'):
-  state.filter==='cancel_requested'?!!q.cancel_requested_at&&q.status!=='cancelled':
-  state.filter.startsWith('flow_')?q.status==='confirmed'&&workflowStage(q)===state.filter.slice(5):q.status===state.filter);
- const groups=['all_history','finished','wholesale_completed'].includes(state.filter)?bundledQuoteGroups(qq,['all_history','finished'].includes(state.filter)):sameRoundGroups(qq);
- const awaiting=groups.filter(g=>g.some(q=>q.status==='requested'||quoteNeedsPriceInput(q)));
- const priced=groups.filter(g=>!awaiting.includes(g));
- const unfinished=qq.reduce((n,q)=>n+(q.status==='cancelled'?0:q.items.filter(i=>i.unit_price==null&&i.fulfillment!=='sold_out').length),0);
- const steps=[
-  ['all','견적·선택',nPre,'가격 안내·선택 확인'],
-  ['buy_now','배송비 배분',nNow,'이번 회차 구매'],
-  ['supplier_payments','입금·발주',nSupplier,'거래처별 처리'],
-  ['wholesale_completed','입고·배송',nOrdered,'발주 완료 후']
- ];
- const extras=[['pricing','가격·견적 확인',nPrice],['waiting_buyer','구매 선택 대기',nWait],['finished','완료',nFinished],['other','보류·다음 회차',nOther],['cancel_requested','취소 요청',nCancel],['all_history','전체 주문',all.length]];
- const secondaryKeys=['requested','quoted','confirmed','flow_new','flow_preparing','flow_pickup_ready','flow_shipped','flow_completed','flow_soldout_closed','cancelled'];
- const secondaryLabel=k=>k.startsWith('flow_')?workflowLabels[k.slice(5)]:statusLabel[k]||k;
- let task=['고객 응답과 새 주문을 확인하세요','추가로 처리할 작업이 없으면 전체 주문을 볼 수 있어요.','전체 주문 보기','all_history',''];
- if(nWait)task=['구매자 선택 대기 중',nWait+'건은 고객의 이번 회차 선택을 기다리는 중이에요.','선택 대기 보기','waiting_buyer',''];
- if(nOrdered)task=['발주 후 입고·배송 확인','발주한 주문 '+nOrdered+'건의 입고·픽업·택배 진행을 확인하세요.','입고·배송 보기','wholesale_completed',''];
- if(nNow)task=['이번 회차 발주 준비',nNow+'건의 거래처 배송비와 입금·발주 상태를 확인하세요.','발주 준비 보기','buy_now',''];
- if(nSupplier)task=['거래처 입금·발주 처리',nSupplier+'곳의 구매자별 입금 요청과 입금 확인을 진행하세요.','입금 처리 보기','supplier_payments',''];
- if(nFee)task=['도매배송비부터 배분하세요','이번 회차 상품 '+nFee+'종의 배송비가 아직 배분되지 않았어요.','배송비 배분하기','','open-supplier-bulk-allocations'];
- if(nPrice)task=['견적 먼저 확인하기',nPrice+'건의 판매가 입력 또는 견적 발송을 확인하세요.','견적 확인하기','pricing',''];
- if(nCancel)task=['취소 요청 먼저 확인',nCancel+'건의 취소 요청을 확인하세요.','취소 요청 보기','cancel_requested',''];
- if(nOptions)task=['옵션 변경 요청 먼저 확인',nOptions+'건의 옵션 변경 요청을 검토하세요.','변경 요청 보기','','show-pending-item-options'];
- const titles={
-  all:['견적 안내 · 구매 선택','판매가를 확인해 견적을 보내고, 구매자가 이번 회차를 선택하기를 기다려요.'],
-  pricing:['가격 · 견적 확인','판매가를 확인하고 견적 안내를 마무리할 주문이에요.'],
-  waiting_buyer:['고객 구매 선택 대기','견적은 안내됐고 고객의 선택만 기다리고 있어요.'],
-  buy_now:['배송비 배분 · 발주 준비','이번 회차 구매를 선택한 상품을 모아 거래처별로 배송비를 배분하세요.'],
-  supplier_payments:['거래처별 입금 · 발주','구매자별 입금 요청과 확인 후 실제 도매 발주를 완료하세요.'],
-  wholesale_completed:['입고 · 배송 처리','발주한 상품의 입고, 픽업, 택배 진행을 관리하세요.'],
-  finished:['완료된 주문','픽업·배송·정산이 끝난 주문이에요.'],
-  other:['보류 · 다음 회차','이번 회차에 구매하지 않는 주문이에요.'],
-  all_history:['전체 주문 내역','지난 주문을 포함해 모든 주문을 확인하세요.'],
-  cancel_requested:['취소 요청','고객의 취소 요청을 확인하세요.']
- };
- const [title,subtitle]=titles[state.filter]||[secondaryLabel(state.filter),'선택한 상태의 주문이에요.'];
- const isExtra=!steps.some(s=>s[0]===state.filter);
- return `<section class="admin-quote-workspace">
+ const count=fn=>all.filter(fn).length;
+ const nPre=count(isPre),nPrice=count(isPricing),nWaiting=count(isWaiting);
+ const nDelivery=count(q=>isWholesaleCompleted(q)&&!isFinishedOrder(q));
+ const nFinished=count(isFinishedOrder);
+ const nCancel=count(q=>q.cancel_requested_at&&q.status!=='cancelled');
+ const nOther=count(q=>q.status==='quoted'&&['next_round','on_hold'].includes(q.purchase_intent));
+ const filter=state.filter;
+ const qq=all.filter(q=>filter==='all'?isPre(q):
+  filter==='pricing'?isPricing(q):
+  filter==='waiting_buyer'?isWaiting(q):
+  filter==='all_history'?true:
+  filter==='finished'?isFinishedOrder(q):
+  filter==='other'?q.status==='quoted'&&['next_round','on_hold'].includes(q.purchase_intent):
+  filter==='buy_now'?isRoundBuyer(q)&&!isFinishedOrder(q):
+  filter==='wholesale_completed'?isWholesaleCompleted(q)&&!isFinishedOrder(q):
+  filter==='next_round'?q.status==='quoted'&&q.purchase_intent==='next_round':
+  filter==='on_hold'?q.status==='quoted'&&q.purchase_intent==='on_hold':
+  filter==='undecided'?q.status==='quoted'&&(!q.purchase_intent||q.purchase_intent==='undecided'):
+  filter==='cancel_requested'?!!q.cancel_requested_at&&q.status!=='cancelled':
+  filter.startsWith('flow_')?q.status==='confirmed'&&workflowStage(q)===filter.slice(5):q.status===filter);
+ const groups=['all_history','finished','wholesale_completed'].includes(filter)?
+  bundledQuoteGroups(qq,['all_history','finished'].includes(filter)):sameRoundGroups(qq);
+ const waiting=groups.filter(g=>g.some(q=>q.status==='requested'||quoteNeedsPriceInput(q)));
+ const priced=groups.filter(g=>!waiting.includes(g));
+ const tabs=[['pricing','견적',nPrice],['waiting_buyer','선택 대기',nWaiting],['wholesale_completed','입고·배송',nDelivery],['all_history','전체',all.length]];
+ const extras=[['all','견적·선택',nPre],['buy_now','구매 진행',count(q=>isRoundBuyer(q)&&!isFinishedOrder(q))],['finished','완료',nFinished],['other','보류·다음 회차',nOther],['cancel_requested','취소 요청',nCancel],['requested','견적 요청',count(q=>q.status==='requested')],['quoted','견적 안내',count(q=>q.status==='quoted')],['confirmed','주문 확정',count(q=>q.status==='confirmed')]];
+ const detailKeys=['flow_new','flow_preparing','flow_pickup_ready','flow_shipped','flow_completed','flow_soldout_closed','cancelled'];
+ const extraActive=!tabs.some(([key])=>key===filter);
+ const title=[...tabs,...extras].find(([key])=>key===filter)?.[1]||(
+   filter.startsWith('flow_')?workflowLabels[filter.slice(5)]:statusLabel[filter]||'주문');
+ return `<section class="admin-quote-workspace admin-orders-page">
   <div class="admin-quote-anchor" id="admin-quote-results"></div>
-  <nav class="admin-compact-stages" aria-label="주문 처리 순서">
-   ${steps.map(([key,label,count])=>`<button type="button" class="admin-compact-stage ${state.filter===key?'active':''}" data-filter="${key}" aria-pressed="${state.filter===key}"><span>${esc(({all:'견적',buy_now:'배송비',supplier_payments:'입금·발주',wholesale_completed:'입고·배송'})[key]||label)}</span><b>${count}</b></button>`).join('')}
-  </nav>
-  <details class="admin-quote-extra-filters admin-compact-archive" ${isExtra?'open':''}>
-   <summary>완료 · 보류 · 전체 주문 <span class="admin-quote-extra-chevron">⌄</span></summary>
-   <div class="admin-quote-secondary-list" role="group" aria-label="기타 주문 보기">
-    ${extras.map(([key,label,n])=>`<button type="button" class="admin-quote-secondary-tab ${state.filter===key?'active':''}" data-filter="${key}" aria-pressed="${state.filter===key}">${label} ${n}</button>`).join('')}
-    <details class="admin-workflow-detailed-states"><summary>상태별 세부 목록 보기</summary><div class="admin-quote-secondary-list">
-     ${secondaryKeys.map(key=>`<button type="button" class="admin-quote-secondary-tab ${state.filter===key?'active':''}" data-filter="${key}" aria-pressed="${state.filter===key}">${esc(secondaryLabel(key))}</button>`).join('')}
+  <div class="admin-page-heading"><h2>주문 관리</h2><span>전체 ${all.length}건</span></div>
+  <div class="admin-orders-search">
+   <input type="search" id="admin-order-search" aria-label="주문 검색" autocomplete="off" placeholder="주문자 · 아기 이름 · 상품 검색" value="${esc(state.adminOrderSearch||'')}">
+   <button type="button" data-action="clear-admin-order-search" class="${state.adminOrderSearch?'':'hidden'}" aria-label="검색어 지우기">×</button>
+  </div>
+  <div class="admin-orders-filterbar" role="group" aria-label="주문 상태">
+   ${tabs.map(([key,label,num])=>`<button type="button" data-filter="${key}" class="${filter===key?'active':''}" aria-pressed="${filter===key}"><span>${label}</span><b>${num}</b></button>`).join('')}
+  </div>
+  <details class="admin-more-filters" ${extraActive?'open':''}>
+   <summary>상세 상태 보기 ${extraActive?'· '+esc(title):''}</summary>
+   <div class="admin-more-filter-items">
+    ${extras.map(([key,label,num])=>`<button type="button" data-filter="${key}" class="${filter===key?'active':''}">${label} ${num}</button>`).join('')}
+    <details class="admin-more-subfilters"><summary>배송 단계별</summary><div class="admin-more-filter-items">
+    ${detailKeys.map(key=>`<button type="button" data-filter="${key}" class="${filter===key?'active':''}">${esc(key.startsWith('flow_')?workflowLabels[key.slice(5)]:'취소됨')}</button>`).join('')}
     </div></details>
    </div>
   </details>
-  <div class="admin-compact-stage-heading"><strong>${esc(title)}</strong><span>${state.filter==='supplier_payments'?nSupplier:qq.length}${state.filter==='supplier_payments'?'곳':'건'}</span></div>
-  ${state.filter==='supplier_payments'?renderSupplierPaymentCenter():
-   qq.length?`   ${state.filter==='buy_now'?renderSupplierBulkManager():''}
-   ${state.filter==='wholesale_completed'?`<details class="admin-compact-more"><summary>발주 완료 발주서 보기</summary>${renderCompletedProcurementSheet()}</details>`:''}
-   ${state.filter==='all'?renderAdminQuoteFlatSection(awaiting,'먼저 처리할 견적','pending')+renderAdminQuoteFlatSection(priced,'구매자 선택 대기'):
-      state.filter==='all_history'?renderAdminQuoteDateSection(qq,awaiting,'pending')+renderAdminQuoteDateSection(qq,priced,'saved'):
-       state.filter==='buy_now'?`<details class="admin-compact-more"><summary>구매자별 주문 ${groups.length}명 보기</summary>${renderAdminQuoteFlatSection(groups,'')}</details>`:renderAdminQuoteFlatSection(groups,'',state.filter==='pricing'?'pending':'saved')}
-   ${['all','all_history'].includes(state.filter)?`<details class="admin-quote-price-fold"><summary>상품 금액 비교 <span class="admin-quote-extra-chevron">⌄</span></summary>${adminPriceTotalMarkup(qq)}</details>`:''}`:
-   '<div class="empty">해당 단계의 주문이 없어요. 다른 단계를 선택해 주세요.</div>'}
+  <div class="admin-orders-list-title"><strong>${esc(title)}</strong><span>${qq.length}건</span></div>
+  ${qq.length?filter==='all'?renderAdminQuoteFlatSection(waiting,'가격 확인','pending')+renderAdminQuoteFlatSection(priced,'구매 선택 대기'):
+      renderAdminQuoteFlatSection(groups,'',filter==='pricing'?'pending':'saved'):
+      '<div class="empty">해당 주문이 없어요.</div>'}
+  <div id="admin-order-search-empty" class="empty hidden">검색 결과가 없어요.</div>
+  <div id="admin-order-search-match" class="admin-orders-match" role="status"></div>
  </section>`;
 }
+
 function renderBuyerOrderDetail(q){
  if(!state.admin)return '';
  const items=Array.isArray(q.items)?q.items:[];
@@ -9158,6 +9190,7 @@ if(a==='clear-product-search'){
  if(input){input.value='';updateAdminProductSearch();input.focus()}
  return;
 }
+if(a==='clear-admin-order-search'){state.adminOrderSearch='';const field=app.querySelector('#admin-order-search');if(field){field.value='';updateAdminOrderSearch();field.focus()}return;}
 if(a==='admin-summary'){
  const target=b.dataset.summary;
  if(target==='products'){state.tab='products';state.adminCatalogView='products';state.adminCatalogFilter='all';state.adminProductSearch='';}
@@ -9850,7 +9883,7 @@ function input(e){
   }catch{if(output)output.textContent='금액과 인원을 확인해 주세요.'}
   return;
  }
- if(e.target.id==='admin-product-search'){state.adminProductSearch=e.target.value;updateAdminProductSearch();return;}if(e.target.id==='stat-search'){
+ if(e.target.id==='admin-order-search'){state.adminOrderSearch=e.target.value;updateAdminOrderSearch();return;}if(e.target.id==='admin-product-search'){state.adminProductSearch=e.target.value;updateAdminProductSearch();return;}if(e.target.id==='stat-search'){
   const query=e.target.value.trim().toLowerCase();
   if(state.tab==='items'){
    for(const store of app.querySelectorAll('[data-stats-store]')){

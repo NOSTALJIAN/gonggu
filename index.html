@@ -10174,7 +10174,8 @@ if(a==='payment-full-oneclick'){
  if(!window.confirm('실제 입금 확인\n상품 '+money(goods)+' · 택배 '+money(delivery)+' · 도매배송 '+money(freight)+'\n총 '+money(goods+delivery+freight)+'을 실제로 모두 받았나요?'))return;
  for(const [key,value] of [['paid_goods',goods],['paid_delivery',delivery],['paid_freight',freight]])f.elements[key].value=String(value);
  updatePaymentSplitTotal(f);
- f.dataset.fullPaymentConfirmed='1';\n f.requestSubmit();
+ f.dataset.fullPaymentConfirmed='1';
+ f.requestSubmit();
  return;
 }
 if(a==='accept-payment-shortfall'||a==='revoke-payment-shortfall'){

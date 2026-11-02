@@ -3863,9 +3863,13 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 .supplier-order-clean-right small{font-size:10px;font-weight:750;white-space:nowrap}
 .supplier-order-clean-right small.is-ready{color:#3f7953}
 .supplier-order-clean-right small.is-pending{color:#946c45}
-.supplier-order-clean-copy{margin-top:12px;min-height:42px;border-radius:8px;font-size:13px;font-weight:800}
-.supplier-order-clean-copy:disabled{background:#ededed;color:#888;border-color:#ededed}
+.supplier-order-clean-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.supplier-order-clean-actions>.btn{min-width:0;min-height:44px;border-radius:8px;font-size:13px;font-weight:800;padding:9px 5px;white-space:nowrap}
+.supplier-order-clean-copy{background:#f5f5f5;color:#242424;border:1px solid #e5e5e5}
+.supplier-order-clean-finish{background:#292929;color:#fff;border:1px solid #292929}
+.supplier-order-clean-actions>.btn:disabled{background:#ededed;color:#888;border-color:#ededed;opacity:1}
 .supplier-order-clean-hint{font-size:11px;color:#777;line-height:1.5;margin:8px 0 1px}
+.supplier-order-clean-finish-note{font-size:11px;color:#946c45;line-height:1.5;margin:6px 0 1px}
 
 /* A stale partial-payment request should be visible, not silently block fully paid orders. */
 .supplier-bulk-stale-partial-note{display:flex;flex-direction:column;align-items:flex-start;gap:7px;margin:8px 0 12px;padding:12px;border:1px solid #eddcc5;border-radius:8px;background:#fffaf3;font-size:11px;line-height:1.55;color:#624c31}
@@ -8448,21 +8452,26 @@ function renderSupplierPaymentCenter(){
   return {b,items,eligible,qty:items.reduce((n,x)=>n+Number(x.item.quantity||1),0),
    buyers:new Set(items.map(x=>x.q.id)).size,
    ready:new Set(eligible.map(x=>x.q.id)).size,
+   canOrder:supplierBatchPaymentState(b).canOrder,
    eligibleQty:eligible.reduce((n,x)=>n+Number(x.item.quantity||1),0)};
  }).filter(x=>x.items.length);
  return `<section class="admin-supplier-payments-center">
  <div class="supplier-order-clean-head"><strong>발주해야 할 거래처</strong><span>${rows.length}곳</span></div>
  ${!state.supplierBatchesReady?'<p class="noticefail">내역을 불러오지 못했어요. 새로고침해 주세요.</p>':''}
- <div class="supplier-order-clean-list">${rows.length?rows.map(({b,items,eligible,qty,buyers,ready})=>`<details class="supplier-order-clean-card" data-fold-key="supplier-order-clean-${esc(b.id)}">
+ <div class="supplier-order-clean-list">${rows.length?rows.map(({b,items,eligible,qty,buyers,ready,canOrder})=>`<details class="supplier-order-clean-card" data-fold-key="supplier-order-clean-${esc(b.id)}">
  <summary><span><b>${esc(b.supplier||'거래처')}</b><small>${items.length}종 · ${qty}개 · 주문 ${buyers}건</small></span><span class="supplier-order-clean-progress">${ready}/${buyers}건 입금확인　⌄</span></summary>
  <div class="supplier-order-clean-body">
   <p class="supplier-order-clean-note">입금 확인 ${eligible.length}종 · 확인 대기 ${items.length-eligible.length}종</p>
   ${items.map(({q,item})=>`<div class="supplier-order-clean-item"><span><b>${esc(item.store_name||'가게명 미입력')} · ${esc(item.product_name||'상품')}</b><small>${esc(item.color||'-')} / ${esc(item.size||'-')} · ${esc(q.buyer_name||'구매자')}</small></span><div class="supplier-order-clean-right"><strong>×${Number(item.quantity||1)}</strong><small class="${supplierOrderPaidForCopy(q)?'is-ready':'is-pending'}">${esc(supplierOrderRowStatus(q))}</small></div></div>`).join('')}
-  <button type="button" class="btn block supplier-order-clean-copy" data-action="copy-supplier-pending-procurement" data-id="${esc(b.id)}" ${items.length&&state.productPrivateReady?'':'disabled'}>발주서 복사 · 전체 ${items.length}종 / ${qty}개</button>
-  <p class="supplier-order-clean-hint">확정 대기부터 주문 확정 단계까지의 미발주 상품을 모두 복사해요. 입금 여부는 관계없으며, 견적·구매 선택·취소·품절·발주 완료 상품은 제외해요.</p>
+  <div class="supplier-order-clean-actions">
+   <button type="button" class="btn supplier-order-clean-copy" data-action="copy-supplier-pending-procurement" data-id="${esc(b.id)}" ${items.length&&state.productPrivateReady?'':'disabled'}>발주서 복사</button>
+   <button type="button" class="btn supplier-order-clean-finish" data-action="supplier-bulk-ordered" data-id="${esc(b.id)}" ${canOrder?'':'disabled'}>발주 완료</button>
+  </div>
+  <p class="supplier-order-clean-hint">발주서에는 확정 대기 이후의 미발주 상품 ${items.length}종 · ${qty}개가 모두 포함돼요. 입금 여부는 상관없어요.</p>
+  ${!canOrder?'<p class="supplier-order-clean-finish-note">발주 완료 처리는 해당 거래처의 주문 확정과 상품대금 입금 확인이 모두 끝나야 활성화돼요.</p>':''}
  </div>
  </details>`).join(''):'<div class="empty">발주 대기 중인 거래처가 없어요.</div>'}</div>
- <details class="supplier-order-actions-fold" data-fold-key="supplier-order-actions-fold"><summary>입금 확인 · 발주 완료 처리 (상세)</summary><p class="supplier-order-actions-guide">위 목록은 전체 미발주 상품이고, 이 상세 화면은 최종 확정된 주문만 보여줘요. 발주서 복사는 위 거래처 카드에서 해주세요.</p>${renderSupplierBulkManager(true,true)}</details>
+ <details class="supplier-order-actions-fold" data-fold-key="supplier-order-actions-fold"><summary>입금 확인 · 이전 발주 내역 등 상세 관리</summary><p class="supplier-order-actions-guide">위 목록은 전체 미발주 상품이고, 이 상세 화면은 최종 확정된 주문만 보여줘요. 발주서 복사는 위 거래처 카드에서 해주세요.</p>${renderSupplierBulkManager(true,true)}</details>
  </section>`;
 }
 

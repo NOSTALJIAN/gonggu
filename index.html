@@ -9364,7 +9364,7 @@ if(a==='accept-payment-shortfall'||a==='revoke-payment-shortfall'){
  if(!cancel){
   const entered=window.prompt('실제로 받은 누적 입금액을 입력해 주세요. (환불 전 금액, 원)',String(cumulative||''));
   if(entered===null)return;
-  if(!/^\\d+$/.test(entered.trim()))throw Error('실제 받은 금액을 숫자로 입력해 주세요.');
+  if(!/^\d+$/.test(entered.trim()))throw Error('실제 받은 금액을 숫자로 입력해 주세요.');
   cumulative=Number(entered.trim());net=cumulative-refunded;
   if(!Number.isSafeInteger(cumulative)||cumulative>1000000000||net<=0)throw Error('실제 입금액이 0원 이하이거나 올바르지 않아요.');
   missing=totalDue(q)-net-old;

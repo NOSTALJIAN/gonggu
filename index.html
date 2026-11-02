@@ -5088,8 +5088,8 @@ function confirmedPaymentWidget(q){
  <div class="confirmed-payment-holder">예금주 <b>${MINI_PAYMENT_HOLDER}</b></div>
  <div class="confirmed-payment-buttons"><button class="btn sm secondary" type="button" data-action="copy-payment-account">계좌번호 복사</button><button class="btn sm outline" type="button" data-action="copy-payment-details">입금 정보 복사</button></div>
  ${due===null?'':`<div class="confirmed-payment-parts">
-  <div><span>상품대금${supplierShippingShare(q)?' · 도매 배송비 포함':''}</span><strong>${p.goodsMissing?'남은 '+money(p.goodsMissing):'입금 완료'}</strong></div>
-  ${p.shipping>0?`<div><span>택배비 · 별도 정산</span><strong>${p.shippingMissing?'남은 '+money(p.shippingMissing):'입금 완료'}</strong></div>`:''}
+  <div><span>상품대금${supplierShippingShare(q)?' · 도매 배송비 포함':''}</span><strong>${p.goodsMissing?'남은 '+money(p.goodsMissing):p.waived?'관리자 인정 · 정산 완료':'입금 완료'}</strong></div>
+  ${p.shipping>0?`<div><span>택배비 · 별도 정산</span><strong>${p.shippingMissing?'남은 '+money(p.shippingMissing):p.waived?'관리자 인정 · 정산 완료':'입금 완료'}</strong></div>`:''}
  </div><div class="confirmed-payment-total"><span>${paid?'추가 입금할 금액':!p.goodsMissing&&p.shippingMissing?'택배비 잔액 (별도)':'현재 남은 입금액'}</span><strong>${money(due)}</strong></div>`}
  <p class="confirmed-payment-note">${paid&&paymentWaiver(q)>0?'관리자가 차액을 인정하여 정산이 완료됐어요. 추가 입금하지 않아도 돼요.':paid?'입금이 모두 확인됐어요. 중복 송금하지 마세요.':q.cancel_requested_at?'취소 요청이 접수되어 있어요. 입금 전에 관리자에게 확인해 주세요.':due!==null&&!p.goodsMissing&&p.shippingMissing?'상품대금 입금 완료! 택배비는 별도로 정산해요. 합배송 시 택배비가 조정될 수 있어요.':'입금 확인은 관리자가 처리해요. 송금 후 주문조회에서 입금 확인 상태를 확인해 주세요.'}</p>
  ${q.amount_changed_at?'<p class="confirmed-payment-note">주문 금액이 변경된 적이 있어요. 입금 전 최신 금액을 확인해 주세요.</p>':''}
@@ -6262,7 +6262,7 @@ function roundGroupTask(group){
  const undecided=group.filter(q=>q.status==='quoted');
  if(undecided.length)return {title:'구매자 선택 '+undecided.length+'건 대기',hint:'구매자가 이번 회차를 선택할 차례예요.',action:'copy-customer-link',id:undecided[0].id,label:'선택 링크 복사'};
  const total=group.reduce((n,q)=>n+totalDue(q),0),paid=group.reduce((n,q)=>n+(Number(q.amount_paid)||0)-(Number(q.amount_refunded)||0),0);
- if(paid<total)return {title:'입금 '+money(total-paid)+' 확인 필요',hint:'받은 금액을 주문별로 입력하세요.',action:'round-open-orders',label:'입금 수정'};
+ if(paid+group.reduce((n,q)=>n+paymentWaiver(q),0)<total)return {title:'입금 '+money(total-paid-group.reduce((n,q)=>n+paymentWaiver(q),0))+' 확인 필요',hint:'받은 금액을 주문별로 입력하세요.',action:'round-open-orders',label:'입금 수정'};
  return {title:'입금 완료 · 도매 발주 확인',hint:'거래처별 입금·발주에서 발주 상태를 확인하세요.',filter:'supplier_payments',label:'거래처 발주 보기'};
 }
 /* Buyer-visible Namdaemun shop name, not private actual wholesale supplier. */
@@ -6289,7 +6289,7 @@ function renderRoundQuickOrder(q,index){
  return `<details class="round-single-order" data-round-order-id="${esc(q.id)}">
   <summary><span>${index+1}번째 주문 · ${esc(fmtDate(q.created_at))}</span><b>${money(due)} · ${esc(status)} ⌄</b></summary>
   <div class="round-order-quick-content">
-   <div class="round-order-quick-line"><span>입금 ${money(paid)}</span><b>${due<=paid?'입금 완료':'남은 금액 '+money(due-paid)}</b></div>
+   <div class="round-order-quick-line"><span>입금 ${money(paid)}</span><b>${balanceDue(q)===0?(paymentWaiver(q)?'관리자 차액 인정 · 정산 완료':'입금 완료'):'남은 금액 '+money(balanceDue(q))}</b></div>
    ${(q.items||[]).map(i=>`<div class="round-order-quick-item"><span><b>${adminOrderItemName(i)}</b><small>${esc(i.color)} / ${esc(i.size)} · ${i.quantity}개</small></span><b>${i.unit_price==null?'미정':money(Number(i.unit_price)*Number(i.quantity))}</b></div>`).join('')}
    <button type="button" class="btn sm secondary" data-action="copy-customer-link" data-id="${esc(q.id)}">고객 확인 링크 복사</button>
    ${adminConfirmButton(q)}
@@ -6339,7 +6339,8 @@ function renderSameRoundCard(group){
   <div class="round-simple-payment">
    <div><span>전체 결제금액</span><b>${complete?money(total):'확인 중'}</b></div>
    <div><span>받은 금액</span><b>${money(received)}</b></div>
-   <div class="round-simple-balance"><span>남은 금액</span><b>${complete?money(Math.max(0,total-received)):'확인 필요'}</b></div>
+   <div class="round-simple-balance"><span>남은 금액</span><b>${complete?money(group.reduce((sum,q)=>sum+balanceDue(q),0)):'확인 필요'}</b></div>
+    ${group.some(q=>paymentWaiver(q)>0)?`<div><span>관리자 차액 인정</span><b>${money(group.reduce((n,q)=>n+paymentWaiver(q),0))}</b></div>`:''}
    ${complete&&received>total?`<p>초과 입금 ${money(received-total)} · 환불 여부 확인</p>`:''}
   </div>
   <div class="round-simple-next">
@@ -6504,7 +6505,7 @@ function compactQuoteNextTask(q){
    if(p.goodsMissing===0&&p.shippingMissing>0)return {text:'상품대금 입금 완료 · 택배비 '+money(p.shippingMissing)+' 별도',label:'택배비 관리',tool:'payment'};
    return {text:'상품대금 '+money(p.goodsMissing)+' 입금 확인 필요',label:'입금 관리',tool:'payment'};
   }
-  if(pendingBatch)return {text:'입금 완료 · 거래처 발주 대기',label:'거래처 발주 처리',filter:'supplier_payments'};
+  if(pendingBatch)return {text:paymentWaiver(q)?'차액 인정 완료 · 거래처 발주 대기':'입금 완료 · 거래처 발주 대기',label:'거래처 발주 처리',filter:'supplier_payments'};
   if(!supplierDone)return {text:'입금 완료 · 발주 준비',label:'거래처 발주 화면',filter:'supplier_payments'};
   if(stage==='new')return {text:'발주 완료 · 상품 준비 시작',label:'상품 준비 시작',action:'set-workflow',stage:'preparing'};
   if(stage==='preparing'){
@@ -6902,7 +6903,7 @@ function renderCollapsibleAdminOrder(group,section){
  const confirmedDue=canSumPayments?confirmedOrders.reduce((sum,q)=>sum+totalDue(q),0):0;
  const confirmedPaid=confirmedOrders.reduce((sum,q)=>sum+Math.max(0,Number(q.amount_paid||0)-Number(q.amount_refunded||0)),0);
  const onePart=confirmedOrders.length===1&&canSumPayments?orderPaymentParts(confirmedOrders[0]):null;
- const paymentMark=onePart&&onePart.goodsMissing===0&&onePart.shippingMissing>0?'상품 입금 완료 · 택배비 별도':
+ const paymentMark=confirmedOrders.some(q=>paymentWaiver(q)>0)&&canSumPayments&&confirmedPaid+confirmedOrders.reduce((n,q)=>n+paymentWaiver(q),0)>=confirmedDue?'차액 인정 · 정산 완료':onePart&&onePart.goodsMissing===0&&onePart.shippingMissing>0?'상품 입금 완료 · 택배비 별도':
   !canSumPayments?'':confirmedDue>0&&confirmedPaid>=confirmedDue?'입금 확인':confirmedPaid>0?'부분 입금':'미입금';
  const relatedBuyerOrders=renderOtherBuyerDeposits(group);
  return `<details class="admin-order-fold ${urgent?'has-pending':''}" data-admin-order-id="${esc(key)}" ${open?'open':''}>

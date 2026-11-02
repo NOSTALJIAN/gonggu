@@ -2056,16 +2056,36 @@ details[open]>summary>.admin-quote-extra-chevron{transform:rotate(180deg)}
 .admin-store-fold-inner [data-admin-store-card].hidden,#admin-store-search-empty.hidden{display:none!important}
 #admin-store-search-empty{font-size:12px;padding:26px 8px;color:#777}
 
-/* Minimal admin sign-in: compact, no redundant explanatory card or text. */
-.admin-login-screen{padding:26px 18px 48px!important;}
-.admin-login-panel{width:100%;max-width:390px;margin:0 auto;padding:0;background:transparent;border:0;box-shadow:none;}
-.admin-login-panel h1{margin:0 0 23px;font-size:19px;line-height:1.3;letter-spacing:-.045em;font-weight:800;color:#151515;}
+/* Admin sign-in: calm, centered and touch-friendly on iPhone. */
+.admin-login-screen{min-height:calc(100svh - 154px);display:flex;align-items:center;justify-content:center;padding:28px 16px calc(48px + env(safe-area-inset-bottom))!important;background:#fafafa;}
+.admin-login-panel{width:100%;max-width:430px;margin:0 auto;padding:27px 24px 22px;background:#fff;border:1px solid #eeeeee;border-radius:20px;box-shadow:0 12px 40px rgba(15,15,15,.045);}
+.admin-login-intro{display:flex;align-items:center;gap:13px;margin-bottom:13px;}
+.admin-login-mark{display:grid;place-items:center;width:42px;height:42px;flex:none;border-radius:13px;background:#f4f4f4;color:#252525;}
+.admin-login-mark svg{width:22px;height:22px;}
+.admin-login-eyebrow{display:block;font-size:10px;font-weight:780;letter-spacing:.095em;color:#999;margin-bottom:3px;}
+.admin-login-panel h1{margin:0;font-size:23px;line-height:1.2;letter-spacing:-.065em;font-weight:850;color:#151515;}
+.admin-login-subtitle{margin:0 0 24px;font-size:12px;color:#818181;line-height:1.55;}
 .admin-login-form{display:flex;flex-direction:column;gap:0;}
-.admin-login-form label{display:block;font-size:12px;font-weight:720;line-height:1.35;color:#404040;margin:0 0 6px;}
-.admin-login-form input{box-sizing:border-box;width:100%;height:43px;min-height:43px;border:1px solid #d8d8d8;border-radius:7px;padding:9px 11px;font-size:16px;line-height:1.3;background:white;color:#111;margin:0 0 16px;box-shadow:none;}
-.admin-login-form input:focus{border-color:#777;box-shadow:0 0 0 2px #ededed;}
-.admin-login-form .btn{width:100%;min-height:44px;height:44px;padding:10px 14px;border-radius:7px;font-size:14px;font-weight:750;margin-top:3px;}
-@media(min-width:720px){.admin-login-screen{padding-top:40px!important;}}
+.admin-login-field{margin:0 0 15px;}
+.admin-login-form .admin-login-field label{display:block;font-size:12px;font-weight:740;line-height:1.4;color:#363636;margin:0 0 7px;}
+.admin-login-form .admin-login-field input{box-sizing:border-box;display:block;width:100%;height:48px;min-height:48px;border:1px solid #e1e1e1;border-radius:11px;padding:10px 13px;font-size:16px;line-height:1.35;background:#fbfbfb;color:#151515;margin:0;box-shadow:none;transition:border-color .15s,background .15s,box-shadow .15s;}
+.admin-login-form .admin-login-field input:focus{border-color:#535353;background:white;box-shadow:0 0 0 3px #f0f0f0;}
+.admin-login-form .admin-device-login-choice{display:flex!important;align-items:center;gap:9px;margin:3px 0 18px;font-size:12px;font-weight:650;line-height:1.5;color:#484848;}
+.admin-login-form .admin-device-login-choice input[type="checkbox"]{appearance:auto;box-sizing:border-box;flex:0 0 18px;width:18px;height:18px;min-height:18px;padding:0;margin:0;accent-color:#222;border-radius:4px;box-shadow:none;}
+.admin-login-form .btn{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;min-height:49px;height:49px;padding:11px 14px;border-radius:11px;background:#1d1d1d;color:#fff;font-size:14px;font-weight:800;margin:0;}
+.admin-login-form .btn:disabled{opacity:.76;}
+.admin-login-footnote{color:#999;font-size:10px;line-height:1.6;text-align:center;margin:12px 0 0;}
+.admin-login-status{font-size:11px;line-height:1.5;text-align:center;color:#575757;margin:0;}
+.admin-login-status:not(:empty){margin-top:11px;}
+.admin-login-spinner{display:inline-block;width:16px;height:16px;border:2px solid #ffffff55;border-top-color:white;border-radius:50%;animation:spin .7s linear infinite;}
+.admin-auth-loading{min-height:calc(100svh - 154px);display:flex;align-items:center;justify-content:center;padding:24px 18px 70px!important;background:#fafafa;}
+.admin-auth-loading-panel{width:100%;max-width:350px;text-align:center;padding:30px 20px;}
+.admin-auth-loading .admin-login-spinner{width:25px;height:25px;border-color:#ddd;border-top-color:#1b1b1b;}
+.admin-auth-loading-title{display:block;font-size:16px;font-weight:800;color:#222;margin:15px 0 6px;}
+.admin-auth-loading-panel p{font-size:12px;color:#888;margin:0;line-height:1.6;}
+@media(max-width:430px){.admin-login-panel{padding:25px 20px 21px;border-radius:18px;}.admin-login-screen{padding-inline:18px!important;}}
+@media(max-height:670px){.admin-login-screen{align-items:flex-start;padding-top:24px!important;}}
+@media(min-width:720px){.admin-login-screen{min-height:calc(100svh - 175px);}}
 
 
 /* MINIYENA site-wide text: use Pretendard for native controls and code snippets too. */
@@ -4125,6 +4145,7 @@ const p=new URLSearchParams(location.search);
 const autoAdminStart=!location.search&&!!session?.refresh_token&&autoAdminEnabled();
 const state={page:['admin','track'].includes(p.get('page'))?p.get('page'):(autoAdminStart?'admin':'shop'),tab:'home',adminOrderSearch:'',stores:[],products:[],requests:[],quotes:[],cart:read(CART,[]),modal:null,search:'',shopCategory:'all',shopSort:'newest',shopStore:'all',shopFiltersOpen:false,adminCategory:'all',trackId:p.get('id')||'',trackToken:p.get('token')||'',tracking:null,receipts:read(TRACK,[]),notice:'',filter:'pricing',admin:false,heroPhotoUrl:null,heroStoreId:null,dateGroupsOpen:{},orderCardsOpen:{},supplierBulkSelected:new Set(),supplierBulkStoreId:'',supplierBatches:[],supplierBatchesReady:false,supplierBatchesError:'',supplierPartialInvoices:[],trackSupplierPartial:[],lowerPriceReports:[],optionRequests:[],optionRequestsReady:false,optionRequestsError:'',requestStatusFilter:'pending',adminCatalogView:'products',adminCatalogFilter:'all',adminProductSort:'newest',adminProductSearch:'',productPrivate:{},productPrivateReady:false,emailSettings:null,emailSettingsReady:false,emailSettingsError:'',supplierFreightNotify:{},supplierFreightNotifyReady:false,adminPinIds:new Set(),phoneLookupReady:null,pinLookupNotice:''};
 
+state.adminLoading=Boolean(connected&&state.page==='admin'&&session?.refresh_token);
 if(autoAdminStart)history.replaceState({},'',location.pathname+'?page=admin');
 const PRODUCT_CATEGORIES=['바디수트','세트','상의','하의','아우터','원피스','스커트','모자','양말','악세서리','잡화'];
 const validProductCategory=x=>PRODUCT_CATEGORIES.includes(String(x||'').trim());
@@ -4437,7 +4458,7 @@ function rememberAccessibleOrder(q){
  try{saveTracks()}catch(error){console.warn('주문 내역의 브라우저 저장에 실패',error)}
 }
 
-function goto(page){state.page=page;state.modal=null;history.pushState({},'',location.pathname+'?page='+page);render();if(page==='admin')loadAdmin().catch(e=>notif(errorText(e)));}
+function goto(page){state.page=page;state.modal=null;state.adminLoading=Boolean(page==='admin'&&!state.admin&&session?.refresh_token);history.pushState({},'',location.pathname+'?page='+page);render();if(page==='admin')loadAdmin().catch(e=>notif(errorText(e)));}
 async function getToken(){if(!session)return null;if(session.expires_at>Date.now()/1000+60)return session.access_token;if(refreshing)return refreshing;refreshing=(async()=>{try{const r=await fetch(url+'/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:{apikey:key,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:session.refresh_token})});const j=await r.json();if(!r.ok)throw Error(j.error_description||'로그인 만료');session={...j,expires_at:Math.floor(Date.now()/1000)+j.expires_in};localStorage.setItem(SESS,JSON.stringify(session));return j.access_token}catch(e){session=null;localStorage.removeItem(SESS);throw e}finally{refreshing=null}})();return refreshing}
 async function api(path,{method='GET',body,admin=false,signal}={}){if(!connected)throw Error('온라인 연결 전 체험 모드입니다');const token=admin?await getToken():null;if(admin&&!token)throw Error('관리자 로그인이 필요해요');const h={apikey:key};if(token)h.Authorization='Bearer '+token;if(body!==undefined)h['Content-Type']='application/json';if(admin&&method!=='GET')h['Prefer']='return=representation';const r=await fetch(url+path,{method,headers:h,body:body===undefined?undefined:JSON.stringify(body),signal});const txt=await r.text();let j;try{j=txt?JSON.parse(txt):null}catch{j=txt};if(!r.ok){const error=Error(j?.message||j?.error_description||'서버 오류 '+r.status);error.code=j?.code;error.status=r.status;throw error}
 if(admin&&method!=='GET'&&path.startsWith('/rest/v1/')&&!path.includes('/rpc/gq_read_'))queueMicrotask(()=>miniDispatchBuyerPush());
@@ -4970,23 +4991,52 @@ async function loadAdminLowerPriceReports(){
   state.lowerPriceReports=Array.isArray(reports)?reports:[];
  }catch(error){state.lowerPriceReports=[];console.warn('타 사이트 최저가 제보 조회 실패',error);}
 }
-async function loadAdmin(){if(!connected){state.admin=true;state.productPrivate={};state.productPrivateReady=false;state.stores=clone(demo.stores);state.products=clone(demo.products);state.requests=clone(demo.requests||[]);state.lowerPriceReports=clone(demo.priceReports||[]);syncDemo();render();return}if(!session){state.admin=false;state.productPrivate={};state.productPrivateReady=false;render();return}try{const auth=await rpc('gq_is_admin',{},true);if(!auth)throw Error('관리자 권한이 없습니다');state.admin=true;await loadCatalog(true);const [qq,ii,rr]=await Promise.all([api('/rest/v1/gq_quotes?select=*&order=created_at.desc',{admin:true}),api('/rest/v1/gq_quote_items?select=*&order=created_at.asc',{admin:true}),api('/rest/v1/gq_product_requests?select=*&order=created_at.desc',{admin:true})]);state.quotes=qq.map(q=>({...q,items:ii.filter(i=>i.quote_id===q.id)}));state.requests=rr;
-if(!adminQuoteSeenAt&&qq.length){
- const latest=Math.max(0,...qq.map(order=>Date.parse(order.created_at)||0));
- if(latest){adminQuoteSeenAt=latest;try{localStorage.setItem(ADMIN_QUOTE_SEEN_KEY,JSON.stringify(latest))}catch(_){}}
-}
-if(!adminRequestSeenAt&&rr.length){
- const newestRequestAt=Math.max(0,...rr.map(request=>Date.parse(request.created_at)||0));
- if(newestRequestAt){
-  adminRequestSeenAt=newestRequestAt;
-  try{localStorage.setItem(ADMIN_REQUEST_SEEN_KEY,JSON.stringify(newestRequestAt))}catch(_){}
+async function loadAdmin(){
+ if(!connected){
+  state.adminLoading=false;state.admin=true;state.productPrivate={};state.productPrivateReady=false;
+  state.stores=clone(demo.stores);state.products=clone(demo.products);
+  state.requests=clone(demo.requests||[]);state.lowerPriceReports=clone(demo.priceReports||[]);
+  syncDemo();render();return;
+ }
+ if(!session){state.adminLoading=false;state.admin=false;state.productPrivate={};state.productPrivateReady=false;render();return;}
+ try{
+  const auth=await rpc('gq_is_admin',{},true);
+  if(!auth)throw Error('관리자 권한이 없습니다');
+  state.admin=true;
+  // These core requests are independent; run concurrently rather than waiting
+  // for catalog -> orders -> private costs -> supplier batches in sequence.
+  const [catalog,qq,ii,rr]=await Promise.all([
+   loadCatalog(true),
+   api('/rest/v1/gq_quotes?select=*&order=created_at.desc',{admin:true}),
+   api('/rest/v1/gq_quote_items?select=*&order=created_at.asc',{admin:true}),
+   api('/rest/v1/gq_product_requests?select=*&order=created_at.desc',{admin:true}),
+   loadAdminProductPrivate(),
+   loadAdminSupplierBatches()
+  ]);
+  state.quotes=qq.map(q=>({...q,items:ii.filter(i=>i.quote_id===q.id)}));
+  state.requests=rr;
+  if(!adminQuoteSeenAt&&qq.length){
+   const latest=Math.max(0,...qq.map(order=>Date.parse(order.created_at)||0));
+   if(latest){adminQuoteSeenAt=latest;try{localStorage.setItem(ADMIN_QUOTE_SEEN_KEY,JSON.stringify(latest))}catch(_){}}
+  }
+  if(!adminRequestSeenAt&&rr.length){
+   const newestRequestAt=Math.max(0,...rr.map(request=>Date.parse(request.created_at)||0));
+   if(newestRequestAt){
+    adminRequestSeenAt=newestRequestAt;
+    try{localStorage.setItem(ADMIN_REQUEST_SEEN_KEY,JSON.stringify(newestRequestAt))}catch(_){}
+   }
+  }
+  state.adminLoading=false;
+  render();
+  await Promise.all([loadAdminShipping(),loadAdminPinStatus(),loadAdminEmailSettings(),loadSupplierFreightNotifyStatus(),loadAdminOptionRequests(),loadAdminLowerPriceReports()]);
+  render();
+ }catch(e){
+  state.adminLoading=false;
+  // Network errors are not a reason to clear an otherwise valid session.
+  if(!session||e?.message==='관리자 권한이 없습니다'||e?.status===401)state.admin=false;
+  render();throw e;
  }
 }
-await loadAdminProductPrivate();await loadAdminSupplierBatches();render();await Promise.all([loadAdminShipping(),loadAdminPinStatus(),loadAdminEmailSettings(),loadSupplierFreightNotifyStatus(),loadAdminOptionRequests(),loadAdminLowerPriceReports()]);render()}catch(e){
- // A transient catalog/database error is not an admin logout. Only a missing
- // session, an explicit authorization denial, or an auth failure clears access.
- if(!session||e?.message==='관리자 권한이 없습니다'||e?.status===401)state.admin=false;
- render();throw e}}
 async function loadPublic(){await loadCatalog(false);render()}
 async function uploadHeroGif(file){
  if(!connected||!state.admin)throw Error('관리자 로그인 후 GIF를 등록해 주세요.');
@@ -6074,7 +6124,21 @@ function renderAdminPayments(){
 }
 
 function renderAdmin(){
- if(connected&&!state.admin)return `<section class="content admin-login-screen"><div class="admin-login-panel"><h1>관리자 로그인</h1><form id="login" class="admin-login-form"><label for="admin-login-email">이메일</label><input id="admin-login-email" required name="email" type="email" inputmode="email" autocomplete="email"><label for="admin-login-password">비밀번호</label><input id="admin-login-password" required name="password" type="password" autocomplete="current-password"><label class="admin-device-login-choice"><input type="checkbox" name="device_auto_admin" value="yes" checked><span>이 기기에서 다음부터 관리자 자동 열기</span></label><p class="admin-device-login-hint">이 브라우저의 로그인 세션을 사용해요. 세션이 만료되거나 로그아웃하면 다시 로그인해야 해요.</p><button class="btn block" type="submit">로그인</button></form></div></section>`;
+ if(connected&&state.adminLoading&&!state.admin)return `<section class="content admin-auth-loading" role="status" aria-live="polite"><div class="admin-auth-loading-panel"><span class="admin-login-spinner" aria-hidden="true"></span><strong class="admin-auth-loading-title">관리자 화면을 여는 중</strong><p>로그인 상태와 주문 정보를 확인하고 있어요.</p></div></section>`;
+ if(connected&&!state.admin)return `<section class="content admin-login-screen" aria-label="관리자 로그인">
+  <div class="admin-login-panel">
+   <div class="admin-login-intro"><span class="admin-login-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8.5 10V7a3.5 3.5 0 0 1 7 0v3"/></svg></span><div><span class="admin-login-eyebrow">MINIYENA · ADMIN</span><h1>관리자 로그인</h1></div></div>
+   <p class="admin-login-subtitle">미니예나의 주문과 상품을 관리해요.</p>
+   <form id="login" class="admin-login-form">
+    <div class="admin-login-field"><label for="admin-login-email">이메일</label><input id="admin-login-email" required name="email" type="email" inputmode="email" autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="이메일 주소"></div>
+    <div class="admin-login-field"><label for="admin-login-password">비밀번호</label><input id="admin-login-password" required name="password" type="password" autocomplete="current-password" placeholder="비밀번호"></div>
+    <label class="admin-device-login-choice"><input type="checkbox" name="device_auto_admin" value="yes" ${autoAdminEnabled()?'checked':''}><span>이 기기에서 관리자 화면 자동 열기</span></label>
+    <button class="btn block" type="submit">로그인</button>
+    <p class="admin-login-status" data-login-status role="status" aria-live="polite"></p>
+   </form>
+   <p class="admin-login-footnote">이 기기의 로그인 세션을 사용하며, 만료되면 재로그인이 필요해요.</p>
+  </div>
+ </section>`;
  const tabs=[['home','홈'],['quotes','주문'],['payments','도매'],['products','상품'],['requests','신청'],['buyers','고객']];
  const page=state.tab;
  return `<section class="content admin-workspace-content admin-reorganized ${page==='quotes'?'is-quote-screen':''}">
@@ -11635,7 +11699,16 @@ async function submit(e){const f=e.target;
 // All in-app forms are handled by JavaScript. Never allow a native browser GET
 // to replace ?page=admin and appear to sign the administrator out.
 e.preventDefault();
-if(!f.dataset.lowerPriceReport&&!f.dataset.sizeChartForm&&!f.dataset.customerEmail&&!['new-arrival-push-form','gmail-settings-form','hero-photo-form','reject-request-form','admin-pin-form','pin-register-form','pin-lookup-form','import-track-form','pick','request','store-form','product-form','login','suggest-form','approve-form','bundle-form','merge-shipping-form','edit-delivery-form','bulk-supplier-shipping-form','admin-payment-popup-form','admin-bundle-refund-form','admin-price-popup-form','admin-option-decision-form'].includes(f.id)&&!f.dataset.itemOptions&&!f.dataset.buyerOptionRequest&&!f.dataset.price&&!f.dataset.payment&&!f.dataset.shipping&&!f.dataset.supplierShipping&&!f.dataset.ship&&!f.dataset.bundleShip)return;if(busy)return;busy=true;const data=new FormData(f);try{if(f.id==='admin-bundle-refund-form'){
+if(!f.dataset.lowerPriceReport&&!f.dataset.sizeChartForm&&!f.dataset.customerEmail&&!['new-arrival-push-form','gmail-settings-form','hero-photo-form','reject-request-form','admin-pin-form','pin-register-form','pin-lookup-form','import-track-form','pick','request','store-form','product-form','login','suggest-form','approve-form','bundle-form','merge-shipping-form','edit-delivery-form','bulk-supplier-shipping-form','admin-payment-popup-form','admin-bundle-refund-form','admin-price-popup-form','admin-option-decision-form'].includes(f.id)&&!f.dataset.itemOptions&&!f.dataset.buyerOptionRequest&&!f.dataset.price&&!f.dataset.payment&&!f.dataset.shipping&&!f.dataset.supplierShipping&&!f.dataset.ship&&!f.dataset.bundleShip)return;if(busy)return;busy=true;
+const isLoginSubmit=f.id==='login';
+if(isLoginSubmit){
+ const submitButton=f.querySelector('button[type="submit"]');
+ if(submitButton){submitButton.disabled=true;submitButton.innerHTML='<span class="admin-login-spinner" aria-hidden="true"></span> 관리자 화면 여는 중';}
+ f.setAttribute('aria-busy','true');
+ const loginStatus=f.querySelector('[data-login-status]');
+ if(loginStatus)loginStatus.textContent='로그인 확인 및 주문 정보 불러오는 중…';
+}
+const data=new FormData(f);try{if(f.id==='admin-bundle-refund-form'){
  if(!connected||!state.admin||state.page!=='admin'||state.modal?.type!=='admin-bundle-refund'||
     state.modal.id!==f.dataset.rootId)throw Error('관리자 환불 확인 창에서 다시 시도해 주세요.');
  if(!data.has('transferred'))throw Error('실제 환불을 완료한 경우에만 체크해 주세요.');
@@ -12066,7 +12139,16 @@ else if(f.dataset.payment){
   render();
  }else notif(updated?.status==='confirmed'&&q.status==='quoted'?'입금 저장 완료 · 최종 주문확정으로 자동 변경됐어요.':'이 주문의 입금 기록을 저장했어요.');
 }
-}catch(ex){if(f.dataset.price)adminPriceScrollAnchor=null;notif(errorText(ex))}finally{busy=false}}
+}catch(ex){if(f.dataset.price)adminPriceScrollAnchor=null;notif(errorText(ex))}finally{
+ if(isLoginSubmit&&f.isConnected){
+  const button=f.querySelector('button[type="submit"]');
+  if(button){button.disabled=false;button.textContent='로그인';}
+  f.removeAttribute('aria-busy');
+  const loginStatus=f.querySelector('[data-login-status]');
+  if(loginStatus)loginStatus.textContent='';
+ }
+ busy=false;
+}}
 async function change(e){const x=e.target;
 
 if(x.matches?.('[data-auto-admin-device]')){
@@ -12414,10 +12496,10 @@ document.addEventListener('visibilitychange',()=>{
 setInterval(updateProcurementSchedule,60000);
 setInterval(checkAdminProductRequestUpdates,25000);
 setInterval(checkAdminQuoteUpdates,25000);
-window.addEventListener('popstate',()=>{const pp=new URLSearchParams(location.search);state.page=pp.get('page')||'shop';state.trackId=pp.get('id')||'';state.trackToken=pp.get('token')||'';state.modal=null;render();if(state.page==='track')reloadTracking().catch(e=>notif(errorText(e)));if(state.page==='admin')loadAdmin().catch(e=>notif(errorText(e)))});
+window.addEventListener('popstate',()=>{const pp=new URLSearchParams(location.search);state.page=pp.get('page')||'shop';state.trackId=pp.get('id')||'';state.trackToken=pp.get('token')||'';state.modal=null;render();if(state.page==='track')reloadTracking().catch(e=>notif(errorText(e)));if(state.page==='admin'){state.adminLoading=Boolean(!state.admin&&session?.refresh_token);loadAdmin().catch(e=>notif(errorText(e)))}});
 (async()=>{
  try{
-  if(state.page==='admin')await loadAdmin();
+  if(state.page==='admin'){render();await loadAdmin();}
   else if(state.page==='track'){
    // Show the order screen immediately and fetch the private order independently.
    // A slow product catalog must never block a customer's emailed quote link.

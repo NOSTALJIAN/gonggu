@@ -7100,14 +7100,25 @@ function renderSupplierFreightOverview(progress){
   }).join('')||'<p class="smallnote">이번 회차에 배송비 배분할 거래처가 없어요.</p>')+
   '</section>';
 }
+
+function renderSupplierFreightDoneStep(store,progress,customerList){
+ return '<section class="supplier-freight-done-step">'+
+  '<strong>'+esc(store.name)+' · 배송비 배분 완료</strong>'+
+  '<p>배분한 상품을 다시 선택할 필요 없어요. 구매자 최종확정과 입금 확인 뒤 도매 발주를 진행하세요.</p>'+
+  '<button type="button" data-tab="payments" data-nav-filter="supplier_payments">입금·발주 관리로 이동</button>'+
+  '</section>'+
+  '<details class="supplier-freight-completed-buyers"><summary>배분 완료된 구매자 내역 보기</summary>'+
+  customerList+'</details>';
+}
 function renderSupplierBulkManager(historyOnly=false,expanded=false){
  if(!state.admin||state.page!=='admin')return '';
- const allStores=[...new Set(state.quotes.filter(isRoundBuyer).flatMap(q=>(q.items||[]).map(supplierItemStore)))].filter(Boolean);
- const stores=allStores.map(id=>({id,name:privateSupplierDisplay(id)})).filter(x=>x.name)
-  .sort((a,b)=>a.name.localeCompare(b.name,'ko'));
- const storeId=stores.some(x=>x.id===state.supplierBulkStoreId)?state.supplierBulkStoreId:(stores[0]?.id||'');
+ const progress=supplierFreightProgress();
+ const stores=progress.map(({id,name,remaining,allocated})=>({id,name,remaining,allocated}));
+ const storeId=stores.some(x=>x.id===state.supplierBulkStoreId)?state.supplierBulkStoreId:(stores.find(x=>x.remaining>0)?.id||stores[0]?.id||'');
  if(storeId!==state.supplierBulkStoreId){state.supplierBulkStoreId=storeId;state.supplierBulkSelected=new Set(state.quotes.filter(isRoundBuyer).flatMap(q=>(q.items||[]).filter(item=>supplierItemStore(item)===storeId&&supplierBulkAvailableItem(q,item)).map(item=>item.id)));}
  const store=stores.find(s=>s.id===storeId);
+ const currentProgress=progress.find(x=>x.id===storeId);
+ const storeFinished=!!(currentProgress&&currentProgress.remaining===0&&currentProgress.batches.length>0);
  const entries=storeId?state.quotes.filter(isRoundBuyer).flatMap(q=>(q.items||[])
   .filter(item=>supplierItemStore(item)===storeId)
   .map(item=>({q,item}))):[];
@@ -7139,7 +7150,7 @@ function renderSupplierBulkManager(historyOnly=false,expanded=false){
   return `<div class="supplier-bulk-customer">
    <div class="supplier-bulk-customer-header"><div>
     <strong>${esc(first.buyer_name||'주문자 미입력')}</strong>
-    <small>아기: ${esc(first.baby_name||'미입력')} · 거래처 상품 ${rows.length}종</small>
+    <small>아기: ${esc(first.baby_name||'미입력')} · 상품 ${rows.length}종${rows.every(({q,item})=>!!supplierItemBatch(item.id)||!!item.supplier_ordered_at||!!q.supplier_ordered_at)?' · 배분 완료':''}</small>
    </div>
     <button type="button" class="btn sm secondary" data-action="supplier-bulk-select-buyer"
      data-buyer-key="${esc(key)}" ${!eligible.length||existingPending?'disabled':''}>
@@ -7256,8 +7267,9 @@ function renderSupplierBulkManager(historyOnly=false,expanded=false){
    <div class="supplier-bulk-list" style="margin-top:14px">${history}</div>
   </details>`;
  }
- return `<details class="card supplier-bulk-manager compact-fold" id="supplier-bulk-manager" data-fold-key="supplier-bulk-manager">
-  <summary><b>배송비 배분하기</b><small>도매처 ${stores.length}곳 · 1688 제외</small></summary>
+ return `${renderSupplierFreightOverview(progress)}
+ <details class="card supplier-bulk-manager compact-fold" id="supplier-bulk-manager" data-fold-key="supplier-bulk-manager">
+  <summary><b>${progress.length&&progress.every(p=>p.remaining===0)?'배송비 배분 완료 · 필요 시 내역 보기':'배송비 배분하기'}</b><small>배분 완료 ${progress.filter(p=>p.remaining===0&&p.batches.length>0).length}곳 · 확인 필요 ${progress.filter(p=>p.remaining>0).length}곳</small></summary>
 
   ${!state.productPrivateReady?'<p class="noticefail">비공개 도매업체명 정보를 불러오지 못했어요. 새로고침 후 확인해 주세요.</p>':''}
   ${!state.supplierBatchesReady?`<p class="noticefail">배분 현황을 불러오지 못했어요. ${esc(state.supplierBatchesError||'관리자 새로고침 후 확인해 주세요.')}</p>`:''}
@@ -7265,13 +7277,13 @@ function renderSupplierBulkManager(historyOnly=false,expanded=false){
   <label class="label">도매처별 주문 보기 (업체명 기준 자동 분류)
    <select data-supplier-bulk-store aria-label="배송비를 배분할 실제 비공개 도매업체">
     <option value="">도매처 선택</option>
-    ${stores.map(s=>`<option value="${esc(s.id)}" ${storeId===s.id?'selected':''}>${esc(s.name)}</option>`).join('')}
+    ${stores.map(s=>`<option value="${esc(s.id)}" ${storeId===s.id?'selected':''}>${esc(s.name)} · ${s.remaining?'미배분 '+s.remaining+'종':'배분 완료'}</option>`).join('')}
    </select>
   </label>
-  ${store?`<div class="supplier-bulk-store-summary"><strong>${esc(store.name)}</strong> · 상품 ${entries.length}종 · 구매자 ${groups.size}명</div>
-   <div class="supplier-bulk-customer-list">${customerList||'<p class="smallnote">이 거래처 주문 상품이 없어요.</p>'}</div>`:
+  ${store?`<div class="supplier-bulk-store-summary"><strong>${esc(store.name)}</strong> · ${storeFinished?'배송비 배분 완료':('미배분 '+(currentProgress?.remaining||0)+'종 · 배분 완료 '+(currentProgress?.allocated||0)+'종')}</div>
+   ${storeFinished?renderSupplierFreightDoneStep(store,currentProgress,customerList):`<div class="supplier-bulk-customer-list">${customerList||'<p class="smallnote">현재 배분할 주문이 없어요.</p>'}</div>`}`:
    '<p class="smallnote">거래처를 선택하면 주문자별 해당 거래처 상품이 나타나요.</p>'}
-  <div class="supplier-bulk-controls"><strong data-supplier-bulk-chosen>0명 · 0개 상품 선택</strong>
+  ${!storeFinished?`<div class="supplier-bulk-controls"><strong data-supplier-bulk-chosen>0명 · 0개 상품 선택</strong>
    <div class="supplier-bulk-bulk-actions">
     <button type="button" class="btn sm" data-action="supplier-bulk-select-all">전체 선택</button>
     <button type="button" class="btn sm secondary" data-action="supplier-bulk-clear">선택 해제</button>
@@ -7290,7 +7302,7 @@ function renderSupplierBulkManager(historyOnly=false,expanded=false){
    <button type="submit" class="btn block" data-supplier-bulk-apply disabled>④ 선택한 구매자끼리 배송비 나누기</button>
   </form>
 
-  <p class="smallnote">배분 후 입금 요청과 거래처 발주는 위 3번 '입금·발주'에서 처리해요.</p>
+  <p class="smallnote">배분 후 입금 요청과 도매 발주는 ‘입금·발주’ 탭에서 처리하세요.</p>`:''}
  </details>`;
 }
 

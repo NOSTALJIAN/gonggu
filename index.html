@@ -3237,6 +3237,16 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 .admin-orders-page .compact-order-products{padding:0;margin-bottom:10px}
 .admin-orders-page .compact-order-next{margin-top:11px}
 .admin-orders-page .compact-order-next>span{display:none}
+.compact-inline-payment{margin:14px 0 5px;display:flex;flex-direction:column;gap:7px;border-top:1px solid #e8e8e8;padding-top:14px;max-width:100%}
+.compact-inline-payment>label{font-size:12px;font-weight:800;color:#393939}
+.compact-inline-payment-row{display:flex;align-items:stretch;gap:8px;min-width:0}
+.compact-inline-payment-input{position:relative;flex:1;min-width:0}
+.compact-inline-payment-input>input{width:100%;min-height:46px;height:46px;padding:8px 33px 8px 12px;border:1px solid #d9d9d9;border-radius:9px;background:#fff;color:#141414;font-size:16px!important;font-variant-numeric:tabular-nums}
+.compact-inline-payment-input>span{position:absolute;right:11px;top:50%;transform:translateY(-50%);font-size:12px;color:#666;pointer-events:none}
+.compact-inline-payment-save{flex:0 0 auto;min-height:46px;padding:9px 14px;border-radius:9px;font-size:12px;font-weight:800;white-space:nowrap}
+.compact-inline-payment>small{font-size:10px;color:#858585;line-height:1.5}
+@media(max-width:359px){.compact-inline-payment-save{padding:8px 10px;font-size:11px}}
+
 .admin-orders-page .compact-order-next-btn{font-size:12px;white-space:nowrap}
 .admin-orders-page .compact-order-tools{margin-top:12px}
 .admin-orders-page .compact-order-tool>summary{font-size:12px;padding:11px 7px}
@@ -6386,6 +6396,18 @@ function adminConfirmButton(q){
   <button type="button" class="admin-manual-confirm-action" data-action="admin-confirm-order" data-id="${esc(q.id)}">예외: 관리자 직접 주문 확정</button>
   </details>`:'';
 }
+function renderCompactInlinePayment(q,finalReady){
+ if(!state.admin||!finalReady||!adminCanRecordPayment(q)||q.cancel_requested_at||q.delivery_change_requested_at)return '';
+ return `<form class="compact-inline-payment" data-payment="${esc(q.id)}" data-compact-inline-payment="1">
+  <label for="compact-inline-payment-${esc(q.id)}">실제 받은 누적 입금액</label>
+  <div class="compact-inline-payment-row">
+   <div class="compact-inline-payment-input"><input id="compact-inline-payment-${esc(q.id)}" type="number" name="paid" inputmode="numeric" min="0" max="1000000000" step="1" required value="${Number(q.amount_paid||0)}" aria-label="실제 받은 누적 입금액, 원"><span>원</span></div>
+   <input type="hidden" name="refunded" value="${Number(q.amount_refunded||0)}">
+   <button class="btn compact-inline-payment-save" type="submit">입금 저장</button>
+  </div>
+  <small>이번 주문에 실제 받은 총액만 입력 · 저장 후 남은 금액 자동 계산</small>
+ </form>`;
+}
 function renderRoundQuickOrder(q,index){
  const due=totalDue(q);
  const paid=(Number(q.amount_paid)||0)-(Number(q.amount_refunded)||0);
@@ -6648,6 +6670,7 @@ function renderAdminQuoteCard(q){
   <div class="compact-order-next ${urgent?'is-urgent':''}">
    <strong>${esc(task.text)}</strong>
    <button type="button" class="compact-order-next-btn" ${command}>${esc(task.label)} →</button>
+   ${renderCompactInlinePayment(q,finalReady)}
    ${adminConfirmButton(q)}
   </div>
   <div class="compact-order-tools">
@@ -7050,7 +7073,6 @@ function renderCollapsibleAdminOrder(group,section){
  const onePart=confirmedOrders.length===1&&canSumPayments?orderPaymentParts(confirmedOrders[0]):null;
  const paymentMark=confirmedOrders.some(q=>paymentWaiver(q)>0)&&canSumPayments&&confirmedPaid+confirmedOrders.reduce((n,q)=>n+paymentWaiver(q),0)>=confirmedDue?'차액 인정 · 정산 완료':onePart&&onePart.goodsMissing===0&&onePart.shippingMissing>0?'상품 입금 완료 · 택배비 별도':
   !canSumPayments?'':confirmedDue>0&&confirmedPaid>=confirmedDue?'입금 확인':confirmedPaid>0?'부분 입금':'미입금';
- const relatedBuyerOrders=renderOtherBuyerDeposits(group);
  return `<details class="admin-order-fold ${urgent?'has-pending':''}" data-admin-order-id="${esc(key)}" ${open?'open':''}>
   <summary class="admin-order-fold-heading">
    <span class="admin-order-fold-left">
@@ -7061,7 +7083,6 @@ function renderCollapsibleAdminOrder(group,section){
    <span class="admin-order-fold-chevron" aria-hidden="true"></span>
   </summary>
   <div class="admin-order-fold-body">
-   ${relatedBuyerOrders}
    ${renderShippingMergeButton(group)}
    ${group.length>1?(group.every(q=>bundleRootId(q)===bundleRootId(group[0]))?renderBundleCard(group):renderSameRoundCard(group)):renderAdminQuoteCard(group[0])}
   </div>
@@ -10935,8 +10956,10 @@ else if(f.dataset.payment){
  const nextReceived=paid-refunded;
  if(q.status==='quoted'&&nextReceived>=totalDue(q)&&previouslyReceived<totalDue(q)&&
   !window.confirm('기록할 순입금액 '+money(nextReceived)+'이 결제금액 '+money(totalDue(q))+' 이상이에요.\n\n이 주문은 입금 확인 시 자동으로 최종 주문확정될 수 있어요. 실제 입금내역을 확인했나요?'))return;
- adminFoldState.set('compact-payment-'+quoteId,true);
- adminFoldState.set('direct-payment-'+quoteId,true);
+ if(!f.hasAttribute('data-compact-inline-payment')){
+  adminFoldState.set('compact-payment-'+quoteId,true);
+  adminFoldState.set('direct-payment-'+quoteId,true);
+ }
  state.orderCardsOpen[q.bundle_parent_id||q.id]=true;
  const priorY=window.scrollY;
  await adminPayment(quoteId,paid,refunded);

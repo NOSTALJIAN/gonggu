@@ -3302,6 +3302,21 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 .admin-payment-waiver b{font-size:12px;color:#333}
 .admin-payment-waiver small{font-size:11px;color:#666;line-height:1.5}
 .admin-payment-waiver .btn{align-self:stretch;white-space:normal}
+/* Compact standalone payment editor: no page movement or automatic keyboard. */
+.admin-payment-popup-head{display:flex;flex-direction:column;gap:7px;padding:12px 14px;margin-bottom:17px;border:1px solid #e8e8e8;border-radius:11px;background:#f8f8f8}
+.admin-payment-popup-head>b{font-size:15px;font-weight:800;color:#161616}
+.admin-payment-popup-head span{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:#666}
+.admin-payment-popup-head strong{font-weight:800;color:#161616}
+.admin-payment-popup-form{display:flex;flex-direction:column;gap:12px}
+.admin-payment-popup-form>label:not(.admin-payment-popup-waive){font-size:12px;color:#555;font-weight:700}
+.admin-payment-popup-form>label>input[type=number]{display:block;margin-top:5px;border-radius:9px;height:47px;min-height:47px;font-size:16px;color:#111}
+.admin-payment-popup-waive{display:flex;align-items:flex-start;gap:10px;border:1px solid #ddd;border-radius:10px;padding:13px 11px;background:#fafafa;cursor:pointer}
+.admin-payment-popup-waive>input{width:21px;height:21px;min-height:21px;flex:0 0 21px;margin:1px 0 0;accent-color:#111}
+.admin-payment-popup-waive span{display:flex;flex-direction:column;gap:3px;line-height:1.5}
+.admin-payment-popup-waive b{font-size:12px;color:#171717}
+.admin-payment-popup-waive small{font-size:11px;color:#777;font-weight:500}
+.admin-payment-popup-preview{border-radius:9px;background:#f5f5f5;color:#333;padding:12px;font-size:12px;font-weight:680;line-height:1.6}
+.admin-payment-popup-form>.btn{min-height:47px;border-radius:8px;font-size:13px}
 
 /* Show individual payment balances to buyers, without treating courier fees as unpaid merchandise. */
 .confirmed-payment-parts{display:flex;flex-direction:column;gap:7px;margin:10px 0}
@@ -8041,6 +8056,30 @@ function modal(){const m=state.modal;if(!m)return '';const wrap=(title,body,stic
 if(m.type==='entry-push')return wrap('신상·주문 알림 받기',renderEntryPushBody());
 if(m.type==='admin-delivery-queue'&&state.admin)return wrap('수령방식 변경 요청',renderAdminDeliveryQueue());
 if(m.type==='admin-delivery-review'&&state.admin){const q=state.quotes.find(x=>x.id===m.id);return wrap('수령방식 변경 요청',q?.delivery_change_requested_at?renderAdminDeliveryRequest(q):'<div class="empty">이미 처리된 요청이에요.</div>');}
+if(m.type==='admin-payment-edit'){
+ if(!state.admin||state.page!=='admin')return '';
+ const q=state.quotes.find(x=>x.id===m.id);
+ if(!q||!adminCanRecordPayment(q))return wrap('입금 기록 수정','<p class="smallnote">입금 기록을 수정할 수 없는 주문이에요. 주문 상태를 다시 확인해 주세요.</p>');
+ const paid=Number(q.amount_paid||0),refunded=Number(q.amount_refunded||0),waived=paymentWaiver(q);
+ const canWaive=q.status==='confirmed'||adminConfirmEligible(q);
+ return wrap('입금 기록 수정',`<div class="admin-payment-popup-head">
+  <b>${esc(q.buyer_name)} ${q.baby_name?'· '+esc(q.baby_name):''}</b>
+  <span>최종 결제금액 <strong>${money(totalDue(q))}</strong></span>
+  <span>현재 기록된 입금 <strong>${money(paid-refunded)}</strong></span>
+ </div>
+ <form id="admin-payment-popup-form" data-quote-id="${esc(q.id)}" data-total="${totalDue(q)}" class="admin-payment-popup-form">
+  <label>실제로 받은 누적 입금액 (원)
+   <input name="paid" type="number" inputmode="numeric" min="0" step="1" max="1000000000" value="${paid}" required>
+  </label>
+  <label>누적 환불액 (원)
+   <input name="refunded" type="number" inputmode="numeric" min="0" step="1" max="1000000000" value="${refunded}" required>
+  </label>
+  ${canWaive?`<label class="admin-payment-popup-waive"><input type="checkbox" name="waive_shortfall" ${waived?'checked':''}><span><b>이번 건은 남은 금액 받지 않고 정산 완료</b><small>실제 입금액은 그대로 기록하고 차액만 관리자가 인정해요.</small></span></label>`:''}
+  <div class="admin-payment-popup-preview" aria-live="polite"></div>
+  <button type="submit" class="btn block">입금 기록 저장</button>
+  <button type="button" class="btn block secondary" data-action="close">취소</button>
+ </form>`);
+}
 if(m.type==='buyer-order-details'){
  if(!state.admin||state.page!=='admin')return '';
  const q=state.quotes.find(x=>x.id===m.id);
@@ -8394,12 +8433,26 @@ function clearCartReview(){
  const undo=app.querySelector('#cart-review-undo');if(undo)undo.classList.add('hidden');
  syncCartReview();
 }
+function updateAdminPaymentPopupPreview(form){
+ if(!form)return;
+ const total=Number(form.dataset.total),paid=Number(form.elements.paid?.value),refunded=Number(form.elements.refunded?.value);
+ const valid=Number.isSafeInteger(paid)&&Number.isSafeInteger(refunded)&&paid>=0&&refunded>=0&&refunded<=paid;
+ const output=form.querySelector('.admin-payment-popup-preview');
+ if(!output)return;
+ if(!valid){output.textContent='입금액과 환불액을 확인해 주세요.';return;}
+ const remaining=Math.max(0,total-(paid-refunded));
+ const waive=form.elements.waive_shortfall?.checked===true;
+ output.textContent=waive
+   ?'실제 순입금 '+money(paid-refunded)+' · 차액 인정 '+money(remaining)+' · 추가 입금 0원'
+   :'실제 순입금 '+money(paid-refunded)+' · 남은 금액 '+money(remaining);
+}
 function modalOpen(type,id=null){
  if(type==='approve'||type==='product')initAdminPhotoSequence(type,id);
  state.modal={type,id};render();
  if(type==='approve'||type==='product')updateAdminPhotoEditor(app.querySelector(type==='approve'?'#approve-form':'#product-form'));
  if(type==='product')syncProductNewStoreField(app.querySelector('#product-form'));
  if(type==='myquotes'&&state.phoneLookupReady===null)checkPinLookupReady().catch(error=>console.warn(error))
+ if(type==='admin-payment-edit')updateAdminPaymentPopupPreview(app.querySelector('#admin-payment-popup-form'))
 }
 function customerPhoneLocal(value){
  const digits=String(value||'').replace(/[^0-9]/g,'');
@@ -9938,16 +9991,14 @@ if(a==='review-delivery'){
  modalOpen('admin-delivery-review',id);return;
 }
 if(a==='compact-open-tool'){
+ if(b.dataset.tool==='payment'){
+  modalOpen('admin-payment-edit',id);
+  return;
+ }
  const card=b.closest('[data-compact-order="'+id+'"]');
  const tool=card?.querySelector('[data-compact-tool="'+b.dataset.tool+'"]');
  if(tool){
   tool.open=true;
-  if(b.dataset.tool==='payment'){
-   adminFoldState.set('compact-payment-'+id,true);
-   const edit=tool.querySelector('.related-deposit-edit');
-   if(edit){edit.open=true;adminFoldState.set('direct-payment-'+id,true);}
-   tool.querySelector('input[name="paid"]')?.focus({preventScroll:true});
-  }
   if(b.dataset.tool==='prices')tool.querySelector('input')?.focus({preventScroll:true});
  }
  return;
@@ -10376,7 +10427,40 @@ async function submit(e){const f=e.target;
 // All in-app forms are handled by JavaScript. Never allow a native browser GET
 // to replace ?page=admin and appear to sign the administrator out.
 e.preventDefault();
-if(!f.dataset.lowerPriceReport&&!f.dataset.sizeChartForm&&!f.dataset.customerEmail&&!['new-arrival-push-form','gmail-settings-form','hero-photo-form','reject-request-form','admin-pin-form','pin-register-form','pin-lookup-form','import-track-form','pick','request','store-form','product-form','login','suggest-form','approve-form','bundle-form','merge-shipping-form','edit-delivery-form','bulk-supplier-shipping-form'].includes(f.id)&&!f.dataset.itemOptions&&!f.dataset.buyerOptionRequest&&!f.dataset.price&&!f.dataset.payment&&!f.dataset.shipping&&!f.dataset.supplierShipping&&!f.dataset.ship&&!f.dataset.bundleShip)return;if(busy)return;busy=true;const data=new FormData(f);try{if(f.dataset.lowerPriceReport){
+if(!f.dataset.lowerPriceReport&&!f.dataset.sizeChartForm&&!f.dataset.customerEmail&&!['new-arrival-push-form','gmail-settings-form','hero-photo-form','reject-request-form','admin-pin-form','pin-register-form','pin-lookup-form','import-track-form','pick','request','store-form','product-form','login','suggest-form','approve-form','bundle-form','merge-shipping-form','edit-delivery-form','bulk-supplier-shipping-form','admin-payment-popup-form'].includes(f.id)&&!f.dataset.itemOptions&&!f.dataset.buyerOptionRequest&&!f.dataset.price&&!f.dataset.payment&&!f.dataset.shipping&&!f.dataset.supplierShipping&&!f.dataset.ship&&!f.dataset.bundleShip)return;if(busy)return;busy=true;const data=new FormData(f);try{if(f.id==='admin-payment-popup-form'){
+ if(!state.admin||state.page!=='admin'||state.modal?.type!=='admin-payment-edit'||state.modal.id!==f.dataset.quoteId)
+  throw Error('관리자 입금 수정 창에서 다시 시도해 주세요.');
+ const id=state.modal.id,q=state.quotes.find(x=>x.id===id);
+ if(!q||!adminCanRecordPayment(q))throw Error('이 주문의 입금 수정이 현재 불가능해요.');
+ const paidRaw=String(data.get('paid')??'').trim(),refundRaw=String(data.get('refunded')??'').trim();
+ if(!/^[0-9]+$/.test(paidRaw)||!/^[0-9]+$/.test(refundRaw))throw Error('입금액과 환불액은 0원 이상 숫자로 입력해 주세요.');
+ const paid=Number(paidRaw),refunded=Number(refundRaw);
+ if(!Number.isSafeInteger(paid)||!Number.isSafeInteger(refunded)||paid>1000000000||refunded>paid)
+  throw Error('실제로 받은 누적 입금액과 환불액을 확인해 주세요.');
+ const net=paid-refunded,total=totalDue(q),waive=data.has('waive_shortfall');
+ const waiver=waive?Math.max(0,total-net):0;
+ if(waive&&(net<=0||net>=total))throw Error('차액 인정은 실제 입금이 있고 남은 금액이 있는 주문에서만 가능해요.');
+ if(waive&&q.status==='quoted'&&!adminConfirmEligible(q))throw Error('관리자 주문확정 조건을 먼저 확인해 주세요.');
+ if(q.status==='quoted'&&net>=total&&!waive&&
+  !window.confirm('결제금액 전체를 받은 것으로 기록하면 최종 주문이 자동 확정될 수 있어요. 실제 입금을 확인했나요?'))return;
+ if(waive&&!window.confirm('실제 누적 입금 '+money(paid)+' · 환불 '+money(refunded)+' · 이번 주문 차액 인정 '+money(waiver)+'\\n\\n받지 않은 차액을 실제 입금액에 추가하지 않고 정산 완료할까요?'))return;
+ const paymentChanged=paid!==Number(q.amount_paid||0)||refunded!==Number(q.amount_refunded||0);
+ const waiverChanged=waiver!==paymentWaiver(q);
+ if(paymentChanged||waiverChanged){
+  await api('/rest/v1/gq_quotes?id=eq.'+encodeURIComponent(id),{method:'PATCH',admin:true,body:{
+   amount_paid:paid,amount_refunded:refunded,payment_waived_amount:waiver,
+   payment_waived_at:waive?(waiverChanged||!q.payment_waived_at?new Date().toISOString():q.payment_waived_at):null,
+   payment_waived_by:waive?(session?.user?.id||null):null}});
+ }
+ if(waive&&q.status==='quoted'){
+  const result=await rpc('gq_admin_confirm_quote_v97',{p_quote_id:id,p_acknowledged:true},true);
+  if(result!==true)throw Error('입금액은 저장됐지만 주문확정이 완료되지 않았어요. 다시 확인해 주세요.');
+ }
+ state.orderCardsOpen[q.bundle_parent_id||q.id]=true;
+ state.modal=null;
+ await loadAdmin();
+ notif(waive?'실제 입금액 저장 · 이번 건 차액 인정 완료':'입금·환불 기록을 저장했어요.');
+}else if(f.dataset.lowerPriceReport){
  const itemId=String(f.dataset.lowerPriceReport||'');
  const otherUrl=String(data.get('other_url')||'').trim();
  const priceRaw=String(data.get('other_price')??'').trim();
@@ -10798,6 +10882,9 @@ function updateShopSearchResults(){
  if(count&&nextCount)count.textContent=nextCount.textContent;
 }
 function input(e){
+ if(e.target.closest?.('#admin-payment-popup-form')){
+  updateAdminPaymentPopupPreview(e.target.closest('form'));return;
+ }
  if(e.target.matches?.('#approve-form [name="store"],#product-form [name="new_store_name"]')){
   updatePrivateSupplierForm(e.target.closest('form'));return;
  }

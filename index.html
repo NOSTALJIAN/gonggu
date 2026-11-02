@@ -3306,6 +3306,11 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 /* Keep source Namdaemun shop visible alongside the product, distinct from the delivery supplier. */
 .supplier-bulk-namdaemun-store{font-size:12px;font-weight:700;color:#686868}
 .supplier-bulk-batch-item{padding:4px 0;overflow-wrap:anywhere}
+/* Supplier-wide bulk selection stays accessible on narrow phones. */
+.supplier-bulk-controls{flex-wrap:wrap}
+.supplier-bulk-controls strong{min-width:0}
+.supplier-bulk-bulk-actions{display:flex;align-items:center;gap:6px;flex-shrink:0;margin-left:auto}
+.supplier-bulk-bulk-actions .btn{font-size:12px;min-height:37px;padding:7px 10px;white-space:nowrap}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -4254,6 +4259,9 @@ function updateSupplierBulkPreview(){
  const submit=root.querySelector('[data-supplier-bulk-apply]');
  const chosen=root.querySelector('[data-supplier-bulk-chosen]');
  const totalInput=root.querySelector('[name="bulk_supplier_total"]');
+ const selectAll=root.querySelector('[data-action="supplier-bulk-select-all"]');
+ if(selectAll)selectAll.disabled=!state.supplierBatchesReady||!state.supplierBulkStoreId||
+  !root.querySelector('input[data-supplier-item-select]:not(:disabled)');
  const {selected,people,invalid}=supplierBulkSelectedInfo();
  const existing=supplierBulkExistingManualFees(selected);
  const warning=root.querySelector('[data-supplier-existing-warning]');
@@ -6997,7 +7005,10 @@ function renderSupplierBulkManager(historyOnly=false,expanded=false){
    <div class="supplier-bulk-customer-list">${customerList||'<p class="smallnote">이 거래처 주문 상품이 없어요.</p>'}</div>`:
    '<p class="smallnote">거래처를 선택하면 주문자별 해당 거래처 상품이 나타나요.</p>'}
   <div class="supplier-bulk-controls"><strong data-supplier-bulk-chosen>0명 · 0개 상품 선택</strong>
-   <button type="button" class="btn sm secondary" data-action="supplier-bulk-clear">선택 해제</button></div>
+   <div class="supplier-bulk-bulk-actions">
+    <button type="button" class="btn sm" data-action="supplier-bulk-select-all">전체 선택</button>
+    <button type="button" class="btn sm secondary" data-action="supplier-bulk-clear">선택 해제</button>
+   </div></div>
   <form id="bulk-supplier-shipping-form">
    <label class="label">③ 이 거래처의 도매배송비 총액 (원)
     <input type="number" name="bulk_supplier_total" min="0" max="1000000" step="1"
@@ -9149,6 +9160,23 @@ if(a==='send-current-email'){
  if(saved!==true)throw Error('이메일 예약 결과를 확인하지 못했어요.');
  await loadAdminEmailSettings();render();
  notif('Gmail 이메일 발송을 예약했어요. 약 1분 간격으로 전송돼요.');
+ return;
+}
+if(a==='supplier-bulk-select-all'){
+ if(!state.admin||state.page!=='admin'||!state.supplierBatchesReady)throw Error('관리자 로그인과 도매배송비 배분 내역을 확인해 주세요.');
+ const manager=app.querySelector('#supplier-bulk-manager');
+ if(!manager||!state.supplierBulkStoreId)throw Error('전체 선택할 도매처를 먼저 선택해 주세요.');
+ const available=[...manager.querySelectorAll('input[data-supplier-item-select]:not(:disabled)')];
+ if(!available.length){notif('이 도매처에 선택 가능한 상품이 없어요.');return;}
+ state.supplierBulkSelected=new Set(available.map(input=>input.dataset.supplierItemSelect));
+ for(const input of available)input.checked=true;
+ for(const customer of manager.querySelectorAll('.supplier-bulk-customer')){
+  const buyerChoices=[...customer.querySelectorAll('input[data-supplier-item-select]:not(:disabled)')];
+  const button=customer.querySelector('[data-action="supplier-bulk-select-buyer"]');
+  if(button&&!button.disabled&&buyerChoices.length)button.textContent='선택 해제';
+ }
+ updateSupplierBulkPreview();
+ notif('현재 도매처에서 배분 가능한 상품 '+available.length+'개를 모두 선택했어요.');
  return;
 }
 if(a==='supplier-bulk-clear'){

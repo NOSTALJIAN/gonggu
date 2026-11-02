@@ -3666,6 +3666,13 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 .admin-price-popup-save{min-height:46px!important;font-size:13px!important}
 
 
+
+.admin-price-popup-reference{display:flex;flex-direction:column;gap:6px;min-width:0;width:100%}
+.admin-price-popup-wholesale{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 10px;border:1px solid #e3e9e4;border-radius:9px;background:#f1f6f2;min-width:0}
+.admin-price-popup-wholesale>span{color:#526358;font-size:12px;font-weight:700;white-space:nowrap}
+.admin-price-popup-wholesale>span small{color:#89948b;font-weight:500;font-size:10px;margin-left:3px}
+.admin-price-popup-wholesale>strong{color:#28573d;font-size:13px;font-weight:800;white-space:nowrap;font-variant-numeric:tabular-nums}
+
 /* Two pricing-channel estimates inside the admin price-entry popup. */
 .admin-price-popup-estimates{
  display:grid;
@@ -8555,12 +8562,21 @@ function renderAdminSettings(){return `<section class="card pushbox pushbox-sett
 function adminPricePopupEstimateRow(item){
  if(!state.admin)return '';
  const product=state.products.find(p=>p.id===item?.product_id);
- const estimates=adminDualEstimates(product,product?.id?state.productPrivate?.[product.id]:null);
+ const meta=product?.id&&state.productPrivateReady?state.productPrivate?.[product.id]:null;
+ const estimates=adminDualEstimates(product,meta);
  const priced=value=>esc(adminEstimateText(value));
- return '<div class="admin-price-popup-estimates" aria-label="두 가지 예상 판매가">'+
+ const isChina=meta?.source_type==='1688';
+ const rawCost=meta?.wholesale_price;
+ const cost=rawCost===undefined||rawCost===null||rawCost===''?null:Number(rawCost);
+ const validCost=cost!==null&&Number.isFinite(cost)&&cost>=0;
+ const costLabel=isChina?'예상 사입원가':'도매가';
+ const costText=!state.productPrivateReady?'정보 확인 중':!meta||!validCost?'미등록':money(cost);
+ return '<div class="admin-price-popup-reference" aria-label="관리자 전용 가격 참고정보">'+
+  '<div class="admin-price-popup-wholesale"><span>'+costLabel+' <small>관리자 전용</small></span><strong>'+esc(costText)+'</strong></div>'+
+  '<div class="admin-price-popup-estimates">'+
   '<div class="admin-price-popup-estimate"><span>일반 예상가</span><strong>'+priced(estimates.regular)+'</strong></div>'+
   '<div class="admin-price-popup-estimate is-github"><span>GH 예상가</span><strong>'+priced(estimates.github)+'</strong></div>'+
-  '</div>';
+  '</div></div>';
 }
 function modal(){const m=state.modal;if(!m)return '';const wrap=(title,body,stickyProductSave=false)=>stickyProductSave?`<div class="overlay" id="overlay"><div class="sheet sheet-product-editor product-editor-clean swipe-dismiss-sheet" role="dialog" aria-modal="true"><div class="sheet-drag-handle" aria-hidden="true"></div><div class="sheethead"><h2>${title}</h2><button class="close" data-action="close">×</button></div><div class="sheet-product-scroll">${body}</div><div class="sheet-product-save"><button class="btn block" type="submit" form="product-form">상품 저장</button></div></div></div>`:`<div class="overlay" id="overlay"><div class="sheet${['myquotes','suggest','cart','pick','product-photos','approve'].includes(m.type)?' swipe-dismiss-sheet':''}${m.type==='myquotes'?' myquotes-swipe-sheet':''}${m.type==='suggest'?' suggest-sheet':''}${m.type==='cart'?' cart-swipe-sheet':''}${m.type==='approve'?' approve-sheet':''}" role="dialog" aria-modal="true">${['myquotes','suggest','cart','pick','product-photos','approve'].includes(m.type)?'<div class="sheet-drag-handle" aria-hidden="true"></div>':''}<div class="sheethead"><h2>${title}</h2><button class="close" data-action="close">×</button></div>${body}</div></div>`;
 if(m.type==='entry-push')return wrap('신상·주문 알림 받기',renderEntryPushBody());

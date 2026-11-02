@@ -3108,6 +3108,42 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 .buyer-simple .supplier-partial-buyer{margin-top:12px}
 @media(max-width:360px){.buyer-simple .purchase-round-actions button{font-size:11px;padding:8px 2px}}
 
+
+/* Admin management redesign: distinct top-level areas, restrained hierarchy. */
+.admin-reorganized{padding:12px 13px 26px!important}
+.admin-manager-heading{display:flex;justify-content:space-between;align-items:center;padding:4px 2px 15px}
+.admin-manager-heading small{font-size:10px;letter-spacing:1.7px;color:#999;font-weight:800}
+.admin-manager-heading h1{font-size:23px;letter-spacing:-.7px;margin:1px 0 0;line-height:1.25}
+.admin-manager-actions{display:flex;gap:7px}
+.admin-manager-actions button{height:37px;width:39px;border-radius:10px;border:1px solid #e5e5e9;background:white;color:#52525b;font-size:20px;font-weight:600}
+.admin-manager-actions button.active{background:#222;color:#fff}
+.admin-manager-nav{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:5px;margin:0 0 21px;padding:4px;border:1px solid #eaeaf0;border-radius:13px;background:#f4f4f7}
+.admin-manager-nav button{border:0;min-width:0;border-radius:9px;min-height:40px;background:transparent;font-size:12px;font-weight:730;color:#6a6a74;position:relative;white-space:nowrap;padding:6px 2px}
+.admin-manager-nav button.active{background:#fff;box-shadow:0 1px 5px #00000012;color:#222}
+.admin-nav-count{position:absolute;top:0;right:0;font-size:9px;background:#ededf8;color:#4b4583;border-radius:8px;min-width:13px;padding:0 3px}
+.admin-page-heading{display:flex;justify-content:space-between;align-items:baseline;margin:0 1px 12px;gap:10px}
+.admin-page-heading h2{font-size:19px;letter-spacing:-.5px;margin:0}
+.admin-page-heading>span{font-size:11px;color:#92929b}
+.admin-home-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.admin-home-tile{border:1px solid #e8e8ec;background:#fff;border-radius:13px;text-align:left;padding:15px 14px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.admin-home-tile span{color:#686872;font-size:12px;font-weight:650}
+.admin-home-tile strong{font-size:26px;font-weight:820;line-height:1.15;color:#222}
+.admin-home-tile small{font-size:11px;color:#999;margin-left:2px}
+.admin-home-attention{border:1px solid #eaeaea;background:#fff;border-radius:13px;margin-top:15px;padding:12px 13px}
+.admin-home-attention h3{font-size:13px;margin:0 0 7px}
+.admin-home-attention button,.admin-home-shortcuts button{display:flex;align-items:center;justify-content:space-between;text-align:left;gap:12px;background:transparent;border:0;border-bottom:1px solid #eee;width:100%;padding:12px 5px;font-size:13px;color:#34343a}
+.admin-home-attention button:last-child,.admin-home-shortcuts button:last-child{border-bottom:0}
+.admin-home-attention button strong,.admin-home-shortcuts button b{font-size:12px}
+.admin-home-shortcuts{border:1px solid #eaeaea;border-radius:13px;background:#fff;padding:5px 12px;margin-top:12px}
+.admin-manager-body .sectiontitle .sub{display:none}
+.admin-subnav{display:flex;gap:6px;margin-bottom:14px;background:#f5f5f7;border-radius:10px;padding:4px}
+.admin-subnav button{flex:1;border:0;border-radius:8px;background:transparent;min-height:39px;color:#777;font-size:13px;font-weight:760}
+.admin-subnav button.active{background:#fff;color:#1e1e26;box-shadow:0 1px 4px #00000015}
+.admin-optional-orders{margin-top:14px;border-top:1px solid #e7e7ed;padding-top:15px}
+.admin-optional-orders>summary{cursor:pointer;font-size:12px;color:#777;font-weight:760}
+.admin-manager-body .admin-quote-workspace{margin:0}
+@media(max-width:400px){.admin-reorganized{padding:10px 10px 24px!important}.admin-manager-nav{gap:2px;padding:3px}.admin-manager-nav button{font-size:11px;min-height:38px}}
+
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -3289,7 +3325,7 @@ const demo=read(DEMO,initDemo());
 const saveDemo=()=>localStorage.setItem(DEMO,JSON.stringify(demo));
 let session=read(SESS,null),busy=false,refreshing=null;
 const p=new URLSearchParams(location.search);
-const state={page:['admin','track'].includes(p.get('page'))?p.get('page'):'shop',tab:'quotes',stores:[],products:[],requests:[],quotes:[],cart:read(CART,[]),modal:null,search:'',shopCategory:'all',shopSort:'newest',shopStore:'all',shopFiltersOpen:false,adminCategory:'all',trackId:p.get('id')||'',trackToken:p.get('token')||'',tracking:null,receipts:read(TRACK,[]),notice:'',filter:'all',admin:false,heroPhotoUrl:null,heroStoreId:null,dateGroupsOpen:{},orderCardsOpen:{},supplierBulkSelected:new Set(),supplierBulkStoreId:'',supplierBatches:[],supplierBatchesReady:false,supplierBatchesError:'',supplierPartialInvoices:[],trackSupplierPartial:[],lowerPriceReports:[],optionRequests:[],optionRequestsReady:false,optionRequestsError:'',requestStatusFilter:'pending',adminCatalogView:'products',adminCatalogFilter:'all',adminProductSort:'newest',adminProductSearch:'',productPrivate:{},productPrivateReady:false,emailSettings:null,emailSettingsReady:false,emailSettingsError:'',adminPinIds:new Set(),phoneLookupReady:null,pinLookupNotice:''};
+const state={page:['admin','track'].includes(p.get('page'))?p.get('page'):'shop',tab:'home',stores:[],products:[],requests:[],quotes:[],cart:read(CART,[]),modal:null,search:'',shopCategory:'all',shopSort:'newest',shopStore:'all',shopFiltersOpen:false,adminCategory:'all',trackId:p.get('id')||'',trackToken:p.get('token')||'',tracking:null,receipts:read(TRACK,[]),notice:'',filter:'all',admin:false,heroPhotoUrl:null,heroStoreId:null,dateGroupsOpen:{},orderCardsOpen:{},supplierBulkSelected:new Set(),supplierBulkStoreId:'',supplierBatches:[],supplierBatchesReady:false,supplierBatchesError:'',supplierPartialInvoices:[],trackSupplierPartial:[],lowerPriceReports:[],optionRequests:[],optionRequestsReady:false,optionRequestsError:'',requestStatusFilter:'pending',adminCatalogView:'products',adminCatalogFilter:'all',adminProductSort:'newest',adminProductSearch:'',productPrivate:{},productPrivateReady:false,emailSettings:null,emailSettingsReady:false,emailSettingsError:'',adminPinIds:new Set(),phoneLookupReady:null,pinLookupNotice:''};
 
 const PRODUCT_CATEGORIES=['바디수트','세트','상의','하의','아우터','원피스','스커트','모자','양말','악세서리','잡화'];
 const validProductCategory=x=>PRODUCT_CATEGORIES.includes(String(x||'').trim());
@@ -4973,22 +5009,84 @@ function renderTrack(){
   ${utilities}
  </section>`;
 }
-function renderAdmin(){if(connected&&!state.admin)return `<section class="content admin-login-screen"><div class="admin-login-panel"><h1>관리자 로그인</h1><form id="login" class="admin-login-form"><label for="admin-login-email">이메일</label><input id="admin-login-email" required name="email" type="email" inputmode="email" autocomplete="email"><label for="admin-login-password">비밀번호</label><input id="admin-login-password" required name="password" type="password" autocomplete="current-password"><button class="btn block" type="submit">로그인</button></form></div></section>`;
-const nQuote=state.quotes.filter(q=>q.status==='requested').length;
-return `<section class="content admin-workspace-content ${state.tab==='quotes'?'is-quote-screen':''}">
-<div class="admin-workspace-top">
- <div class="admin-workspace-heading">
-  <h1>관리자</h1>
-  <div class="admin-workspace-actions">
-   <button type="button" class="admin-compact-refresh" data-action="refresh" aria-label="관리자 최신 화면 새로고침" title="최신 화면 불러오기"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 0 0-14-4M4 4v5h5M4 13a8 8 0 0 0 14 4M20 20v-5h-5"/></svg></button>
-   <button class="admin-settings-shortcut ${state.tab==='settings'?'active':''}" type="button" data-tab="settings" aria-label="관리자 설정 열기" ${state.tab==='settings'?'aria-current="page"':''}><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h9m4 0h3M4 17h3m4 0h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg><span>설정</span></button>
+
+function renderAdminHome(){
+ const all=state.quotes.filter(q=>q.status!=='cancelled');
+ const requested=all.filter(q=>q.status==='requested').length;
+ const pendingBuyers=all.filter(q=>q.status==='quoted'&&(!q.purchase_intent||q.purchase_intent==='undecided')).length;
+ const preparing=all.filter(q=>isRoundBuyer(q)&&!isWholesaleCompleted(q)&&!isFinishedOrder(q)).length;
+ const shipping=all.filter(q=>isWholesaleCompleted(q)&&!isFinishedOrder(q)).length;
+ const deliveryChanges=all.filter(q=>q.delivery_change_requested_at).length;
+ const cancellations=all.filter(q=>q.cancel_requested_at).length;
+ const optionChanges=(state.optionRequests||[]).filter(r=>r.status==='pending').length;
+ const requests=(state.requests||[]).filter(r=>r.status==='pending').length;
+ const tile=(label,count,tab,filter)=>`<button type="button" class="admin-home-tile" data-tab="${tab}" ${filter?`data-nav-filter="${filter}"`:''}><span>${label}</span><strong>${count}<small>건</small></strong></button>`;
+ return `<section class="admin-dashboard">
+  <div class="admin-page-heading"><h2>운영 현황</h2><span>미니예나</span></div>
+  <div class="admin-home-stats">
+    ${tile('견적 대기',requested,'quotes','pricing')}
+    ${tile('구매 선택 대기',pendingBuyers,'quotes','waiting_buyer')}
+    ${tile('배송비·발주 준비',preparing,'payments','buy_now')}
+    ${tile('입고·배송',shipping,'quotes','wholesale_completed')}
   </div>
- </div>
- <div class="admin-workspace-overview">
-  <button type="button" class="admin-overview-link ${nQuote?'is-attention':''}" data-action="admin-summary" data-summary="requested" aria-label="견적 요청 ${nQuote}건 보기"><span>견적 요청</span><strong>${nQuote}</strong></button>
-  <button type="button" class="admin-overview-link" data-action="admin-summary" data-summary="products" aria-label="등록 상품 ${state.products.length}개 보기"><span>등록 상품</span><strong>${state.products.length}</strong></button>
- </div>
-</div><div class="tabs admin-main-tabs" aria-label="관리자 메뉴"><button class="tab ${state.tab==='quotes'?'active':''}" data-tab="quotes">견적·주문</button><button class="tab ${state.tab==='requests'?'active':''}" data-tab="requests">상품 등록 신청 ${state.requests.filter(x=>x.status==='pending').length}</button><button class="tab ${state.tab==='products'?'active':''}" data-tab="products">상품·가게 관리</button><button class="tab ${state.tab==='buyers'?'active':''}" data-tab="buyers">구매자별 집계</button></div>${state.tab==='quotes'?renderAdminQuotes():state.tab==='requests'?renderAdminRequests():state.tab==='products'?renderAdminProducts():state.tab==='buyers'?renderBuyerStats():state.tab==='items'?renderProductStats():state.tab==='vendors'?renderVendorSummary():renderAdminSettings()}</section>`}
+  ${cancellations||optionChanges||deliveryChanges?`<div class="admin-home-attention">
+    <h3>확인 요청</h3>
+    ${cancellations?`<button type="button" data-tab="quotes" data-nav-filter="cancel_requested"><span>취소 요청</span><strong>${cancellations}건</strong></button>`:''}
+    ${deliveryChanges?`<button type="button" data-tab="quotes" data-nav-filter="all_history"><span>수령방식 변경 요청</span><strong>${deliveryChanges}건</strong></button>`:''}
+    ${optionChanges?`<button type="button" data-action="show-pending-item-options"><span>옵션 변경 요청</span><strong>${optionChanges}건</strong></button>`:''}
+   </div>`:''}
+  <div class="admin-home-shortcuts">
+   <button type="button" data-tab="payments" data-nav-filter="supplier_payments">거래처별 입금·발주 <b>${state.supplierBatches.filter(b=>!b.ordered_at).length}곳</b></button>
+   <button type="button" data-tab="requests">상품 등록 신청 <b>${requests}건</b></button>
+   <button type="button" data-tab="products" data-nav-view="products">상품 관리 <b>${state.products.length}개</b></button>
+   <button type="button" data-tab="buyers">구매자별 내역</button>
+  </div>
+ </section>`;
+}
+function renderAdminPayments(){
+ const selected=state.filter==='supplier_payments'?'supplier_payments':'buy_now';
+ const all=state.quotes.filter(q=>isRoundBuyer(q)&&!isFinishedOrder(q));
+ return `<section class="admin-procurement-page">
+  <div class="admin-page-heading"><h2>도매 관리</h2></div>
+  <nav class="admin-subnav" aria-label="도매 관리 메뉴">
+   <button type="button" data-filter="buy_now" class="${selected==='buy_now'?'active':''}">배송비 배분</button>
+   <button type="button" data-filter="supplier_payments" class="${selected==='supplier_payments'?'active':''}">입금·발주</button>
+  </nav>
+  ${selected==='buy_now'?
+    `${renderSupplierBulkManager()}
+      <details class="admin-optional-orders"><summary>관련 주문 보기 · ${all.length}건</summary>
+      ${all.length?renderAdminQuoteFlatSection(sameRoundGroups(all),''):'<div class="empty">해당 주문이 없어요.</div>'}</details>`:
+    renderSupplierPaymentCenter()}
+ </section>`;
+}
+function renderAdmin(){
+ if(connected&&!state.admin)return `<section class="content admin-login-screen"><div class="admin-login-panel"><h1>관리자 로그인</h1><form id="login" class="admin-login-form"><label for="admin-login-email">이메일</label><input id="admin-login-email" required name="email" type="email" inputmode="email" autocomplete="email"><label for="admin-login-password">비밀번호</label><input id="admin-login-password" required name="password" type="password" autocomplete="current-password"><button class="btn block" type="submit">로그인</button></form></div></section>`;
+ const tabs=[['home','홈'],['quotes','주문'],['payments','도매'],['products','상품'],['requests','신청'],['buyers','고객']];
+ const page=state.tab;
+ return `<section class="content admin-workspace-content admin-reorganized ${page==='quotes'?'is-quote-screen':''}">
+  <header class="admin-manager-heading">
+   <div><small>MINIYENA</small><h1>관리자</h1></div>
+   <div class="admin-manager-actions">
+    <button type="button" data-action="refresh" aria-label="새로고침" title="새로고침">⟳</button>
+    <button type="button" data-tab="settings" class="${page==='settings'?'active':''}" aria-label="설정" title="설정">⚙</button>
+   </div>
+  </header>
+  <nav class="admin-manager-nav" aria-label="관리자 주요 메뉴">
+   ${tabs.map(([key,label])=>`<button type="button" data-tab="${key}" class="${page===key?'active':''}" aria-current="${page===key?'page':'false'}">${label}${key==='requests'&&state.requests.filter(x=>x.status==='pending').length?`<span class="admin-nav-count">${state.requests.filter(x=>x.status==='pending').length}</span>`:''}</button>`).join('')}
+  </nav>
+  <div class="admin-manager-body">
+   ${page==='home'?renderAdminHome():
+    page==='quotes'?renderAdminQuotes():
+    page==='payments'?renderAdminPayments():
+    page==='requests'?renderAdminRequests():
+    page==='products'?renderAdminProducts():
+    page==='buyers'?renderBuyerStats():
+    page==='items'?renderProductStats():
+    page==='vendors'?renderVendorSummary():
+    renderAdminSettings()}
+  </div>
+ </section>`;
+}
 
 // Keep the same photo allowance for buyers, approvals, and direct product editing.
 const PRODUCT_PHOTO_LIMIT=50;
@@ -9815,7 +9913,7 @@ app.addEventListener('click',e=>{
  }
 },true);
 
-app.addEventListener('click',e=>{const orderSummary=e.target.closest('.admin-order-fold > summary');if(orderSummary){const order=orderSummary.parentElement;state.orderCardsOpen[order.dataset.adminOrderId]=!order.open;return}const summary=e.target.closest('.admin-date-group > summary');if(summary){const group=summary.parentElement;state.dateGroupsOpen[group.dataset.orderDate]=!group.open;return}const tab=e.target.closest('[data-tab]'),filter=e.target.closest('[data-filter]');if(tab){state.tab=tab.dataset.tab;if(state.tab==='requests')state.requestStatusFilter='pending';render();return}if(filter){state.filter=filter.dataset.filter;state.supplierBulkSelected.clear();
+app.addEventListener('click',e=>{const orderSummary=e.target.closest('.admin-order-fold > summary');if(orderSummary){const order=orderSummary.parentElement;state.orderCardsOpen[order.dataset.adminOrderId]=!order.open;return}const summary=e.target.closest('.admin-date-group > summary');if(summary){const group=summary.parentElement;state.dateGroupsOpen[group.dataset.orderDate]=!group.open;return}const tab=e.target.closest('[data-tab]'),filter=e.target.closest('[data-filter]');if(tab){state.tab=tab.dataset.tab;if(tab.dataset.navFilter)state.filter=tab.dataset.navFilter;else if(state.tab==='payments'&&!['buy_now','supplier_payments'].includes(state.filter))state.filter='buy_now';else if(state.tab==='quotes'&&['buy_now','supplier_payments'].includes(state.filter))state.filter='all';if(tab.dataset.navView)state.adminCatalogView=tab.dataset.navView;if(state.tab==='requests')state.requestStatusFilter='pending';render();return}if(filter){state.filter=filter.dataset.filter;state.supplierBulkSelected.clear();
  if(state.filter==='supplier_payments'){
   for(const batch of state.supplierBatches.filter(b=>!b.ordered_at))
    adminFoldState.set('supplier-batch-'+batch.id,true);

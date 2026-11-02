@@ -3199,6 +3199,9 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 .admin-reorganized .admin-catalog-panel>.card:first-child{border:0;box-shadow:none;background:transparent;padding:5px 3px;margin:0 0 8px!important}
 .admin-reorganized .admin-catalog-panel>.card:first-child>summary{font-size:11px!important;color:#777}
 .admin-reorganized .admin-customer-subnav{margin-top:0}
+
+.admin-order-payment-chip{display:inline-flex;font-size:10px;font-weight:750;color:#8b6a44;background:#f7f3e9;border-radius:5px;padding:2px 5px;margin-left:4px}
+.admin-order-payment-chip.paid{background:#eef4ef;color:#326645}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -6475,11 +6478,16 @@ function renderCollapsibleAdminOrder(group,section){
   else if(received>=total&&group.every(q=>q.status==='confirmed'))next='입금 완료 · 발주 준비';
  }
  const urgent=!!(cancel||options||delivery||missing);
+ const confirmedOrders=group.filter(q=>q.status==='confirmed');
+ const canSumPayments=confirmedOrders.length>0&&confirmedOrders.every(readyQuote);
+ const confirmedDue=canSumPayments?confirmedOrders.reduce((sum,q)=>sum+totalDue(q),0):0;
+ const confirmedPaid=confirmedOrders.reduce((sum,q)=>sum+Math.max(0,Number(q.amount_paid||0)-Number(q.amount_refunded||0)),0);
+ const paymentMark=!canSumPayments?'':confirmedDue>0&&confirmedPaid>=confirmedDue?'입금 확인':confirmedPaid>0?'부분 입금':'미입금';
  return `<details class="admin-order-fold ${urgent?'has-pending':''}" data-admin-order-id="${esc(key)}" ${open?'open':''}>
   <summary class="admin-order-fold-heading">
    <span class="admin-order-fold-left">
     <strong>${esc(root.buyer_name||'주문자 미입력')} <span class="admin-order-fold-baby">아기: ${esc(babies.join(' · ')||'미입력')}</span></strong>
-    <span class="admin-order-fold-meta">${group.length>1?'이번 회차 '+group.length+'건 합산 · ':''}상품 ${count}종 · ${qty}개 · ${fmtDate(root.created_at)}</span>
+    <span class="admin-order-fold-meta">${group.length>1?'이번 회차 '+group.length+'건 합산 · ':''}상품 ${count}종 · ${qty}개 · ${fmtDate(root.created_at)}${paymentMark?` <b class="admin-order-payment-chip ${paymentMark==='입금 확인'?'paid':''}">${paymentMark}</b>`:''}</span>
    </span>
    <span class="admin-order-fold-right"><span class="admin-order-fold-next ${urgent?'is-urgent':''}">${esc(next)}</span></span>
    <span class="admin-order-fold-chevron" aria-hidden="true"></span>

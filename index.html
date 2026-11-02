@@ -6725,7 +6725,7 @@ function roundGroupTask(group){
   const unallocated=pending.find(q=>!adminFreightReady(q));
   if(unallocated)return {title:'배송비 배분 대기 · 구매 신청 '+pending.length+'건',hint:'구매자 모집 후 거래처별 배송비를 배분하고 최종 금액을 한 번만 청구하세요.',filter:'buy_now',label:'배송비 배분'};
   const toPay=pending.find(q=>balanceDue(q)>0);
-  if(toPay)return {title:'최종 금액 입금 요청 · '+pending.length+'건',hint:'상품값·도매 배송비·택배비를 한 번에 안내한 뒤 실제 입금액을 기록하세요.',action:'copy-final-payment-notice',id:toPay.id,label:'입금 안내 복사'};
+  if(toPay)return {title:'최종 금액 입금 요청 · '+pending.length+'건',hint:'상품값·도매 배송비·택배비를 한 번에 안내한 뒤 실제 입금액을 기록하세요.',action:'send-final-payment-request',id:toPay.id,label:'입금 요청 자동발송'};
   return {title:'입금 확인 · '+pending.length+'건',hint:'실제 입금액 기록 후 자동 주문확정 여부를 확인하세요.',action:'round-open-orders',label:'입금 내역'};
  }
  const undecided=group.filter(q=>q.status==='quoted');
@@ -6989,7 +6989,7 @@ function compactQuoteNextTask(q){
    if(freightOnly>0)return activeSupplierFreightRequest(q)
     ?{text:'도매배송비 '+money(freightOnly)+' 자동 입금 안내 요청됨',label:'알림 상태 확인',tool:'payment'}
     :{text:'도매배송비 '+money(freightOnly)+' 추가 입금 안내 필요',label:'자동 안내 보내기',tool:'payment'};
-   return {text:'최종 결제금액 '+money(totalDue(q))+' · 입금 요청 대기 '+money(unpaid),label:'입금 안내 복사',action:'copy-final-payment-notice'};
+   return {text:'최종 결제금액 '+money(totalDue(q))+' · 입금 요청 대기 '+money(unpaid),label:'입금 요청 자동발송',action:'send-final-payment-request'};
   }
   return {text:'입금 확인 후 자동 확정 확인',label:'입금 내역 보기',tool:'payment'};
  }
@@ -7044,7 +7044,7 @@ function renderAdminQuoteCard(q){
   </div>
   <div class="compact-order-next ${urgent?'is-urgent':''}">
    <strong>${esc(task.text)}</strong>
-   <button type="button" class="compact-order-next-btn" ${command}>${esc(task.label)} →</button>
+   ${task.action==='copy-final-payment-notice'||task.action==='send-final-payment-request'?'':`<button type="button" class="compact-order-next-btn" ${command}>${esc(task.label)} →</button>`}
    ${finalReady&&balanceDue(q)>0&&!q.cancel_requested_at&&!q.delivery_change_requested_at?`<button type="button" class="btn secondary compact-payment-request-btn" data-action="send-final-payment-request" data-id="${esc(q.id)}">입금 요청 자동발송 · ${money(balanceDue(q))}</button>`:''}
    ${renderCompactInlinePayment(q,finalReady)}
    ${supplierFreightOnlyDue(q)>0?renderSupplierFreightRequestControl(q):''}

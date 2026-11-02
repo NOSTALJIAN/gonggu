@@ -3342,27 +3342,27 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 .supplier-buyer-other-products .supplier-buyer-order-products{margin-top:0;border-top:0}
 .supplier-buyer-other-products .supplier-buyer-product-row>strong{color:#555}
 
-/* Home status tile opens its exact orders in place, not a collapsed wholesale page. */
-.admin-home-preparing-trigger[aria-expanded="true"]{border-color:#afafb7;background:#f9f9fa}
-.admin-home-tile .admin-home-tile-hint{font-size:10px;color:#81818a;font-weight:570;margin-top:3px}
-.admin-home-preparing-panel{margin-top:12px;background:#fff;border:1px solid #e4e4e8;border-radius:14px;padding:12px}
-.admin-home-preparing-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:3px 1px 10px}
+/* Keep the dashboard compact; full order contents belong in order management. */
+.admin-home-preparing-trigger[aria-expanded="true"]{border-color:#c9c9cf;background:#f9f9fa}
+.admin-home-tile .admin-home-tile-hint{font-size:10px;color:#85858d;font-weight:570;margin-top:3px}
+.admin-home-preparing-panel{margin-top:12px;background:#fff;border:1px solid #e5e5e9;border-radius:14px;padding:12px}
+.admin-home-preparing-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:3px 1px 10px}
 .admin-home-preparing-heading strong{display:block;font-size:14px;line-height:1.4}
-.admin-home-preparing-heading small{display:block;font-size:11px;color:#777;margin-top:3px}
-.admin-home-preparing-heading button{background:#f2f2f3;border:0;border-radius:7px;padding:7px 10px;font-size:12px;font-weight:690;white-space:nowrap}
-.admin-home-preparing-rows{display:flex;flex-direction:column;gap:0}
-.admin-home-preparing-row{display:flex;align-items:center;gap:9px;border-top:1px solid #eeeeef;padding:12px 2px;min-width:0}
-.admin-home-preparing-row-info{flex:1;min-width:0}
-.admin-home-preparing-row-title{display:flex;gap:5px 8px;align-items:baseline;flex-wrap:wrap}
-.admin-home-preparing-row-title b{font-size:13px}
-.admin-home-preparing-row-title small{font-size:11px;color:#777}
-.admin-home-preparing-row-title em{font-size:11px;font-style:normal;font-weight:650;color:#756145}
-.admin-home-preparing-row-products{font-size:12px;line-height:1.5;color:#38383c;margin-top:5px;overflow-wrap:anywhere}
-.admin-home-preparing-row-meta{font-size:10px;line-height:1.6;color:#777;margin-top:3px}
-.admin-home-preparing-row>button{border:1px solid #e3e3e5;background:#f7f7f7;color:#27272a;font-size:12px;font-weight:760;border-radius:8px;padding:9px 11px;white-space:nowrap;flex:0 0 auto;min-height:39px}
-.admin-home-preparing-actions{display:flex;gap:7px;border-top:1px solid #eee;padding-top:12px;flex-wrap:wrap}
-.admin-home-preparing-actions button{flex:1;min-width:105px;border-radius:8px;background:#f2f2f3;border:0;padding:12px 9px;font-size:12px;font-weight:760}
-@media(max-width:370px){.admin-home-preparing-panel{padding:10px}.admin-home-preparing-row-title em{display:block;width:100%}}
+.admin-home-preparing-heading small{display:block;font-size:11px;color:#888;margin-top:3px}
+.admin-home-preparing-heading button{background:#f4f4f5;border:0;border-radius:8px;padding:8px 11px;font-size:12px;font-weight:650;white-space:nowrap}
+.admin-home-preparing-rows{display:flex;flex-direction:column}
+.admin-home-preparing-row{width:100%;display:flex;align-items:center;gap:9px;border:0;border-top:1px solid #f0f0f2;padding:12px 2px;background:#fff;text-align:left;min-width:0}
+.admin-home-preparing-row-info{flex:1;min-width:0;display:block}
+.admin-home-preparing-row-title{display:flex;gap:5px 9px;align-items:baseline;flex-wrap:wrap;min-width:0}
+.admin-home-preparing-row-title b{font-size:13px;color:#242428}
+.admin-home-preparing-row-title small{font-size:11px;color:#85858b}
+.admin-home-preparing-row-title em{font-size:11px;font-style:normal;font-weight:680;color:#74634a;margin-left:auto;white-space:nowrap}
+.admin-home-preparing-row-meta{display:block;font-size:11px;line-height:1.55;color:#777;margin-top:4px;overflow-wrap:anywhere}
+.admin-home-preparing-row-chevron{font-size:21px;color:#a3a3aa;flex:0 0 auto}
+.admin-home-preparing-actions{border-top:1px solid #eee;padding-top:10px}
+.admin-home-preparing-actions button{display:block;width:100%;background:#f4f4f5;border:0;border-radius:8px;padding:12px 8px;font-size:12px;font-weight:720;color:#333}
+@media(max-width:370px){.admin-home-preparing-panel{padding:10px}.admin-home-preparing-row-title em{margin-left:0}}
+
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -5244,33 +5244,31 @@ function renderTrack(){
 }
 
 function renderAdminHomePreparingList(quotes){
- const rows=[...quotes].sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')));
- return `<section class="admin-home-preparing-panel" id="admin-home-preparing-list" aria-label="배송비·발주 준비 주문 목록">
+ const rows=[...quotes].filter(q=>q.status==='confirmed').sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')));
+ const shown=rows.slice(0,4);
+ return `<section class="admin-home-preparing-panel" id="admin-home-preparing-list" aria-label="발주 준비 주문">
   <div class="admin-home-preparing-heading">
-   <div><strong>배송비·발주 준비 ${rows.length}건</strong><small>주문을 여기에서 바로 확인해요.</small></div>
-   <button type="button" data-action="home-preparing-toggle" aria-label="준비 주문 목록 닫기">닫기</button>
+   <div><strong>발주 준비 ${rows.length}건</strong><small>${rows.length>4?'최근 4건만 표시해요.':'확정된 주문만 표시해요.'}</small></div>
+   <button type="button" data-action="home-preparing-toggle" aria-label="발주 준비 목록 접기">접기</button>
   </div>
   <div class="admin-home-preparing-rows">
-  ${rows.map(q=>{
+  ${shown.map(q=>{
    const items=(q.items||[]).filter(item=>item.fulfillment!=='sold_out');
    const qty=items.reduce((n,item)=>n+Math.max(0,Number(item.quantity)||0),0);
-   const net=Number(q.amount_paid||0)-Number(q.amount_refunded||0);
+   const paid=Math.max(0,Number(q.amount_paid||0)-Number(q.amount_refunded||0));
    const ordered=items.filter(item=>!!item.supplier_ordered_at).length;
-   const stage=q.status==='quoted'?'최종 주문확정 대기':ordered?'일부 도매 발주됨':net<previewOrderSum(q)+supplierShippingShare(q)?'상품대금 확인 필요':'도매 발주 대기';
-   const names=items.slice(0,2).map(item=>(item.store_name?item.store_name+' · ':'')+(item.product_name||'상품명 미입력')).join(' / ');
-   return `<div class="admin-home-preparing-row">
-    <div class="admin-home-preparing-row-info">
-     <div class="admin-home-preparing-row-title"><b>${esc(q.buyer_name||'주문자 미입력')}</b><small>아기: ${esc(q.baby_name||'미입력')}</small><em>${esc(stage)}</em></div>
-     <div class="admin-home-preparing-row-products">${esc(names||'상품 정보 확인 필요')}${items.length>2?' 외 '+(items.length-2)+'종':''}</div>
-     <div class="admin-home-preparing-row-meta">${esc(fmtDate(q.created_at))} · 상품 ${items.length}종 / ${qty}개 · ${readyQuote(q)?'상품 '+money(previewOrderSum(q)):'가격 확인 중'}${net>0?' · 입금 기록 '+money(net):''}</div>
-    </div>
-    <button type="button" data-action="home-preparing-detail" data-id="${esc(q.id)}">상세</button>
-   </div>`;
-  }).join('')||'<p class="smallnote">현재 준비 중인 주문이 없어요.</p>'}
+   const stage=ordered?'일부 발주 '+ordered+'/'+items.length:'발주 전';
+   return `<button type="button" class="admin-home-preparing-row" data-action="home-preparing-detail" data-id="${esc(q.id)}" aria-label="${esc(q.buyer_name||'주문자 미입력')} 주문 상세">
+    <span class="admin-home-preparing-row-info">
+     <span class="admin-home-preparing-row-title"><b>${esc(q.buyer_name||'주문자 미입력')}</b><small>${esc(q.baby_name||'아기 이름 없음')}</small><em>${esc(stage)}</em></span>
+     <span class="admin-home-preparing-row-meta">상품 ${items.length}종 · ${qty}개${readyQuote(q)?' · 상품금액 '+money(previewOrderSum(q)):''}${paid>0?' · 입금기록 '+money(paid):''}</span>
+    </span>
+    <span class="admin-home-preparing-row-chevron" aria-hidden="true">›</span>
+   </button>`;
+  }).join('')||'<p class="smallnote">최종 확정된 발주 준비 주문이 없어요.</p>'}
   </div>
   <div class="admin-home-preparing-actions">
-   <button type="button" data-action="open-supplier-bulk-allocations">배송비 배분</button>
-   <button type="button" data-action="home-preparing-payments">입금·발주 관리</button>
+   <button type="button" data-tab="quotes" data-nav-filter="preparing_orders">발주 준비 전체 ${rows.length}건 보기</button>
   </div>
  </section>`;
 }
@@ -5278,8 +5276,8 @@ function renderAdminHomePreparingList(quotes){
 function renderAdminHome(){
  const all=state.quotes.filter(q=>q.status!=='cancelled');
  const requested=all.filter(q=>q.status==='requested').length;
- const pendingBuyers=all.filter(q=>q.status==='quoted'&&(!q.purchase_intent||q.purchase_intent==='undecided')).length;
- const preparing=all.filter(q=>isRoundBuyer(q)&&!isWholesaleCompleted(q)&&!isFinishedOrder(q)).length;
+ const pendingBuyers=all.filter(q=>q.status==='quoted'&&(!q.purchase_intent||q.purchase_intent==='undecided'||q.purchase_intent==='buy_now')&&!quoteNeedsPriceInput(q)).length;
+ const preparing=all.filter(q=>q.status==='confirmed'&&!isWholesaleCompleted(q)&&!isFinishedOrder(q)).length;
  const shipping=all.filter(q=>isWholesaleCompleted(q)&&!isFinishedOrder(q)).length;
  const deliveryChanges=all.filter(q=>q.delivery_change_requested_at).length;
  const cancellations=all.filter(q=>q.cancel_requested_at).length;
@@ -5290,11 +5288,11 @@ function renderAdminHome(){
   <div class="admin-page-heading"><h2>운영 현황</h2><span>미니예나</span></div>
   <div class="admin-home-stats">
     ${tile('견적 대기',requested,'quotes','pricing')}
-    ${tile('구매 선택 대기',pendingBuyers,'quotes','waiting_buyer')}
-    <button type="button" class="admin-home-tile admin-home-preparing-trigger" data-action="home-preparing-toggle" aria-expanded="${state.homePreparingOpen===true}" aria-controls="admin-home-preparing-list"><span>배송비·발주 준비</span><strong>${preparing}<small>건</small></strong><span class="admin-home-tile-hint">${state.homePreparingOpen===true?'목록 닫기':'목록 바로 보기'}</span></button>
+    ${tile('구매자 확인 대기',pendingBuyers,'quotes','waiting_buyer')}
+    <button type="button" class="admin-home-tile admin-home-preparing-trigger" data-action="home-preparing-toggle" aria-expanded="${state.homePreparingOpen===true}" aria-controls="admin-home-preparing-list"><span>발주 준비</span><strong>${preparing}<small>건</small></strong><span class="admin-home-tile-hint">${state.homePreparingOpen===true?'목록 접기':'확정 주문 보기'}</span></button>
     ${tile('입고·배송',shipping,'quotes','wholesale_completed')}
   </div>
-  ${state.homePreparingOpen===true?renderAdminHomePreparingList(all.filter(q=>isRoundBuyer(q)&&!isWholesaleCompleted(q)&&!isFinishedOrder(q))):''}
+  ${state.homePreparingOpen===true?renderAdminHomePreparingList(all.filter(q=>q.status==='confirmed'&&!isWholesaleCompleted(q)&&!isFinishedOrder(q))):''}
   ${cancellations||optionChanges||deliveryChanges?`<div class="admin-home-attention">
     <h3>확인 요청</h3>
     ${cancellations?`<button type="button" data-tab="quotes" data-nav-filter="cancel_requested"><span>취소 요청</span><strong>${cancellations}건</strong></button>`:''}
@@ -7522,7 +7520,7 @@ function renderAdminQuotes(){
  const all=state.quotes;
  const isPre=q=>q.status==='requested'||(q.status==='quoted'&&(!q.purchase_intent||q.purchase_intent==='undecided'));
  const isPricing=q=>q.status==='requested'||(q.status==='quoted'&&quoteNeedsPriceInput(q));
- const isWaiting=q=>q.status==='quoted'&&(!q.purchase_intent||q.purchase_intent==='undecided')&&!quoteNeedsPriceInput(q);
+ const isWaiting=q=>q.status==='quoted'&&(!q.purchase_intent||q.purchase_intent==='undecided'||q.purchase_intent==='buy_now')&&!quoteNeedsPriceInput(q);
  const count=fn=>all.filter(fn).length;
  const nPre=count(isPre),nPrice=count(isPricing),nWaiting=count(isWaiting);
  const nDelivery=count(q=>isWholesaleCompleted(q)&&!isFinishedOrder(q));
@@ -7537,6 +7535,7 @@ function renderAdminQuotes(){
   filter==='finished'?isFinishedOrder(q):
   filter==='other'?q.status==='quoted'&&['next_round','on_hold'].includes(q.purchase_intent):
   filter==='buy_now'?isRoundBuyer(q)&&!isFinishedOrder(q):
+  filter==='preparing_orders'?q.status==='confirmed'&&!isWholesaleCompleted(q)&&!isFinishedOrder(q):
   filter==='wholesale_completed'?isWholesaleCompleted(q)&&!isFinishedOrder(q):
   filter==='next_round'?q.status==='quoted'&&q.purchase_intent==='next_round':
   filter==='on_hold'?q.status==='quoted'&&q.purchase_intent==='on_hold':
@@ -7547,8 +7546,8 @@ function renderAdminQuotes(){
   bundledQuoteGroups(qq,['all_history','finished'].includes(filter)):sameRoundGroups(qq);
  const waiting=groups.filter(g=>g.some(q=>q.status==='requested'||quoteNeedsPriceInput(q)));
  const priced=groups.filter(g=>!waiting.includes(g));
- const tabs=[['pricing','견적',nPrice],['waiting_buyer','선택 대기',nWaiting],['wholesale_completed','입고·배송',nDelivery],['all_history','전체',all.length]];
- const extras=[['all','견적·선택',nPre],['buy_now','구매 진행',count(q=>isRoundBuyer(q)&&!isFinishedOrder(q))],['finished','완료',nFinished],['other','보류·다음 회차',nOther],['cancel_requested','취소 요청',nCancel],['requested','견적 요청',count(q=>q.status==='requested')],['quoted','견적 안내',count(q=>q.status==='quoted')],['confirmed','주문 확정',count(q=>q.status==='confirmed')]];
+ const tabs=[['pricing','견적',nPrice],['waiting_buyer','응답 대기',nWaiting],['wholesale_completed','입고·배송',nDelivery],['all_history','전체',all.length]];
+ const extras=[['all','견적·선택',nPre],['buy_now','구매 진행',count(q=>isRoundBuyer(q)&&!isFinishedOrder(q))],['preparing_orders','발주 준비',count(q=>q.status==='confirmed'&&!isWholesaleCompleted(q)&&!isFinishedOrder(q))],['finished','완료',nFinished],['other','보류·다음 회차',nOther],['cancel_requested','취소 요청',nCancel],['requested','견적 요청',count(q=>q.status==='requested')],['quoted','견적 안내',count(q=>q.status==='quoted')],['confirmed','주문 확정',count(q=>q.status==='confirmed')]];
  const detailKeys=['flow_new','flow_preparing','flow_pickup_ready','flow_shipped','flow_completed','flow_soldout_closed','cancelled'];
  const extraActive=!tabs.some(([key])=>key===filter);
  const title=[...tabs,...extras].find(([key])=>key===filter)?.[1]||(
@@ -9143,7 +9142,7 @@ if(a==='home-preparing-toggle'){
 if(a==='home-preparing-detail'){
  if(!state.admin||state.page!=='admin'||state.tab!=='home')throw Error('관리자 홈에서만 준비 주문을 확인할 수 있어요.');
  const q=state.quotes.find(q=>q.id===id);
- if(!q||!isRoundBuyer(q)||isFinishedOrder(q))throw Error('준비 중인 주문을 찾지 못했어요. 새로고침해 주세요.');
+ if(!q||q.status!=='confirmed'||isWholesaleCompleted(q)||isFinishedOrder(q))throw Error('발주 준비 중인 주문을 찾지 못했어요. 새로고침해 주세요.');
  modalOpen('buyer-order-details',id);
  return;
 }

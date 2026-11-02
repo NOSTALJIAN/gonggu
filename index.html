@@ -10174,7 +10174,7 @@ if(!f.dataset.lowerPriceReport&&!f.dataset.sizeChartForm&&!f.dataset.customerEma
   return (customer?.q.buyer_name||'구매자')+' '+money(allocations.get(key));
  });
  const changedQuotes=selected.some(({q})=>['quoted','confirmed'].includes(q.status));
- const splitText=`전원 1인 ${money(split.share)} × ${people}명 = ${money(split.collected)} 수금\\n업체 실제 배송비 ${money(total)} · 차액 ${money(split.margin)} (수익)`;
+ const splitText=`전원 1인 ${money(split.share)} × ${people}명 = ${money(split.collected)} 수금\n업체 실제 배송비 ${money(total)} · 차액 ${money(split.margin)} (수익)`;
  const message='‘'+supplierName+'’ 실제 도매업체 배송비 '+money(total)+'을(를) 분담할까요?\n'+
   '선택 상품 '+selected.length+'종 · 구매자 '+people+'명\n'+splitText+
   '\n\n'+buyers.join(', ')+

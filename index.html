@@ -8610,11 +8610,30 @@ function chinaPendingProcurementGroups(){
     if(!map.has(row.supplier))map.set(row.supplier,[]);
     map.get(row.supplier).push(row);
   }
-  return [...map].sort(([a],[b])=>a.localeCompare(b,'ko')).map(([supplier,items])=>({
-    supplier,items,
-    qty:items.reduce((n,r)=>n+Math.max(0,Number(r.item.quantity)||0),0),
-    buyers:new Set(items.map(r=>r.q.id)).size
-  }));
+  return [...map].sort(([a],[b])=>a.localeCompare(b,'ko')).map(([supplier,items])=>{
+    const products=new Map();
+    for(const row of items){
+      const {q,item}=row;
+      const key=JSON.stringify([item.product_id||'',item.store_name,item.product_name,item.color,item.size]);
+      if(!products.has(key))products.set(key,{
+        store:item.store_name||'브랜드 미입력',
+        name:item.product_name||'상품 미입력',
+        color:item.color||'-',size:item.size||'-',
+        qty:0,buyers:[],paid:0,waiting:0
+      });
+      const p=products.get(key),quantity=Math.max(0,Number(item.quantity)||0);
+      p.qty+=quantity;
+      p.buyers.push((q.buyer_name||'구매자')+' ×'+quantity);
+      if(q.status==='confirmed'&&chinaProcurementPaymentReady(q))p.paid++;
+      else p.waiting++;
+    }
+    return {
+      supplier,items,
+      products:[...products.values()].sort((a,b)=>a.store.localeCompare(b.store,'ko')||a.name.localeCompare(b.name,'ko')||a.color.localeCompare(b.color,'ko')||a.size.localeCompare(b.size,'ko')),
+      qty:items.reduce((n,r)=>n+Math.max(0,Number(r.item.quantity)||0),0),
+      buyers:new Set(items.map(r=>r.q.id)).size
+    };
+  });
 }
 
 function chinaProcurementPaymentReady(q){
@@ -8638,31 +8657,6 @@ function chinaProcurementCanComplete(group){
   ));
 }
 
-function chinaProcurementCopyText(group){
-  if(!group||!group.items.length)throw Error('복사할 1688 상품이 없어요.');
-  const grouped=new Map();
-  for(const {q,item,meta} of group.items){
-    const yuan=meta.yuan_price==null||meta.yuan_price===''?null:Number(meta.yuan_price);
-    const rowKey=JSON.stringify([item.store_name,item.product_name,item.color,item.size,Number.isFinite(yuan)?yuan:null]);
-    if(!grouped.has(rowKey))grouped.set(rowKey,{
-      store:item.store_name||'브랜드 미입력',name:item.product_name||'상품 미입력',
-      color:item.color||'-',size:item.size||'-',qty:0,
-      yuan:Number.isFinite(yuan)&&yuan>=0?yuan:null,buyers:[],unconfirmed:false
-    });
-    const record=grouped.get(rowKey);
-    record.qty+=Number(item.quantity)||0;
-    record.buyers.push(String(q.buyer_name||'구매자')+' ×'+(Number(item.quantity)||0));
-    if(q.status!=='confirmed')record.unconfirmed=true;
-  }
-  const lines=['[중국 1688 사입 발주서]','사입처: '+group.supplier,'브랜드 | 상품명 | 색상 | 사이즈 | 수량 | 위안 단가'];
-  for(const row of [...grouped.values()].sort((a,b)=>a.store.localeCompare(b.store,'ko')||a.name.localeCompare(b.name,'ko')||a.color.localeCompare(b.color,'ko'))){
-    lines.push([row.store,row.name,row.color,row.size,row.qty+'개',row.yuan===null?'위안 단가 미등록':'¥'+row.yuan.toFixed(2)].join(' | '));
-    lines.push('주문자: '+row.buyers.join(' · ')+(row.unconfirmed?' (확정 대기 포함)':''));
-  }
-  lines.push('총 '+group.qty+'개','※ 확정 대기·미입금 상품도 포함된 미발주 목록입니다. 실제 주문 전 최종 확인하세요.');
-  return lines.join('\n');
-}
-
 function renderSupplierPaymentCenter(){
   const domestic=state.supplierBatches.filter(b=>!b.ordered_at).map(b=>{
     const items=supplierPendingBatchItems(b);
@@ -8680,12 +8674,11 @@ function renderSupplierPaymentCenter(){
   <div class="supplier-order-clean-head"><strong>중국 사입 · 1688</strong><span>미발주 ${chinaQty}개</span></div>
   ${!state.productPrivateReady?'<p class="noticefail">사입 경로 정보를 불러오지 못했어요. 새로고침 후 확인해 주세요.</p>':''}
   <div class="supplier-order-clean-list">${china.length?china.map(g=>`<details class="supplier-order-clean-card" data-fold-key="china-order-${esc(g.supplier)}">
-    <summary><span><b>🇨🇳 ${esc(g.supplier)}</b><small>${g.items.length}종 · ${g.qty}개 · 주문 ${g.buyers}건</small></span><span class="supplier-order-clean-progress">1688 발주 대기　⌄</span></summary>
+    <summary><span><b>🇨🇳 ${esc(g.supplier)} · 직접 사입</b><small>${g.products.length}종 · 총 ${g.qty}개 · 주문 ${g.buyers}건</small></span><span class="supplier-order-clean-progress">미발주　⌄</span></summary>
     <div class="supplier-order-clean-body">
-      <p class="supplier-order-clean-note">남대문 도매배송비 배분 제외 · 확정 대기부터 표시</p>
-      ${g.items.map(({q,item,meta})=>`<div class="supplier-order-clean-item"><span><b>${esc(item.store_name||'브랜드')} · ${esc(item.product_name||'상품')}</b><small>${esc(item.color||'-')} / ${esc(item.size||'-')} · ${esc(q.buyer_name||'구매자')} · ${meta.yuan_price==null?'위안 단가 미등록':'¥'+esc(Number(meta.yuan_price).toFixed(2))}</small></span><div class="supplier-order-clean-right"><strong>×${Number(item.quantity||1)}</strong><small class="${q.status==='confirmed'&&chinaProcurementPaymentReady(q)?'is-ready':'is-pending'}">${esc(q.status==='quoted'?'확정 대기':chinaProcurementPaymentReady(q)?'입금 확인':'입금·상태 확인')}</small></div></div>`).join('')}
+      <p class="supplier-order-clean-note">상품별 수량 요약 · 남대문 도매배송비 배분 제외</p>
+      ${g.products.map(p=>`<div class="supplier-order-clean-item"><span><b>${esc(p.store)} · ${esc(p.name)}</b><small>${esc(p.color)} / ${esc(p.size)}</small><small>주문자: ${p.buyers.map(esc).join(' · ')}</small></span><div class="supplier-order-clean-right"><strong>×${p.qty}</strong><small class="${p.waiting?'is-pending':'is-ready'}">${p.waiting?'확인 대기 '+p.waiting+'건':'입금 확인'}</small></div></div>`).join('')}
       <div class="supplier-order-clean-actions">
-        <button type="button" class="btn supplier-order-clean-copy" data-action="copy-china-pending-procurement" data-supplier="${esc(g.supplier)}">1688 주문서 복사</button>
         <button type="button" class="btn supplier-order-clean-finish" data-action="complete-china-procurement" data-supplier="${esc(g.supplier)}" ${chinaProcurementCanComplete(g)?'':'disabled'}>발주 완료</button>
       </div>
       ${!chinaProcurementCanComplete(g)?'<p class="supplier-order-clean-finish-note">발주 완료는 주문 확정·상품대금 입금·변경 요청 확인 후 활성화돼요.</p>':''}
@@ -10758,17 +10751,6 @@ if(a==='admin-complete-wholesale'){
  return;
 }
 
-if(a==='copy-china-pending-procurement'){
-  e.preventDefault();
-  if(!state.admin||state.page!=='admin'||state.tab!=='payments'||!state.productPrivateReady)
-    throw Error('관리자 도매 관리에서 중국 사입 정보를 확인해 주세요.');
-  const supplier=String(b.dataset.supplier||'');
-  const group=chinaPendingProcurementGroups().find(x=>x.supplier===supplier);
-  if(!group)throw Error('해당 중국 사입 미발주 상품이 없어요. 새로고침해 주세요.');
-  await copy(chinaProcurementCopyText(group));
-  notif('1688 중국 사입 '+group.qty+'개 주문서를 복사했어요. 실제 발주 전 확인해 주세요.');
-  return;
-}
 if(a==='complete-china-procurement'){
   e.preventDefault();
   if(!state.admin||state.page!=='admin'||state.tab!=='payments'||!state.productPrivateReady)

@@ -7092,14 +7092,15 @@ function renderSupplierBulkManager(historyOnly=false,expanded=false){
   const batchItems=(batch.item_ids||[]).filter(id=>!payView||confirmedIds.has(id)).map(id=>state.quotes.flatMap(q=>q.items||[]).find(i=>i.id===id)).filter(Boolean);
   return `<details class="supplier-bulk-batch" data-fold-key="supplier-batch-${esc(batch.id)}" data-supplier-batch-id="${esc(batch.id)}">
    <summary><span><strong>${esc(batch.supplier||'거래처')} · ${ordered?'도매 발주 완료':'발주 대기'}</strong>
-    <small>${batch.people}명 · ${batchItems.length}종 · 배송비 ${money(batch.total)} · 1인 ${shareText}</small>
+    <small>${payView?'최종 확정 '+visiblePeople.length+'명':batch.people+'명'} · ${batchItems.length}종 · 배송비 ${money(batch.total)}${payView?'':' · 1인 '+shareText}</small>
     </span>
-    <em>${ordered?'완료':checked.people.filter(p=>supplierPartialInvoice(batch.id,p.payer.buyer_key)?.paid_at).length?checked.people.filter(p=>supplierPartialInvoice(batch.id,p.payer.buyer_key)?.paid_at).length+'/'+batch.people+'명 선입금 확인':checked.paid+'/'+batch.people+'명 발주 준비 완료'}</em>
+    <em>${ordered?'완료':checked.people.filter(p=>supplierPartialInvoice(batch.id,p.payer.buyer_key)?.paid_at).length?checked.people.filter(p=>supplierPartialInvoice(batch.id,p.payer.buyer_key)?.paid_at).length+'/'+batch.people+'명 선입금 확인':(payView?visiblePeople.filter(p=>p.selected.filter(({q})=>q.status==='confirmed').every(({q})=>readyQuote(q)&&orderPaymentParts(q).goodsMissing===0)).length+'/'+visiblePeople.length+'명 상품대금 확인':checked.paid+'/'+batch.people+'명 발주 준비 완료')}</em>
     <button type="button" class="btn sm secondary supplier-bulk-copy-btn" data-action="copy-supplier-batch-procurement" data-id="${esc(batch.id)}" aria-label="${esc(batch.supplier||'거래처')} 발주서 복사">발주서 복사</button>
    </summary>
    <div class="supplier-bulk-batch-body">
     ${visiblePeople.map(p=>{
-     const inv=supplierPartialInvoice(batch.id,p.payer.buyer_key);
+     const originalInvoice=supplierPartialInvoice(batch.id,p.payer.buyer_key);
+     const inv=payView&&originalInvoice&&state.quotes.find(q=>q.id===originalInvoice.charged_quote_id)?.status!=='confirmed'?null:originalInvoice;
      const recipient=state.quotes.find(q=>q.id===(inv?.charged_quote_id||p.payer.charged_quote_id))?.customer_email||'';
      const mailState=inv?.email_status==='sent'?'발송 완료':
       inv?.email_status==='submitted'?'발송 확인 중':
@@ -7113,7 +7114,7 @@ function renderSupplierBulkManager(historyOnly=false,expanded=false){
      const invoicePlan=mixed?null:supplierBuyerInvoicePlan(p);
      const canAsk=!mixed&&!ordered&&!p.eligible&&invoicePlan?.amount>0&&!invoicePlan?.reason&&!inv?.paid_at;
      const canConfirmFull=!mixed&&canConfirmSupplierBuyerFullPaid(batch,p);
-     const unpaidOrders=p.orders.filter(q=>q.status==='confirmed'&&readyQuote(q)&&(orderOutstanding(q)||0)>0);
+     const unpaidOrders=p.orders.filter(q=>selectedQuotes.some(x=>x.id===q.id)&&q.status==='confirmed'&&readyQuote(q)&&(orderOutstanding(q)||0)>0);
      const showOrderPayments=!ordered&&!canConfirmFull&&unpaidOrders.length>0;
      const alreadyPaid=Boolean(p.eligible||inv?.paid_at);
      const pendingSelected=payView?[]:p.selected.filter(({q})=>q.status==='quoted'&&q.purchase_intent==='buy_now');

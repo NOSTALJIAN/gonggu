@@ -3328,6 +3328,19 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 .buyer-pending-quote-list .row.between{gap:10px;align-items:center}
 .buyer-pending-quote-list .row.between b{min-width:0;font-size:12px}
 .buyer-pending-quote-list .row.between strong{white-space:nowrap;font-size:13px}
+
+/* Inline itemized supplier products by order on mobile admin pages. */
+.supplier-buyer-order-products{border-top:1px solid #e3e3e4;margin-top:9px;padding-top:1px}
+.supplier-buyer-product-row{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid #e9e9ea}
+.supplier-buyer-product-row:last-child{border-bottom:0}
+.supplier-buyer-product-label{display:block;min-width:0;flex:1}
+.supplier-buyer-product-label b{font-size:12px;line-height:1.45;font-weight:760;overflow-wrap:anywhere;display:block}
+.supplier-buyer-product-label small{font-size:11px;color:#777;line-height:1.45;display:block;margin-top:3px}
+.supplier-buyer-product-row>strong{font-size:12px;white-space:nowrap;flex-shrink:0}
+.supplier-buyer-other-products{margin-top:6px;border-top:1px solid #e5e5e5}
+.supplier-buyer-other-products>summary{cursor:pointer;color:#666;font-size:11px;font-weight:700;padding:9px 0;list-style:revert}
+.supplier-buyer-other-products .supplier-buyer-order-products{margin-top:0;border-top:0}
+.supplier-buyer-other-products .supplier-buyer-product-row>strong{color:#555}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -6919,6 +6932,42 @@ function supplierBuyerInvoicePlan(person){
  return {supplierGoods,paidGoods,unpaidGoods,supplierFreight,amount,reason,
    targetQuoteId:dueQuotes.length===1?dueQuotes[0].id:null};
 }
+function supplierBuyerOrderProductRows(items){
+ return (items||[]).map(item=>{
+  const qty=Math.max(0,Number(item.quantity)||0);
+  const linePrice=item.unit_price==null?'가격 확인 중':money(Number(item.unit_price)*qty);
+  const option=[item.color,item.size].map(v=>String(v||'').trim()).filter(Boolean).join(' / ');
+  return `<div class="supplier-buyer-product-row">
+   <span class="supplier-buyer-product-label">
+    <b>${esc(item.store_name||'남대문 가게명 미입력')} · ${esc(item.product_name||'상품명 미입력')}</b>
+    <small>${esc(option||'옵션 미입력')} · ${qty}개${item.fulfillment==='sold_out'?' · 품절':''}</small>
+   </span>
+   <strong>${linePrice}</strong>
+  </div>`;
+ }).join('');
+}
+function supplierBuyerQuoteItems(q,selected){
+ const batchItems=selected.filter(x=>x.q.id===q.id).map(x=>x.item);
+ const batchIds=new Set(batchItems.map(item=>item.id));
+ const otherItems=(q.items||[]).filter(item=>!batchIds.has(item.id));
+ const batchTotal=batchItems.reduce((n,item)=>n+(item.unit_price==null||item.fulfillment==='sold_out'?0:Number(item.unit_price)*(Number(item.quantity)||0)),0);
+ const otherTotal=otherItems.reduce((n,item)=>n+(item.unit_price==null||item.fulfillment==='sold_out'?0:Number(item.unit_price)*(Number(item.quantity)||0)),0);
+ const net=Number(q.amount_paid||0)-Number(q.amount_refunded||0);
+ const status=q.status==='confirmed'?'최종 주문확정':
+  q.status==='quoted'&&q.purchase_intent==='buy_now'?'구매 의사 확인 · 최종 주문확정 대기':
+  statusLabel[q.status]||q.status;
+ return `<div class="supplier-buyer-order-line">
+  <strong>${esc(fmtDate(q.created_at))} · ${esc(status)}</strong>
+  <small>해당 도매처 상품 ${money(batchTotal)} · 주문 입금기록 ${money(net)}${q.status==='confirmed'&&appliedShipping(q)>0?' · 고객 택배비 '+(orderPaymentParts(q).shippingMissing?'미입금 '+money(orderPaymentParts(q).shippingMissing):'입금완료'):''}</small>
+  <div class="supplier-buyer-order-products">
+   ${supplierBuyerOrderProductRows(batchItems)}
+  </div>
+  ${otherItems.length?`<details class="supplier-buyer-other-products">
+   <summary>이 주문의 다른 상품 ${otherItems.length}종 · ${money(otherTotal)} 보기</summary>
+   <div class="supplier-buyer-order-products is-other">${supplierBuyerOrderProductRows(otherItems)}</div>
+  </details>`:''}
+ </div>`;
+}
 function renderSupplierBulkManager(historyOnly=false,expanded=false){
  if(!state.admin||state.page!=='admin')return '';
  const allStores=[...new Set(state.quotes.filter(isRoundBuyer).flatMap(q=>(q.items||[]).map(supplierItemStore)))].filter(Boolean);
@@ -7022,10 +7071,7 @@ function renderSupplierBulkManager(historyOnly=false,expanded=false){
        <span class="supplier-buyer-check-actions"><span class="${alreadyPaid||ordered?'is-paid':'is-waiting'}">${esc(confirmLabel)}</span>${confirmButton}</span>
       </div>
       <div class="supplier-buyer-order-details">
-       ${selectedQuotes.map(q=>`<div class="supplier-buyer-order-line">
-        <strong>${esc(fmtDate(q.created_at))} · ${q.status==='confirmed'?'최종 주문확정':q.status==='quoted'&&q.purchase_intent==='buy_now'?'구매 의사 확인 · 최종 주문확정 대기':esc(statusLabel[q.status]||q.status)}</strong>
-        <small>해당 도매처 상품 ${money(p.selected.filter(x=>x.q.id===q.id).reduce((n,x)=>n+Number(x.item.unit_price||0)*Number(x.item.quantity||0),0))} · 주문 입금기록 ${money(Number(q.amount_paid||0)-Number(q.amount_refunded||0))}${q.status==='confirmed'&&appliedShipping(q)>0?' · 고객 택배비 '+(orderPaymentParts(q).shippingMissing?'미입금 '+money(orderPaymentParts(q).shippingMissing):'입금완료'):''}</small>
-       </div>`).join('')}
+       ${selectedQuotes.map(q=>supplierBuyerQuoteItems(q,p.selected)).join('')}
       </div>
       ${!ordered&&!p.eligible&&!inv?.paid_at?`<div class="supplier-buyer-request-box">
        <strong>이 도매처 미입금 상품 · ${money(invoicePlan.unpaidGoods)}</strong>

@@ -3209,7 +3209,7 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 .admin-orders-page .admin-orders-search{position:relative;margin-bottom:13px}
 .admin-orders-page .admin-orders-search input{border:1px solid #e5e5eb;border-radius:10px;min-height:42px;padding:9px 38px 9px 13px;font-size:13px;background:#fff}
 .admin-orders-page .admin-orders-search button{position:absolute;right:7px;top:5px;width:30px;height:30px;border:0;background:none;color:#85858e;font-size:20px}
-.admin-orders-filterbar{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;margin:0 0 9px}
+.admin-orders-filterbar{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px;margin:0 0 9px}
 .admin-orders-filterbar button{border:1px solid #e5e5e9;background:#fff;color:#555;border-radius:10px;padding:8px 2px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:3px;min-height:52px;font-weight:720;font-size:11px;white-space:nowrap}
 .admin-orders-filterbar button b{font-size:13px;color:inherit;line-height:1.2}
 .admin-orders-filterbar button.active{border-color:#29292e;background:#29292e;color:#fff}
@@ -5337,7 +5337,8 @@ function renderAdminHomePreparingList(quotes){
 function renderAdminHome(){
  const all=state.quotes.filter(q=>q.status!=='cancelled');
  const requested=all.filter(q=>q.status==='requested').length;
- const pendingBuyers=all.filter(q=>q.status==='quoted'&&(!q.purchase_intent||q.purchase_intent==='undecided'||q.purchase_intent==='buy_now')&&!quoteNeedsPriceInput(q)).length;
+ const pendingBuyers=all.filter(q=>q.status==='quoted'&&(!q.purchase_intent||q.purchase_intent==='undecided')&&!quoteNeedsPriceInput(q)).length;
+ const pendingFinal=all.filter(q=>q.status==='quoted'&&q.purchase_intent==='buy_now'&&!quoteNeedsPriceInput(q)).length;
  const preparing=all.filter(q=>q.status==='confirmed'&&!isWholesaleCompleted(q)&&!isFinishedOrder(q)).length;
  const shipping=all.filter(q=>isWholesaleCompleted(q)&&!isFinishedOrder(q)).length;
  const deliveryChanges=all.filter(q=>q.delivery_change_requested_at).length;
@@ -5349,7 +5350,8 @@ function renderAdminHome(){
   <div class="admin-page-heading"><h2>운영 현황</h2><span>미니예나</span></div>
   <div class="admin-home-stats">
     ${tile('견적 대기',requested,'quotes','pricing')}
-    ${tile('구매자 확인 대기',pendingBuyers,'quotes','waiting_buyer')}
+    ${tile('구매 선택 대기',pendingBuyers,'quotes','waiting_buyer')}
+    ${tile('최종확정 대기',pendingFinal,'quotes','final_confirmation')}
     <button type="button" class="admin-home-tile admin-home-preparing-trigger" data-action="home-preparing-toggle" aria-expanded="${state.homePreparingOpen===true}" aria-controls="admin-home-preparing-list"><span>발주 준비</span><strong>${preparing}<small>건</small></strong><span class="admin-home-tile-hint">${state.homePreparingOpen===true?'목록 접기':'확정 주문 보기'}</span></button>
     ${tile('입고·배송',shipping,'quotes','wholesale_completed')}
   </div>
@@ -7170,7 +7172,7 @@ function renderSupplierFreightOverview(progress){
     (finished?'<p class="supplier-freight-step-note">배송비 배분은 완료됐어요. 구매확정과 입금 확인 후 도매 발주를 진행하세요.</p>':
      '<p class="supplier-freight-step-note">아직 배분할 상품이 남아 있어요. 거래처 배분 화면에서 확인하세요.</p>')+
     '<div class="supplier-freight-detail-actions">'+
-    (waiting.length?'<button type="button" data-tab="quotes" data-nav-filter="waiting_buyer">구매확정 대기 주문 관리</button>':'')+
+    (waiting.length?'<button type="button" data-tab="quotes" data-nav-filter="final_confirmation">구매확정 대기 주문 관리</button>':'')+
     (p.batches.length?'<button type="button" data-tab="payments" data-nav-filter="supplier_payments">입금·발주 관리</button>':'')+
     '<button type="button" class="is-secondary"'+link+'>'+(finished?'배분 내역 보기':'남은 상품 배분하기')+'</button>'+
     '</div></div></details>';
@@ -7665,7 +7667,7 @@ function renderSupplierPaymentCenter(){
   ${state.supplierBatchesReady&&openBatches.length?`<div class="supplier-payment-waiting-confirm">
    <strong>배송비 배분 완료 ${openBatches.length}곳 · 도매 발주 전</strong>
    ${waiting.length?`${waiting.map(({batch,count})=>`<div class="supplier-payment-waiting-row"><b>${esc(batch.supplier||'거래처')}</b><span>구매자 최종확정 대기 ${count}건</span></div>`).join('')}
-    <button type="button" data-tab="quotes" data-nav-filter="waiting_buyer">확정 대기 주문 확인</button>`:'<p class="smallnote">구매자 최종확정 대기 주문이 없어요. 아래에서 입금 및 발주를 처리하세요.</p>'}
+    <button type="button" data-tab="quotes" data-nav-filter="final_confirmation">확정 대기 주문 확인</button>`:'<p class="smallnote">구매자 최종확정 대기 주문이 없어요. 아래에서 입금 및 발주를 처리하세요.</p>'}
    </div>`:''}
   ${state.supplierBatchesReady&&!openBatches.length?'<p class="admin-compact-note">현재 도매 발주 대기 중인 거래처가 없어요.</p>':''}
   ${state.supplierBatchesReady&&openBatches.length&&!pending.length?'<p class="admin-compact-note">현재 최종확정된 주문은 없어요. 위에서 구매확정 대기 주문을 확인하세요.</p>':''}
@@ -7701,9 +7703,10 @@ function renderAdminQuotes(){
  const all=state.quotes;
  const isPre=q=>q.status==='requested'||(q.status==='quoted'&&(!q.purchase_intent||q.purchase_intent==='undecided'));
  const isPricing=q=>q.status==='requested'||(q.status==='quoted'&&quoteNeedsPriceInput(q));
- const isWaiting=q=>q.status==='quoted'&&(!q.purchase_intent||q.purchase_intent==='undecided'||q.purchase_intent==='buy_now')&&!quoteNeedsPriceInput(q);
+ const isWaiting=q=>q.status==='quoted'&&(!q.purchase_intent||q.purchase_intent==='undecided')&&!quoteNeedsPriceInput(q);
+ const isFinalWaiting=q=>q.status==='quoted'&&q.purchase_intent==='buy_now'&&!quoteNeedsPriceInput(q);
  const count=fn=>all.filter(fn).length;
- const nPre=count(isPre),nPrice=count(isPricing),nWaiting=count(isWaiting);
+ const nPre=count(isPre),nPrice=count(isPricing),nWaiting=count(isWaiting),nFinalWaiting=count(isFinalWaiting);
  const nDelivery=count(q=>isWholesaleCompleted(q)&&!isFinishedOrder(q));
  const nFinished=count(isFinishedOrder);
  const nCancel=count(q=>q.cancel_requested_at&&q.status!=='cancelled');
@@ -7712,6 +7715,7 @@ function renderAdminQuotes(){
  const qq=all.filter(q=>filter==='all'?isPre(q):
   filter==='pricing'?isPricing(q):
   filter==='waiting_buyer'?isWaiting(q):
+  filter==='final_confirmation'?isFinalWaiting(q):
   filter==='all_history'?true:
   filter==='finished'?isFinishedOrder(q):
   filter==='other'?q.status==='quoted'&&['next_round','on_hold'].includes(q.purchase_intent):
@@ -7727,7 +7731,7 @@ function renderAdminQuotes(){
   bundledQuoteGroups(qq,['all_history','finished'].includes(filter)):sameRoundGroups(qq);
  const waiting=groups.filter(g=>g.some(q=>q.status==='requested'||quoteNeedsPriceInput(q)));
  const priced=groups.filter(g=>!waiting.includes(g));
- const tabs=[['pricing','견적',nPrice],['waiting_buyer','응답 대기',nWaiting],['wholesale_completed','입고·배송',nDelivery],['all_history','전체',all.length]];
+ const tabs=[['pricing','견적',nPrice],['waiting_buyer','구매 선택',nWaiting],['final_confirmation','최종확정 대기',nFinalWaiting],['wholesale_completed','입고·배송',nDelivery],['all_history','전체',all.length]];
  const extras=[['all','견적·선택',nPre],['buy_now','구매 진행',count(q=>isRoundBuyer(q)&&!isFinishedOrder(q))],['preparing_orders','발주 준비',count(q=>q.status==='confirmed'&&!isWholesaleCompleted(q)&&!isFinishedOrder(q))],['finished','완료',nFinished],['other','보류·다음 회차',nOther],['cancel_requested','취소 요청',nCancel],['requested','견적 요청',count(q=>q.status==='requested')],['quoted','견적 안내',count(q=>q.status==='quoted')],['confirmed','주문 확정',count(q=>q.status==='confirmed')]];
  const detailKeys=['flow_new','flow_preparing','flow_pickup_ready','flow_shipped','flow_completed','flow_soldout_closed','cancelled'];
  const extraActive=!tabs.some(([key])=>key===filter);

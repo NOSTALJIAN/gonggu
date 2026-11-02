@@ -9160,13 +9160,13 @@ if(a==='admin-confirm-order'){
  if(!adminConfirmEligible(q))throw Error('이 주문은 아직 관리자 확정 조건을 충족하지 못했어요. 금액·도매배송비·요청사항을 확인해 주세요.');
  const total=totalDue(q),recorded=Number(q.amount_paid||0)-Number(q.amount_refunded||0);
  const unrecorded=Math.max(0,total-recorded);
- const notice=q.buyer_name+'님 · '+fmtDate(q.created_at)+' 주문\\n'+
-  '최종 결제금액: '+money(total)+'\\n'+
-  '앱에 기록된 입금액: '+money(recorded)+'\\n'+
-  (unrecorded?'기록상 남은 금액: '+money(unrecorded)+'\\n':'')+
-  '\\n구매자가 이번 회차 구매에 동의했고, 실제 입금 내역을 직접 확인했나요?'+
-  '\\n\\n[확인]을 누르면 구매자 대신 최종 주문을 확정합니다.'+
-  '\\n입금 기록은 변경되지 않으며 실제 입금을 확인하지 않았다면 진행하지 마세요.';
+ const notice=q.buyer_name+'님 · '+fmtDate(q.created_at)+' 주문\n'+
+  '최종 결제금액: '+money(total)+'\n'+
+  '앱에 기록된 입금액: '+money(recorded)+'\n'+
+  (unrecorded?'기록상 남은 금액: '+money(unrecorded)+'\n':'')+
+  '\n구매자가 이번 회차 구매에 동의했고, 실제 입금 내역을 직접 확인했나요?'+
+  '\n\n[확인]을 누르면 구매자 대신 최종 주문을 확정합니다.'+
+  '\n입금 기록은 변경되지 않으며 실제 입금을 확인하지 않았다면 진행하지 마세요.';
  if(!window.confirm(notice))return;
  const group=b.closest('.admin-order-fold');
  if(group?.dataset.adminOrderId)state.orderCardsOpen[group.dataset.adminOrderId]=true;

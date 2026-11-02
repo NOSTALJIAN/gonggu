@@ -3826,6 +3826,35 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 .bundle-refund-review form{display:flex;flex-direction:column;gap:10px}
 .bundle-refund-review form>.btn{min-height:44px}
 
+
+/* v110: concise wholesale payment and purchase-order workspace. */
+.admin-quote-workspace .supplier-bulk-batch-body{padding:11px 12px}
+.admin-quote-workspace .supplier-bulk-batch>summary{padding:13px 12px}
+.admin-quote-workspace .supplier-bulk-batch>summary strong{font-size:14px}
+.admin-quote-workspace .supplier-bulk-batch>summary small{font-size:11px;line-height:1.5}
+.admin-quote-workspace .supplier-bulk-batch>summary em{font-size:11px;max-width:125px}
+.supplier-order-actions-guide{font-size:11px;color:#747474;line-height:1.6;margin:3px 0 12px}
+.supplier-bulk-compact-tools{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 6px;padding:1px 0 10px;border-bottom:1px solid #eee}
+.supplier-bulk-compact-tools>.btn{min-height:34px;font-size:12px}
+.supplier-bulk-compact-tools>span{font-size:11px;color:#666}
+.supplier-bulk-person.supplier-bulk-person-collapsible{display:block!important;padding:0;border-bottom:1px solid #ededed;font-size:12px}
+.supplier-bulk-person-collapsible>.supplier-buyer-check-row{display:flex;list-style:none;cursor:pointer;align-items:center;gap:8px;padding:13px 20px 13px 0;position:relative;min-height:54px}
+.supplier-bulk-person-collapsible>.supplier-buyer-check-row::-webkit-details-marker{display:none}
+.supplier-bulk-person-collapsible>.supplier-buyer-check-row::after{content:'⌄';position:absolute;right:1px;top:50%;transform:translateY(-50%);color:#888;font-size:17px}
+.supplier-bulk-person-collapsible[open]>.supplier-buyer-check-row::after{content:'⌃'}
+.supplier-bulk-person-collapsible .supplier-buyer-name{font-weight:750;line-height:1.5;font-size:12px;overflow-wrap:anywhere}
+.supplier-bulk-person-collapsible .supplier-buyer-check-actions{max-width:45%;text-align:right}
+.supplier-bulk-person-collapsible .supplier-buyer-check-actions span{font-size:11px;line-height:1.5}
+.supplier-bulk-person-expanded{padding:4px 0 12px}
+.supplier-bulk-person-expanded>.supplier-buyer-confirm{margin-bottom:8px}
+.supplier-bulk-person-expanded .supplier-buyer-order-details{margin:5px 0 9px}
+.supplier-buyer-order-line-vendor{padding:10px;background:#f7f7f7}
+.supplier-buyer-order-line-vendor .supplier-buyer-product-row{background:transparent}
+.supplier-bulk-more-actions{border-top:1px solid #eee;margin-top:12px;padding-top:9px}
+.supplier-bulk-more-actions>summary{cursor:pointer;color:#777;font-size:11px;line-height:1.55;padding:6px 0;font-weight:650}
+.supplier-bulk-more-actions .supplier-bulk-cancel{margin-top:8px}
+@media(max-width:430px){.supplier-bulk-person-collapsible .supplier-buyer-name{font-size:11px}.supplier-bulk-person-collapsible .supplier-buyer-check-actions span{font-size:10px}}
+
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -7943,12 +7972,13 @@ function renderSupplierBulkManager(historyOnly=false,expanded=false){
   const batchItems=(batch.item_ids||[]).filter(id=>!payView||confirmedIds.has(id)).map(id=>state.quotes.flatMap(q=>q.items||[]).find(i=>i.id===id)).filter(Boolean);
   return `<details class="supplier-bulk-batch" data-fold-key="supplier-batch-${esc(batch.id)}" data-supplier-batch-id="${esc(batch.id)}">
    <summary><span><strong>${esc(batch.supplier||'거래처')} · ${ordered?'도매 발주 완료':'발주 대기'}</strong>
-    <small>${payView?'최종 확정 '+visiblePeople.length+'명':batch.people+'명'} · ${batchItems.length}종 · 업체 실비 ${money(batch.total)} · 1인 ${shareText} · 청구합계 ${money(charged)}${splitMargin>0?' · 차액 '+money(splitMargin)+' (수익)':''}</small>
+    <small>${payView?'구매자 '+visiblePeople.length+'명 · 상품 '+batchItems.length+'종 · 도매배송비 실비 '+money(batch.total):batch.people+'명 · '+batchItems.length+'종 · 업체 실비 '+money(batch.total)+' · 1인 '+shareText+' · 청구합계 '+money(charged)+(splitMargin>0?' · 차액 '+money(splitMargin)+' (수익)':'')}</small>
     </span>
     <em>${ordered?'완료':checked.people.filter(p=>supplierPartialInvoice(batch.id,p.payer.buyer_key)?.paid_at).length?checked.people.filter(p=>supplierPartialInvoice(batch.id,p.payer.buyer_key)?.paid_at).length+'/'+batch.people+'명 선입금 확인':(payView?visiblePeople.filter(p=>p.selected.filter(({q})=>q.status==='confirmed').every(({q})=>readyQuote(q)&&orderPaymentParts(q).goodsMissing===0)).length+'/'+visiblePeople.length+'명 상품대금 확인':checked.paid+'/'+batch.people+'명 발주 준비 완료')}</em>
-    <button type="button" class="btn sm secondary supplier-bulk-copy-btn" data-action="copy-supplier-batch-procurement" data-id="${esc(batch.id)}" aria-label="${esc(batch.supplier||'거래처')} 발주서 복사">발주서 복사</button>
+    ${payView?'':`<button type="button" class="btn sm secondary supplier-bulk-copy-btn" data-action="copy-supplier-batch-procurement" data-id="${esc(batch.id)}" aria-label="${esc(batch.supplier||'거래처')} 발주서 복사">발주서 복사</button>`}
    </summary>
    <div class="supplier-bulk-batch-body">
+    ${payView?`<div class="supplier-bulk-compact-tools"><button type="button" class="btn sm secondary" data-action="copy-supplier-batch-procurement" data-id="${esc(batch.id)}">발주서 복사</button><span>${money(charged)} 청구 · ${splitMargin>0?'차액 '+money(splitMargin)+' (수익)':'배송비 정산 확인'}</span></div>`:''}
     ${visiblePeople.map(p=>{
      const originalInvoice=supplierPartialInvoice(batch.id,p.payer.buyer_key);
      const inv=payView&&originalInvoice&&state.quotes.find(q=>q.id===originalInvoice.charged_quote_id)?.status!=='confirmed'?null:originalInvoice;
@@ -7979,13 +8009,14 @@ function renderSupplierBulkManager(historyOnly=false,expanded=false){
       <button type="button" class="btn sm ${inv.paid_at?'neutral':'secondary'}" data-action="supplier-partial-paid" data-id="${esc(inv.id)}" ${inv.paid_at?'disabled':''}>${inv.paid_at?'입금 확인됨':'입금 확인 처리'}</button>
       <button type="button" class="btn sm neutral" data-action="supplier-partial-cancel" data-id="${esc(inv.id)}" ${inv.paid_at?'disabled':''}>요청 취소</button>`:''}
      </div>`;
-     return `<div class="supplier-bulk-person" style="display:block">
-      <div class="supplier-buyer-check-row">
+     return `<${payView?'details':'div'} class="supplier-bulk-person ${payView?'supplier-bulk-person-collapsible':''}" ${payView?'data-fold-key="supplier-buyer-'+esc(batch.id)+'-'+esc(p.payer.buyer_key)+'"':'style="display:block"'}>
+      <${payView?'summary':'div'} class="supplier-buyer-check-row">
        <span class="supplier-buyer-name">${esc(p.buyerName)} ${adminGithubGroupIcon(p.selected.map(({q})=>q))} · 도매 배송비 ${money(p.payer.amount)}</span>
-       <span class="supplier-buyer-check-actions"><span class="${alreadyPaid||ordered?'is-paid':'is-waiting'}">${esc(confirmLabel)}</span>${confirmButton}</span>
-      </div>
+       <span class="supplier-buyer-check-actions"><span class="${alreadyPaid||ordered?'is-paid':'is-waiting'}">${esc(confirmLabel)}</span></span>
+      </${payView?'summary':'div'}>
+      ${payView?`<div class="supplier-bulk-person-expanded">${confirmButton}`:confirmButton}
       <div class="supplier-buyer-order-details">
-       ${selectedQuotes.map(q=>supplierBuyerQuoteItems(q,displaySelected)).join('')}
+       ${payView?`<div class="supplier-buyer-order-line supplier-buyer-order-line-vendor"><strong>이 거래처 발주상품 · ${displaySelected.length}종</strong><div class="supplier-buyer-order-products">${supplierBuyerOrderProductRows(displaySelected.map(x=>x.item))}</div></div>`:selectedQuotes.map(q=>supplierBuyerQuoteItems(q,displaySelected)).join('')}
       </div>
       ${!ordered&&!p.eligible&&!inv?.paid_at&&!mixed?`<div class="supplier-buyer-request-box">
        <strong>이 도매처 미입금 상품 · ${money(invoicePlan.unpaidGoods)}</strong>
@@ -7994,17 +8025,18 @@ function renderSupplierBulkManager(historyOnly=false,expanded=false){
        <button type="button" class="btn block supplier-request-main" data-action="supplier-partial-request" data-id="${esc(batch.id)}" data-buyer-key="${esc(p.payer.buyer_key)}" ${canAsk?'':'disabled'}>입금 요청 · ${money(invoicePlan.amount)}</button>
        ${invoicePlan.reason?`<small class="supplier-request-warning">${esc(invoicePlan.reason)}</small>`:''}
       </div>`:''}
-      ${showOrderPayments?`<details class="supplier-individual-deposits" open><summary>주문별 입금 확인 · ${unpaidOrders.length}건</summary>${unpaidOrders.map(q=>`<div class="supplier-individual-deposit"><b>${fmtDate(q.created_at)} · ${money(totalDue(q))}</b>${renderOrderDepositControl(q)}</div>`).join('')}</details>`:''}
+      ${showOrderPayments?`<details class="supplier-individual-deposits" ${payView?'':'open'}><summary>주문별 입금 확인 · ${unpaidOrders.length}건</summary>${unpaidOrders.map(q=>`<div class="supplier-individual-deposit"><b>${fmtDate(q.created_at)} · ${money(totalDue(q))}</b>${renderOrderDepositControl(q)}</div>`).join('')}</details>`:''}
       ${inv?`<div class="smallnote" style="margin-top:5px">선입금: 상품 ${money(inv.item_total)} + 배송비 ${money(inv.freight)} = <b>${money(inv.amount)}</b> · ${inv.paid_at?'입금 확인':'요청 중'}</div>`:''}
       ${inv?'<div class="smallnote" style="margin:5px 0;overflow-wrap:anywhere">✉️ '+(recipient?esc(recipient)+' · ':'고객 이메일 미등록 · ')+esc(mailState)+'</div>':''}
-      ${actions}</div>`;
+      ${actions}${payView?'</div>':''}</${payView?'details':'div'}>`;
     }).join('')}
-    <details class="supplier-bulk-items-compact"><summary>배분 상품 ${batchItems.length}종 보기</summary><div>${batchItems.map(i=>'<div class="supplier-bulk-batch-item">남대문 '+esc(i.store_name||'가게명 미입력')+' · '+esc(i.product_name)+'</div>').join('')||'기록 확인 필요'}</div></details>
+    ${payView?'':`<details class="supplier-bulk-items-compact"><summary>배분 상품 ${batchItems.length}종 보기</summary><div>${batchItems.map(i=>'<div class="supplier-bulk-batch-item">남대문 '+esc(i.store_name||'가게명 미입력')+' · '+esc(i.product_name)+'</div>').join('')||'기록 확인 필요'}</div></details>`}
     ${ordered?`<div class="supplier-bulk-done">이 거래처 발주 완료: ${fmtDate(batch.ordered_at)}</div>`:
       `<button type="button" class="btn block" data-action="supplier-bulk-ordered" data-id="${esc(batch.id)}" ${checked.canOrder&&!unpaidRequests?'':'disabled'}>상품대금 확인 → 도매 발주 완료</button>
+       ${payView?`<details class="supplier-bulk-more-actions"><summary>선입금 발주 · 배분 취소 등 추가 작업</summary>`:''}
        <button type="button" class="btn block secondary" style="margin-top:7px" data-action="supplier-bulk-ordered-partial" data-id="${esc(batch.id)}" ${checked.partialReady?'':'disabled'}>이 거래처만 선입금 확인 → 발주 완료</button>
-
-       <button type="button" class="btn sm neutral supplier-bulk-cancel" data-action="supplier-bulk-cancel" data-id="${esc(batch.id)}">이 거래처 배송비 배분 취소</button>`}
+       <button type="button" class="btn sm neutral supplier-bulk-cancel" data-action="supplier-bulk-cancel" data-id="${esc(batch.id)}">이 거래처 배송비 배분 취소</button>
+       ${payView?'</details>':''}`}
    </div>
   </details>`;
  };
@@ -8349,7 +8381,7 @@ function renderSupplierPaymentCenter(){
  <summary><span><b>${esc(b.supplier||'거래처')}</b><small>${items.length}종 · ${qty}개 · 주문 ${buyers}건</small></span><span class="supplier-order-clean-progress">${ready}/${buyers}건 입금확인　⌄</span></summary>
  <div class="supplier-order-clean-body">${items.map(({q,item})=>`<div class="supplier-order-clean-item"><span><b>${esc(item.product_name||'상품')}</b><small>${esc(item.color||'-')} / ${esc(item.size||'-')} · ${esc(q.buyer_name||'구매자')}</small></span><strong>×${Number(item.quantity||1)}</strong></div>`).join('')}</div>
  </details>`).join(''):'<div class="empty">발주 대기 중인 거래처가 없어요.</div>'}</div>
- <details class="supplier-order-actions-fold" data-fold-key="supplier-order-actions-fold"><summary>발주서 복사 · 입금 확인 · 발주 완료 처리</summary>${renderSupplierBulkManager(true,true)}</details>
+ <details class="supplier-order-actions-fold" data-fold-key="supplier-order-actions-fold"><summary>거래처별 입금 확인 · 발주 처리</summary><p class="supplier-order-actions-guide">거래처를 열면 구매자별 입금 상태가 먼저 보여요. 상품 상세와 추가 작업은 필요한 항목만 펼쳐 확인하세요.</p>${renderSupplierBulkManager(true,true)}</details>
  </section>`;
 }
 

@@ -6070,7 +6070,7 @@ function sameShippingCustomer(a,b){
  if(!a||!b||normKey(a.buyer_name)!==normKey(b.buyer_name)||!normKey(a.buyer_name))return false;
  const pa=normalizeBuyerPhone(a.contact),pb=normalizeBuyerPhone(b.contact);
  if(pa&&pb&&pa.length>=10&&pa===pb)return true;
- return !!a.customer_key&&!!b.customer_key&&a.customer_key===b.customer_key&&
+ return (!pa||!pb||pa.length<10||pb.length<10)&&!!a.customer_key&&!!b.customer_key&&a.customer_key===b.customer_key&&
   normKey(a.baby_name)===normKey(b.baby_name)&&!!normKey(a.baby_name);
 }
 function shippingMergeEligible(q){

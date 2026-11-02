@@ -4273,7 +4273,11 @@ if(!adminRequestSeenAt&&rr.length){
   try{localStorage.setItem(ADMIN_REQUEST_SEEN_KEY,JSON.stringify(newestRequestAt))}catch(_){}
  }
 }
-await loadAdminProductPrivate();await loadAdminSupplierBatches();render();await Promise.all([loadAdminShipping(),loadAdminPinStatus(),loadAdminEmailSettings(),loadAdminOptionRequests(),loadAdminLowerPriceReports()]);render()}catch(e){state.admin=false;render();throw e}}
+await loadAdminProductPrivate();await loadAdminSupplierBatches();render();await Promise.all([loadAdminShipping(),loadAdminPinStatus(),loadAdminEmailSettings(),loadAdminOptionRequests(),loadAdminLowerPriceReports()]);render()}catch(e){
+ // A transient catalog/database error is not an admin logout. Only a missing
+ // session, an explicit authorization denial, or an auth failure clears access.
+ if(!session||e?.message==='관리자 권한이 없습니다'||e?.status===401)state.admin=false;
+ render();throw e}}
 async function loadPublic(){await loadCatalog(false);render()}
 async function saveHeroPhoto(file){
  if(!state.admin||!connected||!session)throw Error('관리자 로그인 후 사진을 변경해 주세요.');
@@ -9092,8 +9096,8 @@ if(a==='open-supplier-bulk-allocations'){
  return;
 }
 if(a==='supplier-buyer-full-paid'){
- if(!state.admin||state.page!=='admin'||state.tab!=='quotes'||!state.supplierBatchesReady)
-  throw Error('관리자 입금·발주 화면에서만 입금을 확인할 수 있어요.');
+ if(!state.admin||state.page!=='admin'||!state.supplierBatchesReady)
+  throw Error('관리자 로그인과 거래처별 배분 내역을 확인해 주세요.');
  const batch=state.supplierBatches.find(x=>x.id===id);
  const buyerKey=String(b.dataset.buyerKey||'');
  const payer=batch?.payers?.find(x=>x.buyer_key===buyerKey);
@@ -9658,7 +9662,10 @@ else if(a==='delete-product-request'){
  notif('1688 도매배송비 0원 확정 완료! 구매자에게 최종 주문을 안내할 수 있어요.');
  }else if(a==='publish-quote'){const direct=isDirect1688Admin(state.quotes.find(q=>q.id===id));if(!window.confirm(direct?'1688 상품 가격과 배송비를 확인했나요? 견적 발송 후 구매자가 바로 주문을 확정할 수 있어요.':'상품 가격을 확인했나요? 고객에게 먼저 견적을 보내고 이번 회차 구매·다음 회차 구매·보류 선택을 받을게요. 배송비는 답변을 받은 뒤 계산해요.'))return;await adminPublish(id);await loadAdmin();notif(direct?'1688 견적을 보냈어요. 구매자가 바로 주문을 확정할 수 있어요.':'견적을 보냈어요. 구매 회차 선택을 받은 후 배송비를 배분해 주세요.')}else if(a==='confirm-quote'){if(!window.confirm('이 견적으로 최종 주문을 확정할까요?'))return;await confirmFinalQuote();notif('최종 주문이 확정됐어요!')}else if(a==='export-csv'){csv()}else if(a==='copy-vendors'){await copy(vendorText())}else if(a==='logout'){session=null;localStorage.removeItem(SESS);state.admin=false;state.productPrivate={};state.productPrivateReady=false;render()} }catch(ex){notif(errorText(ex))}}
 async function submit(e){const f=e.target;
-if(!f.dataset.lowerPriceReport&&!f.dataset.sizeChartForm&&!f.dataset.customerEmail&&!['new-arrival-push-form','gmail-settings-form','hero-photo-form','reject-request-form','admin-pin-form','pin-register-form','pin-lookup-form','import-track-form','pick','request','store-form','product-form','login','suggest-form','approve-form','bundle-form','edit-delivery-form','bulk-supplier-shipping-form'].includes(f.id)&&!f.dataset.itemOptions&&!f.dataset.buyerOptionRequest&&!f.dataset.price&&!f.dataset.payment&&!f.dataset.shipping&&!f.dataset.supplierShipping&&!f.dataset.ship&&!f.dataset.bundleShip)return;e.preventDefault();if(busy)return;busy=true;const data=new FormData(f);try{if(f.dataset.lowerPriceReport){
+// All in-app forms are handled by JavaScript. Never allow a native browser GET
+// to replace ?page=admin and appear to sign the administrator out.
+e.preventDefault();
+if(!f.dataset.lowerPriceReport&&!f.dataset.sizeChartForm&&!f.dataset.customerEmail&&!['new-arrival-push-form','gmail-settings-form','hero-photo-form','reject-request-form','admin-pin-form','pin-register-form','pin-lookup-form','import-track-form','pick','request','store-form','product-form','login','suggest-form','approve-form','bundle-form','merge-shipping-form','edit-delivery-form','bulk-supplier-shipping-form'].includes(f.id)&&!f.dataset.itemOptions&&!f.dataset.buyerOptionRequest&&!f.dataset.price&&!f.dataset.payment&&!f.dataset.shipping&&!f.dataset.supplierShipping&&!f.dataset.ship&&!f.dataset.bundleShip)return;if(busy)return;busy=true;const data=new FormData(f);try{if(f.dataset.lowerPriceReport){
  const itemId=String(f.dataset.lowerPriceReport||'');
  const otherUrl=String(data.get('other_url')||'').trim();
  const priceRaw=String(data.get('other_price')??'').trim();

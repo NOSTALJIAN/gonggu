@@ -6864,6 +6864,54 @@ function canConfirmSupplierBuyerFullPaid(batch,p){
  const inv=supplierPartialInvoice(batch.id,p.payer.buyer_key);
  return !inv||!!inv.paid_at;
 }
+function supplierBuyerInvoicePlan(person){
+ // Compute a request from unpaid supplier items, not from the buyer's gross selected items.
+ const byQuote=new Map();
+ for(const row of person.selected||[]){
+  const id=row.q.id;
+  if(!byQuote.has(id))byQuote.set(id,{q:row.q,subtotal:0});
+  byQuote.get(id).subtotal+=Number(row.item.unit_price||0)*Number(row.item.quantity||0);
+ }
+ const supplierGoods=[...byQuote.values()].reduce((n,v)=>n+v.subtotal,0);
+ const paidInvoiceCredit=q=>(state.supplierPartialInvoices||[]).filter(inv=>
+   inv.charged_quote_id===q.id&&inv.paid_at).reduce((n,inv)=>n+Number(inv.amount||0),0);
+ let paidGoods=0,unpaidGoods=0,reason='';
+ const dueQuotes=[];
+ for(const {q,subtotal} of byQuote.values()){
+  const goods=previewOrderSum(q)+supplierShippingShare(q);
+  const net=Number(q.amount_paid||0)-Number(q.amount_refunded||0);
+  if(net>=goods){paidGoods+=subtotal;continue;}
+  if(net!==paidInvoiceCredit(q)){
+   reason='부분 입금된 주문이 있어 자동으로 도매처별 금액을 나눌 수 없어요. 주문 입금내역을 확인해 주세요.';
+   continue;
+  }
+  unpaidGoods+=subtotal;
+  dueQuotes.push(q);
+ }
+ if(dueQuotes.length>1)reason='미입금 주문이 여러 건이라 주문별 금액 확인이 필요해요.';
+ const payer=person.payer;
+ const original=state.quotes.find(q=>q.id===payer?.charged_quote_id);
+ let supplierFreight=Number(payer?.amount||0);
+ if(original){
+  const goods=previewOrderSum(original)+supplierShippingShare(original);
+  const net=Number(original.amount_paid||0)-Number(original.amount_refunded||0);
+  if(net>=goods)supplierFreight=0;
+  else if(net!==paidInvoiceCredit(original))reason='도매배송비가 포함된 주문의 부분 입금 기록을 확인해 주세요.';
+  if(supplierFreight>0&&dueQuotes.length===1&&dueQuotes[0].id!==original.id)
+   reason='도매배송비가 다른 주문에 배분되어 있어 주문별 확인이 필요해요.';
+ }else reason='도매배송비가 배분된 원래 주문을 확인할 수 없어요.';
+ if(!dueQuotes.length&&!reason)reason='이 도매처의 선택 상품대금은 모두 입금 확인됐어요.';
+ for(const {q} of person.selected||[]){
+  if(!['confirmed','quoted'].includes(q.status)||(q.status==='quoted'&&q.purchase_intent!=='buy_now')||
+    q.cancel_requested_at||q.delivery_change_requested_at)
+   reason='구매 의사·최종 주문 상태·변경 요청을 확인해 주세요.';
+ }
+ if((person.selected||[]).some(({item})=>item.unit_price==null||item.fulfillment==='sold_out'||item.supplier_ordered_at))
+  reason='상품 가격이나 발주·품절 상태를 확인해 주세요.';
+ const amount=unpaidGoods+supplierFreight;
+ return {supplierGoods,paidGoods,unpaidGoods,supplierFreight,amount,reason,
+   targetQuoteId:dueQuotes.length===1?dueQuotes[0].id:null};
+}
 function renderSupplierBulkManager(historyOnly=false,expanded=false){
  if(!state.admin||state.page!=='admin')return '';
  const allStores=[...new Set(state.quotes.filter(isRoundBuyer).flatMap(q=>(q.items||[]).map(supplierItemStore)))].filter(Boolean);
@@ -6937,7 +6985,7 @@ function renderSupplierBulkManager(historyOnly=false,expanded=false){
    <div class="supplier-bulk-batch-body">
     ${checked.people.map(p=>{
      const inv=supplierPartialInvoice(batch.id,p.payer.buyer_key);
-     const recipient=state.quotes.find(q=>q.id===p.payer.charged_quote_id)?.customer_email||'';
+     const recipient=state.quotes.find(q=>q.id===(inv?.charged_quote_id||p.payer.charged_quote_id))?.customer_email||'';
      const mailState=inv?.email_status==='sent'?'발송 완료':
       inv?.email_status==='submitted'?'발송 확인 중':
       inv?.email_status==='pending'?'발송 대기':
@@ -6945,14 +6993,8 @@ function renderSupplierBulkManager(historyOnly=false,expanded=false){
       inv?.email_status==='skipped'?'발송 취소·건너뜀':
       recipient?'메일 미발송':'이메일 미등록';
      const selectedQuotes=[...new Map(p.selected.map(({q})=>[q.id,q])).values()];
-     const selectedGoods=p.selected.reduce((n,{item})=>n+Number(item.unit_price||0)*Number(item.quantity||0),0);
-     const selectedInvoiceAmount=selectedGoods+Number(p.payer.amount||0);
-     const hasMoneyInSelected=selectedQuotes.some(q=>Number(q.amount_paid||0)>Number(q.amount_refunded||0));
-     // The partial-invoice RPC charges the full supplier subtotal, so don't double-request paid merchandise.
-     const canAsk=!ordered&&!p.eligible&&!hasMoneyInSelected&&p.selected.length>0&&p.selected.every(({q,item})=>
-      ['quoted','confirmed'].includes(q.status)&&(q.status==='confirmed'||q.purchase_intent==='buy_now')&&
-      !q.cancel_requested_at&&!q.delivery_change_requested_at&&
-      item.unit_price!==null&&item.unit_price!==undefined&&!item.supplier_ordered_at&&item.fulfillment!=='sold_out');
+     const invoicePlan=supplierBuyerInvoicePlan(p);
+     const canAsk=!ordered&&!p.eligible&&invoicePlan.amount>0&&!invoicePlan.reason&&!inv?.paid_at;
      const canConfirmFull=canConfirmSupplierBuyerFullPaid(batch,p);
      const unpaidOrders=p.orders.filter(q=>q.status==='confirmed'&&readyQuote(q)&&(orderOutstanding(q)||0)>0);
      const showOrderPayments=!ordered&&!canConfirmFull&&unpaidOrders.length>0;
@@ -6979,10 +7021,11 @@ function renderSupplierBulkManager(historyOnly=false,expanded=false){
        </div>`).join('')}
       </div>
       ${!ordered&&!p.eligible&&!inv?.paid_at?`<div class="supplier-buyer-request-box">
-       <strong>이 도매처 상품 입금 요청 · ${money(selectedInvoiceAmount)}</strong>
-       <small>상품 ${money(selectedGoods)} + 도매 배송비 ${money(p.payer.amount)} · 고객 택배비 제외</small>
-       <button type="button" class="btn block supplier-request-main" data-action="supplier-partial-request" data-id="${esc(batch.id)}" data-buyer-key="${esc(p.payer.buyer_key)}" ${canAsk?'':'disabled'}>입금 요청 · ${money(selectedInvoiceAmount)}</button>
-       ${hasMoneyInSelected?'<small class="supplier-request-warning">기존 입금 기록이 있어 중복 청구 방지를 위해 요청을 잠시 막았어요. 주문별 입금액을 먼저 확인해 주세요.</small>':!canAsk?'<small class="supplier-request-warning">구매 의사나 상품 변경 요청부터 확인해 주세요.</small>':''}
+       <strong>이 도매처 미입금 상품 · ${money(invoicePlan.unpaidGoods)}</strong>
+       <small>해당 도매처 상품 합계 ${money(invoicePlan.supplierGoods)} · 이미 입금된 상품 ${money(invoicePlan.paidGoods)} · 고객 택배비 제외</small>
+       ${invoicePlan.supplierFreight? `<small>남은 도매배송비 ${money(invoicePlan.supplierFreight)} 별도 합산</small>`:''}
+       <button type="button" class="btn block supplier-request-main" data-action="supplier-partial-request" data-id="${esc(batch.id)}" data-buyer-key="${esc(p.payer.buyer_key)}" ${canAsk?'':'disabled'}>입금 요청 · ${money(invoicePlan.amount)}</button>
+       ${invoicePlan.reason?`<small class="supplier-request-warning">${esc(invoicePlan.reason)}</small>`:''}
       </div>`:''}
       ${showOrderPayments?`<details class="supplier-individual-deposits" open><summary>주문별 입금 확인 · ${unpaidOrders.length}건</summary>${unpaidOrders.map(q=>`<div class="supplier-individual-deposit"><b>${fmtDate(q.created_at)} · ${money(totalDue(q))}</b>${renderOrderDepositControl(q)}</div>`).join('')}</details>`:''}
       ${inv?`<div class="smallnote" style="margin-top:5px">선입금: 상품 ${money(inv.item_total)} + 배송비 ${money(inv.freight)} = <b>${money(inv.amount)}</b> · ${inv.paid_at?'입금 확인':'요청 중'}</div>`:''}
@@ -9281,12 +9324,14 @@ if(a==='supplier-partial-request'){
  if(!batch||batch.ordered_at)throw Error('해당 도매처의 발주 대기 내역을 찾지 못했어요.');
  const person=supplierBatchPaymentState(batch).people.find(p=>p.payer.buyer_key===buyerKey);
  if(!person||!person.selected.length)throw Error('입금 요청할 상품을 찾지 못했어요.');
- if([...new Map(person.selected.map(x=>[x.q.id,x.q])).values()].some(q=>Number(q.amount_paid||0)>Number(q.amount_refunded||0)))
-  throw Error('이미 입금된 주문이 포함되어 있어요. 중복 청구되지 않도록 먼저 주문별 입금액을 확인해 주세요.');
+ const plan=supplierBuyerInvoicePlan(person);
+ if(plan.reason||!plan.amount||!plan.targetQuoteId)throw Error(plan.reason||'미입금 상품을 확인해 주세요.');
  const existing=supplierPartialInvoice(id,buyerKey);
  if(existing?.paid_at)throw Error('입금 완료한 요청은 다시 생성할 수 없어요.');
  const invoice=await rpc('gq_admin_request_supplier_partial_v88',{p_batch_id:id,p_buyer_key:buyerKey},true);
  if(!invoice?.id)throw Error('선입금 요청이 저장되지 않았어요.');
+ if(Number(invoice.amount)!==plan.amount||invoice.charged_quote_id!==plan.targetQuoteId)
+  throw Error('저장된 입금 요청금액이 화면 계산과 달라요. 입금 안내를 보내지 말고 다시 확인해 주세요.');
  await refreshSupplierPartialBatch(id,b);
  const recipient=state.quotes.find(q=>q.id===invoice.charged_quote_id)?.customer_email;
  notif(money(invoice.amount)+' 선입금 요청 저장 완료 · '+(recipient?'고객 메일 자동발송 대기 중':'고객 이메일 미등록으로 메일 미발송 · 주문 카드에서 이메일 저장 후 메일 보내기 가능'));

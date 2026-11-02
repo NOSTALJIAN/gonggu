@@ -8344,7 +8344,10 @@ function renderSupplierBulkManager(historyOnly=false,expanded=false,modalHistory
     </details>`:''}
    </div>`;
   }
-  if(modalHistory)return `<div class="admin-history-supplier-list supplier-bulk-list">${history}</div>`;
+  if(modalHistory){
+   const active=state.supplierBatches.filter(b=>!b.ordered_at);
+   return active.length?`<div class="admin-history-supplier-list supplier-bulk-list">${active.map(supplierBatchCard).join('')}</div>`:'';
+  }
   return `<details class="card supplier-bulk-history-only">
    <summary style="cursor:pointer;font-weight:800;font-size:15px">거래처별 배송비 · 입금·발주 현황 (${state.supplierBatches.length}건) ▾</summary>
    <div class="supplier-bulk-list" style="margin-top:14px">${history}</div>
@@ -8794,7 +8797,7 @@ function renderSupplierPaymentCenter(){
   </div>
   </details>`).join('')}</div>`:''}
   ${!domestic.length&&!china.length&&state.supplierBatchesReady&&state.productPrivateReady?'<div class="admin-work-clear"><span aria-hidden="true">✓</span><span>현재 발주할 상품이 없어요.</span></div>':''}
-  ${state.supplierBatches.length?`<button type="button" class="admin-previous-orders-link" data-action="open-admin-wholesale-history"><span>이전 발주 · 입금 상세 내역</span><strong>${state.supplierBatches.length}건 <span aria-hidden="true">›</span></strong></button>`:''}
+  ${state.supplierBatches.some(b=>!b.ordered_at)?`<button type="button" class="admin-previous-orders-link" data-action="open-admin-wholesale-history"><span>진행 중 배분·입금 수정</span><strong>관리 <span aria-hidden="true">›</span></strong></button>`:''}
   </section>`;
 }
 function renderAdminQuoteFlatSection(groups,title,section='saved'){
@@ -8912,9 +8915,6 @@ function renderAdminQuotes(){
   </div>
   <div class="admin-orders-title-row">
    <div class="admin-orders-list-title"><strong>${esc(title)}</strong><span>${qq.length}건</span></div>
-   <button type="button" class="admin-clean-utility" data-action="open-admin-order-filters" aria-label="주문 상세 필터 열기">
-    <span>${advancedSelected?'선택한 필터 · '+esc(title):'상세 필터'}</span><span aria-hidden="true">☷</span>
-   </button>
   </div>
   ${filter==='preparing_orders'?'<p class="admin-preproc-note">입금 확인 후 발주하면 ‘입고·배송’으로 이동해요.</p>':''}
   ${qq.length?filter==='all'?renderAdminQuoteFlatSection(waiting,'가격 확인','pending')+renderAdminQuoteFlatSection(priced,'구매 선택 대기'):
@@ -9203,9 +9203,9 @@ if(m.type==='admin-delivery-queue'&&state.admin)return wrap('수령방식 변경
 if(m.type==='admin-option-requests'&&state.admin&&state.page==='admin')return wrap('옵션 변경 요청',adminOptionRequestsModalBody(m));
  if(m.type==='admin-order-filters'&&state.admin&&state.page==='admin'&&state.tab==='quotes')return wrap('주문 상세 필터',renderAdminOrderFilterModal());
  if(m.type==='admin-wholesale-history'&&state.admin&&state.page==='admin'&&state.tab==='payments')
-  return wrap('이전 발주 · 정산 내역',`<div class="admin-history-modal">
-    <p class="admin-history-modal-note">거래처별 이전 발주·배송비·입금 내역이에요. 거래처를 펼쳐 상세 내용을 확인할 수 있어요.</p>
-    ${renderSupplierBulkManager(true,false,true)||'<p class="smallnote">저장된 거래처 기록이 없어요.</p>'}
+  return wrap('진행 중 배분·입금 관리',`<div class="admin-history-modal">
+    <p class="admin-history-modal-note">현재 발주 전인 거래처의 배송비 배분·입금 수정만 표시해요. 발주 완료 기록은 삭제하지 않고 보관해요.</p>
+    ${renderSupplierBulkManager(true,false,true)||'<p class="smallnote">수정할 진행 중 거래처가 없어요.</p>'}
    </div>`);
 if(m.type==='admin-delivery-review'&&state.admin){const q=state.quotes.find(x=>x.id===m.id);return wrap('수령방식 변경 요청',q?.delivery_change_requested_at?renderAdminDeliveryRequest(q):'<div class="empty">이미 처리된 요청이에요.</div>');}
 if(m.type==='admin-price-edit'){

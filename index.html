@@ -5104,18 +5104,22 @@ function confirmedPaymentWidget(q){
  if(!q||q.status!=='confirmed')return '';
  const due=readyQuote(q)?balanceDue(q):null;
  const paid=due===0;
- const p=orderPaymentParts(q);
+ const p=orderPaymentParts(q),freightOnly=supplierFreightOnlyDue(q);
  return `<section class="confirmed-payment-card" aria-label="입금 계좌 안내">
  <div class="confirmed-payment-head"><strong>최종 주문 확정 · 입금 안내</strong></div>
  <div class="confirmed-payment-label">입금 계좌</div>
  <div class="confirmed-payment-bank">${MINI_PAYMENT_BANK} <b>${MINI_PAYMENT_DISPLAY}</b></div>
  <div class="confirmed-payment-holder">예금주 <b>${MINI_PAYMENT_HOLDER}</b></div>
  <div class="confirmed-payment-buttons"><button class="btn sm secondary" type="button" data-action="copy-payment-account">계좌번호 복사</button><button class="btn sm outline" type="button" data-action="copy-payment-details">입금 정보 복사</button></div>
- ${due===null?'':`<div class="confirmed-payment-parts">
+ ${due===null?'':freightOnly>0?`<div class="confirmed-payment-parts">
+   <div><span>상품대금</span><strong>입금 완료</strong></div>
+   ${appliedShipping(q)>0?'<div><span>고객 수령 택배비</span><strong>입금 완료</strong></div>':''}
+   <div><span>도매 배송비 분담금</span><strong>남은 ${money(freightOnly)}</strong></div>
+  </div><div class="confirmed-payment-total"><span>도매 배송비 분담금 잔액</span><strong>${money(due)}</strong></div>`:`<div class="confirmed-payment-parts">
   <div><span>상품대금${supplierShippingShare(q)?' · 도매 배송비 포함':''}</span><strong>${p.goodsMissing?'남은 '+money(p.goodsMissing):p.waived?'관리자 인정 · 정산 완료':'입금 완료'}</strong></div>
   ${p.shipping>0?`<div><span>택배비 · 별도 정산</span><strong>${p.shippingMissing?'남은 '+money(p.shippingMissing):p.waived?'관리자 인정 · 정산 완료':'입금 완료'}</strong></div>`:''}
  </div><div class="confirmed-payment-total"><span>${paid?'추가 입금할 금액':!p.goodsMissing&&p.shippingMissing?'택배비 잔액 (별도)':'현재 남은 입금액'}</span><strong>${money(due)}</strong></div>`}
- <p class="confirmed-payment-note">${paid&&paymentWaiver(q)>0?'관리자가 차액을 인정하여 정산이 완료됐어요. 추가 입금하지 않아도 돼요.':paid?'입금이 모두 확인됐어요. 중복 송금하지 마세요.':q.cancel_requested_at?'취소 요청이 접수되어 있어요. 입금 전에 관리자에게 확인해 주세요.':due!==null&&!p.goodsMissing&&p.shippingMissing?'상품대금 입금 완료! 택배비는 별도로 정산해요. 합배송 시 택배비가 조정될 수 있어요.':'입금 확인은 관리자가 처리해요. 송금 후 주문조회에서 입금 확인 상태를 확인해 주세요.'}</p>
+ <p class="confirmed-payment-note">${paid&&paymentWaiver(q)>0?'관리자가 차액을 인정하여 정산이 완료됐어요. 추가 입금하지 않아도 돼요.':paid?'입금이 모두 확인됐어요. 중복 송금하지 마세요.':q.cancel_requested_at?'취소 요청이 접수되어 있어요. 입금 전에 관리자에게 확인해 주세요.':freightOnly>0?'상품값과 고객 수령 택배비는 입금 확인됐어요. 남은 도매 배송비 분담금만 확인해 주세요.':due!==null&&!p.goodsMissing&&p.shippingMissing?'상품대금 입금 완료! 택배비는 별도로 정산해요. 합배송 시 택배비가 조정될 수 있어요.':'입금 확인은 관리자가 처리해요. 송금 후 주문조회에서 입금 확인 상태를 확인해 주세요.'}</p>
  ${q.amount_changed_at?'<p class="confirmed-payment-note">주문 금액이 변경된 적이 있어요. 입금 전 최신 금액을 확인해 주세요.</p>':''}
  </section>`;
 }
@@ -5123,14 +5127,14 @@ function confirmedPaymentNotice(q){
  if(!q||q.status!=='confirmed')throw Error('최종 주문이 확정된 건만 입금 안내할 수 있어요.');
  if(!q.lookup_token)throw Error('주문조회 링크를 확인할 수 없어요.');
  const due=readyQuote(q)?balanceDue(q):null;
- const p=orderPaymentParts(q);
+ const p=orderPaymentParts(q),freightOnly=supplierFreightOnlyDue(q);
  return `[미니예나] 최종 주문 확정 · 입금 안내
 
 ${q.buyer_name||'고객'}님, 최종 주문이 확정됐어요.
 
 주문금액: ${readyQuote(q)?money(totalDue(q)):'주문조회에서 확인'}
-상품대금 남은 금액: ${readyQuote(q)?money(p.goodsMissing):'확인 중'}
-${p.shipping>0?'택배비 (별도 정산): '+money(p.shipping)+' · 미입금 '+money(p.shippingMissing)+'\n':''}현재 남은 입금액: ${due===null?'주문조회에서 확인':money(due)}
+상품대금 남은 금액: ${readyQuote(q)?money(freightOnly?0:p.goodsMissing):'확인 중'}
+${freightOnly?'고객 수령 택배비: 입금 완료\n도매 배송비 분담금 미입금: '+money(freightOnly)+'\n':p.shipping>0?'택배비 (별도 정산): '+money(p.shipping)+' · 미입금 '+money(p.shippingMissing)+'\n':''}현재 남은 입금액: ${due===null?'주문조회에서 확인':money(due)}
 
 ${miniPaymentLabel()}
 
@@ -6526,7 +6530,9 @@ function compactQuoteNextTask(q){
   return {text:'주문확정 상태 확인',label:'상세 보기',tool:'advanced'};
  }
  if(q.status==='confirmed'){
-  if(unpaid>0){const p=orderPaymentParts(q);
+  if(unpaid>0){const freightOnly=supplierFreightOnlyDue(q);
+   if(freightOnly>0)return {text:'도매 배송비 분담금 '+money(freightOnly)+' 입금 필요',label:'배송비 분담금 요청',tool:'payment'};
+   const p=orderPaymentParts(q);
    if(p.goodsMissing===0&&p.shippingMissing>0)return {text:'상품대금 입금 완료 · 택배비 '+money(p.shippingMissing)+' 별도',label:'택배비 관리',tool:'payment'};
    return {text:'상품대금 '+money(p.goodsMissing)+' 입금 확인 필요',label:'입금 관리',tool:'payment'};
   }
@@ -6890,16 +6896,19 @@ function renderPaymentWaiverControl(q){
  return `<div class="admin-payment-waiver"><b>기록된 입금 ${money(received)} · 남은 금액 ${money(missing)}</b><small>실제 받은 금액을 직접 입력하고 이번 건만 남은 차액을 인정해요. 입금액을 임의로 늘리지 않아요.</small><button type="button" class="btn sm secondary" data-action="accept-payment-shortfall" data-id="${esc(q.id)}">실제 입금액 입력 · 이번 건 정산 완료</button></div>`;
 }
 function renderOrderDepositControl(q){
- const missing=orderOutstanding(q),p=orderPaymentParts(q);
+ const missing=orderOutstanding(q),p=orderPaymentParts(q),freightOnly=supplierFreightOnlyDue(q);
  if(missing===null)return '<span class="related-deposit-info">결제금액 미확정</span>';
  return `<div class="related-deposit-payment">
   <div class="order-payment-split">
-   <div class="order-payment-line"><span>상품대금${supplierShippingShare(q)?' (도매 배송비 포함)':''}</span><strong class="${p.goodsMissing?'pending':'paid'}">${p.goodsMissing?'미입금 '+money(p.goodsMissing):'입금 완료'} <small>${money(p.goods)}</small></strong></div>
-   ${p.shipping>0?`<div class="order-payment-line"><span>택배비 · 별도</span><strong class="${p.shippingMissing?'pending':'paid'}">${p.shippingMissing?'미입금 '+money(p.shippingMissing):'입금 완료'} <small>${money(p.shipping)}</small></strong></div>`:''}
+   ${freightOnly?'<div class="order-payment-line"><span>상품대금</span><strong class="paid">입금 완료</strong></div>'+
+    (appliedShipping(q)>0?'<div class="order-payment-line"><span>고객 택배비</span><strong class="paid">입금 완료</strong></div>':'')+
+    '<div class="order-payment-line"><span>도매 배송비 분담금</span><strong class="pending">미입금 '+money(freightOnly)+'</strong></div>':`<div class="order-payment-line"><span>상품대금${supplierShippingShare(q)?' (도매 배송비 포함)':''}</span><strong class="${p.goodsMissing?'pending':'paid'}">${p.goodsMissing?'미입금 '+money(p.goodsMissing):'입금 완료'} <small>${money(p.goods)}</small></strong></div>
+   ${p.shipping>0?`<div class="order-payment-line"><span>택배비 · 별도</span><strong class="${p.shippingMissing?'pending':'paid'}">${p.shippingMissing?'미입금 '+money(p.shippingMissing):'입금 완료'} <small>${money(p.shipping)}</small></strong></div>`:''}`}
    <div class="order-payment-received">실제 입금 ${money(p.received)} ${p.waived?'· 관리자 차액 인정 '+money(p.waived):''} · 전체 결제금액 ${money(totalDue(q))}</div>
   </div>
-  ${p.goodsMissing>0?`<button class="btn sm order-payment-quick" data-action="mark-order-payment-part" data-part="goods" data-id="${esc(q.id)}">상품대금 ${money(p.goodsMissing)} 입금 확인</button>`:''}
-  ${!p.goodsMissing&&p.shippingMissing>0?`<button class="btn sm secondary order-payment-quick" data-action="mark-order-payment-part" data-part="shipping" data-id="${esc(q.id)}">택배비 ${money(p.shippingMissing)} 입금 확인</button>`:''}
+  ${!freightOnly&&p.goodsMissing>0?`<button class="btn sm order-payment-quick" data-action="mark-order-payment-part" data-part="goods" data-id="${esc(q.id)}">상품대금 ${money(p.goodsMissing)} 입금 확인</button>`:''}
+  ${freightOnly>0?`<button class="btn sm order-payment-quick" data-action="mark-order-payment-part" data-part="freight" data-id="${esc(q.id)}">도매 배송비 ${money(freightOnly)} 입금 확인</button>`:''}
+  ${!freightOnly&&!p.goodsMissing&&p.shippingMissing>0?`<button class="btn sm secondary order-payment-quick" data-action="mark-order-payment-part" data-part="shipping" data-id="${esc(q.id)}">택배비 ${money(p.shippingMissing)} 입금 확인</button>`:''}
   <details class="related-deposit-edit" data-fold-key="direct-payment-${esc(q.id)}"><summary>금액 직접 수정 · 부분입금/환불</summary><form data-payment="${esc(q.id)}"><label>누적 입금액<input name="paid" type="number" min="0" step="1" inputmode="numeric" required value="${Number(q.amount_paid||0)}"></label><label>누적 환불액<input name="refunded" type="number" min="0" step="1" inputmode="numeric" required value="${Number(q.amount_refunded||0)}"></label><button class="btn sm secondary" type="submit">이 주문에 저장</button></form></details>
   ${renderSupplierFreightRequestControl(q)}
   ${renderPaymentWaiverControl(q)}
@@ -9982,12 +9991,12 @@ if(a==='mark-order-payment-part'){
   if(!state.admin||state.page!=='admin')throw Error('관리자만 입금 확인할 수 있어요.');
   if(busy)return;
   const q=state.quotes.find(q=>q.id===id),part=String(b.dataset.part||'');
-  if(!adminCanRecordPayment(q)||!['goods','shipping'].includes(part))throw Error('이번 회차 구매가 선택된 주문의 입금액만 확인할 수 있어요.');
+  if(!adminCanRecordPayment(q)||!['goods','shipping','freight'].includes(part))throw Error('이번 회차 구매가 선택된 주문의 입금액만 확인할 수 있어요.');
   const p=orderPaymentParts(q);
   if(part==='shipping'&&p.goodsMissing>0)throw Error('상품대금을 먼저 확인해 주세요.');
-  const amount=part==='goods'?p.goodsMissing:p.shippingMissing;
+  const amount=part==='freight'?supplierFreightOnlyDue(q):part==='goods'?p.goodsMissing:p.shippingMissing;
   if(!Number.isInteger(amount)||amount<=0)throw Error('이미 입금 확인된 금액이에요.');
-  const kind=part==='goods'?'상품대금':'택배비';
+  const kind=part==='freight'?'도매 배송비 분담금':part==='goods'?'상품대금':'택배비';
   const newPaid=Number(q.amount_paid||0)+amount,refunded=Number(q.amount_refunded||0);
   if(!Number.isInteger(newPaid)||newPaid>1000000000)throw Error('누적 입금액이 올바르지 않아요.');
   if(!window.confirm(q.buyer_name+'님 · '+fmtDate(q.created_at)+' 주문\n'+kind+' '+money(amount)+'을 실제로 입금받았나요?\n\n이 주문의 누적 입금액만 '+money(newPaid)+'으로 기록해요.'))return;

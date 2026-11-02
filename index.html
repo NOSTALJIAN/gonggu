@@ -3262,6 +3262,29 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 
 .admin-order-payment-chip{display:inline-flex;font-size:10px;font-weight:750;color:#8b6a44;background:#f7f3e9;border-radius:5px;padding:2px 5px;margin-left:4px}
 .admin-order-payment-chip.paid{background:#eef4ef;color:#326645}
+
+/* All related buyer orders show their own products, fees and deposit record. */
+.related-deposit-order{padding:15px 0;border-top:1px solid #e6e6e6;display:flex;flex-direction:column;gap:9px;min-width:0}
+.related-deposit-order-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.related-deposit-order-head b{font-size:13px}
+.related-deposit-order-head strong{font-size:17px;white-space:nowrap}
+.related-deposit-order-meta{font-size:11px;color:#777}
+.related-deposit-items{border-top:1px solid #e7e7e7;border-bottom:1px solid #e7e7e7}
+.related-deposit-item{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #eee}
+.related-deposit-item:last-child{border:0}
+.related-deposit-item>span{min-width:0}
+.related-deposit-item b{display:block;font-size:12px;overflow-wrap:anywhere}
+.related-deposit-item small{display:block;color:#777;font-size:11px;margin-top:3px;overflow-wrap:anywhere}
+.related-deposit-item>strong{font-size:12px;white-space:nowrap}
+.related-deposit-breakdown{display:flex;justify-content:space-between;gap:10px;font-size:12px;padding:3px 0;color:#666}
+.related-deposit-breakdown strong{color:#333;white-space:nowrap}
+.related-deposit-breakdown.total{margin-top:3px;border-top:1px solid #e4e4e4;padding:9px 0 3px;font-weight:850;color:#222}
+.related-deposit-breakdown.total strong{font-size:16px}
+.related-deposit-info{font-size:12px;color:#555}
+.compact-order-cost-lines{padding:7px 0 10px;border-bottom:1px solid #e8e8e8;margin-bottom:12px}
+.compact-order-cost-lines>div{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:#666;margin:5px 0}
+.compact-order-cost-lines b{font-size:12px;color:#333;white-space:nowrap}
+
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -6305,6 +6328,11 @@ function renderAdminQuoteCard(q){
    <strong>${i.unit_price==null?'가격 미정':money(Number(i.unit_price)*(Number(i.quantity)||0))}</strong>
   </div>`).join('')}</div>
   <div class="compact-order-money">
+   ${priced?`<div class="compact-order-cost-lines">
+    <div><span>상품 합계</span><b>${money(previewOrderSum(q))}</b></div>
+    ${q.delivery_method==='courier'||appliedShipping(q)>0?`<div><span>택배비${isBundle(q)?' · 합배송':''}</span><b>${money(appliedShipping(q))}</b></div>`:''}
+    ${supplierShippingShare(q)>0?`<div><span>도매 배송비</span><b>${money(supplierShippingShare(q))}</b></div>`:''}
+   </div>`:''}
    <div><span>결제금액</span><b>${priced?money(due):'확인 중'}</b></div>
    <div><span>입금액</span><b>${money(paid)}</b></div>
    <div class="compact-order-balance"><span>남은 금액</span><b>${priced?money(Math.max(0,due-paid)):'확인 필요'}</b></div>
@@ -6580,14 +6608,29 @@ function renderOrderDepositControl(q){
 }
 function renderOtherBuyerDeposits(group){
  const excluded=new Set(group.map(q=>q.id)),base=group[0];
- const others=state.quotes.filter(q=>q.status==='confirmed'&&!excluded.has(q.id)&&sameShippingCustomer(base,q));
+ const others=state.quotes.filter(q=>q.status==='confirmed'&&!excluded.has(q.id)&&sameShippingCustomer(base,q))
+  .sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at)));
  if(!others.length)return '';
  const outstanding=others.reduce((n,q)=>n+(orderOutstanding(q)||0),0);
- return `<details class="related-deposit-orders" ${outstanding?'open':''}><summary>같은 구매자 다른 주문 ${others.length}건 ${outstanding?'· 미입금 '+money(outstanding):''}</summary>
-  ${others.map(q=>`<div class="related-deposit-order"><b>${fmtDate(q.created_at)} · ${money(totalDue(q))}</b><small>${esc((q.items||[]).map(i=>i.product_name).slice(0,2).join(', '))}</small>${renderOrderDepositControl(q)}</div>`).join('')}
+ return `<details class="related-deposit-orders" ${outstanding?'open':''}>
+  <summary>같은 구매자의 별도 주문 ${others.length}건 ${outstanding?'· 미입금 '+money(outstanding):''}</summary>
+  ${others.map(q=>`<section class="related-deposit-order" data-related-order-id="${esc(q.id)}">
+   <div class="related-deposit-order-head"><b>별도 주문 · ${fmtDate(q.created_at)}</b><strong>${readyQuote(q)?money(totalDue(q)):'금액 확인 중'}</strong></div>
+   <div class="related-deposit-order-meta">${esc(deliveryLabel(q))} · ${esc(statusLabel[q.status]||q.status)} · 상품 ${(q.items||[]).length}종</div>
+   <div class="related-deposit-items">
+    ${(q.items||[]).map(i=>`<div class="related-deposit-item">
+     <span><b>${adminOrderItemName(i)}</b><small>${esc(i.color)} / ${esc(i.size)} · ${Number(i.quantity)||0}개${i.fulfillment==='sold_out'?' · 품절':''}</small></span>
+     <strong>${i.unit_price==null?'가격 미정':money(i.fulfillment==='sold_out'?0:Number(i.unit_price)*(Number(i.quantity)||0))}</strong>
+    </div>`).join('')}
+   </div>
+   <div class="related-deposit-breakdown"><span>상품 합계</span><strong>${money(previewOrderSum(q))}</strong></div>
+   ${q.delivery_method==='courier'||appliedShipping(q)>0?`<div class="related-deposit-breakdown"><span>택배비${isBundle(q)?' · 합배송 적용':''}</span><strong>${money(appliedShipping(q))}</strong></div>`:''}
+   ${supplierShippingShare(q)>0?`<div class="related-deposit-breakdown"><span>도매 배송비</span><strong>${money(supplierShippingShare(q))}</strong></div>`:''}
+   <div class="related-deposit-breakdown total"><span>결제금액</span><strong>${readyQuote(q)?money(totalDue(q)):'확인 중'}</strong></div>
+   ${renderOrderDepositControl(q)}
+  </section>`).join('')}
  </details>`;
 }
-
 function renderCollapsibleAdminOrder(group,section){
  const root=group.length>1?roundOrderRoot(group):group[0];
  const babies=[...new Set(group.map(q=>String(q.baby_name||'').trim()).filter(Boolean))];
@@ -6627,6 +6670,7 @@ function renderCollapsibleAdminOrder(group,section){
  const confirmedDue=canSumPayments?confirmedOrders.reduce((sum,q)=>sum+totalDue(q),0):0;
  const confirmedPaid=confirmedOrders.reduce((sum,q)=>sum+Math.max(0,Number(q.amount_paid||0)-Number(q.amount_refunded||0)),0);
  const paymentMark=!canSumPayments?'':confirmedDue>0&&confirmedPaid>=confirmedDue?'입금 확인':confirmedPaid>0?'부분 입금':'미입금';
+ const relatedBuyerOrders=renderOtherBuyerDeposits(group);
  return `<details class="admin-order-fold ${urgent?'has-pending':''}" data-admin-order-id="${esc(key)}" ${open?'open':''}>
   <summary class="admin-order-fold-heading">
    <span class="admin-order-fold-left">
@@ -6637,7 +6681,7 @@ function renderCollapsibleAdminOrder(group,section){
    <span class="admin-order-fold-chevron" aria-hidden="true"></span>
   </summary>
   <div class="admin-order-fold-body">
-   ${renderOtherBuyerDeposits(group)}
+   ${relatedBuyerOrders}
    ${renderShippingMergeButton(group)}
    ${group.length>1?(group.every(q=>bundleRootId(q)===bundleRootId(group[0]))?renderBundleCard(group):renderSameRoundCard(group)):renderAdminQuoteCard(group[0])}
   </div>

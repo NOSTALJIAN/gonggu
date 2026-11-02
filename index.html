@@ -7603,14 +7603,27 @@ function isOtherRoundQuote(q){
  return q.status==='quoted'&&['next_round','on_hold','undecided'].includes(q.purchase_intent||'undecided');
 }
 function renderSupplierPaymentCenter(){
- const pending=state.supplierBatches.filter(b=>!b.ordered_at&&supplierBatchPaymentState(b).people.some(p=>p.selected.some(x=>x.q.status==='confirmed')));
+ const openBatches=state.supplierBatches.filter(b=>!b.ordered_at);
+ const pending=openBatches.filter(b=>supplierBatchPaymentState(b).people.some(p=>p.selected.some(x=>x.q.status==='confirmed')));
+ const waiting=openBatches.map(batch=>{
+  const quoteIds=new Set((batch.item_ids||[]).flatMap(id=>
+   state.quotes.filter(q=>(q.items||[]).some(item=>item.id===id)&&q.status==='quoted').map(q=>q.id)));
+  return {batch,count:quoteIds.size};
+ }).filter(x=>x.count>0);
  return `<section class="admin-supplier-payments-center">
-  <p class="admin-compact-note">최종 확정된 주문만 표시돼요. 확정 대기 주문은 주문 관리에서 확인할 수 있어요.</p>
+  <p class="admin-compact-note">배송비 배분 완료는 발주 완료가 아니에요. 구매확정과 입금 확인 후 발주 처리해 주세요.</p>
   ${!state.supplierBatchesReady?`<p class="noticefail">${esc(state.supplierBatchesError||'배분 내역을 불러오지 못했어요. 새로고침해 주세요.')}</p>`:''}
-  ${state.supplierBatchesReady&&!pending.length?'<p class="admin-compact-note">발주 대기 중인 거래처가 없어요.</p>':''}
+  ${state.supplierBatchesReady&&openBatches.length?`<div class="supplier-payment-waiting-confirm">
+   <strong>배송비 배분 완료 ${openBatches.length}곳 · 도매 발주 전</strong>
+   ${waiting.length?`${waiting.map(({batch,count})=>`<div class="supplier-payment-waiting-row"><b>${esc(batch.supplier||'거래처')}</b><span>구매자 최종확정 대기 ${count}건</span></div>`).join('')}
+    <button type="button" data-tab="quotes" data-nav-filter="waiting_buyer">확정 대기 주문 확인</button>`:'<p class="smallnote">구매자 최종확정 대기 주문이 없어요. 아래에서 입금 및 발주를 처리하세요.</p>'}
+   </div>`:''}
+  ${state.supplierBatchesReady&&!openBatches.length?'<p class="admin-compact-note">현재 도매 발주 대기 중인 거래처가 없어요.</p>':''}
+  ${state.supplierBatchesReady&&openBatches.length&&!pending.length?'<p class="admin-compact-note">현재 최종확정된 주문은 없어요. 위에서 구매확정 대기 주문을 확인하세요.</p>':''}
   ${renderSupplierBulkManager(true,true)}
  </section>`;
 }
+
 function renderAdminQuoteFlatSection(groups,title,section='saved'){
  if(!groups.length)return '';
  const sorted=[...groups].sort((a,b)=>String(b[0]?.created_at||'').localeCompare(String(a[0]?.created_at||'')));

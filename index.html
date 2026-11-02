@@ -3565,6 +3565,88 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 @media (max-width:390px){.admin-order-gh-badge{height:16px;min-width:18px}}
 
 .admin-preproc-note{font-size:12px;line-height:1.6;color:#6f7272;margin:5px 0 12px;padding:8px 10px;background:#f6f7f6;border-radius:8px}
+
+/* Mobile-safe order amount summary: never squeeze three fees into columns. */
+.compact-order-card .compact-order-money > .compact-order-cost-lines{
+ display:flex;
+ flex-direction:column;
+ align-items:stretch;
+ justify-content:flex-start;
+ gap:0;
+ width:100%;
+ min-width:0;
+ margin:0 0 9px;
+ padding:0 0 10px;
+ border-bottom:1px solid #e1e2e1;
+}
+.compact-order-card .compact-order-cost-lines > div:not(.admin-fee-source-breakdown){
+ display:grid;
+ grid-template-columns:minmax(0,1fr) max-content;
+ align-items:center;
+ gap:12px;
+ width:100%;
+ min-width:0;
+ padding:4px 0;
+ margin:0;
+ line-height:1.45;
+ font-size:12px;
+}
+.compact-order-card .compact-order-cost-lines > div:not(.admin-fee-source-breakdown) span{
+ min-width:0;
+ word-break:keep-all;
+ color:#686868;
+}
+.compact-order-card .compact-order-cost-lines > div:not(.admin-fee-source-breakdown) b{
+ color:#272727;
+ white-space:nowrap;
+ font-size:12px;
+ font-variant-numeric:tabular-nums;
+ text-align:right;
+}
+.compact-order-card .compact-order-cost-lines > .admin-fee-source-breakdown{
+ display:flex;
+ flex-direction:column;
+ align-items:stretch;
+ justify-content:flex-start;
+ gap:2px;
+ width:100%;
+ min-width:0;
+ margin:0 0 3px;
+ padding:0 0 0 11px;
+ border:0;
+ border-radius:0;
+ background:transparent;
+}
+.compact-order-card .compact-order-cost-lines > .admin-fee-source-breakdown .admin-fee-source-row{
+ display:grid;
+ grid-template-columns:minmax(0,1fr) max-content;
+ align-items:baseline;
+ gap:12px;
+ width:100%;
+ margin:0;
+ padding:0;
+ font-size:11px;
+ line-height:1.5;
+ color:#4c755b;
+}
+.compact-order-card .compact-order-cost-lines > .admin-fee-source-breakdown .admin-fee-source-row span{
+ min-width:0;
+ word-break:keep-all;
+ overflow-wrap:break-word;
+ color:#4c755b;
+}
+.compact-order-card .compact-order-cost-lines > .admin-fee-source-breakdown .admin-fee-source-row span::before{
+ content:'↳ ';
+ color:#8b9e90;
+}
+.compact-order-card .compact-order-cost-lines > .admin-fee-source-breakdown .admin-fee-source-row b{
+ color:#4c755b;
+ font-size:11px;
+ white-space:nowrap;
+ font-weight:650;
+ font-variant-numeric:tabular-nums;
+}
+
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -6747,7 +6829,7 @@ function renderAdminQuoteCard(q){
   </div>`).join('')}</div>
   <div class="compact-order-money">
    ${priced?`<div class="compact-order-cost-lines">
-    <div><span>상품 합계</span><b>${money(previewOrderSum(q))}</b></div>
+    <div><span>상품값</span><b>${money(previewOrderSum(q))}</b></div>
     ${q.delivery_method==='courier'||appliedShipping(q)>0?`<div><span>택배비${isBundle(q)?' · 합배송':''}</span><b>${money(appliedShipping(q))}</b></div>`:''}
     ${supplierShippingShare(q)>0?`<div><span>도매 배송비</span><b>${money(supplierShippingShare(q))}</b></div>${adminSupplierFeeBreakdown(q)}`:''}
    </div>`:''}

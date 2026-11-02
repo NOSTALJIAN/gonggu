@@ -6818,9 +6818,9 @@ function renderPaymentWaiverControl(q){
  if(!state.admin||!adminCanRecordPayment(q))return '';
  const waived=paymentWaiver(q),missing=balanceDue(q),received=Math.max(0,Number(q.amount_paid||0)-Number(q.amount_refunded||0));
  if(waived>0)return `<div class="admin-payment-waiver"><b>✓ 관리자 차액 인정 ${money(waived)}</b><small>실제 입금 ${money(received)} · 남은 요청 ${money(missing)} · ${q.payment_waived_at?fmtDate(q.payment_waived_at):'기록 완료'}</small><button type="button" class="btn sm outline" data-action="revoke-payment-shortfall" data-id="${esc(q.id)}">차액 인정 취소</button></div>`;
- if(received<=0||missing<=0||!['quoted','confirmed'].includes(q.status))return '';
+ if(missing<=0||!['quoted','confirmed'].includes(q.status))return '';
  if(q.status==='quoted'&&!adminConfirmEligible(q))return '<p class="smallnote">주문확정 조건 확인 후 차액 인정이 가능해요.</p>';
- return `<div class="admin-payment-waiver"><b>실제 입금 ${money(received)} · 부족 ${money(missing)}</b><small>이번 건만 추가로 받지 않고 마감해요. 실제 입금액은 변경하지 않아요.</small><button type="button" class="btn sm secondary" data-action="accept-payment-shortfall" data-id="${esc(q.id)}">이번 건 차액 ${money(missing)} 인정 · 정산 완료</button></div>`;
+ return `<div class="admin-payment-waiver"><b>기록된 입금 ${money(received)} · 남은 금액 ${money(missing)}</b><small>실제 받은 금액을 직접 입력하고 이번 건만 남은 차액을 인정해요. 입금액을 임의로 늘리지 않아요.</small><button type="button" class="btn sm secondary" data-action="accept-payment-shortfall" data-id="${esc(q.id)}">실제 입금액 입력 · 이번 건 정산 완료</button></div>`;
 }
 function renderOrderDepositControl(q){
  const missing=orderOutstanding(q),p=orderPaymentParts(q);
@@ -9357,11 +9357,21 @@ if(a==='accept-payment-shortfall'||a==='revoke-payment-shortfall'){
  const q=state.quotes.find(x=>x.id===id);
  if(!q||!adminCanRecordPayment(q))throw Error('입금 및 주문 상태를 먼저 확인해 주세요.');
  const cancel=a==='revoke-payment-shortfall';
- const net=Number(q.amount_paid||0)-Number(q.amount_refunded||0),missing=balanceDue(q),old=paymentWaiver(q);
- if(cancel?!old:net<=0||missing<=0)throw Error('차액 인정 대상이 아니에요. 먼저 실제 입금액을 저장해 주세요.');
+ const old=paymentWaiver(q),refunded=Number(q.amount_refunded||0);
+ if(cancel?!old:balanceDue(q)<=0)throw Error('차액 인정 대상이 아니에요.');
  if(!cancel&&q.status==='quoted'&&!adminConfirmEligible(q))throw Error('주문 확정 조건을 먼저 확인해 주세요.');
+ let cumulative=Number(q.amount_paid||0),net=cumulative-refunded,missing=balanceDue(q);
+ if(!cancel){
+  const entered=window.prompt('실제로 받은 누적 입금액을 입력해 주세요. (환불 전 금액, 원)',String(cumulative||''));
+  if(entered===null)return;
+  if(!/^\\d+$/.test(entered.trim()))throw Error('실제 받은 금액을 숫자로 입력해 주세요.');
+  cumulative=Number(entered.trim());net=cumulative-refunded;
+  if(!Number.isSafeInteger(cumulative)||cumulative>1000000000||net<=0)throw Error('실제 입금액이 0원 이하이거나 올바르지 않아요.');
+  missing=totalDue(q)-net-old;
+  if(missing<=0)throw Error('입금액이 주문금액 이상이에요. 일반 입금 기록 저장을 이용해 주세요.');
+ }
  const msg=cancel?(q.buyer_name+'님 차액 인정 '+money(old)+'을 취소할까요?'):
- (q.buyer_name+'님 · '+fmtDate(q.created_at)+' 주문\n최종 결제금액 '+money(totalDue(q))+'\n실제 입금 '+money(net)+'\n이번에 면제할 차액 '+money(missing)+'\n\n실제 입금액은 변경하지 않고 부족분만 인정합니다.'+(q.status==='quoted'?' 관리자 주문확정도 진행해요.':'' )+'\n진행할까요?');
+ (q.buyer_name+'님 · '+fmtDate(q.created_at)+' 주문\n최종 결제금액 '+money(totalDue(q))+'\n실제 입금 '+money(net)+'\n이번에 추가로 받지 않을 차액 '+money(missing)+'\n\n실제 입금액 '+money(cumulative)+'과 차액 인정을 분리 기록합니다.'+(q.status==='quoted'?' 관리자 주문확정도 진행해요.':'')+'\n진행할까요?');
  if(!window.confirm(msg))return;
  busy=true;b.disabled=true;
  const savedY=window.scrollY;let recorded=false;
@@ -9369,7 +9379,7 @@ if(a==='accept-payment-shortfall'||a==='revoke-payment-shortfall'){
  adminFoldState.set('compact-payment-'+id,true);adminFoldState.set('direct-payment-'+id,true);
  try{
   await api('/rest/v1/gq_quotes?id=eq.'+encodeURIComponent(id),{method:'PATCH',admin:true,body:{
-    payment_waived_amount:cancel?0:old+missing,payment_waived_at:cancel?null:new Date().toISOString(),
+    amount_paid:cumulative,payment_waived_amount:cancel?0:old+missing,payment_waived_at:cancel?null:new Date().toISOString(),
     payment_waived_by:cancel?null:(session?.user?.id||null)}});
   recorded=true;
   if(!cancel&&q.status==='quoted'){

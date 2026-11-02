@@ -7080,12 +7080,16 @@ function renderSupplierBulkManager(historyOnly=false,expanded=false){
  }).join('');
  const supplierBatchCard=(batch,index)=>{
   const checked=supplierBatchPaymentState(batch);
+  const payView=historyOnly&&expanded&&state.tab==='payments'&&state.filter==='supplier_payments';
+  const visiblePeople=payView?checked.people.filter(p=>p.selected.some(x=>x.q.status==='confirmed')):checked.people;
+  if(payView&&!visiblePeople.length)return '';
+  const confirmedIds=payView?new Set(visiblePeople.flatMap(p=>p.selected.filter(x=>x.q.status==='confirmed').map(x=>x.item.id))):null;
   const ordered=Boolean(batch.ordered_at);
   const unpaidRequests=(batch.payers||[]).some(p=>{const invoice=supplierPartialInvoice(batch.id,p.buyer_key);return invoice&&!invoice.paid_at;});
   const base=batch.people?Math.floor(batch.total/batch.people):0;
   const extra=batch.people?batch.total%batch.people:0;
   const shareText=extra?`${money(base)}~${money(base+1)}`:money(base);
-  const batchItems=(batch.item_ids||[]).map(id=>state.quotes.flatMap(q=>q.items||[]).find(i=>i.id===id)).filter(Boolean);
+  const batchItems=(batch.item_ids||[]).filter(id=>!payView||confirmedIds.has(id)).map(id=>state.quotes.flatMap(q=>q.items||[]).find(i=>i.id===id)).filter(Boolean);
   return `<details class="supplier-bulk-batch" data-fold-key="supplier-batch-${esc(batch.id)}" data-supplier-batch-id="${esc(batch.id)}">
    <summary><span><strong>${esc(batch.supplier||'거래처')} · ${ordered?'도매 발주 완료':'발주 대기'}</strong>
     <small>${batch.people}명 · ${batchItems.length}종 · 배송비 ${money(batch.total)} · 1인 ${shareText}</small>
@@ -7094,7 +7098,7 @@ function renderSupplierBulkManager(historyOnly=false,expanded=false){
     <button type="button" class="btn sm secondary supplier-bulk-copy-btn" data-action="copy-supplier-batch-procurement" data-id="${esc(batch.id)}" aria-label="${esc(batch.supplier||'거래처')} 발주서 복사">발주서 복사</button>
    </summary>
    <div class="supplier-bulk-batch-body">
-    ${checked.people.map(p=>{
+    ${visiblePeople.map(p=>{
      const inv=supplierPartialInvoice(batch.id,p.payer.buyer_key);
      const recipient=state.quotes.find(q=>q.id===(inv?.charged_quote_id||p.payer.charged_quote_id))?.customer_email||'';
      const mailState=inv?.email_status==='sent'?'발송 완료':
@@ -7103,15 +7107,18 @@ function renderSupplierBulkManager(historyOnly=false,expanded=false){
       inv?.email_status==='failed'?'발송 실패':
       inv?.email_status==='skipped'?'발송 취소·건너뜀':
       recipient?'메일 미발송':'이메일 미등록';
-     const selectedQuotes=[...new Map(p.selected.map(({q})=>[q.id,q])).values()];
-     const invoicePlan=supplierBuyerInvoicePlan(p);
-     const canAsk=!ordered&&!p.eligible&&invoicePlan.amount>0&&!invoicePlan.reason&&!inv?.paid_at;
-     const canConfirmFull=canConfirmSupplierBuyerFullPaid(batch,p);
+     const displaySelected=payView?p.selected.filter(x=>x.q.status==='confirmed'):p.selected;
+     const mixed=payView&&displaySelected.length!==p.selected.length;
+     const selectedQuotes=[...new Map(displaySelected.map(({q})=>[q.id,q])).values()];
+     const invoicePlan=mixed?null:supplierBuyerInvoicePlan(p);
+     const canAsk=!mixed&&!ordered&&!p.eligible&&invoicePlan?.amount>0&&!invoicePlan?.reason&&!inv?.paid_at;
+     const canConfirmFull=!mixed&&canConfirmSupplierBuyerFullPaid(batch,p);
      const unpaidOrders=p.orders.filter(q=>q.status==='confirmed'&&readyQuote(q)&&(orderOutstanding(q)||0)>0);
      const showOrderPayments=!ordered&&!canConfirmFull&&unpaidOrders.length>0;
      const alreadyPaid=Boolean(p.eligible||inv?.paid_at);
-     const pendingSelected=p.selected.filter(({q})=>q.status==='quoted'&&q.purchase_intent==='buy_now');
-     const confirmLabel=ordered?'발주 완료':p.eligible?'✓ 입금 완료':inv?.paid_at?'✓ 선입금 확인':pendingSelected.length?'최종 주문확정 대기 '+new Set(pendingSelected.map(({q})=>q.id)).size+'건':p.reason;
+     const pendingSelected=payView?[]:p.selected.filter(({q})=>q.status==='quoted'&&q.purchase_intent==='buy_now');
+     const missingConfirmed=selectedQuotes.reduce((n,q)=>n+(readyQuote(q)?orderPaymentParts(q).goodsMissing:0),0);
+     const confirmLabel=payView?(ordered?'발주 완료':selectedQuotes.every(q=>readyQuote(q)&&orderPaymentParts(q).goodsMissing===0)?'✓ 상품대금 입금 완료':'상품대금 미입금 '+money(missingConfirmed)):ordered?'발주 완료':p.eligible?'✓ 입금 완료':inv?.paid_at?'✓ 선입금 확인':pendingSelected.length?'최종 주문확정 대기 '+new Set(pendingSelected.map(({q})=>q.id)).size+'건':p.reason;
      const confirmButton=canConfirmFull?`<button type="button" class="supplier-buyer-confirm" data-action="supplier-buyer-full-paid" data-id="${esc(batch.id)}" data-buyer-key="${esc(p.payer.buyer_key)}">입금 확인</button>`:'';
      const actions=ordered?'':`<div class="row wrap" style="margin-top:6px;gap:6px">
       ${inv&&!inv.paid_at?`<button type="button" class="btn sm secondary" data-action="supplier-partial-request" data-id="${esc(batch.id)}" data-buyer-key="${esc(p.payer.buyer_key)}" ${canAsk?'':'disabled'}>입금 요청금액 갱신</button>`:''}
@@ -7126,9 +7133,9 @@ function renderSupplierBulkManager(historyOnly=false,expanded=false){
        <span class="supplier-buyer-check-actions"><span class="${alreadyPaid||ordered?'is-paid':'is-waiting'}">${esc(confirmLabel)}</span>${confirmButton}</span>
       </div>
       <div class="supplier-buyer-order-details">
-       ${selectedQuotes.map(q=>supplierBuyerQuoteItems(q,p.selected)).join('')}
+       ${selectedQuotes.map(q=>supplierBuyerQuoteItems(q,displaySelected)).join('')}
       </div>
-      ${!ordered&&!p.eligible&&!inv?.paid_at?`<div class="supplier-buyer-request-box">
+      ${!ordered&&!p.eligible&&!inv?.paid_at&&!mixed?`<div class="supplier-buyer-request-box">
        <strong>이 도매처 미입금 상품 · ${money(invoicePlan.unpaidGoods)}</strong>
        <small>해당 도매처 상품 합계 ${money(invoicePlan.supplierGoods)} · 이미 입금된 상품 ${money(invoicePlan.paidGoods)} · 고객 택배비 제외</small>
        ${invoicePlan.supplierFreight? `<small>남은 도매배송비 ${money(invoicePlan.supplierFreight)} 별도 합산</small>`:''}

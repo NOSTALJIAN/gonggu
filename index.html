@@ -6132,7 +6132,7 @@ function renderAdmin(){
    <form id="login" class="admin-login-form">
     <div class="admin-login-field"><label for="admin-login-email">이메일</label><input id="admin-login-email" required name="email" type="email" inputmode="email" autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="이메일 주소"></div>
     <div class="admin-login-field"><label for="admin-login-password">비밀번호</label><input id="admin-login-password" required name="password" type="password" autocomplete="current-password" placeholder="비밀번호"></div>
-    <label class="admin-device-login-choice"><input type="checkbox" name="device_auto_admin" value="yes" ${autoAdminEnabled()?'checked':''}><span>이 기기에서 관리자 화면 자동 열기</span></label>
+    <label class="admin-device-login-choice"><input type="checkbox" name="device_auto_admin" value="yes" ${read(AUTO_ADMIN,null)===false?'':'checked'}><span>이 기기에서 관리자 화면 자동 열기</span></label>
     <button class="btn block" type="submit">로그인</button>
     <p class="admin-login-status" data-login-status role="status" aria-live="polite"></p>
    </form>

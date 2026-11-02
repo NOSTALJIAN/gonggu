@@ -8358,8 +8358,8 @@ function ensurePostcode(){
  return postcodeLoader;
 }
 function addressFields(button){
- const block=button.closest('#courierFields, #courierFieldsEdit');
- if(!block||block.classList.contains('hidden'))throw Error('먼저 택배수령을 선택해 주세요');
+ const block=button.closest('#courierFields, #courierFieldsEdit, .shipping-merge-address');
+ if(!block||block.classList.contains('hidden'))throw Error('택배 주소 입력 영역을 열어 주세요');
  return block;
 }
 async function searchKoreanAddress(button){

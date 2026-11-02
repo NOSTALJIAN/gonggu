@@ -6557,10 +6557,10 @@ function renderAdminQuoteCard(q){
      ${renderAdminItemOptionRequests(q)}
     </div>
    </details>
-   <details class="compact-order-tool" data-compact-tool="payment">
+   <details class="compact-order-tool" data-compact-tool="payment" data-fold-key="compact-payment-${esc(q.id)}">
     <summary>입금·환불</summary>
     <div class="compact-tool-content">
-     ${q.status==='confirmed'?renderOrderDepositControl(q):'<p class="tiny">주문 확정 후 입금을 확인할 수 있어요.</p>'}
+     ${adminCanRecordPayment(q)?renderOrderDepositControl(q):'<p class="tiny">이번 회차 구매 선택 후 입금액을 기록할 수 있어요.</p>'}
      <p class="tiny">실제로 받은 금액을 기록해요. 저장만으로 송금되지는 않아요.</p>
     </div>
    </details>
@@ -6796,8 +6796,13 @@ function orderPaymentParts(q){
  return {goods,shipping,received,goodsMissing:Math.max(0,goods-received),
   shippingMissing:Math.max(0,shipping-Math.max(0,received-goods))};
 }
+function adminCanRecordPayment(q){
+ return Boolean(q&&(
+  q.status==='confirmed'||(q.status==='quoted'&&q.purchase_intent==='buy_now')
+ )&&readyQuote(q));
+}
 function orderOutstanding(q){
- if(q.status!=='confirmed'||!readyQuote(q))return null;
+ if(!adminCanRecordPayment(q))return null;
  return Math.max(0,totalDue(q)-Number(q.amount_paid||0)+Number(q.amount_refunded||0));
 }
 function renderOrderDepositControl(q){
@@ -6811,7 +6816,7 @@ function renderOrderDepositControl(q){
   </div>
   ${p.goodsMissing>0?`<button class="btn sm order-payment-quick" data-action="mark-order-payment-part" data-part="goods" data-id="${esc(q.id)}">상품대금 ${money(p.goodsMissing)} 입금 확인</button>`:''}
   ${!p.goodsMissing&&p.shippingMissing>0?`<button class="btn sm secondary order-payment-quick" data-action="mark-order-payment-part" data-part="shipping" data-id="${esc(q.id)}">택배비 ${money(p.shippingMissing)} 입금 확인</button>`:''}
-  <details class="related-deposit-edit"><summary>금액 직접 수정 · 부분입금/환불</summary><form data-payment="${esc(q.id)}"><label>누적 입금액<input name="paid" type="number" min="0" step="1" inputmode="numeric" required value="${Number(q.amount_paid||0)}"></label><label>누적 환불액<input name="refunded" type="number" min="0" step="1" inputmode="numeric" required value="${Number(q.amount_refunded||0)}"></label><button class="btn sm secondary" type="submit">이 주문에 저장</button></form></details>
+  <details class="related-deposit-edit" data-fold-key="direct-payment-${esc(q.id)}"><summary>금액 직접 수정 · 부분입금/환불</summary><form data-payment="${esc(q.id)}"><label>누적 입금액<input name="paid" type="number" min="0" step="1" inputmode="numeric" required value="${Number(q.amount_paid||0)}"></label><label>누적 환불액<input name="refunded" type="number" min="0" step="1" inputmode="numeric" required value="${Number(q.amount_refunded||0)}"></label><button class="btn sm secondary" type="submit">이 주문에 저장</button></form></details>
  </div>`;
 }
 function renderOtherBuyerDeposits(group){
@@ -9810,7 +9815,7 @@ if(a==='mark-order-payment-part'){
   if(!state.admin||state.page!=='admin')throw Error('관리자만 입금 확인할 수 있어요.');
   if(busy)return;
   const q=state.quotes.find(q=>q.id===id),part=String(b.dataset.part||'');
-  if(!q||q.status!=='confirmed'||!readyQuote(q)||!['goods','shipping'].includes(part))throw Error('주문과 입금 구분을 확인해 주세요.');
+  if(!adminCanRecordPayment(q)||!['goods','shipping'].includes(part))throw Error('이번 회차 구매가 선택된 주문의 입금액만 확인할 수 있어요.');
   const p=orderPaymentParts(q);
   if(part==='shipping'&&p.goodsMissing>0)throw Error('상품대금을 먼저 확인해 주세요.');
   const amount=part==='goods'?p.goodsMissing:p.shippingMissing;
@@ -9864,7 +9869,16 @@ if(a==='review-delivery'){
 if(a==='compact-open-tool'){
  const card=b.closest('[data-compact-order="'+id+'"]');
  const tool=card?.querySelector('[data-compact-tool="'+b.dataset.tool+'"]');
- if(tool){tool.open=true;if(b.dataset.tool==='prices')tool.querySelector('input')?.focus({preventScroll:true});}
+ if(tool){
+  tool.open=true;
+  if(b.dataset.tool==='payment'){
+   adminFoldState.set('compact-payment-'+id,true);
+   const edit=tool.querySelector('.related-deposit-edit');
+   if(edit){edit.open=true;adminFoldState.set('direct-payment-'+id,true);}
+   tool.querySelector('input[name="paid"]')?.focus({preventScroll:true});
+  }
+  if(b.dataset.tool==='prices')tool.querySelector('input')?.focus({preventScroll:true});
+ }
  return;
 }
 if(a==='date-open-all'||a==='date-close-all'){
@@ -10558,7 +10572,31 @@ else if(f.dataset.price){
  const errorMsg=autoDelivery.errors.length?' 자동 견적 발송에 실패한 주문이 있어요. 견적 요청 화면에서 다시 보내 주세요.':'';
  notif((autoNotice?savedMsg+' '+autoNotice:savedMsg)+autoMsg+errorMsg);
 }
-else if(f.dataset.payment){const paid=Number(data.get('paid')),refunded=Number(data.get('refunded'));if(!Number.isInteger(paid)||!Number.isInteger(refunded)||paid<0||refunded<0)throw Error('금액을 확인해 주세요');await adminPayment(f.dataset.payment,paid,refunded);await loadAdmin();notif('입금 기록 완료')}
+else if(f.dataset.payment){
+ const quoteId=f.dataset.payment;
+ const q=state.quotes.find(x=>x.id===quoteId);
+ if(!q||!state.admin||state.page!=='admin'||!adminCanRecordPayment(q))throw Error('관리자에서 구매 진행 중인 주문의 입금액을 수정해 주세요.');
+ const paid=Number(data.get('paid')),refunded=Number(data.get('refunded'));
+ if(!Number.isSafeInteger(paid)||!Number.isSafeInteger(refunded)||paid<0||refunded<0||paid>1000000000||refunded>paid)
+  throw Error('누적 입금액과 환불액을 확인해 주세요.');
+ const previouslyReceived=Number(q.amount_paid||0)-Number(q.amount_refunded||0);
+ const nextReceived=paid-refunded;
+ if(q.status==='quoted'&&nextReceived>=totalDue(q)&&previouslyReceived<totalDue(q)&&
+  !window.confirm('기록할 순입금액 '+money(nextReceived)+'이 결제금액 '+money(totalDue(q))+' 이상이에요.\n\n이 주문은 입금 확인 시 자동으로 최종 주문확정될 수 있어요. 실제 입금내역을 확인했나요?'))return;
+ adminFoldState.set('compact-payment-'+quoteId,true);
+ adminFoldState.set('direct-payment-'+quoteId,true);
+ state.orderCardsOpen[q.bundle_parent_id||q.id]=true;
+ const priorY=window.scrollY;
+ await adminPayment(quoteId,paid,refunded);
+ await loadAdmin();
+ const updated=state.quotes.find(x=>x.id===quoteId);
+ if(q.status==='quoted'&&updated?.status==='confirmed'&&state.tab==='quotes'&&state.filter==='final_confirmation'){
+  state.filter='buy_now';
+  render();
+ }
+ window.scrollTo({top:priorY,behavior:'instant'});
+ notif(updated?.status==='confirmed'&&q.status==='quoted'?'입금 저장 완료 · 최종 주문확정으로 자동 변경됐어요.':'이 주문의 입금 기록을 저장했어요.');
+}
 }catch(ex){if(f.dataset.price)adminPriceScrollAnchor=null;notif(errorText(ex))}finally{busy=false}}
 async function change(e){const x=e.target;
 

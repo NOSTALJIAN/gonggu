@@ -4929,13 +4929,15 @@ const buyerLabel=q=>String(q.buyer_name||'이름 미입력')+' · '+(q.baby_name
 /* Order intake channel is assigned by the server-side quote request RPC.
    notification_origin is an email-link fallback and must not be used to
    identify which storefront a buyer submitted their order on. */
+/* All existing customer orders were submitted via the shared GitHub link.
+   Keep the recorded technical price_channel unchanged; this is a display label. */
 function adminGithubOrderIcon(q){
- if(!state.admin||q?.price_channel!=='github')return '';
- return '<span class="admin-order-gh-badge" title="GitHub 링크로 접수한 주문" aria-label="GitHub 링크 접수">맘❤️</span>';
+ if(!state.admin||!q)return '';
+ return '<span class="admin-order-gh-badge" title="공유 구매 링크 주문" aria-label="공유 구매 링크 주문">맘❤️</span>';
 }
 function adminGithubGroupIcon(quotes){
- if(!state.admin||!Array.isArray(quotes)||!quotes.some(q=>q.price_channel==='github'))return '';
- return '<span class="admin-order-gh-badge" title="GitHub 링크로 접수한 주문 포함" aria-label="GitHub 링크 접수 포함">맘❤️</span>';
+ if(!state.admin||!Array.isArray(quotes)||!quotes.length)return '';
+ return '<span class="admin-order-gh-badge" title="공유 구매 링크 주문" aria-label="공유 구매 링크 주문">맘❤️</span>';
 }
 
 const normKey=x=>String(x||'').trim().replace(/\s+/g,'').toLowerCase();

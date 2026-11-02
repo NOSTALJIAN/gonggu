@@ -3369,6 +3369,27 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 @media(max-width:370px){.admin-home-preparing-panel{padding:10px}.admin-home-preparing-row-title em{margin-left:0}}
 
 
+.supplier-freight-progress-entry{border-top:1px solid #eeeeef}
+.supplier-freight-progress-entry>summary{list-style:none;cursor:pointer}
+.supplier-freight-progress-entry>summary::-webkit-details-marker{display:none}
+.supplier-freight-progress-entry>summary::marker{content:''}
+.supplier-freight-progress-entry[open]>.supplier-freight-progress-row{background:#f8f9f8}
+.supplier-freight-progress-entry[open] .supplier-freight-progress-arrow{transform:rotate(90deg)}
+.supplier-freight-progress-entry.is-allocated .supplier-freight-progress-status{color:#35704e}
+.supplier-freight-progress-detail{padding:5px 9px 15px;border-top:1px solid #eeeeef}
+.supplier-freight-detail-stats{display:flex;gap:7px;flex-wrap:wrap;margin:8px 0 11px}
+.supplier-freight-detail-stats>span{font-size:11px;color:#555;padding:7px 9px;border:1px solid #e6e6e6;border-radius:7px;background:#fff}
+.supplier-freight-detail-stats b{color:#242424}
+.supplier-freight-waiting-list{margin:11px 0;border:1px solid #ebebeb;border-radius:8px;background:#fff;padding:10px}
+.supplier-freight-waiting-list>strong{display:block;font-size:12px;margin-bottom:6px}
+.supplier-freight-waiting-item{padding:9px 0;border-top:1px solid #f1f1f1;display:flex;align-items:baseline;justify-content:space-between;gap:9px}
+.supplier-freight-waiting-item>b{font-size:12px}
+.supplier-freight-waiting-item>small{font-size:11px;color:#777;text-align:right}
+.supplier-freight-step-note{font-size:11px;line-height:1.55;color:#666;margin:10px 0}
+.supplier-freight-detail-actions{display:flex;gap:7px;flex-wrap:wrap}
+.supplier-freight-detail-actions button{min-height:37px;padding:8px 10px;background:#222;color:#fff;border:1px solid #222;border-radius:7px;font-size:11px;font-weight:760;flex:1 1 125px}
+.supplier-freight-detail-actions button.is-secondary{background:#fff;color:#272727;border-color:#d8d8d8}
+@media(max-width:390px){.supplier-freight-progress-status{flex-basis:44%;font-size:10px}.supplier-freight-detail-stats>span{font-size:10px}.supplier-freight-waiting-item{flex-direction:column;gap:2px}.supplier-freight-waiting-item>small{text-align:left}}
 /* Freight allocation is a step with a completed state, not a permanent input form. */
 .supplier-freight-overview{margin:14px 0 12px;padding:13px;background:#fff;border:1px solid #e1e2e5;border-radius:13px}
 .supplier-freight-overview-heading{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:7px}
@@ -7112,6 +7133,7 @@ function supplierFreightProgress(){
   return aPending-bPending||a.name.localeCompare(b.name,'ko');
  });
 }
+
 function renderSupplierFreightOverview(progress){
  const done=progress.filter(p=>p.remaining===0&&p.batches.length>0).length;
  const needs=progress.filter(p=>p.remaining>0).length;
@@ -7123,16 +7145,38 @@ function renderSupplierFreightOverview(progress){
    const status=finished?(p.confirmWaiting?'배분 완료 · 구매확정 '+p.confirmWaiting+'건 대기':'배송비 배분 완료 · 입금·발주 대기'):
     blocked?'추가 상품 배분 확인 필요':
     p.batches.length?'일부 배분 완료 · 남은 상품 배분':'배송비 미배분';
-   return '<button type="button" class="supplier-freight-progress-row '+(finished?'is-allocated':'')+
-    '" data-action="supplier-freight-select-store" data-store="'+esc(p.id)+'">'+
+   const idSet=new Set(p.batches.flatMap(batch=>batch.item_ids||[]));
+   const related=state.quotes.filter(q=>q.status!=='cancelled'&&
+    (q.items||[]).some(item=>idSet.has(item.id)));
+   const waiting=related.filter(q=>q.status==='quoted');
+   const confirmed=related.filter(q=>q.status==='confirmed');
+   const link=' data-action="supplier-freight-select-store" data-store="'+esc(p.id)+'"';
+   return '<details class="supplier-freight-progress-entry '+(finished?'is-allocated':'')+
+    '" data-fold-key="supplier-freight-'+esc(p.id)+'">'+
+    '<summary class="supplier-freight-progress-row">'+
     '<span class="supplier-freight-progress-name"><b>'+esc(p.name||p.id)+'</b><small>'+
-    p.allocated+'종 배분'+(p.remaining?' · 미배분 '+p.remaining+'종':'')+'</small></span>'+
+     p.allocated+'종 배분'+(p.remaining?' · 미배분 '+p.remaining+'종':'')+'</small></span>'+
     '<span class="supplier-freight-progress-status">'+esc(status)+'</span>'+
-    '<span aria-hidden="true" class="supplier-freight-progress-arrow">›</span></button>';
+    '<span aria-hidden="true" class="supplier-freight-progress-arrow">›</span></summary>'+
+    '<div class="supplier-freight-progress-detail">'+
+    '<div class="supplier-freight-detail-stats"><span>배송비 배분 <b>'+p.allocated+'종</b></span>'+
+    '<span>최종 주문확정 <b>'+confirmed.length+'건</b></span>'+
+    '<span>구매확정 대기 <b>'+waiting.length+'건</b></span></div>'+
+    (waiting.length?'<div class="supplier-freight-waiting-list"><strong>구매확정 대기 주문</strong>'+
+      waiting.map(q=>'<div class="supplier-freight-waiting-item"><b>'+
+       esc(q.buyer_name||'주문자 미입력')+'</b><small>아기: '+esc(q.baby_name||'미입력')+
+       ' · 상품 '+(q.items||[]).filter(item=>idSet.has(item.id)).length+'종</small></div>').join('')+
+     '</div>':'')+
+    (finished?'<p class="supplier-freight-step-note">배송비 배분은 완료됐어요. 구매확정과 입금 확인 후 도매 발주를 진행하세요.</p>':
+     '<p class="supplier-freight-step-note">아직 배분할 상품이 남아 있어요. 거래처 배분 화면에서 확인하세요.</p>')+
+    '<div class="supplier-freight-detail-actions">'+
+    (waiting.length?'<button type="button" data-tab="quotes" data-nav-filter="waiting_buyer">구매확정 대기 주문 관리</button>':'')+
+    (p.batches.length?'<button type="button" data-tab="payments" data-nav-filter="supplier_payments">입금·발주 관리</button>':'')+
+    '<button type="button" class="is-secondary"'+link+'>'+(finished?'배분 내역 보기':'남은 상품 배분하기')+'</button>'+
+    '</div></div></details>';
   }).join('')||'<p class="smallnote">이번 회차에 배송비 배분할 거래처가 없어요.</p>')+
   '</section>';
 }
-
 function renderSupplierFreightDoneStep(store,progress,customerList){
  return '<section class="supplier-freight-done-step">'+
   '<strong>'+esc(store.name)+' · 배송비 배분 완료</strong>'+
@@ -9582,10 +9626,13 @@ if(a==='supplier-freight-select-store'){
  state.supplierBulkStoreId=key;
  state.supplierBulkSelected=new Set(state.quotes.filter(isRoundBuyer).flatMap(q=>
   (q.items||[]).filter(item=>supplierItemStore(item)===key&&supplierBulkAvailableItem(q,item)).map(item=>item.id)));
- adminFoldState.set('supplier-bulk-manager',true);
  render();
  const root=app.querySelector('#supplier-bulk-manager');
- if(root)window.scrollTo({top:Math.max(0,window.scrollY+root.getBoundingClientRect().top-12),behavior:'instant'});
+ if(root){
+  root.open=true;
+  adminFoldState.set('supplier-bulk-manager',true);
+  window.scrollTo({top:Math.max(0,window.scrollY+root.getBoundingClientRect().top-12),behavior:'instant'});
+ }
  return;
 }
 if(a==='supplier-bulk-clear'){

@@ -3957,6 +3957,22 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 .admin-home-shortcuts button{padding:10px 5px}
 @media(max-width:365px){.admin-finance-primary-item>strong{font-size:17px}.admin-finance-quickline{font-size:10px}.admin-finance-quickline b{font-size:11px;margin-left:2px}}
 
+/* Clean order management: only active main steps, extra statuses in dialog. */
+.admin-orders-page .admin-orders-title-row{margin:3px 1px 11px;gap:10px}
+.admin-orders-page .admin-orders-list-title{gap:7px;min-width:0}
+.admin-orders-page .admin-clean-utility{display:inline-flex;align-items:center;gap:7px;min-height:36px;padding:7px 11px;border:1px solid #e6e6e6;border-radius:9px;background:#fff;color:#555;font-size:11px;font-weight:750;max-width:56%;white-space:normal;text-align:right}
+.admin-clean-utility span:last-child{font-size:14px;line-height:1}
+.admin-filter-modal{padding:0 1px 14px}
+.admin-filter-modal-hint{font-size:12px;color:#777;margin:0 0 17px;line-height:1.6}
+.admin-filter-modal-section{border-top:1px solid #eee;padding:15px 0 10px}
+.admin-filter-modal-section>strong{display:block;font-size:13px;color:#252525;margin:0 0 10px}
+.admin-filter-modal-chips{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.admin-filter-modal-choice{border:1px solid #e4e4e4;background:#fff;color:#444;display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px;border-radius:10px;font-size:12px;text-align:left;font-weight:700;min-height:42px}
+.admin-filter-modal-choice strong{color:#777;font-variant-numeric:tabular-nums;font-size:12px}
+.admin-filter-modal-choice.active{border-color:#303030;background:#292929;color:#fff}
+.admin-filter-modal-choice.active strong{color:#fff}
+.admin-filter-modal-all{width:100%;min-height:44px;border:0;background:#f3f3f3;color:#333;border-radius:10px;font-size:13px;font-weight:800;margin-top:13px}
+
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -8794,6 +8810,42 @@ function updateAdminOrderSearch(){
 function adminOrderNeedsPaymentOrProcurement(q){
  return q?.status==='confirmed'&&!isWholesaleCompleted(q)&&!isFinishedOrder(q);
 }
+/* Less common status filters are available in an on-demand dialog. */
+function adminOrderAdvancedFilterEntries(){
+ const all=state.quotes||[],count=predicate=>all.filter(predicate).length;
+ return [
+  ['all','견적·선택',count(q=>q.status==='requested'||(q.status==='quoted'&&(!q.purchase_intent||q.purchase_intent==='undecided')))],
+  ['buy_now','구매 진행',count(q=>isRoundBuyer(q)&&!isFinishedOrder(q))],
+  ['finished','완료',count(isFinishedOrder)],
+  ['other','보류·다음 회차',count(q=>q.status==='quoted'&&['next_round','on_hold'].includes(q.purchase_intent))],
+  ['cancel_requested','취소 요청',count(q=>q.cancel_requested_at&&q.status!=='cancelled')],
+  ['requested','견적 요청',count(q=>q.status==='requested')],
+  ['quoted','견적 안내',count(q=>q.status==='quoted')],
+  ['confirmed','주문 확정',count(q=>q.status==='confirmed')],
+  ['next_round','다음 회차',count(q=>q.status==='quoted'&&q.purchase_intent==='next_round')],
+  ['on_hold','보류',count(q=>q.status==='quoted'&&q.purchase_intent==='on_hold')],
+  ['undecided','회차 미선택',count(q=>q.status==='quoted'&&(!q.purchase_intent||q.purchase_intent==='undecided'))]
+ ];
+}
+function renderAdminOrderFilterModal(){
+ const current=state.filter;
+ const extras=adminOrderAdvancedFilterEntries().filter(([key,,num])=>num>0||key===current);
+ const stages=['flow_new','flow_preparing','flow_pickup_ready','flow_shipped','flow_completed','flow_soldout_closed','cancelled']
+  .map(key=>[key,key==='cancelled'?'취소됨':workflowLabels[key.slice(5)],
+   state.quotes.filter(q=>key==='cancelled'?q.status==='cancelled':q.status==='confirmed'&&workflowStage(q)===key.slice(5)).length])
+  .filter(([key,,num])=>num>0||key===current);
+ const chips=rows=>rows.map(([key,label,num])=>`<button type="button" class="admin-filter-modal-choice ${current===key?'active':''}" data-filter="${esc(key)}" aria-pressed="${current===key}"><span>${esc(label)}</span><strong>${num}</strong></button>`).join('');
+ return `<div class="admin-filter-modal" aria-label="주문 상세 필터">
+   <p class="admin-filter-modal-hint">자주 쓰는 진행 단계는 주문 화면에 표시하고, 나머지는 여기서 확인해요.</p>
+   <div class="admin-filter-modal-section"><strong>주문 상태</strong><div class="admin-filter-modal-chips">
+    ${chips(extras)||'<p class="smallnote">추가로 분류된 주문이 없어요.</p>'}
+   </div></div>
+   <div class="admin-filter-modal-section"><strong>배송 · 완료 상태</strong><div class="admin-filter-modal-chips">
+    ${chips(stages)||'<p class="smallnote">별도 진행 단계의 주문이 없어요.</p>'}
+   </div></div>
+   <button type="button" class="admin-filter-modal-all" data-filter="all_history">전체 주문 보기 · ${state.quotes.length}건</button>
+  </div>`;
+}
 function renderAdminQuotes(){
  const all=state.quotes;
  const isPre=q=>q.status==='requested'||(q.status==='quoted'&&(!q.purchase_intent||q.purchase_intent==='undecided'));
@@ -8828,9 +8880,9 @@ function renderAdminQuotes(){
  const waiting=groups.filter(g=>g.some(q=>q.status==='requested'||quoteNeedsPriceInput(q)));
  const priced=groups.filter(g=>!waiting.includes(g));
  const tabs=[['pricing','견적',nPrice],['waiting_buyer','구매 선택',nWaiting],['final_confirmation','확정 대기',nFinalWaiting],['preparing_orders','입금·발주',nPaymentProcurement],['wholesale_completed','입고·배송',nDelivery],['all_history','전체',all.length]];
- const extras=[['all','견적·선택',nPre],['buy_now','구매 진행',count(q=>isRoundBuyer(q)&&!isFinishedOrder(q))],['finished','완료',nFinished],['other','보류·다음 회차',nOther],['cancel_requested','취소 요청',nCancel],['requested','견적 요청',count(q=>q.status==='requested')],['quoted','견적 안내',count(q=>q.status==='quoted')],['confirmed','주문 확정',count(q=>q.status==='confirmed')]];
- const detailKeys=['flow_new','flow_preparing','flow_pickup_ready','flow_shipped','flow_completed','flow_soldout_closed','cancelled'];
- const extraActive=!tabs.some(([key])=>key===filter);
+ const extras=adminOrderAdvancedFilterEntries();
+ const visibleTabs=tabs.filter(([key,,num])=>num>0||key===filter||key==='all_history');
+ const advancedSelected=!tabs.some(([key])=>key===filter);
  const title=[...tabs,...extras].find(([key])=>key===filter)?.[1]||(
    filter.startsWith('flow_')?workflowLabels[filter.slice(5)]:statusLabel[filter]||'주문');
  return `<section class="admin-quote-workspace admin-orders-page">
@@ -8841,21 +8893,15 @@ function renderAdminQuotes(){
    <button type="button" data-action="clear-admin-order-search" class="${state.adminOrderSearch?'':'hidden'}" aria-label="검색어 지우기">×</button>
   </div>
   <div class="admin-orders-filterbar" role="group" aria-label="주문 상태">
-   ${tabs.map(([key,label,num])=>`<button type="button" data-filter="${key}" class="${filter===key?'active':''}" aria-pressed="${filter===key}"><span>${label}</span><b>${num}</b></button>`).join('')}
+   ${visibleTabs.map(([key,label,num])=>`<button type="button" data-filter="${key}" class="${filter===key?'active':''}" aria-pressed="${filter===key}"><span>${label}</span><b>${num}</b></button>`).join('')}
   </div>
   <div class="admin-orders-title-row">
    <div class="admin-orders-list-title"><strong>${esc(title)}</strong><span>${qq.length}건</span></div>
-   <details class="admin-more-filters" ${extraActive?'open':''}>
-    <summary>상세 상태 ${extraActive?'· '+esc(title):''}</summary>
-    <div class="admin-more-filter-items">
-     ${extras.map(([key,label,num])=>`<button type="button" data-filter="${key}" class="${filter===key?'active':''}">${label} ${num}</button>`).join('')}
-     <details class="admin-more-subfilters"><summary>배송 단계별</summary><div class="admin-more-filter-items">
-      ${detailKeys.map(key=>`<button type="button" data-filter="${key}" class="${filter===key?'active':''}">${esc(key.startsWith('flow_')?workflowLabels[key.slice(5)]:'취소됨')}</button>`).join('')}
-     </div></details>
-    </div>
-   </details>
+   <button type="button" class="admin-clean-utility" data-action="open-admin-order-filters" aria-label="주문 상세 필터 열기">
+    <span>${advancedSelected?'선택한 필터 · '+esc(title):'상세 필터'}</span><span aria-hidden="true">☷</span>
+   </button>
   </div>
-  ${filter==='preparing_orders'?'<p class="admin-preproc-note">주문 확정 후 입금 확인과 도매 발주를 처리하는 단계예요. 발주가 완료되면 ‘입고·배송’으로 넘어가요.</p>':''}
+  ${filter==='preparing_orders'?'<p class="admin-preproc-note">입금 확인 후 발주하면 ‘입고·배송’으로 이동해요.</p>':''}
   ${qq.length?filter==='all'?renderAdminQuoteFlatSection(waiting,'가격 확인','pending')+renderAdminQuoteFlatSection(priced,'구매 선택 대기'):
       renderAdminQuoteFlatSection(groups,'',filter==='pricing'?'pending':'saved'):
       '<div class="empty">해당 주문이 없어요.</div>'}
@@ -9140,6 +9186,7 @@ if(m.type==='payment-save-success'&&state.admin)return wrap('입금 처리 완�
 if(m.type==='entry-push')return wrap('신상·주문 알림 받기',renderEntryPushBody());
 if(m.type==='admin-delivery-queue'&&state.admin)return wrap('수령방식 변경 요청',renderAdminDeliveryQueue());
 if(m.type==='admin-option-requests'&&state.admin&&state.page==='admin')return wrap('옵션 변경 요청',adminOptionRequestsModalBody(m));
+ if(m.type==='admin-order-filters'&&state.admin&&state.page==='admin'&&state.tab==='quotes')return wrap('주문 상세 필터',renderAdminOrderFilterModal());
 if(m.type==='admin-delivery-review'&&state.admin){const q=state.quotes.find(x=>x.id===m.id);return wrap('수령방식 변경 요청',q?.delivery_change_requested_at?renderAdminDeliveryRequest(q):'<div class="empty">이미 처리된 요청이에요.</div>');}
 if(m.type==='admin-price-edit'){
  if(!state.admin||state.page!=='admin')return '';
@@ -10759,6 +10806,10 @@ if(a==='set-purchase-intent'){
  await setBuyerPurchaseIntent(next);
  notif(next==='buy_now'?'구매 의사가 전달됐어요. 배송비 계산 후 최종 금액을 안내받아요.':next==='next_round'?'다음 회차 구매로 저장했어요.':'구매 보류로 저장했어요.');
  return;
+}
+if(a==='open-admin-order-filters'){
+ if(!state.admin||state.page!=='admin'||state.tab!=='quotes')throw Error('관리자 주문 화면에서 상세 필터를 열어 주세요.');
+ modalOpen('admin-order-filters');return;
 }
 if(a==='show-pending-item-options'||a==='admin-option-open'||a==='admin-approve-item-options'||a==='admin-reject-item-options'){
  if(!state.admin||state.page!=='admin')throw Error('관리자만 옵션 변경 요청을 처리할 수 있어요.');
@@ -12386,7 +12437,7 @@ app.addEventListener('click',e=>{
  }
 },true);
 
-app.addEventListener('click',e=>{const orderSummary=e.target.closest('.admin-order-fold > summary');if(orderSummary){const order=orderSummary.parentElement;state.orderCardsOpen[order.dataset.adminOrderId]=!order.open;return}const summary=e.target.closest('.admin-date-group > summary');if(summary){const group=summary.parentElement;state.dateGroupsOpen[group.dataset.orderDate]=!group.open;return}const tab=e.target.closest('[data-tab]'),filter=e.target.closest('[data-filter]');if(tab){state.tab=tab.dataset.tab;if(tab.dataset.navFilter)state.filter=tab.dataset.navFilter;else if(state.tab==='payments'&&!['buy_now','supplier_payments'].includes(state.filter))state.filter='buy_now';else if(state.tab==='quotes'&&['buy_now','supplier_payments'].includes(state.filter))state.filter='pricing';if(tab.dataset.navView)state.adminCatalogView=tab.dataset.navView;if(state.tab==='requests')state.requestStatusFilter='pending';render();return}if(filter){state.filter=filter.dataset.filter;state.supplierBulkSelected.clear();
+app.addEventListener('click',e=>{const orderSummary=e.target.closest('.admin-order-fold > summary');if(orderSummary){const order=orderSummary.parentElement;state.orderCardsOpen[order.dataset.adminOrderId]=!order.open;return}const summary=e.target.closest('.admin-date-group > summary');if(summary){const group=summary.parentElement;state.dateGroupsOpen[group.dataset.orderDate]=!group.open;return}const tab=e.target.closest('[data-tab]'),filter=e.target.closest('[data-filter]');if(tab){state.tab=tab.dataset.tab;if(tab.dataset.navFilter)state.filter=tab.dataset.navFilter;else if(state.tab==='payments'&&!['buy_now','supplier_payments'].includes(state.filter))state.filter='buy_now';else if(state.tab==='quotes'&&['buy_now','supplier_payments'].includes(state.filter))state.filter='pricing';if(tab.dataset.navView)state.adminCatalogView=tab.dataset.navView;if(state.tab==='requests')state.requestStatusFilter='pending';render();return}if(filter){if(state.modal?.type==='admin-order-filters')state.modal=null;state.filter=filter.dataset.filter;state.supplierBulkSelected.clear();
  if(state.filter==='supplier_payments'){
   for(const batch of state.supplierBatches.filter(b=>!b.ordered_at))
    adminFoldState.set('supplier-batch-'+batch.id,true);

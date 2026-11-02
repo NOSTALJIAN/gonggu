@@ -5901,21 +5901,31 @@ function renderAdminHome(){
  </section>`;
 }
 function renderAdminPayments(){
- const selected=state.filter==='supplier_payments'?'supplier_payments':'buy_now';
- const all=state.quotes.filter(q=>isRoundBuyer(q)&&!isFinishedOrder(q));
+ // Shipping-fee allocation is an occasional task; when every current item
+ // has an allocation, go straight to the day-to-day payment/order workspace.
+ const ready=state.productPrivateReady&&state.supplierBatchesReady;
+ const pending=ready?supplierFreightProgress().filter(p=>p.remaining>0):[];
+ const hasAllocationWork=!ready||pending.length>0;
+ if(ready&&!hasAllocationWork&&state.filter==='buy_now')state.filter='supplier_payments';
+ const selected=hasAllocationWork&&state.filter==='buy_now'?'buy_now':'supplier_payments';
+ const all=selected==='buy_now'?state.quotes.filter(q=>isRoundBuyer(q)&&!isFinishedOrder(q)&&
+  (q.items||[]).some(item=>!!supplierItemStore(item)&&
+   item.fulfillment!=='sold_out'&&!item.supplier_ordered_at&&!q.supplier_ordered_at&&
+   !supplierItemBatch(item.id))):[];
  return `<section class="admin-procurement-page">
   <div class="admin-page-heading"><h2>도매 관리</h2></div>
-  <nav class="admin-subnav" aria-label="도매 관리 메뉴">
-   <button type="button" data-filter="buy_now" class="${selected==='buy_now'?'active':''}">배송비 배분</button>
+  ${hasAllocationWork?`<nav class="admin-subnav" aria-label="도매 관리 메뉴">
+   <button type="button" data-filter="buy_now" class="${selected==='buy_now'?'active':''}">배송비 배분${ready?' · '+pending.length+'곳':''}</button>
    <button type="button" data-filter="supplier_payments" class="${selected==='supplier_payments'?'active':''}">입금·발주</button>
-  </nav>
+  </nav>`:''}
   ${selected==='buy_now'?
     `${renderSupplierBulkManager()}
-      <details class="admin-optional-orders"><summary>관련 주문 보기 · ${all.length}건</summary>
-      ${all.length?renderAdminQuoteFlatSection(sameRoundGroups(all),''):'<div class="empty">해당 주문이 없어요.</div>'}</details>`:
+      ${all.length?`<details class="admin-optional-orders"><summary>미배분 관련 주문 보기 · ${all.length}건</summary>
+      ${renderAdminQuoteFlatSection(sameRoundGroups(all),'')}</details>`:''}`:
     renderSupplierPaymentCenter()}
  </section>`;
 }
+
 function renderAdmin(){
  if(connected&&!state.admin)return `<section class="content admin-login-screen"><div class="admin-login-panel"><h1>관리자 로그인</h1><form id="login" class="admin-login-form"><label for="admin-login-email">이메일</label><input id="admin-login-email" required name="email" type="email" inputmode="email" autocomplete="email"><label for="admin-login-password">비밀번호</label><input id="admin-login-password" required name="password" type="password" autocomplete="current-password"><label class="admin-device-login-choice"><input type="checkbox" name="device_auto_admin" value="yes" checked><span>이 기기에서 다음부터 관리자 자동 열기</span></label><p class="admin-device-login-hint">이 브라우저의 로그인 세션을 사용해요. 세션이 만료되거나 로그아웃하면 다시 로그인해야 해요.</p><button class="btn block" type="submit">로그인</button></form></div></section>`;
  const tabs=[['home','홈'],['quotes','주문'],['payments','도매'],['products','상품'],['requests','신청'],['buyers','고객']];
@@ -7882,7 +7892,7 @@ function renderSupplierFreightOverview(progress){
  const done=progress.filter(p=>p.remaining===0&&p.batches.length>0).length;
  const needs=progress.filter(p=>p.remaining>0).length;
  return '<section class="supplier-freight-overview" aria-label="거래처 배송비 배분 현황">'+
-  '<div class="supplier-freight-overview-heading"><strong>거래처별 진행상태</strong><span>배분 완료 '+done+'곳 · 추가 확인 '+needs+'곳</span></div>'+
+  '<div class="supplier-freight-overview-heading"><strong>배송비 배분이 필요한 거래처</strong><span>'+needs+'곳 · 미배분 상품 '+progress.reduce((n,p)=>n+p.remaining,0)+'종</span></div>'+
   (progress.map(p=>{
    const finished=p.remaining===0&&p.batches.length>0;
    const blocked=p.remaining>0&&p.available===0;
@@ -7933,11 +7943,14 @@ function renderSupplierFreightDoneStep(store,progress,customerList){
 function renderSupplierBulkManager(historyOnly=false,expanded=false){
  if(!state.admin||state.page!=='admin')return '';
  const progress=supplierFreightProgress();
- const stores=progress.map(({id,name,remaining,allocated})=>({id,name,remaining,allocated}));
+ // Completed suppliers remain available under "입금·발주"; do not keep them
+ // on the fee-allocation worklist once their remaining item count reaches 0.
+ const allocationProgress=historyOnly?progress:progress.filter(p=>p.remaining>0);
+ const stores=allocationProgress.map(({id,name,remaining,allocated})=>({id,name,remaining,allocated}));
  const storeId=stores.some(x=>x.id===state.supplierBulkStoreId)?state.supplierBulkStoreId:(stores.find(x=>x.remaining>0)?.id||stores[0]?.id||'');
  if(storeId!==state.supplierBulkStoreId){state.supplierBulkStoreId=storeId;state.supplierBulkSelected=new Set(state.quotes.filter(isRoundBuyer).flatMap(q=>(q.items||[]).filter(item=>supplierItemStore(item)===storeId&&supplierBulkAvailableItem(q,item)).map(item=>item.id)));}
  const store=stores.find(s=>s.id===storeId);
- const currentProgress=progress.find(x=>x.id===storeId);
+ const currentProgress=allocationProgress.find(x=>x.id===storeId);
  const storeFinished=!!(currentProgress&&currentProgress.remaining===0&&currentProgress.batches.length>0);
  const entries=storeId?state.quotes.filter(isRoundBuyer).flatMap(q=>(q.items||[])
   .filter(item=>supplierItemStore(item)===storeId)
@@ -8096,9 +8109,9 @@ function renderSupplierBulkManager(historyOnly=false,expanded=false){
    <div class="supplier-bulk-list" style="margin-top:14px">${history}</div>
   </details>`;
  }
- return `${renderSupplierFreightOverview(progress)}
+ return `${allocationProgress.length?renderSupplierFreightOverview(allocationProgress):''}
  <details class="card supplier-bulk-manager compact-fold" id="supplier-bulk-manager" data-fold-key="supplier-bulk-manager">
-  <summary><b>${progress.length&&progress.every(p=>p.remaining===0)?'배송비 배분 완료 · 필요 시 내역 보기':'배송비 배분하기'}</b><small>배분 완료 ${progress.filter(p=>p.remaining===0&&p.batches.length>0).length}곳 · 확인 필요 ${progress.filter(p=>p.remaining>0).length}곳</small></summary>
+  <summary><b>새 주문 배송비 배분하기</b><small>배분 필요 ${allocationProgress.length}곳 · 상품 ${allocationProgress.reduce((n,p)=>n+p.remaining,0)}종</small></summary>
 
   ${!state.productPrivateReady?'<p class="noticefail">비공개 도매업체명 정보를 불러오지 못했어요. 새로고침 후 확인해 주세요.</p>':''}
   ${!state.supplierBatchesReady?`<p class="noticefail">배분 현황을 불러오지 못했어요. ${esc(state.supplierBatchesError||'관리자 새로고침 후 확인해 주세요.')}</p>`:''}

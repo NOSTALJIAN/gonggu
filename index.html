@@ -6792,7 +6792,8 @@ function supplierBatchPaymentState(batch){
   const rootIds=new Set(selected.map(x=>x.q.bundle_parent_id||x.q.id));
   const orders=state.quotes.filter(q=>q.status!=='cancelled'&&
    (rootIds.has(q.id)||rootIds.has(q.bundle_parent_id)));
-  const due=orders.reduce((sum,q)=>sum+totalDue(q),0);
+  // Customer courier fees are collected separately and must not block supplier orders.
+  const due=orders.reduce((sum,q)=>sum+previewOrderSum(q)+supplierShippingShare(q),0);
   const net=orders.reduce((sum,q)=>sum+Number(q.amount_paid||0)-Number(q.amount_refunded||0),0);
   const selectedReady=selected.length>0&&selected.every(({q,item})=>
    q.status==='confirmed'&&item.fulfillment!=='sold_out'&&
@@ -6827,8 +6828,8 @@ function supplierBatchPaymentState(batch){
 function supplierBuyerSingleUnpaidTarget(p){
  if(!p)return null;
  const remaining=Number(p.due)-Number(p.net);
- const unpaid=p.orders.filter(q=>q.status==='confirmed'&&readyQuote(q)&&(orderOutstanding(q)||0)>0);
- return unpaid.length===1&&Number.isSafeInteger(remaining)&&remaining>0&&orderOutstanding(unpaid[0])===remaining?unpaid[0]:null;
+ const unpaid=p.orders.filter(q=>q.status==='confirmed'&&readyQuote(q)&&orderPaymentParts(q).goodsMissing>0);
+ return unpaid.length===1&&Number.isSafeInteger(remaining)&&remaining>0&&orderPaymentParts(unpaid[0]).goodsMissing===remaining?unpaid[0]:null;
 }
 function canConfirmSupplierBuyerFullPaid(batch,p){
  if(!batch||batch.ordered_at||!p||p.eligible||!p.selected.length||!p.orders.length)return false;
@@ -7022,7 +7023,7 @@ function procurementRows(){
   const root=q.bundle_parent_id||q.id;
   if(byRoot.has(root))return byRoot.get(root);
   const list=state.quotes.filter(x=>x.status!=='cancelled'&&(x.id===root||x.bundle_parent_id===root));
-  const due=list.reduce((n,x)=>n+totalDue(x),0);
+  const due=list.reduce((n,x)=>n+previewOrderSum(x)+supplierShippingShare(x),0);
   const net=list.reduce((n,x)=>n+Number(x.amount_paid||0)-Number(x.amount_refunded||0),0);
   const ok=list.length>0&&list.every(x=>x.status==='confirmed'&&readyQuote(x))&&net>=due;
   byRoot.set(root,ok);return ok;
@@ -9207,7 +9208,7 @@ if(a==='supplier-buyer-full-paid'){
  const next=Number(target.amount_paid||0)+missing;
  const refunded=Number(target.amount_refunded||0);
  if(!Number.isSafeInteger(next)||next<refunded)throw Error('입금액 계산을 확인해 주세요.');
- if(!window.confirm(person.buyerName+'님의 전체 주문 미입금액 '+money(missing)+'을 실제 계좌에서 확인했나요?\n\n확인하면 기존 입금액에 추가 기록되고, 주문 금액을 중복 청구하지 않아요.\n이 거래처 상품만 선입금받은 경우에는 아래 선입금 요청 기능을 이용하세요.'))return;
+ if(!window.confirm(person.buyerName+'님의 상품대금 미입금액 '+money(missing)+'을 실제 계좌에서 확인했나요?\n\n확인하면 기존 입금액에 추가 기록되고, 주문 금액을 중복 청구하지 않아요.\n이 거래처 상품만 선입금받은 경우에는 아래 선입금 요청 기능을 이용하세요.'))return;
  await adminPayment(target.id,next,refunded);
  await refreshSupplierPartialBatch(id,b);
  notif(person.buyerName+'님 '+money(missing)+' 입금 확인 기록 완료');

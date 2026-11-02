@@ -4026,7 +4026,7 @@ function matchesCategory(p,key){
 }
 // Public site pricing: Cloudflare keeps current estimates; only the GitHub storefront uses alternate estimates.
 const githubStorefront=location.hostname.toLowerCase()==='nostaljian.github.io';
-function storeEstimate(p){const raw=githubStorefront?p?.github_estimated_price:p?.estimated_price;return Number.isInteger(raw)&&raw>0?raw:null;}
+function storeEstimate(p){const raw=githubStorefront?p?.github_estimated_price:p?.estimated_price;if(!Number.isInteger(raw)||raw<=0)return null;return githubStorefront?raw:Math.round(raw*1.4/100)*100;}
 const app=$('#app');
 const fmtDate=x=>x?new Date(x).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):'';
 const previewOrderSum=o=>(o.items||[]).filter(i=>i.fulfillment!=='sold_out').reduce((s,i)=>s+(i.unit_price??0)*i.quantity,0);

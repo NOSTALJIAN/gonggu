@@ -3994,6 +3994,28 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 .admin-settled-payment .admin-settled-payment-warning{color:#a05d25}
 .admin-settled-payment-edit{align-self:flex-start;border:1px solid #e1e1e1;background:#fff;border-radius:9px;min-height:36px;padding:8px 12px;font-size:12px;font-weight:730;color:#4e4e4e}
 
+/* Stable order stages: fixed 3 × 2 grid with no disappearing tabs. */
+.admin-reorganized .admin-orders-page .admin-orders-filterbar{
+ display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;
+ width:100%;max-width:100%;overflow:visible;scroll-snap-type:none;
+ margin:0 0 13px;padding:0;
+}
+.admin-reorganized .admin-orders-page .admin-orders-filterbar button{
+ display:flex;flex-direction:row;align-items:center;justify-content:center;gap:5px;
+ flex:initial;min-width:0;width:100%;height:42px;min-height:42px;
+ padding:8px 5px;border-radius:10px;white-space:nowrap;
+ font-size:12px;font-weight:740;scroll-snap-align:none;
+}
+.admin-reorganized .admin-orders-page .admin-orders-filterbar button b{
+ font-size:11px;font-weight:800;line-height:1;opacity:.8;
+}
+.admin-reorganized .admin-orders-page .admin-orders-filterbar button.active b{opacity:1}
+.admin-reorganized .admin-orders-page .admin-orders-title-row{margin:0 1px 11px}
+@media(max-width:359px){
+ .admin-reorganized .admin-orders-page .admin-orders-filterbar{gap:5px}
+ .admin-reorganized .admin-orders-page .admin-orders-filterbar button{font-size:11px;padding:7px 2px;gap:3px}
+}
+
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -4180,7 +4202,7 @@ const p=new URLSearchParams(location.search);
 // A trusted browser remembers its own existing session, but never bypasses
 // Supabase authentication. Explicit storefront and order links take priority.
 const autoAdminStart=!location.search&&!!session?.refresh_token&&autoAdminEnabled();
-const state={page:['admin','track'].includes(p.get('page'))?p.get('page'):(autoAdminStart?'admin':'shop'),tab:'home',adminOrderSearch:'',stores:[],products:[],requests:[],quotes:[],cart:read(CART,[]),modal:null,search:'',shopCategory:'all',shopSort:'newest',shopStore:'all',shopFiltersOpen:false,adminCategory:'all',trackId:p.get('id')||'',trackToken:p.get('token')||'',tracking:null,receipts:read(TRACK,[]),notice:'',filter:'pricing',admin:false,heroPhotoUrl:null,heroStoreId:null,dateGroupsOpen:{},orderCardsOpen:{},supplierBulkSelected:new Set(),supplierBulkStoreId:'',supplierBatches:[],supplierBatchesReady:false,supplierBatchesError:'',supplierPartialInvoices:[],trackSupplierPartial:[],lowerPriceReports:[],optionRequests:[],optionRequestsReady:false,optionRequestsError:'',requestStatusFilter:'pending',adminCatalogView:'products',adminCatalogFilter:'all',adminProductSort:'newest',adminProductSearch:'',productPrivate:{},productPrivateReady:false,emailSettings:null,emailSettingsReady:false,emailSettingsError:'',supplierFreightNotify:{},supplierFreightNotifyReady:false,adminPinIds:new Set(),phoneLookupReady:null,pinLookupNotice:''};
+const state={page:['admin','track'].includes(p.get('page'))?p.get('page'):(autoAdminStart?'admin':'shop'),tab:'home',adminOrderSearch:'',stores:[],products:[],requests:[],quotes:[],cart:read(CART,[]),modal:null,search:'',shopCategory:'all',shopSort:'newest',shopStore:'all',shopFiltersOpen:false,adminCategory:'all',trackId:p.get('id')||'',trackToken:p.get('token')||'',tracking:null,receipts:read(TRACK,[]),notice:'',filter:'pricing',orderViewFilter:null,admin:false,heroPhotoUrl:null,heroStoreId:null,dateGroupsOpen:{},orderCardsOpen:{},supplierBulkSelected:new Set(),supplierBulkStoreId:'',supplierBatches:[],supplierBatchesReady:false,supplierBatchesError:'',supplierPartialInvoices:[],trackSupplierPartial:[],lowerPriceReports:[],optionRequests:[],optionRequestsReady:false,optionRequestsError:'',requestStatusFilter:'pending',adminCatalogView:'products',adminCatalogFilter:'all',adminProductSort:'newest',adminProductSearch:'',productPrivate:{},productPrivateReady:false,emailSettings:null,emailSettingsReady:false,emailSettingsError:'',supplierFreightNotify:{},supplierFreightNotifyReady:false,adminPinIds:new Set(),phoneLookupReady:null,pinLookupNotice:''};
 
 state.adminLoading=Boolean(connected&&state.page==='admin'&&session?.refresh_token);
 if(autoAdminStart)history.replaceState({},'',location.pathname+'?page=admin');
@@ -5611,23 +5633,6 @@ function render(){
  if(state.page==='admin'&&state.tab==='quotes')updateAdminOrderSearch();
  const categoryList=app.querySelector('.shop-category-list');
  if(categoryList)categoryList.scrollLeft=categoryScrollBefore;
- // Mobile filter row scrolls horizontally: show the selected filter even
- // when it is the last "전체 주문" button.
- if(state.page==='admin'&&state.tab==='quotes'){
-  for(const [selector,activeSelector] of [
-   ['.admin-quote-primary-filters','.admin-quote-quick-tab.active'],
-   ['.admin-orders-filterbar','button.active']
-  ]){
-   const row=app.querySelector(selector);
-   const active=row?.querySelector(activeSelector);
-   if(row&&active){
-    const left=active.offsetLeft-row.offsetLeft;
-    const right=left+active.offsetWidth;
-    if(left<row.scrollLeft+4)row.scrollLeft=Math.max(0,left-4);
-    else if(right>row.scrollLeft+row.clientWidth-4)row.scrollLeft=right-row.clientWidth+4;
-   }
-  }
- }
  syncModalPageLock();
  if(adminPriceScrollAnchor)restoreAdminPriceScrollAnchor();
  syncHeroContrast();
@@ -8891,6 +8896,17 @@ function renderAdminOrderFilterModal(){
    <button type="button" class="admin-filter-modal-all" data-filter="all_history">전체 주문 보기 · ${state.quotes.length}건</button>
   </div>`;
 }
+/* Main Orders opens the earliest active queue on first visit. */
+function preferredAdminOrderFilter(){
+ const rows=state.quotes||[];
+ const count=fn=>rows.filter(fn).length;
+ if(count(q=>q.status==='requested'||(q.status==='quoted'&&quoteNeedsPriceInput(q))))return 'pricing';
+ if(count(q=>q.status==='quoted'&&(!q.purchase_intent||q.purchase_intent==='undecided')&&!quoteNeedsPriceInput(q)))return 'waiting_buyer';
+ if(count(q=>q.status==='quoted'&&q.purchase_intent==='buy_now'&&!quoteNeedsPriceInput(q)))return 'final_confirmation';
+ if(count(adminOrderNeedsPaymentOrProcurement))return 'preparing_orders';
+ if(count(q=>isWholesaleCompleted(q)&&!isFinishedOrder(q)))return 'wholesale_completed';
+ return 'all_history';
+}
 function renderAdminQuotes(){
  const all=state.quotes;
  const isPre=q=>q.status==='requested'||(q.status==='quoted'&&(!q.purchase_intent||q.purchase_intent==='undecided'));
@@ -8926,7 +8942,7 @@ function renderAdminQuotes(){
  const priced=groups.filter(g=>!waiting.includes(g));
  const tabs=[['pricing','견적',nPrice],['waiting_buyer','구매 선택',nWaiting],['final_confirmation','확정 대기',nFinalWaiting],['preparing_orders','입금·발주',nPaymentProcurement],['wholesale_completed','입고·배송',nDelivery],['all_history','전체',all.length]];
  const extras=adminOrderAdvancedFilterEntries();
- const visibleTabs=tabs.filter(([key,,num])=>num>0||key===filter||key==='all_history');
+ const visibleTabs=tabs; // All six tabs remain in the same positions.
  const advancedSelected=!tabs.some(([key])=>key===filter);
  const title=[...tabs,...extras].find(([key])=>key===filter)?.[1]||(
    filter.startsWith('flow_')?workflowLabels[filter.slice(5)]:statusLabel[filter]||'주문');
@@ -8942,6 +8958,9 @@ function renderAdminQuotes(){
   </div>
   <div class="admin-orders-title-row">
    <div class="admin-orders-list-title"><strong>${esc(title)}</strong><span>${qq.length}건</span></div>
+   <button type="button" class="admin-clean-utility" data-action="open-admin-order-filters" aria-label="주문 상세 필터 열기">
+    ${advancedSelected?'선택 중 · '+esc(title):'상세 필터'} <span aria-hidden="true">☷</span>
+   </button>
   </div>
   ${filter==='preparing_orders'?'<p class="admin-preproc-note">입금 확인 후 발주하면 ‘입고·배송’으로 이동해요.</p>':''}
   ${qq.length?filter==='all'?renderAdminQuoteFlatSection(waiting,'가격 확인','pending')+renderAdminQuoteFlatSection(priced,'구매 선택 대기'):
@@ -12488,12 +12507,48 @@ app.addEventListener('click',e=>{
  }
 },true);
 
-app.addEventListener('click',e=>{const orderSummary=e.target.closest('.admin-order-fold > summary');if(orderSummary){const order=orderSummary.parentElement;state.orderCardsOpen[order.dataset.adminOrderId]=!order.open;return}const summary=e.target.closest('.admin-date-group > summary');if(summary){const group=summary.parentElement;state.dateGroupsOpen[group.dataset.orderDate]=!group.open;return}const tab=e.target.closest('[data-tab]'),filter=e.target.closest('[data-filter]');if(tab){state.tab=tab.dataset.tab;if(tab.dataset.navFilter)state.filter=tab.dataset.navFilter;else if(state.tab==='payments'&&!['buy_now','supplier_payments'].includes(state.filter))state.filter='buy_now';else if(state.tab==='quotes'&&['buy_now','supplier_payments'].includes(state.filter))state.filter='pricing';if(tab.dataset.navView)state.adminCatalogView=tab.dataset.navView;if(state.tab==='requests')state.requestStatusFilter='pending';render();return}if(filter){if(state.modal?.type==='admin-order-filters')state.modal=null;state.filter=filter.dataset.filter;state.supplierBulkSelected.clear();
- if(state.filter==='supplier_payments'){
-  for(const batch of state.supplierBatches.filter(b=>!b.ordered_at))
-   adminFoldState.set('supplier-batch-'+batch.id,true);
+app.addEventListener('click',e=>{
+ const orderSummary=e.target.closest('.admin-order-fold > summary');
+ if(orderSummary){const order=orderSummary.parentElement;state.orderCardsOpen[order.dataset.adminOrderId]=!order.open;return;}
+ const summary=e.target.closest('.admin-date-group > summary');
+ if(summary){const group=summary.parentElement;state.dateGroupsOpen[group.dataset.orderDate]=!group.open;return;}
+ const tab=e.target.closest('[data-tab]'),filter=e.target.closest('[data-filter]');
+ if(tab){
+  const previousTab=state.tab;
+  state.tab=tab.dataset.tab;
+  if(tab.dataset.navFilter){
+   state.filter=tab.dataset.navFilter;
+   if(state.tab==='quotes')state.orderViewFilter=state.filter;
+  }else if(state.tab==='quotes'){
+   if(previousTab!=='quotes'){
+    state.filter=state.orderViewFilter||preferredAdminOrderFilter();
+    state.orderViewFilter=state.filter;
+   }
+  }else if(state.tab==='payments'&&!['buy_now','supplier_payments'].includes(state.filter)){
+   state.filter='buy_now';
+  }
+  if(tab.dataset.navView)state.adminCatalogView=tab.dataset.navView;
+  if(state.tab==='requests')state.requestStatusFilter='pending';
+  render();return;
  }
- render();return}click(e)});
+ if(filter){
+  const next=filter.dataset.filter;
+  const inAdvanced=state.modal?.type==='admin-order-filters';
+  if(inAdvanced)state.modal=null;
+  if(state.tab==='quotes'&&!inAdvanced&&['supplier_payments','buy_now'].includes(next)){
+   state.tab='payments';
+  }
+  state.filter=next;
+  if(state.tab==='quotes')state.orderViewFilter=next;
+  state.supplierBulkSelected.clear();
+  if(state.filter==='supplier_payments'){
+   for(const batch of state.supplierBatches.filter(b=>!b.ordered_at))
+    adminFoldState.set('supplier-batch-'+batch.id,true);
+  }
+  render();return;
+ }
+ click(e);
+});
 app.addEventListener('submit',submit);app.addEventListener('change',change);app.addEventListener('input',input);
 app.addEventListener('focusin',e=>{
  if(e.target.id==='search')reserveShopSearchHeight();

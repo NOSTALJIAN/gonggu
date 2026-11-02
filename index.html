@@ -3521,6 +3521,24 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 .payment-split-generic>.btn{width:100%}
 .admin-payment-popup-form>.payment-split-total{margin-top:0}
 
+
+/* Admin-only breakdown of wholesale freight charged to this exact quote */
+.admin-fee-source-breakdown{width:100%;display:flex;flex-direction:column;gap:3px;margin:4px 0 8px;padding:8px 10px;background:#f6f7f6;border:1px solid #e5e7e5;border-radius:8px;min-width:0}
+.admin-fee-source-row{display:flex;justify-content:space-between;align-items:baseline;gap:12px;color:#505b56;font-size:11px;line-height:1.45;min-width:0}
+.admin-fee-source-row span{min-width:0;overflow-wrap:anywhere}
+.admin-fee-source-row b{color:#2b4c3b;font-size:12px;white-space:nowrap;font-weight:750}
+.admin-fee-source-note{font-size:10px;line-height:1.5;color:#777}
+.admin-fee-source-note.is-warning{color:#a05d25}
+.admin-fee-source-breakdown.is-compact{padding:4px 0;margin:2px 0;border:0;border-radius:0;background:transparent}
+.admin-fee-source-breakdown.is-compact .admin-fee-source-row{font-size:10px;gap:5px}
+.admin-fee-source-breakdown.is-compact .admin-fee-source-row b{font-size:10px}
+.compact-order-money .admin-fee-source-breakdown{margin:-1px 0 8px}
+.compact-order-money .admin-fee-source-row{display:flex;justify-content:space-between;gap:8px;color:#526157}
+.compact-order-money .admin-fee-source-row span{color:#526157}
+.payment-split-name .admin-fee-source-breakdown{max-width:100%;padding:3px 0;margin:1px 0 0}
+.admin-payment-popup-head .admin-fee-source-breakdown{width:100%;margin:0;padding:6px 0;gap:2px}
+.supplier-shipping-batched .admin-fee-source-breakdown{margin:9px 0}
+
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -6445,10 +6463,10 @@ function renderRoundQuickOrder(q,index){
      </form>${adminOrderOptionEditor(q,i)}</div>`).join('')}
    </details>
    <details class="round-order-tool"><summary>입금·환불 기록 수정</summary>
-    <form class="round-order-payment-form" data-payment="${esc(q.id)}">
-     <label>받은 금액<input type="number" name="paid" min="0" inputmode="numeric" value="${Number(q.amount_paid)||0}" required></label>
-     <label>환불한 금액<input type="number" name="refunded" min="0" inputmode="numeric" value="${Number(q.amount_refunded)||0}" required></label>
-     <button class="btn sm secondary" type="submit">입금·환불 저장</button>
+    <form class="round-order-payment-form payment-split-generic" data-payment="${esc(q.id)}">
+     ${paymentSplitMarkup(q)}
+     <label>환불한 누적 금액<input type="number" name="refunded" min="0" inputmode="numeric" value="${Number(q.amount_refunded)||0}" required></label>
+     <button class="btn sm secondary" type="submit">항목별 입금·환불 저장</button>
     </form>
     ${renderPaymentWaiverControl(q)}
    </details>
@@ -6557,7 +6575,7 @@ ${q.bundle_parent_id&&!state.quotes.some(x=>x.id===q.bundle_parent_id&&x.status!
 ${q.delivery_change_requested_at?`<div class="noticefail" style="margin-top:10px"><b>📦 구매자 수령방식 변경 요청</b><div class="smallnote">${fmtDate(q.delivery_change_requested_at)} · 변경 요청: ${q.requested_delivery_method==='pickup'?'직접수령':'택배수령'}</div>${q.requested_delivery_method==='courier'?`<div class="smallnote">${esc(q.requested_recipient_name||'')} · ${esc([q.requested_postal_code,q.requested_address_line1,q.requested_address_line2].filter(Boolean).join(' '))}</div>`:''}<div class="row wrap" style="margin-top:8px"><button class="btn sm" data-action="approve-delivery" data-id="${q.id}">변경 승인</button><button class="btn sm neutral" data-action="reject-delivery" data-id="${q.id}">반려</button></div><div class="smallnote">배송비를 한 번만 받는 묶음배송이라면 배송지와 결제 차액을 확인해 주세요.</div></div>`:''}
 ${q.cancel_requested_at&&q.status!=='cancelled'?`<div class="noticefail" style="margin-top:10px"><b>⚠️ 구매자 취소 요청</b><div class="tiny">${fmtDate(q.cancel_requested_at)} · 사유: ${esc(q.cancel_reason||'사유 미입력')}</div><div class="row wrap" style="margin-top:8px"><button class="btn sm danger" data-action="accept-cancel" data-id="${q.id}">취소 승인</button><button class="btn sm neutral" data-action="reject-cancel" data-id="${q.id}">취소 요청 반려</button></div></div>`:q.cancel_rejected_at&&q.status!=='cancelled'?'<div class="tiny" style="margin-top:7px">이전 취소 요청 반려됨</div>':''}
 ${adminCancelledReasonMarkup(q)}
-${renderAdminItemOptionRequests(q)}${renderAdminLowerPriceReports(q)}${groupedAdminQuoteItems(q)}${adminPriceTotalMarkup([q],true)}${adminWorkflow(q)}${renderWholesaleCompletionAdmin(q)}${q.delivery_method==='pickup'?'<div class="info">직접수령: 고객 수령 배송비 0원 · 도매배송비는 별도 산정</div>':q.status==='requested'||(q.status==='quoted'&&q.purchase_intent!=='buy_now')?'<div class="smallnote">고객 수령 택배비 3,000원이 자동 적용돼요. (묶음배송 추가 주문은 0원)</div>':`<form data-shipping="${q.id}" class="row wrap shipping-form"><label class="label" style="min-width:0;flex:1">이 주문의 배송비 (원, 무료면 0)<input name="shipping" type="number" min="0" max="1000000" step="1" required placeholder="배송비 입력 / 무료는 0" value="${hasShipping(q)?q.shipping_fee:''}" ${q.status==='cancelled'||isBundle(q)?'disabled':''}></label><button type="submit" class="btn sm secondary" ${q.status==='cancelled'||isBundle(q)?'disabled':''}>배송비 저장</button></form>`}${renderSupplierShippingForm(q)}${q.status==='quoted'?'<div class="info">'+(q.purchase_intent==='buy_now'?(adminFreightReady(q)?'배송비 배분 완료 · 고객 최종 주문 가능':'이번 회차 구매 희망 · 실제 도매배송비 계산·배분 대기'):q.purchase_intent==='next_round'?'다음 회차 구매 · 이번 배송비 배분 제외':q.purchase_intent==='on_hold'?'구매 보류 · 이번 배송비 배분 제외':isDirect1688Admin(q)?'1688 견적 안내 완료 · 고객 주문확정 대기':'고객 구매 회차 선택 대기 · 배송비를 먼저 계산하지 마세요.')+'</div>':''}<div class="sumline"><span>총 ${q.items.reduce((n,i)=>n+i.quantity,0)}개 · 상품금액</span><strong>${unknown(q)?'가격 미정 '+unknown(q)+'개':money(previewOrderSum(q))}</strong></div><div class="sumline"><span>배송비 (고객 수령)</span><strong>${shippingLabel(q)}</strong></div><div class="sumline"><span>도매 배송비 분담금</span><strong>${q.status==='requested'||(q.status==='quoted'&&!adminFreightReady(q))?'구매 시점 선택 후 계산':supplierShippingLabel(q)}</strong></div><div class="sumline total"><span>고객 결제금액</span><strong>${q.status==='requested'||(q.status==='quoted'&&!adminFreightReady(q))?'구매 회차 응답·배송비 계산 후 확정':readyQuote(q)?money(totalDue(q)):'배송비 입력 대기'}</strong></div>${q.status==='requested'?`<button class="btn block" data-action="publish-quote" data-id="${q.id}" ${!readyProductEstimate(q)?'disabled':''}>${unknown(q)?'상품 가격을 먼저 입력해 주세요':'견적 먼저 보내기 · 구매 회차 선택 요청'}</button>`:''}${q.status==='quoted'?'<div class="info">'+(isDirect1688Admin(q)?'1688 견적 발송 완료 · 고객이 최종 결제금액 확인 후 바로 주문확정할 수 있어요.':'견적 발송 완료 · 고객의 구매 시점 선택과 배송비 산정을 마친 뒤 최종 주문을 받게 돼요.')+'</div>':''}${q.status==='confirmed'?`<div class="noticefail" style="margin-top:10px"><b>확정 주문 금액 수정 가능 (관리자)</b><div>금액을 수정하면 구매자에게 변경 내역이 표시돼요. 고객에게 직접 안내하고, 기존 입금액과 차액·환불 여부를 확인하세요.</div>${q.amount_changed_at?`<div class="tiny" style="margin-top:5px">최근 금액 변경: ${fmtDate(q.amount_changed_at)}</div>`:''}</div>`:''}${['confirmed','cancelled'].includes(q.status)?`<form data-payment="${q.id}" class="two"><div><label class="label">입금받은 총액<input name="paid" type="number" min="0" value="${q.amount_paid||0}"></label></div><div><label class="label">환불해 준 총액<input name="refunded" type="number" min="0" value="${q.amount_refunded||0}"></label></div><button type="submit" class="btn secondary" style="grid-column:span 2">입금·환불 기록 저장</button></form><div class="smallnote">현재까지 실제 받은 금액과 이미 돌려준 금액의 누적 합계예요. 입금을 안 받았다면 0원으로 두세요.</div><div class="tiny">현재 미입금액: ${readyQuote(q)?money(balanceDue(q)):'배송비 미설정 — 총액 확인 필요'}</div>${q.status==='confirmed'&&refundDue(q)>0?`<div class="noticefail">실제 환불이 추가로 필요한 금액: <b>${money(refundDue(q))}</b> · 환불 송금 후 누적 환불액을 입력하세요.</div>`:''}${isBundle(q)&&q.status==='confirmed'?'<div class="noticefail">이미 확정된 주문을 묶으면 결제금액이 줄어들 수 있어요. 고객에게 차액을 안내하고 필요하면 환불 금액을 기록해 주세요.</div>':''}`:''}<div class="row wrap" style="margin-top:10px"><button class="btn sm neutral" data-action="copy-quote" data-id="${q.id}">견적 내용 복사</button><button class="btn sm neutral" data-action="copy-customer-link" data-id="${q.id}">고객 확인 링크 복사</button>${adminPinButton(q)}${q.status==='quoted'?`<button class="btn sm secondary" data-action="copy-quote-notice" data-id="${q.id}">💌 견적 안내문 복사</button>`:''}${q.status==='confirmed'?`<button class="btn sm secondary" data-action="copy-payment-notice" data-id="${esc(q.id)}">입금 안내문 복사</button>`:''}${q.status!=='cancelled'&&q.delivery_method!=='pickup'?`<button class="btn sm ${isBundle(q)?'outline':'secondary'}" data-action="bundle-order" data-id="${q.id}">${isBundle(q)?'묶음배송 변경·해제':'묶음배송 설정'}</button>`:''}<button class="btn sm danger" data-action="delete-order" data-id="${q.id}" aria-label="${esc(q.buyer_name)} 주문 영구 삭제">영구 삭제</button></div></div>`;}
+${renderAdminItemOptionRequests(q)}${renderAdminLowerPriceReports(q)}${groupedAdminQuoteItems(q)}${adminPriceTotalMarkup([q],true)}${adminWorkflow(q)}${renderWholesaleCompletionAdmin(q)}${q.delivery_method==='pickup'?'<div class="info">직접수령: 고객 수령 배송비 0원 · 도매배송비는 별도 산정</div>':q.status==='requested'||(q.status==='quoted'&&q.purchase_intent!=='buy_now')?'<div class="smallnote">고객 수령 택배비 3,000원이 자동 적용돼요. (묶음배송 추가 주문은 0원)</div>':`<form data-shipping="${q.id}" class="row wrap shipping-form"><label class="label" style="min-width:0;flex:1">이 주문의 배송비 (원, 무료면 0)<input name="shipping" type="number" min="0" max="1000000" step="1" required placeholder="배송비 입력 / 무료는 0" value="${hasShipping(q)?q.shipping_fee:''}" ${q.status==='cancelled'||isBundle(q)?'disabled':''}></label><button type="submit" class="btn sm secondary" ${q.status==='cancelled'||isBundle(q)?'disabled':''}>배송비 저장</button></form>`}${renderSupplierShippingForm(q)}${q.status==='quoted'?'<div class="info">'+(q.purchase_intent==='buy_now'?(adminFreightReady(q)?'배송비 배분 완료 · 고객 최종 주문 가능':'이번 회차 구매 희망 · 실제 도매배송비 계산·배분 대기'):q.purchase_intent==='next_round'?'다음 회차 구매 · 이번 배송비 배분 제외':q.purchase_intent==='on_hold'?'구매 보류 · 이번 배송비 배분 제외':isDirect1688Admin(q)?'1688 견적 안내 완료 · 고객 주문확정 대기':'고객 구매 회차 선택 대기 · 배송비를 먼저 계산하지 마세요.')+'</div>':''}<div class="sumline"><span>총 ${q.items.reduce((n,i)=>n+i.quantity,0)}개 · 상품금액</span><strong>${unknown(q)?'가격 미정 '+unknown(q)+'개':money(previewOrderSum(q))}</strong></div><div class="sumline"><span>배송비 (고객 수령)</span><strong>${shippingLabel(q)}</strong></div><div class="sumline"><span>도매 배송비 분담금</span><strong>${q.status==='requested'||(q.status==='quoted'&&!adminFreightReady(q))?'구매 시점 선택 후 계산':supplierShippingLabel(q)}</strong></div><div class="sumline total"><span>고객 결제금액</span><strong>${q.status==='requested'||(q.status==='quoted'&&!adminFreightReady(q))?'구매 회차 응답·배송비 계산 후 확정':readyQuote(q)?money(totalDue(q)):'배송비 입력 대기'}</strong></div>${q.status==='requested'?`<button class="btn block" data-action="publish-quote" data-id="${q.id}" ${!readyProductEstimate(q)?'disabled':''}>${unknown(q)?'상품 가격을 먼저 입력해 주세요':'견적 먼저 보내기 · 구매 회차 선택 요청'}</button>`:''}${q.status==='quoted'?'<div class="info">'+(isDirect1688Admin(q)?'1688 견적 발송 완료 · 고객이 최종 결제금액 확인 후 바로 주문확정할 수 있어요.':'견적 발송 완료 · 고객의 구매 시점 선택과 배송비 산정을 마친 뒤 최종 주문을 받게 돼요.')+'</div>':''}${q.status==='confirmed'?`<div class="noticefail" style="margin-top:10px"><b>확정 주문 금액 수정 가능 (관리자)</b><div>금액을 수정하면 구매자에게 변경 내역이 표시돼요. 고객에게 직접 안내하고, 기존 입금액과 차액·환불 여부를 확인하세요.</div>${q.amount_changed_at?`<div class="tiny" style="margin-top:5px">최근 금액 변경: ${fmtDate(q.amount_changed_at)}</div>`:''}</div>`:''}${['confirmed','cancelled'].includes(q.status)?`<form data-payment="${q.id}" class="payment-split-generic">${paymentSplitMarkup(q)}<label class="label">누적 환불액<input name="refunded" type="number" min="0" value="${q.amount_refunded||0}" required></label><button type="submit" class="btn secondary">항목별 입금·환불 저장</button></form><div class="smallnote">현재까지 실제 받은 금액과 이미 돌려준 금액의 누적 합계예요. 입금을 안 받았다면 0원으로 두세요.</div><div class="tiny">현재 미입금액: ${readyQuote(q)?money(balanceDue(q)):'배송비 미설정 — 총액 확인 필요'}</div>${q.status==='confirmed'&&refundDue(q)>0?`<div class="noticefail">실제 환불이 추가로 필요한 금액: <b>${money(refundDue(q))}</b> · 환불 송금 후 누적 환불액을 입력하세요.</div>`:''}${isBundle(q)&&q.status==='confirmed'?'<div class="noticefail">이미 확정된 주문을 묶으면 결제금액이 줄어들 수 있어요. 고객에게 차액을 안내하고 필요하면 환불 금액을 기록해 주세요.</div>':''}`:''}<div class="row wrap" style="margin-top:10px"><button class="btn sm neutral" data-action="copy-quote" data-id="${q.id}">견적 내용 복사</button><button class="btn sm neutral" data-action="copy-customer-link" data-id="${q.id}">고객 확인 링크 복사</button>${adminPinButton(q)}${q.status==='quoted'?`<button class="btn sm secondary" data-action="copy-quote-notice" data-id="${q.id}">💌 견적 안내문 복사</button>`:''}${q.status==='confirmed'?`<button class="btn sm secondary" data-action="copy-payment-notice" data-id="${esc(q.id)}">입금 안내문 복사</button>`:''}${q.status!=='cancelled'&&q.delivery_method!=='pickup'?`<button class="btn sm ${isBundle(q)?'outline':'secondary'}" data-action="bundle-order" data-id="${q.id}">${isBundle(q)?'묶음배송 변경·해제':'묶음배송 설정'}</button>`:''}<button class="btn sm danger" data-action="delete-order" data-id="${q.id}" aria-label="${esc(q.buyer_name)} 주문 영구 삭제">영구 삭제</button></div></div>`;}
 
 
 function renderAdminDeliveryRequest(q){
@@ -6674,7 +6692,7 @@ function renderAdminQuoteCard(q){
    ${priced?`<div class="compact-order-cost-lines">
     <div><span>상품 합계</span><b>${money(previewOrderSum(q))}</b></div>
     ${q.delivery_method==='courier'||appliedShipping(q)>0?`<div><span>택배비${isBundle(q)?' · 합배송':''}</span><b>${money(appliedShipping(q))}</b></div>`:''}
-    ${supplierShippingShare(q)>0?`<div><span>도매 배송비</span><b>${money(supplierShippingShare(q))}</b></div>`:''}
+    ${supplierShippingShare(q)>0?`<div><span>도매 배송비</span><b>${money(supplierShippingShare(q))}</b></div>${adminSupplierFeeBreakdown(q)}`:''}
    </div>`:''}
    <div><span>최종 결제금액</span><b>${finalReady?money(due):'배송비 배분 후 확정'}</b></div>
    <div><span>받은 금액</span><b>${money(paid)}</b></div>
@@ -6939,6 +6957,40 @@ async function handleMergeShippingSubmit(f,data){
 
 /* Cumulative payments are categorized for admin bookkeeping, while
    amount_paid remains the authoritative gross received total. */
+
+// Admin-only, authoritative supplier allocation breakdown for one quote.
+// A batch can contain items from several quotes, but its payer is charged only
+// against p.charged_quote_id. Never allocate by vendor of an item alone.
+function adminSupplierFeeParts(q){
+ const total=supplierShippingShare(q);
+ if(!state.admin||total<=0)return {rows:[],total,loading:false,mismatch:false};
+ if(!state.supplierBatchesReady)return {rows:[],total,loading:true,mismatch:false};
+ const bySupplier=new Map();
+ let allocated=0;
+ for(const batch of state.supplierBatches||[]){
+  const amount=(batch.payers||[]).filter(p=>p.charged_quote_id===q.id)
+   .reduce((sum,p)=>sum+Math.max(0,Number(p.amount)||0),0);
+  if(!amount)continue;
+  const label=String(batch.supplier||'거래처명 확인 필요').trim()||'거래처명 확인 필요';
+  bySupplier.set(label,(bySupplier.get(label)||0)+amount);
+  allocated+=amount;
+ }
+ const rows=[...bySupplier.entries()].map(([name,amount])=>({name,amount}));
+ const unassigned=total-allocated;
+ if(unassigned>0)rows.push({name:'개별 입력·조정 (거래처 미지정)',amount:unassigned});
+ return {rows,total,loading:false,mismatch:unassigned<0};
+}
+function adminSupplierFeeBreakdown(q,kind='list'){
+ const data=adminSupplierFeeParts(q);
+ if(!state.admin||data.total<=0)return '';
+ const content=data.loading
+  ?'<div class="admin-fee-source-note">도매처별 배분 기록을 불러오지 못했어요. 새로고침 후 확인해 주세요.</div>'
+  :data.rows.map(row=>'<div class="admin-fee-source-row"><span>'+esc(row.name)+'</span><b>'+money(row.amount)+'</b></div>').join('')+
+   (data.mismatch?'<div class="admin-fee-source-note is-warning">배분 내역과 주문 청구금액이 달라 확인이 필요해요.</div>':'');
+ return '<div class="admin-fee-source-breakdown '+(kind==='compact'?'is-compact':'')+
+  '" aria-label="도매처별 배송비 배분 내역">'+content+'</div>';
+}
+
 function paymentSplitAmounts(q){
  const total=Math.max(0,Number(q.amount_paid||0));
  const saved=[q.paid_goods_amount,q.paid_delivery_amount,q.paid_freight_amount];
@@ -6962,7 +7014,7 @@ function paymentSplitMarkup(q){
  ];
  return '<div class="payment-split-fields">'+fields.map(([key,title,due,paid])=>
   '<label class="payment-split-field"><span class="payment-split-name">'+title+
-  '<small>결제금 '+money(Math.max(0,due))+'</small></span>'+
+  '<small>결제금 '+money(Math.max(0,due))+'</small>'+ (key==='freight'?adminSupplierFeeBreakdown(q,'compact'):'')+'</span>'+
   '<span class="payment-split-input"><input name="paid_'+key+'" type="number" inputmode="numeric" min="0" max="1000000000" step="1" value="'+paid+'" required aria-label="'+title+' 받은 금액 (원)"><i>원</i></span></label>'
  ).join('')+'</div>'+
  '<div class="payment-split-total"><span>받은 금액 합계</span><strong data-payment-live-total>'+money(Number(q.amount_paid||0))+'</strong></div>'+
@@ -7068,7 +7120,7 @@ function renderOrderDepositControl(q){
   ${!freightOnly&&p.goodsMissing>0?`<button class="btn sm order-payment-quick" data-action="mark-order-payment-part" data-part="goods" data-id="${esc(q.id)}">상품대금 ${money(p.goodsMissing)} 입금 확인</button>`:''}
   ${freightOnly>0?`<button class="btn sm order-payment-quick" data-action="mark-order-payment-part" data-part="freight" data-id="${esc(q.id)}">도매 배송비 ${money(freightOnly)} 입금 확인</button>`:''}
   ${!freightOnly&&!p.goodsMissing&&p.shippingMissing>0?`<button class="btn sm secondary order-payment-quick" data-action="mark-order-payment-part" data-part="shipping" data-id="${esc(q.id)}">택배비 ${money(p.shippingMissing)} 입금 확인</button>`:''}
-  <details class="related-deposit-edit" data-fold-key="direct-payment-${esc(q.id)}"><summary>금액 직접 수정 · 부분입금/환불</summary><form data-payment="${esc(q.id)}"><label>누적 입금액<input name="paid" type="number" min="0" step="1" inputmode="numeric" required value="${Number(q.amount_paid||0)}"></label><label>누적 환불액<input name="refunded" type="number" min="0" step="1" inputmode="numeric" required value="${Number(q.amount_refunded||0)}"></label><button class="btn sm secondary" type="submit">이 주문에 저장</button></form></details>
+  <details class="related-deposit-edit" data-fold-key="direct-payment-${esc(q.id)}"><summary>금액 직접 수정 · 부분입금/환불</summary><form data-payment="${esc(q.id)}" class="payment-split-generic">${paymentSplitMarkup(q)}<label>누적 환불액<input name="refunded" type="number" min="0" step="1" inputmode="numeric" required value="${Number(q.amount_refunded||0)}"></label><button class="btn sm secondary" type="submit">항목별 입금 저장</button></form></details>
   ${renderSupplierFreightRequestControl(q)}
   ${renderPaymentWaiverControl(q)}
  </div>`;
@@ -8022,6 +8074,7 @@ function renderBuyerOrderDetail(q){
    ${row('상품금액 (품절 제외)',unknown(q)?'일부 가격 미정':money(itemTotal))}
    ${row('배송비 (고객 수령)',shippingLabel(q))}
    ${row('도매 배송비 분담금',supplierShippingLabel(q))}
+   ${adminSupplierFeeBreakdown(q)}
    ${row('현재 주문금액',unknown(q)?'견적 금액 미확정':money(totalDue(q)))}
    ${row('누적 입금액',money(paid))}
    ${row('누적 환불액',money(refunded))}
@@ -8258,6 +8311,7 @@ if(m.type==='admin-payment-edit'){
  return wrap('입금 기록 수정',`<div class="admin-payment-popup-head">
   <b>${esc(q.buyer_name)} ${q.baby_name?'· '+esc(q.baby_name):''}</b>
   <span>최종 결제금액 <strong>${money(totalDue(q))}</strong></span>
+  ${adminSupplierFeeBreakdown(q,'compact')}
   <span>현재 기록된 입금 <strong>${money(paid-refunded)}</strong></span>
  </div>
  <form id="admin-payment-popup-form" data-quote-id="${esc(q.id)}" data-total="${totalDue(q)}" class="admin-payment-popup-form">
@@ -9350,6 +9404,7 @@ function renderSupplierShippingForm(q){
   ${done?'<b>✓ 도매배송비 0원 확정 완료 · 구매자 최종 주문 가능</b>':`<button type="button" class="btn block" data-action="confirm-1688-freight" data-id="${esc(q.id)}">1688 배송비 0원 확정 · 주문 진행</button>`}</div>`;
  }
  if(batches.length)return `<div class="supplier-shipping-batched"><b>거래처별 도매배송비</b>
+  ${adminSupplierFeeBreakdown(q)}
   ${batches.map(b=>`<div class="smallnote">· ${esc(b.supplier)} · ${b.people}명 분담 · ${b.ordered_at?'도매 발주 완료':'발주 대기'}</div>`).join('')}
   <div class="smallnote">이 주문 도매배송비 합계 <b>${money(supplierShippingShare(q))}</b></div>
   ${adminFreightReady(q)?'<p class="smallnote">남대문 도매배송비 배분 완료 · 1688 중국 사입 상품은 배분 대상에서 제외했어요. 이제 고객이 최종 주문을 확정할 수 있어요.</p>':'<p class="smallnote">배송비 미배분인 남대문 상품이 남아 있다면 배분 화면에서 확인해 주세요. 1688 상품은 배분하지 않아요.</p>'}</div>`;

@@ -4309,6 +4309,15 @@ function supplierBulkExistingManualFees(selected){
  }
  return {flagged,buyers:flagged.length,total:flagged.reduce((sum,p)=>sum+p.manual,0)};
 }
+// Charge every buyer the same amount, rounded UP to KRW 100.
+// Supplier's true freight stays separate; the overage is merchant margin.
+function equalSupplierShare(total,people){
+ return people>0?Math.ceil(Number(total)/Number(people)/100)*100:0;
+}
+function supplierSplitSummary(total,people){
+ const share=equalSupplierShare(total,people);
+ return {share,collected:share*people,margin:share*people-Number(total)};
+}
 function updateSupplierBulkPreview(){
  const root=app.querySelector('#supplier-bulk-manager');
  if(!root)return;
@@ -4331,15 +4340,14 @@ function updateSupplierBulkPreview(){
  if(modeChoices)modeChoices.hidden=existing.buyers===0;
  const total=Number(totalInput?.value||0);
  const validTotal=totalInput?.value!==''&&Number.isInteger(total)&&total>=0&&total<=1000000;
- const base=people&&validTotal?Math.floor(total/people):0;
- const extra=people&&validTotal?total%people:0;
+ const split=validTotal?supplierSplitSummary(total,people):null;
  if(chosen)chosen.textContent=people+'명 · '+selected.length+'개 상품 선택';
  if(output)output.textContent=!state.supplierBulkStoreId?'먼저 도매 거래처를 선택해 주세요.':
   invalid?'선택된 상품 중 다른 거래처이거나 배분할 수 없는 상품이 있어요. 체크를 다시 확인해 주세요.':
   !selected.length?'이 거래처의 상품을 체크해 주세요. 같은 사람의 여러 상품은 한 명으로 계산해요.':
   !validTotal?'이 거래처의 도매배송비 총액을 입력해 주세요.':
-  (extra?`${extra}명 × ${money(base+1)} + ${people-extra}명 × ${money(base)}`:`${people}명 × ${money(base)}`)+
-  ' = '+money(total)+' · 같은 거래처 구매자는 1명으로 계산'+
+  `${people}명 × ${money(split.share)} = ${money(split.collected)} 수금 · 실제 도매배송비 ${money(total)} · 차액 ${money(split.margin)} (수익)`+
+  ' · 같은 거래처 구매자는 1명으로 계산'+
    (existing.buyers?mode==='replace'
       ?' · 기존 '+money(existing.total)+'을 빼고 새 금액으로 대체'
       :' · 기존 '+money(existing.total)+'에 새 배분금액 추가':'');
@@ -7105,13 +7113,14 @@ function renderSupplierBulkManager(historyOnly=false,expanded=false){
   const confirmedIds=payView?new Set(visiblePeople.flatMap(p=>p.selected.filter(x=>x.q.status==='confirmed').map(x=>x.item.id))):null;
   const ordered=Boolean(batch.ordered_at);
   const unpaidRequests=(batch.payers||[]).some(p=>{const invoice=supplierPartialInvoice(batch.id,p.buyer_key);return invoice&&!invoice.paid_at;});
-  const base=batch.people?Math.floor(batch.total/batch.people):0;
-  const extra=batch.people?batch.total%batch.people:0;
-  const shareText=extra?`${money(base)}~${money(base+1)}`:money(base);
+  const shares=(batch.payers||[]).map(p=>Number(p.amount||0));
+  const charged=shares.reduce((sum,value)=>sum+value,0);
+  const splitMargin=charged-Number(batch.total||0);
+  const shareText=!shares.length?'0원':shares.every(value=>value===shares[0])?money(shares[0]):money(Math.min(...shares))+'~'+money(Math.max(...shares));
   const batchItems=(batch.item_ids||[]).filter(id=>!payView||confirmedIds.has(id)).map(id=>state.quotes.flatMap(q=>q.items||[]).find(i=>i.id===id)).filter(Boolean);
   return `<details class="supplier-bulk-batch" data-fold-key="supplier-batch-${esc(batch.id)}" data-supplier-batch-id="${esc(batch.id)}">
    <summary><span><strong>${esc(batch.supplier||'거래처')} · ${ordered?'도매 발주 완료':'발주 대기'}</strong>
-    <small>${payView?'최종 확정 '+visiblePeople.length+'명':batch.people+'명'} · ${batchItems.length}종 · 배송비 ${money(batch.total)}${payView?'':' · 1인 '+shareText}</small>
+    <small>${payView?'최종 확정 '+visiblePeople.length+'명':batch.people+'명'} · ${batchItems.length}종 · 업체 실비 ${money(batch.total)} · 1인 ${shareText} · 청구합계 ${money(charged)}${splitMargin>0?' · 차액 '+money(splitMargin)+' (수익)':''}</small>
     </span>
     <em>${ordered?'완료':checked.people.filter(p=>supplierPartialInvoice(batch.id,p.payer.buyer_key)?.paid_at).length?checked.people.filter(p=>supplierPartialInvoice(batch.id,p.payer.buyer_key)?.paid_at).length+'/'+batch.people+'명 선입금 확인':(payView?visiblePeople.filter(p=>p.selected.filter(({q})=>q.status==='confirmed').every(({q})=>readyQuote(q)&&orderPaymentParts(q).goodsMissing===0)).length+'/'+visiblePeople.length+'명 상품대금 확인':checked.paid+'/'+batch.people+'명 발주 준비 완료')}</em>
     <button type="button" class="btn sm secondary supplier-bulk-copy-btn" data-action="copy-supplier-batch-procurement" data-id="${esc(batch.id)}" aria-label="${esc(batch.supplier||'거래처')} 발주서 복사">발주서 복사</button>
@@ -10158,14 +10167,14 @@ if(!f.dataset.lowerPriceReport&&!f.dataset.sizeChartForm&&!f.dataset.customerEma
  if(!['replace','add'].includes(mode))throw Error('기존 금액 처리 방식을 선택해 주세요.');
  const supplierName=privateSupplierDisplay(state.supplierBulkStoreId);
  if(!state.productPrivateReady||!supplierName||!selected.length||selected.length>300||people>100||invalid)throw Error('실제 도매업체를 선택하고 해당 도매업체 상품만 체크해 주세요.');
- const base=Math.floor(total/people),remainder=total%people;
- const allocations=new Map(buyerKeys.map((key,index)=>[key,base+(index<remainder?1:0)]));
+ const split=supplierSplitSummary(total,people);
+ const allocations=new Map(buyerKeys.map(key=>[key,split.share]));
  const buyers=buyerKeys.map(key=>{
   const customer=selected.find(({q})=>String(q.contact||'').replace(/\D/g,'')===key);
   return (customer?.q.buyer_name||'구매자')+' '+money(allocations.get(key));
  });
  const changedQuotes=selected.some(({q})=>['quoted','confirmed'].includes(q.status));
- const splitText=remainder?`${remainder}명은 ${money(base+1)}, 나머지 ${people-remainder}명은 ${money(base)}`:`1인당 ${money(base)}`;
+ const splitText=`전원 1인 ${money(split.share)} × ${people}명 = ${money(split.collected)} 수금\\n업체 실제 배송비 ${money(total)} · 차액 ${money(split.margin)} (수익)`;
  const message='‘'+supplierName+'’ 실제 도매업체 배송비 '+money(total)+'을(를) 분담할까요?\n'+
   '선택 상품 '+selected.length+'종 · 구매자 '+people+'명\n'+splitText+
   '\n\n'+buyers.join(', ')+
@@ -10179,7 +10188,7 @@ if(!f.dataset.lowerPriceReport&&!f.dataset.sizeChartForm&&!f.dataset.customerEma
  if(!result?.id)throw Error('거래처별 배송비 저장 결과를 확인하지 못했어요.');
  state.supplierBulkSelected.clear();
  await loadAdmin();
- notif('‘'+result.supplier+'’ 배송비를 '+result.people+'명에게 배분했어요. '+(mode==='replace'?'기존 개별 배송비는 대체했어요.':'기존 개별 배송비에 추가했어요.')+' 다른 거래처 배분은 유지돼요.');
+ notif('‘'+result.supplier+'’ 배송비를 '+result.people+'명 모두에게 각각 '+money(split.share)+' 배분했어요. 차액 '+money(split.margin)+'은 수익으로 계산돼요.');
 }else if(f.dataset.customerEmail){
  const kind=String(f.dataset.customerEmail||''),id=String(f.dataset.id||'');
  if(!['quote','product_request'].includes(kind)||!id)throw Error('수정할 신청을 찾지 못했어요.');

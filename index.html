@@ -8385,12 +8385,14 @@ function renderCompletedProcurementSheet(){
 function isOtherRoundQuote(q){
  return q.status==='quoted'&&['next_round','on_hold','undecided'].includes(q.purchase_intent||'undecided');
 }
-/* The same unfulfilled allocation rows power the visible list and its clipboard action.
-   Include unpaid and unconfirmed orders, but never cancelled, sold-out or already ordered products. */
+/* Both the visible supplier list and clipboard use the same items: purchase-confirmation
+   waiting (quoted + buy_now + priced) or confirmed orders. Payment is NOT required.
+   Exclude earlier quote/selection stages, cancelled, sold-out or already ordered items. */
 function supplierPendingBatchItems(batch){
  const byId=new Map(state.quotes.flatMap(q=>(q.items||[]).map(item=>[item.id,{q,item}])));
  return (batch?.item_ids||[]).map(id=>byId.get(id))
-  .filter(row=>row&&row.q.status!=='cancelled'&&
+  .filter(row=>row&&(row.q.status==='confirmed'||
+   (row.q.status==='quoted'&&row.q.purchase_intent==='buy_now'&&!quoteNeedsPriceInput(row.q)))&&
    !['sold_out','received','delivered'].includes(row.item.fulfillment)&&
    !row.item.supplier_ordered_at&&!row.q.supplier_ordered_at);
 }
@@ -8425,7 +8427,7 @@ function renderSupplierPaymentCenter(){
   <p class="supplier-order-clean-note">입금 확인 ${eligible.length}종 · 확인 대기 ${items.length-eligible.length}종</p>
   ${items.map(({q,item})=>`<div class="supplier-order-clean-item"><span><b>${esc(item.store_name||'가게명 미입력')} · ${esc(item.product_name||'상품')}</b><small>${esc(item.color||'-')} / ${esc(item.size||'-')} · ${esc(q.buyer_name||'구매자')}</small></span><div class="supplier-order-clean-right"><strong>×${Number(item.quantity||1)}</strong><small class="${supplierOrderPaidForCopy(q)?'is-ready':'is-pending'}">${esc(supplierOrderRowStatus(q))}</small></div></div>`).join('')}
   <button type="button" class="btn block supplier-order-clean-copy" data-action="copy-supplier-pending-procurement" data-id="${esc(b.id)}" ${items.length&&state.productPrivateReady?'':'disabled'}>발주서 복사 · 전체 ${items.length}종 / ${qty}개</button>
-  <p class="supplier-order-clean-hint">입금 확인 전·확정 대기 상품도 함께 복사해요. 취소·품절·발주 완료 상품은 제외하며, 복사만으로 발주 완료 처리되지 않아요.</p>
+  <p class="supplier-order-clean-hint">확정 대기부터 주문 확정 단계까지의 미발주 상품을 모두 복사해요. 입금 여부는 관계없으며, 견적·구매 선택·취소·품절·발주 완료 상품은 제외해요.</p>
  </div>
  </details>`).join(''):'<div class="empty">발주 대기 중인 거래처가 없어요.</div>'}</div>
  <details class="supplier-order-actions-fold" data-fold-key="supplier-order-actions-fold"><summary>입금 확인 · 발주 완료 처리 (상세)</summary><p class="supplier-order-actions-guide">위 목록은 전체 미발주 상품이고, 이 상세 화면은 최종 확정된 주문만 보여줘요. 발주서 복사는 위 거래처 카드에서 해주세요.</p>${renderSupplierBulkManager(true,true)}</details>
@@ -10487,13 +10489,13 @@ if(a==='copy-supplier-pending-procurement'){
  const batch=state.supplierBatches.find(x=>x.id===id);
  if(!batch||batch.ordered_at)throw Error('이미 발주 완료했거나 거래처 배분 내역이 없어요. 새로고침해 주세요.');
  const pendingIds=new Set(supplierPendingBatchItems(batch).map(({item})=>item.id));
- if(!pendingIds.size)throw Error('이 거래처에 복사할 미발주 상품이 없어요.');
+ if(!pendingIds.size)throw Error('이 거래처에 확정 대기 이후의 미발주 상품이 없어요.');
  const rows=supplierBatchProcurementRows(batch).filter(r=>pendingIds.has(r.item.id));
  if(rows.length!==pendingIds.size)throw Error('복사할 상품 내역이 달라졌어요. 화면을 새로고침한 뒤 확인해 주세요.');
  await copy(formatWholesaleOrderCopy(rows,true,'도매처',true));
  const missing=rows.filter(r=>r.unit===null).length;
  const unpaid=rows.filter(r=>!supplierOrderPaidForCopy(r.q)).length;
- notif('‘'+batch.supplier+'’ 거래처 미발주 상품 '+rows.length+'종 · '+rows.reduce((n,r)=>n+r.qty,0)+'개 복사 완료.'+(unpaid?' 입금·확정 대기 '+unpaid+'종 포함.':'')+(missing?' 도매가 미등록 '+missing+'종을 확인해 주세요.':''));
+ notif('‘'+batch.supplier+'’ 거래처 확정 대기 이후 상품 '+rows.length+'종 · '+rows.reduce((n,r)=>n+r.qty,0)+'개 복사 완료.'+(unpaid?' 입금 미확인/확정 대기 '+unpaid+'종 포함.':'')+(missing?' 도매가 미등록 '+missing+'종을 확인해 주세요.':''));
  return;
 }
 if(a==='copy-supplier-batch-procurement'){

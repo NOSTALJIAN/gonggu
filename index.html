@@ -3042,6 +3042,26 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 .supplier-buyer-check-actions>.is-paid{color:#2f704b}
 .supplier-buyer-confirm{min-height:30px;padding:6px 10px;border-radius:6px;background:#171717;border:1px solid #171717;color:#fff;font-size:11px;font-weight:770}
 .supplier-buyer-confirm:disabled{background:#f5f5f5;border-color:#e2e2e2;color:#999}
+
+.shipping-merge-entry{padding:8px 10px;border-bottom:1px solid #eee}
+.shipping-merge-entry>.btn{width:auto;min-height:34px;font-size:11px;font-weight:780}
+.shipping-merge-modal{max-height:76vh;overflow:auto;padding:0 2px 6px}
+.shipping-merge-heading{display:flex;flex-direction:column;gap:4px;margin-bottom:11px}
+.shipping-merge-heading strong{font-size:15px}
+.shipping-merge-heading span{font-size:11px;color:#777}
+.shipping-merge-orders{border:1px solid #e8e8e8;border-radius:8px;margin:7px 0 13px}
+.shipping-merge-order{display:flex;align-items:center;gap:10px;padding:11px 9px;border-bottom:1px solid #eee;font-size:12px;min-width:0}
+.shipping-merge-order:last-child{border-bottom:0}
+.shipping-merge-order>span{min-width:0;display:flex;flex-direction:column;gap:4px}
+.shipping-merge-order b{font-size:12px}
+.shipping-merge-order small{font-size:10px;color:#777;line-height:1.4}
+.shipping-merge-order>input{width:18px;height:18px;flex:0 0 18px;accent-color:#111}
+.shipping-merge-order.fixed{background:#f7f7f7;display:flex;flex-direction:column;align-items:flex-start;gap:4px}
+.shipping-merge-order.fixed span{font-size:11px;color:#666}
+.shipping-merge-address{border-top:1px solid #ececec;padding-top:11px}
+.shipping-merge-address>strong{display:block;font-size:13px;margin-bottom:9px}
+.shipping-merge-address .label{font-size:12px}
+.shipping-merge-warning{font-size:11px;color:#76511c;line-height:1.6;background:#faf6ef;padding:10px;border-radius:7px}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -6046,6 +6066,119 @@ function quoteGroupNeedsPriceInput(group){return group.some(quoteNeedsPriceInput
 // Each customer order can be expanded independently within its received-date group.
 // Unpriced orders open by default so the admin can enter prices quickly; priced orders
 // start collapsed, keeping the list compact on mobile.
+function sameShippingCustomer(a,b){
+ if(!a||!b||normKey(a.buyer_name)!==normKey(b.buyer_name)||!normKey(a.buyer_name))return false;
+ const pa=normalizeBuyerPhone(a.contact),pb=normalizeBuyerPhone(b.contact);
+ if(pa&&pb&&pa.length>=10&&pa===pb)return true;
+ return !!a.customer_key&&!!b.customer_key&&a.customer_key===b.customer_key&&
+  normKey(a.baby_name)===normKey(b.baby_name)&&!!normKey(a.baby_name);
+}
+function shippingMergeEligible(q){
+ return !!q&&q.status==='confirmed'&&!q.cancel_requested_at&&!q.delivery_change_requested_at&&
+  ['new','preparing','pickup_ready'].includes(workflowStage(q))&&
+  !String(q.tracking_number||'').trim()&&
+  !(q.items||[]).some(i=>i.fulfillment==='delivered');
+}
+function shippingMergeCandidates(q){
+ if(!state.admin||!q)return [];
+ return state.quotes.filter(x=>shippingMergeEligible(x)&&sameShippingCustomer(x,q));
+}
+function shippingMergeRoot(orders,chosen){
+ const byId=new Map(orders.map(q=>[q.id,q]));
+ const q=byId.get(chosen?.bundle_parent_id)||chosen;
+ const roots=orders.filter(x=>!x.bundle_parent_id);
+ const withChildren=roots.filter(x=>orders.some(y=>y.bundle_parent_id===x.id));
+ if(q&&!q.bundle_parent_id&&withChildren.some(x=>x.id===q.id))return q;
+ if(withChildren.length)return withChildren[0];
+ return [...roots].sort((a,b)=>{
+  const score=x=>x.delivery_method==='courier'&&x.address_line1?0:1;
+  return score(a)-score(b)||String(a.created_at).localeCompare(String(b.created_at));
+ })[0]||null;
+}
+function renderShippingMergeButton(group){
+ const first=group.find(shippingMergeEligible)||group[0];
+ const options=shippingMergeCandidates(first);
+ if(options.length<2)return '';
+ const roots=new Set(options.map(q=>q.bundle_parent_id||q.id));
+ if(roots.size<2)return '';
+ return `<div class="shipping-merge-entry"><button type="button" class="btn sm secondary" data-action="merge-shipping" data-id="${esc(first.id)}">같은 구매자 합배송 · ${options.length}건</button></div>`;
+}
+function renderMergeShippingBody(m){
+ const opened=state.quotes.find(q=>q.id===m.id);
+ const eligible=shippingMergeCandidates(opened);
+ const root=shippingMergeRoot(eligible,opened);
+ if(!root||eligible.length<2)return '<div class="empty">현재 합배송할 수 있는 주문이 두 건 이상 없어요. 이미 발송한 주문은 제외돼요.</div>';
+ const fixed=eligible.filter(q=>q.bundle_parent_id===root.id);
+ const options=eligible.filter(q=>q.id!==root.id&&q.bundle_parent_id!==root.id&&!q.bundle_parent_id);
+ const addressOrder=root.delivery_method==='courier'&&root.address_line1?root:
+   eligible.find(q=>q.delivery_method==='courier'&&q.address_line1)||root;
+ const val=k=>esc(addressOrder[k]||'');
+ return `<div class="shipping-merge-modal">
+ <div class="shipping-merge-heading"><strong>${esc(root.buyer_name)}님의 발송 전 주문</strong>
+ <span>택배 한 번으로 보내기 · 주문은 각각 유지</span></div>
+ <form id="merge-shipping-form">
+  <input type="hidden" name="root_id" value="${esc(root.id)}">
+  <div class="shipping-merge-orders">
+   <div class="shipping-merge-order fixed"><b>기준 주문</b><span>${esc(fmtDate(root.created_at))} · 상품 ${root.items.length}종 · ${esc(deliveryLabel(root))}</span></div>
+   ${fixed.length?`<div class="shipping-merge-order fixed"><b>기존 합배송 ${fixed.length}건</b><span>같은 주소로 유지</span></div>`:''}
+   ${options.map(q=>`<label class="shipping-merge-order">
+    <input type="checkbox" name="additional_id" value="${esc(q.id)}" checked>
+    <span><b>${esc(fmtDate(q.created_at))} · 상품 ${q.items.length}종</b><small>${esc(deliveryLabel(q))} · ${money(totalDue(q))} / 입금 ${money(Number(q.amount_paid||0)-Number(q.amount_refunded||0))}</small></span>
+   </label>`).join('')}
+  </div>
+  <div class="shipping-merge-address">
+   <strong>함께 받을 택배 주소</strong>
+   <label class="label">받는 사람<input name="recipient_name" required maxlength="80" value="${val('recipient_name')||esc(root.buyer_name||'')}"></label>
+   <div class="address-tools"><button type="button" class="btn secondary" data-action="search-address">주소 검색</button><button type="button" class="textbutton address-manual" data-action="manual-address">직접 입력</button></div>
+   <div class="postcode-search hidden" data-postcode-panel><div class="row between"><b>우편번호·주소 찾기</b><button type="button" class="btn sm neutral" data-action="close-address-search">닫기</button></div><div class="postcode-mount" data-postcode-mount></div></div>
+   <label class="label">우편번호<input name="postal_code" data-address-postal inputmode="numeric" pattern="[0-9]{5}" maxlength="5" required value="${val('postal_code')}"></label>
+   <label class="label">주소<input name="address_line1" data-address-primary required maxlength="250" value="${val('address_line1')}"></label>
+   <label class="label">상세주소<input name="address_line2" maxlength="250" value="${val('address_line2')}"></label>
+   <label class="label">배송 메모<input name="delivery_note" maxlength="200" value="${val('delivery_note')}"></label>
+  </div>
+  <p class="shipping-merge-warning">선택한 주문을 택배수령으로 통일하고 배송비는 기준 주문에 한 번만 계산해요. 기존 입금 기록은 그대로 유지돼요. 중복 입금된 택배비가 있다면 실제 환불 후 따로 기록해 주세요.</p>
+  <button type="submit" class="btn block" ${options.length?'':'disabled'}>합배송 설정 저장</button>
+ </form></div>`;
+}
+async function handleMergeShippingSubmit(f,data){
+ if(!state.admin||state.page!=='admin')throw Error('관리자에서만 합배송할 수 있어요.');
+ const rootId=String(data.get('root_id')||'');
+ const ids=[...new Set(data.getAll('additional_id').map(String))];
+ const quote=state.quotes.find(q=>q.id===rootId);
+ if(!quote||!ids.length||ids.some(id=>id===rootId))throw Error('합배송할 주문을 선택해 주세요.');
+ const eligible=shippingMergeCandidates(quote);
+ if(ids.some(id=>!eligible.some(q=>q.id===id&&!q.bundle_parent_id)))throw Error('선택한 주문 상태가 변경됐어요. 다시 확인해 주세요.');
+ const value=k=>String(data.get(k)||'').trim();
+ const recipient=value('recipient_name'),postal=value('postal_code'),address=value('address_line1');
+ if(!recipient||!/^[0-9]{5}$/.test(postal)||address.length<4)throw Error('받는 사람·우편번호·주소를 입력해 주세요.');
+ if(!window.confirm('같은 구매자의 주문 '+(ids.length+1)+'건을 한 택배로 묶을까요?\n배송지는 한 곳으로 통일돼요.\n택배비는 한 번만 계산하고, 기존 입금액은 그대로 유지해요.'))return;
+ let result;
+ if(connected){
+  result=await rpc('gq_admin_merge_shipping_v100',{
+   p_root_id:rootId,p_additional_ids:ids,
+   p_recipient_name:recipient,p_postal_code:postal,p_address_line1:address,
+   p_address_line2:value('address_line2'),p_delivery_note:value('delivery_note')
+  },true);
+ }else{
+  const all=[rootId,...ids];
+  for(const id of all){
+   const row=demo.quotes.find(q=>q.id===id);
+   if(!row)throw Error('주문을 찾지 못했어요.');
+   const before=row.delivery_method;
+   row.delivery_method='courier';row.recipient_name=recipient;row.postal_code=postal;
+   row.address_line1=address;row.address_line2=value('address_line2');row.delivery_note=value('delivery_note');
+   row.shipping_fee=before==='pickup'?3000:row.shipping_fee??3000;
+   row.bundle_parent_id=id===rootId?null:rootId;
+   if(row.workflow_stage==='pickup_ready')row.workflow_stage='preparing';
+  }
+  saveDemo();result={orders:all.length,possible_refund:0};
+ }
+ state.modal=null;
+ await loadAdmin();
+ notif('합배송 '+Number(result?.orders||ids.length+1)+'건 설정 완료');
+ if(Number(result?.possible_refund||0)>0)
+  window.alert('기존 택배비 중복 입금 여부를 확인해 주세요. 실제 환불 후 환불액을 기록해야 해요. (중복 가능 배송비 '+money(Number(result.possible_refund))+')');
+}
 function renderCollapsibleAdminOrder(group,section){
  const root=group.length>1?roundOrderRoot(group):group[0];
  const babies=[...new Set(group.map(q=>String(q.baby_name||'').trim()).filter(Boolean))];
@@ -6090,6 +6223,7 @@ function renderCollapsibleAdminOrder(group,section){
    <span class="admin-order-fold-chevron" aria-hidden="true"></span>
   </summary>
   <div class="admin-order-fold-body">
+   ${renderShippingMergeButton(group)}
    ${group.length>1?(group.every(q=>bundleRootId(q)===bundleRootId(group[0]))?renderBundleCard(group):renderSameRoundCard(group)):renderAdminQuoteCard(group[0])}
   </div>
  </details>`;
@@ -6837,6 +6971,7 @@ function renderBuyerStats(){
    <span>확정 수량 ${g.units}개</span>
    <span>환불 차감 수령액 ${money(g.netPaid)}</span>
   </div>
+  ${renderShippingMergeButton(g.orders)}
   <details>
    <summary class="stats-summary"><span>확정 주문 내역 보기</span><span class="tiny">펼치기 ▾</span></summary>
    ${g.orders.map(q=>`<button type="button" class="stat-detail stat-order-open" data-action="buyer-order-details" data-id="${esc(q.id)}" aria-label="${esc(q.buyer_name)}님 확정 주문 ${esc(fmtDate(q.created_at))} 상세정보 열기">
@@ -7111,6 +7246,10 @@ if(m.type==='product'){
     <label class="stageradio approve-publish-label"><input type="checkbox" name="is_sold_out" ${pr?.is_sold_out?'checked':''}> 품절 표시</label>
    </div>
   </form>`,true);
+}
+if(m.type==='merge-shipping'){
+ if(!state.admin||state.page!=='admin')return '';
+ return wrap('같은 구매자 합배송',renderMergeShippingBody(m));
 }
 if(m.type==='bundle'){const child=state.quotes.find(x=>x.id===m.id);if(!child)return '';const candidates=state.quotes.filter(x=>x.id!==child.id&&buyerIdentity(x)===buyerIdentity(child)&&x.status!=='cancelled'&&['quoted','confirmed'].includes(x.status)&&x.bundle_parent_id==null&&hasShipping(x)&&x.delivery_method!=='pickup'&&!state.quotes.some(y=>y.bundle_parent_id===child.id));return wrap('묶음배송 설정',`<div class="info">동일 구매자의 택배 주문을 함께 보내면 <b>연결된 추가 주문의 배송비는 0원</b>으로 계산돼요. 대표 주문에 기존 배송비가 남습니다.</div><div class="card"><b>${esc(buyerLabel(child))}</b><div class="smallnote">현재 주문: ${fmtDate(child.created_at)} · ${money(totalDue(child))}</div><div class="smallnote">수령: ${deliveryLabel(child)} · ${esc(addressLabel(child))}</div></div>${child.delivery_method==='pickup'?'<div class="noticefail">직접수령은 묶음배송할 수 없어요.</div>':`<form id="bundle-form"><label class="label">이 주문과 함께 보낼 대표 주문<select name="parent_id"><option value="">${child.bundle_parent_id?'묶음배송 해제 (각각 배송비 청구)':'묶음배송하지 않음'}</option>${candidates.map(q=>`<option value="${q.id}" ${child.bundle_parent_id===q.id?'selected':''}>${esc(q.buyer_name)} · ${fmtDate(q.created_at)} · ${esc(q.items.map(i=>i.product_name).slice(0,2).join(', '))}</option>`).join('')}</select></label>${!candidates.length?'<div class="noticefail">같은 구매자이고 배송비가 설정된 다른 견적/확정 주문이 없어요. 대표 주문이 없으면 아직 묶을 수 없어요.</div>':''}<div class="noticefail">이미 확정된 주문은 금액 차이가 발생할 수 있어요. 주소가 같은지 먼저 확인하고, 입금 완료라면 환불도 직접 확인해 주세요. 배송비 변경 안내는 주문자의 견적 확인 화면에 반영됩니다.</div><button class="btn block" type="submit">묶음배송 설정 저장</button></form>`}`)}
 
@@ -8961,6 +9100,11 @@ if(a==='edit-delivery'){
   if(!window.confirm(`${q.buyer_name}(${q.baby_name||'아기이름 미입력'})님의 수령방식 변경을 승인할까요?\n${note}\n기존 입금액과 차액도 확인해 주세요.`))return;
  }else if(!window.confirm('수령방식 변경 요청을 반려할까요?'))return;
  await reviewBuyerDelivery(id,approve,fee);await loadAdmin();notif(approve?'수령방식 변경을 승인했어요':'변경 요청을 반려했어요');
+}else if(a==='merge-shipping'){
+ if(!state.admin||state.page!=='admin')throw Error('관리자에서만 합배송할 수 있어요.');
+ const quote=state.quotes.find(q=>q.id===id);
+ if(!quote||shippingMergeCandidates(quote).length<2)throw Error('합배송 가능한 발송 전 주문이 없어요.');
+ modalOpen('merge-shipping',id);
 }else if(a==='bundle-order'){
  const q=state.quotes.find(x=>x.id===id);if(!q)throw Error('주문을 찾지 못했어요');
  modalOpen('bundle',id);
@@ -9208,7 +9352,8 @@ if(!f.dataset.lowerPriceReport&&!f.dataset.sizeChartForm&&!f.dataset.customerEma
  if(carrier.length<1||carrier.length>60||!/^[-0-9A-Za-z ]{4,80}$/.test(tracking))throw Error('택배사와 송장번호를 확인해 주세요 (영문·숫자·하이픈 4~80자).');
  if(!window.confirm(`${carrier} / ${tracking}\n송장을 등록하고 배송 중으로 변경할까요?`))return;
  await adminWorkflowStage(f.dataset.ship,'shipped',carrier,tracking);await loadAdmin();notif('송장번호가 등록됐어요.');
-}else if(f.id==='bundle-form'){
+}else if(f.id==='merge-shipping-form'){await handleMergeShippingSubmit(f,data);}
+else if(f.id==='bundle-form'){
  const q=state.quotes.find(x=>x.id===state.modal?.id);if(!q)throw Error('주문을 찾지 못했어요');
  const parent=String(data.get('parent_id')||'');
  if(parent){const root=state.quotes.find(x=>x.id===parent);if(!root)throw Error('대표 주문이 없어요');

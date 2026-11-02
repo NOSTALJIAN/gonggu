@@ -2958,6 +2958,12 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 .compact-order-next>span{font-size:10px;color:#888;font-weight:750}
 .compact-order-next>strong{font-size:13px;line-height:1.45;font-weight:830}
 .compact-order-next.is-urgent>strong{color:#9c5036}
+.compact-payment-request-row{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 0 13px;border-bottom:1px solid #ededed}
+.compact-payment-request-caption{font-size:13px;color:#777;font-weight:650;white-space:nowrap}
+.compact-payment-request-caption b{font-size:15px;color:#222;font-weight:800}
+.compact-payment-request-btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:43px;padding:10px 15px;background:#171717;color:#fff;border:0;border-radius:9px;font-size:13px;font-weight:760;white-space:nowrap;cursor:pointer}
+.compact-payment-request-btn span{font-size:17px;font-weight:400}
+@media(max-width:350px){.compact-payment-request-row{gap:6px}.compact-payment-request-btn{padding:9px 11px;font-size:12px}}
 .compact-order-next-btn{padding:9px 13px;margin-top:4px;display:flex;align-items:center;justify-content:space-between;gap:15px;min-height:37px;background:#171717;border:0;border-radius:6px;color:#fff;font-size:11px;font-weight:780}
 .compact-order-tools{border-top:1px solid #e9e9e9}
 .compact-order-tool{border-bottom:1px solid #eee;max-width:100%;min-width:0}
@@ -7043,9 +7049,7 @@ function renderAdminQuoteCard(q){
    ${priced&&paid>due?`<p class="compact-order-warning">초과 입금 ${money(paid-due)} · 환불 여부 확인</p>`:''}
   </div>
   <div class="compact-order-next ${urgent?'is-urgent':''}">
-   <strong>${esc(task.text)}</strong>
-   ${task.action==='copy-final-payment-notice'||task.action==='send-final-payment-request'?'':`<button type="button" class="compact-order-next-btn" ${command}>${esc(task.label)} →</button>`}
-   ${finalReady&&balanceDue(q)>0&&!q.cancel_requested_at&&!q.delivery_change_requested_at?`<button type="button" class="btn secondary compact-payment-request-btn" data-action="send-final-payment-request" data-id="${esc(q.id)}">입금 요청 자동발송 · ${money(balanceDue(q))}</button>`:''}
+   ${finalReady&&balanceDue(q)>0&&!q.cancel_requested_at&&!q.delivery_change_requested_at?`<div class="compact-payment-request-row"><span class="compact-payment-request-caption">미입금 <b>${money(balanceDue(q))}</b></span><button type="button" class="compact-payment-request-btn" data-action="send-final-payment-request" data-id="${esc(q.id)}">입금 요청 보내기 <span aria-hidden="true">→</span></button></div>`:`<strong>${esc(task.text)}</strong>${task.action==='copy-final-payment-notice'||task.action==='send-final-payment-request'?'':`<button type="button" class="compact-order-next-btn" ${command}>${esc(task.label)} →</button>`}`}
    ${renderCompactInlinePayment(q,finalReady)}
    ${supplierFreightOnlyDue(q)>0?renderSupplierFreightRequestControl(q):''}
    ${adminConfirmButton(q)}

@@ -4930,13 +4930,13 @@ const buyerLabel=q=>String(q.buyer_name||'이름 미입력')+' · '+(q.baby_name
    notification_origin is an email-link fallback and must not be used to
    identify which storefront a buyer submitted their order on. */
 function adminGithubOrderIcon(q){
- if(!state.admin||q?.price_channel!=='github')return '';
- return '<span class="admin-order-gh-badge" title="GitHub 주소에서 접수한 주문" aria-label="GitHub 접수 주문">GH</span>';
+ if(!state.admin||!['github','cloudflare'].includes(q?.price_channel))return '';
+ return '<span class="admin-order-gh-badge" title="'+(q.price_channel==='github'?'GitHub':'Cloudflare')+' 주소에서 접수한 주문" aria-label="외부 링크 접수 주문">'+(q.price_channel==='github'?'GH':'CF')+'</span>';
 }
 function adminGithubGroupIcon(quotes){
- if(!state.admin||!Array.isArray(quotes)||!quotes.some(q=>q.price_channel==='github'))return '';
- const mixed=quotes.some(q=>q.price_channel!=='github');
- return '<span class="admin-order-gh-badge" title="'+(mixed?'GitHub 주소 접수 주문 포함':'GitHub 주소에서 접수한 주문')+'" aria-label="'+(mixed?'GitHub 접수 주문 포함':'GitHub 접수 주문')+'">GH</span>';
+ if(!state.admin||!Array.isArray(quotes))return '';
+ const channels=[...new Set(quotes.map(q=>q.price_channel).filter(c=>c==='github'||c==='cloudflare'))];
+ return channels.map(c=>'<span class="admin-order-gh-badge" title="'+(c==='github'?'GitHub':'Cloudflare')+' 주소에서 접수한 주문 포함" aria-label="'+c+' 접수 주문">'+(c==='github'?'GH':'CF')+'</span>').join(' ');
 }
 
 const normKey=x=>String(x||'').trim().replace(/\s+/g,'').toLowerCase();
@@ -5760,10 +5760,10 @@ function renderTrack(){
 
 function renderAdminHomePreparingList(quotes){
  const rows=[...quotes].filter(q=>q.status==='confirmed').sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')));
- const shown=rows.slice(0,4);
+ const shown=rows;
  return `<section class="admin-home-preparing-panel" id="admin-home-preparing-list" aria-label="발주 준비 주문">
   <div class="admin-home-preparing-heading">
-   <div><strong>발주 준비 ${rows.length}건</strong><small>${rows.length>4?'최근 4건만 표시해요.':'확정된 주문만 표시해요.'}</small></div>
+   <div><strong>발주 준비 ${rows.length}건</strong><small>확정된 주문 전체를 표시해요.</small></div>
    <button type="button" data-action="home-preparing-toggle" aria-label="발주 준비 목록 접기">접기</button>
   </div>
   <div class="admin-home-preparing-rows">

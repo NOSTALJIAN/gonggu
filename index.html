@@ -7345,6 +7345,14 @@ function paymentSplitAmounts(q){
  const freight=Math.min(left,Math.max(0,supplierShippingShare(q)));left-=freight;
  return {goods:goods+left,delivery,freight,legacy:total>0};
 }
+/* Prevent iOS Safari focus zoom and leading-zero amount entry. */
+function normalizePaymentAmountInput(input){
+ if(!input||!input.matches('.payment-split-input input'))return;
+ const raw=String(input.value||'');
+ if(!raw)return;
+ const cleaned=raw.replace(/^0+(?=\d)/,'');
+ if(cleaned!==raw)input.value=cleaned;
+}
 function paymentSplitMarkup(q){
  const v=paymentSplitAmounts(q);
  const fields=[
@@ -7355,7 +7363,7 @@ function paymentSplitMarkup(q){
  return '<div class="payment-split-fields">'+fields.map(([key,title,due,paid])=>
   '<label class="payment-split-field"><span class="payment-split-name">'+title+
   '<small>결제금 '+money(Math.max(0,due))+'</small>'+ (key==='freight'?adminSupplierFeeInline(q):'')+'</span>'+
-  '<span class="payment-split-input"><input name="paid_'+key+'" type="number" inputmode="numeric" min="0" max="1000000000" step="1" value="'+paid+'" required aria-label="'+title+' 받은 금액 (원)"><i>원</i></span></label>'
+  '<span class="payment-split-input"><input style="font-size:16px;min-height:44px" name="paid_'+key+'" type="number" inputmode="numeric" min="0" max="1000000000" step="1" value="'+paid+'" required aria-label="'+title+' 받은 금액 (원)"><i>원</i></span></label>'
  ).join('')+'</div>'+
  '<div class="payment-split-total"><span>받은 금액 합계</span><strong data-payment-live-total>'+money(Number(q.amount_paid||0))+'</strong></div>'+
  (v.legacy?'<small class="payment-split-legacy">기존 총입금액을 임시로 나눈 값이에요. 항목별 실제 입금액을 확인한 뒤 저장해 주세요.</small>':'');
@@ -11990,6 +11998,9 @@ window.addEventListener('popstate',()=>{const pp=new URLSearchParams(location.se
 // Banner metadata is loaded with public catalog results.
 })();
 
+
+document.addEventListener('input',e=>{if(e.target?.matches?.('.payment-split-input input'))normalizePaymentAmountInput(e.target)},true);
+document.addEventListener('focusin',e=>{const el=e.target;if(el?.matches?.('.payment-split-input input')&&el.value==='0')el.select()},true);
 </script>
 </body>
 </html>

@@ -3716,6 +3716,82 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
  .admin-price-popup-estimate strong{font-size:12px}
 }
 
+
+/* 2026-11-02: Lightweight mobile-only administrator layout.
+   Preserve all functional controls and hide only redundant shop masthead. */
+.admin-manager-shop-link{display:none}
+.admin-orders-title-row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px 10px;margin:8px 2px 10px}
+.admin-orders-title-row .admin-orders-list-title{display:flex;align-items:baseline;gap:8px;margin:0}
+.admin-orders-title-row .admin-more-filters{margin:0;min-width:0}
+.admin-orders-title-row .admin-more-filters>summary{padding:4px 0;font-size:11px;font-weight:650;color:#858585}
+.admin-orders-title-row .admin-more-filters[open]{flex:1 1 100%;order:3}
+.admin-orders-title-row .admin-more-filters[open]>summary{text-align:right}
+.admin-orders-title-row .admin-more-filter-items{margin:5px 0 7px;padding:9px 0;border-top:1px solid #efefef}
+@media(max-width:719px){
+ .shell.is-admin-shell:has(.admin-reorganized) > .hero.is-admin-header{display:none!important}
+ .shell.is-admin-shell .admin-reorganized{padding:calc(env(safe-area-inset-top) + 11px) 13px calc(env(safe-area-inset-bottom) + 22px)!important}
+ .admin-reorganized .admin-manager-heading{
+  min-height:35px;display:flex;align-items:center;justify-content:space-between;
+  gap:9px;margin:0 0 13px;padding:0 1px 10px;border-bottom:1px solid #f0f0f0
+ }
+ .admin-reorganized .admin-manager-heading>div:first-child{display:flex;align-items:baseline;gap:7px;min-width:0}
+ .admin-reorganized .admin-manager-heading small{font-size:10px;letter-spacing:.65px;color:#959595}
+ .admin-reorganized .admin-manager-heading h1{font-size:19px;line-height:1.3;margin:0;letter-spacing:-.5px}
+ .admin-reorganized .admin-manager-actions{gap:4px;align-items:center;flex:0 0 auto}
+ .admin-reorganized .admin-manager-actions .admin-manager-shop-link{
+  display:inline-flex;align-items:center;justify-content:center;width:auto;height:35px;
+  min-height:35px;padding:0 8px;border:0;background:transparent;border-radius:6px;
+  font-size:11px;font-weight:670;color:#666
+ }
+ .admin-reorganized .admin-manager-actions button:not(.admin-manager-shop-link){
+  height:35px;min-height:35px;width:35px;padding:0;border-radius:9px;font-size:18px;
+  display:inline-flex;align-items:center;justify-content:center
+ }
+ .admin-reorganized .admin-manager-nav{
+  display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:0;margin:0 0 14px;padding:0;
+  background:transparent;border:0;border-bottom:1px solid #eaeaea;border-radius:0
+ }
+ .admin-reorganized .admin-manager-nav button{
+  display:flex;align-items:center;justify-content:center;min-height:43px;height:43px;
+  min-width:0;padding:7px 1px 8px;border:0;border-bottom:2px solid transparent;
+  border-radius:0;background:transparent;color:#777;box-shadow:none;font-size:12px;font-weight:720
+ }
+ .admin-reorganized .admin-manager-nav button.active{
+  background:transparent;color:#171717;border-bottom-color:#171717;box-shadow:none;font-weight:820
+ }
+ .admin-reorganized .admin-page-heading{margin:0 1px 9px}
+ .admin-reorganized .admin-page-heading h2{font-size:19px}
+ .admin-orders-page .admin-orders-search{margin:0 0 11px}
+ .admin-orders-page .admin-orders-search input{
+  min-height:40px;height:40px;border-radius:9px;font-size:13px;padding:8px 36px 8px 12px
+ }
+ .admin-orders-page .admin-orders-filterbar{
+  display:flex;flex-direction:row;align-items:stretch;flex-wrap:nowrap;
+  gap:7px;min-width:0;max-width:100%;overflow-x:auto;overflow-y:hidden;
+  margin:0 0 10px;padding:0 1px 4px;
+  scrollbar-width:none;-webkit-overflow-scrolling:touch;
+  scroll-snap-type:x proximity;overscroll-behavior-x:contain
+ }
+ .admin-orders-page .admin-orders-filterbar::-webkit-scrollbar{display:none}
+ .admin-orders-page .admin-orders-filterbar button{
+  flex:0 0 auto;display:flex;flex-direction:row;align-items:center;gap:6px;
+  justify-content:center;min-height:40px;height:40px;
+  min-width:83px;padding:7px 12px;border-radius:10px;
+  font-size:12px;white-space:nowrap;scroll-snap-align:start
+ }
+ .admin-orders-page .admin-orders-filterbar button b{
+  font-size:11px;line-height:1;opacity:.72;font-weight:800
+ }
+ .admin-orders-page .admin-orders-filterbar button.active b{opacity:1}
+ .admin-orders-page .admin-orders-title-row{margin:5px 1px 10px}
+ .admin-orders-page .admin-orders-list-title strong{font-size:14px}
+ .admin-orders-page .admin-orders-list-title span{font-size:11px}
+ .admin-orders-page .admin-price-section-title{margin:3px 2px 9px}
+ .admin-orders-page .admin-price-section{margin:0 0 10px}
+ .admin-orders-page .admin-order-fold-heading{padding:11px 12px}
+}
+@media(min-width:720px){.admin-reorganized .admin-orders-filterbar{grid-template-columns:repeat(6,minmax(0,1fr))}}
+
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -5276,7 +5352,7 @@ function syncHeroContrast(){
 
 function render(){
  const categoryScrollBefore=app.querySelector('.shop-category-list')?.scrollLeft||0;
- const adminScrollPositions=['.admin-main-tabs','.admin-product-filter-list','.admin-category-list','.admin-quote-primary-filters'].map(selector=>[selector,app.querySelector(selector)?.scrollLeft||0]);
+ const adminScrollPositions=['.admin-main-tabs','.admin-product-filter-list','.admin-category-list','.admin-quote-primary-filters','.admin-orders-filterbar'].map(selector=>[selector,app.querySelector(selector)?.scrollLeft||0]);
  app.querySelectorAll("details[data-fold-key]").forEach(el=>adminFoldState.set(el.dataset.foldKey,el.open));cancelAdminPhotoDrag();app.innerHTML=`<main class="shell ${state.page==='admin'?'is-admin-shell':''}">${header()}${demoNotice()}${state.page==='admin'?renderAdmin():state.page==='track'?renderTrack():renderShop()}${shopBottomNav()}<div class="floating-actions" aria-label="화면 바로가기"><button class="floating-refresh" type="button" data-action="reload-app" aria-label="최신 화면으로 새로고침" title="새로고침"><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8.1 8.1 0 0 0-15.5-2"/><path d="M4 4v5h5"/><path d="M4 13a8.1 8.1 0 0 0 15.5 2"/><path d="M20 20v-5h-5"/></svg><span>새로고침</span></button><button class="back-to-top" type="button" data-action="scroll-top" aria-label="맨 위로 이동" aria-hidden="true" tabindex="-1"><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 13 7-7 7 7M12 6v12"/></svg><span>위로</span></button></div></main>${renderModal()}`;app.querySelectorAll("details[data-fold-key]").forEach(el=>{
   if(adminFoldState.has(el.dataset.foldKey))el.open=adminFoldState.get(el.dataset.foldKey)===true;
   else if(state.page==='admin'&&['quotes','payments'].includes(state.tab)&&state.filter==='supplier_payments'&&el.classList.contains('supplier-bulk-batch'))el.open=el.hasAttribute('open');
@@ -5289,13 +5365,18 @@ function render(){
  // Mobile filter row scrolls horizontally: show the selected filter even
  // when it is the last "전체 주문" button.
  if(state.page==='admin'&&state.tab==='quotes'){
-  const row=app.querySelector('.admin-quote-primary-filters');
-  const active=row?.querySelector('.admin-quote-quick-tab.active');
-  if(row&&active){
-   const left=active.offsetLeft-row.offsetLeft;
-   const right=left+active.offsetWidth;
-   if(left<row.scrollLeft+4)row.scrollLeft=Math.max(0,left-4);
-   else if(right>row.scrollLeft+row.clientWidth-4)row.scrollLeft=right-row.clientWidth+4;
+  for(const [selector,activeSelector] of [
+   ['.admin-quote-primary-filters','.admin-quote-quick-tab.active'],
+   ['.admin-orders-filterbar','button.active']
+  ]){
+   const row=app.querySelector(selector);
+   const active=row?.querySelector(activeSelector);
+   if(row&&active){
+    const left=active.offsetLeft-row.offsetLeft;
+    const right=left+active.offsetWidth;
+    if(left<row.scrollLeft+4)row.scrollLeft=Math.max(0,left-4);
+    else if(right>row.scrollLeft+row.clientWidth-4)row.scrollLeft=right-row.clientWidth+4;
+   }
   }
  }
  syncModalPageLock();
@@ -5740,8 +5821,9 @@ function renderAdmin(){
   <header class="admin-manager-heading">
    <div><small>MINIYENA</small><h1>관리자</h1></div>
    <div class="admin-manager-actions">
+    <button type="button" data-page="shop" class="admin-manager-shop-link">쇼핑몰</button>
     <button type="button" data-action="refresh" aria-label="새로고침" title="새로고침">⟳</button>
-    <button type="button" data-tab="settings" class="${page==='settings'?'active':''}" aria-label="설정" title="설정">⚙</button>
+    <button type="button" data-tab="settings" class="${page==='settings'?'active':''}" aria-label="설정" title="설정"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3M4.9 4.9l2.2 2.2m9.8 9.8 2.2 2.2M19.1 4.9l-2.2 2.2M7.1 16.9l-2.2 2.2"/></svg></button>
    </div>
   </header>
   <nav class="admin-manager-nav" aria-label="관리자 주요 메뉴">
@@ -8288,16 +8370,18 @@ function renderAdminQuotes(){
   <div class="admin-orders-filterbar" role="group" aria-label="주문 상태">
    ${tabs.map(([key,label,num])=>`<button type="button" data-filter="${key}" class="${filter===key?'active':''}" aria-pressed="${filter===key}"><span>${label}</span><b>${num}</b></button>`).join('')}
   </div>
-  <details class="admin-more-filters" ${extraActive?'open':''}>
-   <summary>상세 상태 보기 ${extraActive?'· '+esc(title):''}</summary>
-   <div class="admin-more-filter-items">
-    ${extras.map(([key,label,num])=>`<button type="button" data-filter="${key}" class="${filter===key?'active':''}">${label} ${num}</button>`).join('')}
-    <details class="admin-more-subfilters"><summary>배송 단계별</summary><div class="admin-more-filter-items">
-    ${detailKeys.map(key=>`<button type="button" data-filter="${key}" class="${filter===key?'active':''}">${esc(key.startsWith('flow_')?workflowLabels[key.slice(5)]:'취소됨')}</button>`).join('')}
-    </div></details>
-   </div>
-  </details>
-  <div class="admin-orders-list-title"><strong>${esc(title)}</strong><span>${qq.length}건</span></div>
+  <div class="admin-orders-title-row">
+   <div class="admin-orders-list-title"><strong>${esc(title)}</strong><span>${qq.length}건</span></div>
+   <details class="admin-more-filters" ${extraActive?'open':''}>
+    <summary>상세 상태 ${extraActive?'· '+esc(title):''}</summary>
+    <div class="admin-more-filter-items">
+     ${extras.map(([key,label,num])=>`<button type="button" data-filter="${key}" class="${filter===key?'active':''}">${label} ${num}</button>`).join('')}
+     <details class="admin-more-subfilters"><summary>배송 단계별</summary><div class="admin-more-filter-items">
+      ${detailKeys.map(key=>`<button type="button" data-filter="${key}" class="${filter===key?'active':''}">${esc(key.startsWith('flow_')?workflowLabels[key.slice(5)]:'취소됨')}</button>`).join('')}
+     </div></details>
+    </div>
+   </details>
+  </div>
   ${filter==='preparing_orders'?'<p class="admin-preproc-note">주문 확정 후 입금 확인과 도매 발주를 처리하는 단계예요. 발주가 완료되면 ‘입고·배송’으로 넘어가요.</p>':''}
   ${qq.length?filter==='all'?renderAdminQuoteFlatSection(waiting,'가격 확인','pending')+renderAdminQuoteFlatSection(priced,'구매 선택 대기'):
       renderAdminQuoteFlatSection(groups,'',filter==='pricing'?'pending':'saved'):

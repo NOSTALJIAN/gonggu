@@ -3146,6 +3146,26 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 
 
 
+
+.related-deposit-orders{background:#fcfcfc;border:1px solid #e3e3e7;border-radius:10px;padding:0 12px;margin:8px 0 12px}
+.related-deposit-orders>summary{font-size:12px;font-weight:750;padding:12px 0;cursor:pointer;list-style:none}
+.related-deposit-orders>summary::-webkit-details-marker{display:none}
+.related-deposit-order{padding:11px 0;border-top:1px solid #eee;display:flex;flex-direction:column;gap:5px}
+.related-deposit-order>b{font-size:12px}
+.related-deposit-order>small{font-size:11px;color:#888;overflow-wrap:anywhere}
+.related-deposit-payment{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;min-width:0}
+.related-deposit-info{font-size:11px;color:#777}
+.related-deposit-payment>.btn{font-size:11px;min-height:34px;padding:7px 10px}
+.related-deposit-edit{flex:1 0 100%;border-top:1px solid #eee}
+.related-deposit-edit>summary{font-size:11px;color:#888;cursor:pointer;padding:6px 0;list-style:none}
+.related-deposit-edit>summary::-webkit-details-marker{display:none}
+.related-deposit-edit>summary:after{content:" ⌄"}
+.related-deposit-edit form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.related-deposit-edit label{min-width:0;font-size:11px;color:#777}
+.related-deposit-edit input{min-width:0;font-size:16px;min-height:39px;padding:8px}
+.related-deposit-edit button{grid-column:span 2}
+.statcard>.related-deposit-payment,.statcard .related-deposit-payment{background:#fafafa;padding:8px 10px;border-radius:8px;margin-bottom:9px}
+
 /* Delivery change review: isolated from the old full-order editor. */
 .delivery-review-list{display:grid;gap:10px}
 .delivery-review-card{border:1px solid #e2e2e6;background:#fff;border-radius:13px;padding:14px;min-width:0;color:#222}
@@ -6535,6 +6555,30 @@ async function handleMergeShippingSubmit(f,data){
  if(Number(result?.possible_refund||0)>0)
   window.alert('기존 택배비 중복 입금 여부를 확인해 주세요. 실제 환불 후 환불액을 기록해야 해요. (중복 가능 배송비 '+money(Number(result.possible_refund))+')');
 }
+
+function orderOutstanding(q){
+ if(q.status!=='confirmed'||!readyQuote(q))return null;
+ return Math.max(0,totalDue(q)-Number(q.amount_paid||0)+Number(q.amount_refunded||0));
+}
+function renderOrderDepositControl(q){
+ const missing=orderOutstanding(q),net=Number(q.amount_paid||0)-Number(q.amount_refunded||0);
+ if(missing===null)return '<span class="related-deposit-info">결제금액 미확정</span>';
+ return `<div class="related-deposit-payment">
+  <span class="related-deposit-info">${missing?'미입금 '+money(missing):'입금 확인'} · 수령 ${money(net)}</span>
+  ${missing?`<button class="btn sm" type="button" data-action="mark-deposit-paid" data-id="${esc(q.id)}">${money(missing)} 입금 확인</button>`:''}
+  <details class="related-deposit-edit"><summary>금액 직접 수정</summary><form data-payment="${esc(q.id)}"><label>누적 입금액<input name="paid" type="number" min="0" step="1" inputmode="numeric" required value="${Number(q.amount_paid||0)}"></label><label>누적 환불액<input name="refunded" type="number" min="0" step="1" inputmode="numeric" required value="${Number(q.amount_refunded||0)}"></label><button class="btn sm secondary" type="submit">이 주문에 저장</button></form></details>
+ </div>`;
+}
+function renderOtherBuyerDeposits(group){
+ const excluded=new Set(group.map(q=>q.id)),base=group[0];
+ const others=state.quotes.filter(q=>q.status==='confirmed'&&!excluded.has(q.id)&&sameShippingCustomer(base,q));
+ if(!others.length)return '';
+ const outstanding=others.reduce((n,q)=>n+(orderOutstanding(q)||0),0);
+ return `<details class="related-deposit-orders" ${outstanding?'open':''}><summary>같은 구매자 다른 주문 ${others.length}건 ${outstanding?'· 미입금 '+money(outstanding):''}</summary>
+  ${others.map(q=>`<div class="related-deposit-order"><b>${fmtDate(q.created_at)} · ${money(totalDue(q))}</b><small>${esc((q.items||[]).map(i=>i.product_name).slice(0,2).join(', '))}</small>${renderOrderDepositControl(q)}</div>`).join('')}
+ </details>`;
+}
+
 function renderCollapsibleAdminOrder(group,section){
  const root=group.length>1?roundOrderRoot(group):group[0];
  const babies=[...new Set(group.map(q=>String(q.baby_name||'').trim()).filter(Boolean))];
@@ -6584,6 +6628,7 @@ function renderCollapsibleAdminOrder(group,section){
    <span class="admin-order-fold-chevron" aria-hidden="true"></span>
   </summary>
   <div class="admin-order-fold-body">
+   ${renderOtherBuyerDeposits(group)}
    ${renderShippingMergeButton(group)}
    ${group.length>1?(group.every(q=>bundleRootId(q)===bundleRootId(group[0]))?renderBundleCard(group):renderSameRoundCard(group)):renderAdminQuoteCard(group[0])}
   </div>
@@ -7330,7 +7375,8 @@ function renderBuyerStats(){
     <div class="row between"><b>확정 · ${fmtDate(q.created_at)}</b><span>${money(totalDue(q))}</span></div>
     ${buyerOrderProductPreview(q)}
     <span class="stat-order-more">주문 상세정보 보기 <span aria-hidden="true">→</span></span>
-   </button>`).join('')}
+   </button>
+   ${renderOrderDepositControl(q)}`).join('')}
   </details>
  </div>`).join('')||'<div class="empty">아직 확정된 구매자가 없어요.</div>'}</div>`;
 }
@@ -9148,6 +9194,26 @@ if(a==='supplier-bulk-ordered'){
  if(!result?.ordered)throw Error('거래처별 도매 발주 완료 처리 결과가 올바르지 않아요.');
  await loadAdmin();
  notif('‘'+batch.supplier+'’ 거래처 상품 '+Number(result.items||0)+'종을 도매 발주 완료 처리했어요.');
+ return;
+}
+if(a==='mark-deposit-paid'){
+ if(!state.admin||state.page!=='admin')throw Error('관리자만 입금 확인할 수 있어요.');
+ if(busy)return;
+ const q=state.quotes.find(q=>q.id===id);
+ if(!q||q.status!=='confirmed'||!readyQuote(q))throw Error('확정된 주문의 결제금액을 확인해 주세요.');
+ const missing=orderOutstanding(q);
+ if(!Number.isFinite(missing)||missing<=0)throw Error('이미 입금 확인된 주문이에요.');
+ const refunded=Number(q.amount_refunded||0),newPaid=totalDue(q)+refunded;
+ if(!Number.isInteger(newPaid)||newPaid<0||newPaid>1000000000)throw Error('결제금액이 올바르지 않아요.');
+ if(!window.confirm(q.buyer_name+'님 · '+fmtDate(q.created_at)+' 주문\n추가 입금 '+money(missing)+'을 실제로 받았나요?\n\n확인하면 이 주문의 누적 입금액만 '+money(newPaid)+'으로 기록하며, 다른 주문의 입금액은 변경하지 않아요.'))return;
+ busy=true;b.disabled=true;
+ try{
+  const oldY=window.scrollY;
+  await adminPayment(id,newPaid,refunded);
+  await loadAdmin();
+  window.scrollTo({top:oldY,behavior:'instant'});
+  notif('이 주문 '+money(missing)+' 입금 확인 완료');
+ }finally{busy=false;b.disabled=false;}
  return;
 }
 if(a==='round-open-orders'){

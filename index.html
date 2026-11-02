@@ -10303,8 +10303,12 @@ if(!f.dataset.lowerPriceReport&&!f.dataset.sizeChartForm&&!f.dataset.customerEma
  const result=await adminCreateSupplierBulkShipping(selected.map(x=>x.item.id),total,mode);
  if(!result?.id)throw Error('거래처별 배송비 저장 결과를 확인하지 못했어요.');
  state.supplierBulkSelected.clear();
- adminFoldState.set('supplier-bulk-manager',false);
  await loadAdmin();
+ adminFoldState.set('supplier-bulk-manager',false);
+ const freightEditor=app.querySelector('#supplier-bulk-manager');
+ if(freightEditor)freightEditor.open=false;
+ const progressPanel=app.querySelector('.supplier-freight-overview');
+ if(progressPanel)window.scrollTo({top:Math.max(0,window.scrollY+progressPanel.getBoundingClientRect().top-15),behavior:'instant'});
  notif('‘'+result.supplier+'’ 배송비를 '+result.people+'명 모두에게 각각 '+money(split.share)+' 배분했어요. 차액 '+money(split.margin)+'은 수익으로 계산돼요.');
 }else if(f.dataset.customerEmail){
  const kind=String(f.dataset.customerEmail||''),id=String(f.dataset.id||'');

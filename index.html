@@ -3665,6 +3665,50 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 .admin-price-popup-input-wrap>span{position:absolute;right:13px;top:50%;transform:translateY(-50%);font-size:12px;color:#777;pointer-events:none}
 .admin-price-popup-save{min-height:46px!important;font-size:13px!important}
 
+
+/* Two pricing-channel estimates inside the admin price-entry popup. */
+.admin-price-popup-estimates{
+ display:grid;
+ grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:8px;
+ width:100%;
+ min-width:0;
+}
+.admin-price-popup-estimate{
+ display:flex;
+ flex-direction:column;
+ align-items:flex-start;
+ gap:3px;
+ min-width:0;
+ padding:9px 10px;
+ border:1px solid #e8e8e8;
+ border-radius:9px;
+ background:#f7f7f7;
+ line-height:1.35;
+}
+.admin-price-popup-estimate span{
+ color:#737373;
+ font-size:11px;
+ font-weight:650;
+}
+.admin-price-popup-estimate strong{
+ font-size:13px;
+ font-weight:800;
+ color:#242424;
+ font-variant-numeric:tabular-nums;
+ white-space:nowrap;
+}
+.admin-price-popup-estimate.is-github{
+ background:#f5f6f7;
+ border-color:#e1e4e8;
+}
+.admin-price-popup-estimate.is-github strong{color:#354453}
+@media(max-width:360px){
+ .admin-price-popup-estimates{gap:6px}
+ .admin-price-popup-estimate{padding:8px 7px}
+ .admin-price-popup-estimate strong{font-size:12px}
+}
+
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -8506,6 +8550,18 @@ function renderAdminSettings(){return `<section class="card pushbox pushbox-sett
   <div class="admin-push-test-buttons"><button type="button" class="btn secondary" data-action="send-test-push">내 기기에 테스트 알림</button><button type="button" class="btn secondary" data-action="send-buyer-test-push">구매자 주문 알림 테스트</button></div>
  </div>
  </details></section>${renderEmailNotificationSettings()}<div class="card hero-photo-settings"><h3>메인 사진 관리</h3><p class="smallnote">현재는 정해진 주기로 자동 변경되지 않아요. 설정한 사진은 다음에 바꾸기 전까지 유지돼요.</p><div class="hero-settings-preview">${currentHeroPhotoUrl()?`<img src="${esc(currentHeroPhotoUrl())}" alt="현재 메인 사진">`:'<div class="hero-settings-placeholder">등록된 상품 사진이 없어요.</div>'}</div><button class="btn block secondary" type="button" data-action="random-hero-photo">🎲 랜덤 상품 사진으로 변경</button><p class="smallnote">고객에게 전시 중인 판매 가능 상품에서 대표사진을 랜덤으로 선택해 저장해요.</p><form id="hero-photo-form"><label class="label">새 메인 사진 선택<input type="file" name="hero_photo" id="hero-photo-input" accept="image/*" required></label><p class="smallnote">세로형 사진을 추천해요. 원본이 커도 자동으로 크기를 줄여 저장해요.</p><button class="btn block" type="submit">메인 사진 변경하기</button></form>${state.heroPhotoUrl?'<button class="btn block secondary" style="margin-top:9px" type="button" data-action="reset-hero-photo">기존 자동 사진으로 되돌리기</button>':''}</div><div class="card"><h3>고객에게 보낼 주소</h3><p class="smallnote">상품 고르고 견적 요청을 보낼 수 있는 링크예요.</p><div class="info nooverflow">${esc(publicLink())}</div><button class="btn block" data-action="copy-shop-link">주문 링크 복사</button><div class="separator"></div><button class="btn block secondary" data-action="export-csv">주문 내역 CSV 저장</button>${connected?'<button class="btn block neutral" style="margin-top:9px" data-action="logout">관리자 로그아웃</button>':''}<p class="smallnote">가격·주문별 배송비·품절·상품 준비·입금 상태는 관리자 전용입니다. 아직 견적만 요청한 상품은 확정 주문 수량에 포함되지 않아요.</p></div>`}
+/* Regular and GitHub storefront estimates are shown for admin reference only.
+   Keep entered unit_price independent of either estimate. */
+function adminPricePopupEstimateRow(item){
+ if(!state.admin)return '';
+ const product=state.products.find(p=>p.id===item?.product_id);
+ const estimates=adminDualEstimates(product,product?.id?state.productPrivate?.[product.id]:null);
+ const priced=value=>esc(adminEstimateText(value));
+ return '<div class="admin-price-popup-estimates" aria-label="두 가지 예상 판매가">'+
+  '<div class="admin-price-popup-estimate"><span>일반 예상가</span><strong>'+priced(estimates.regular)+'</strong></div>'+
+  '<div class="admin-price-popup-estimate is-github"><span>GH 예상가</span><strong>'+priced(estimates.github)+'</strong></div>'+
+  '</div>';
+}
 function modal(){const m=state.modal;if(!m)return '';const wrap=(title,body,stickyProductSave=false)=>stickyProductSave?`<div class="overlay" id="overlay"><div class="sheet sheet-product-editor product-editor-clean swipe-dismiss-sheet" role="dialog" aria-modal="true"><div class="sheet-drag-handle" aria-hidden="true"></div><div class="sheethead"><h2>${title}</h2><button class="close" data-action="close">×</button></div><div class="sheet-product-scroll">${body}</div><div class="sheet-product-save"><button class="btn block" type="submit" form="product-form">상품 저장</button></div></div></div>`:`<div class="overlay" id="overlay"><div class="sheet${['myquotes','suggest','cart','pick','product-photos','approve'].includes(m.type)?' swipe-dismiss-sheet':''}${m.type==='myquotes'?' myquotes-swipe-sheet':''}${m.type==='suggest'?' suggest-sheet':''}${m.type==='cart'?' cart-swipe-sheet':''}${m.type==='approve'?' approve-sheet':''}" role="dialog" aria-modal="true">${['myquotes','suggest','cart','pick','product-photos','approve'].includes(m.type)?'<div class="sheet-drag-handle" aria-hidden="true"></div>':''}<div class="sheethead"><h2>${title}</h2><button class="close" data-action="close">×</button></div>${body}</div></div>`;
 if(m.type==='entry-push')return wrap('신상·주문 알림 받기',renderEntryPushBody());
 if(m.type==='admin-delivery-queue'&&state.admin)return wrap('수령방식 변경 요청',renderAdminDeliveryQueue());
@@ -8530,6 +8586,7 @@ if(m.type==='admin-price-edit'){
       <strong>${esc(adminOrderItemName(i))}</strong>
       <small>${esc(i.color||'색상 미입력')} / ${esc(i.size||'사이즈 미입력')} · ${Number(i.quantity)||0}개</small>
     </label>
+    ${adminPricePopupEstimateRow(i)}
     <div class="admin-price-popup-input-wrap"><input id="admin-price-popup-input-${index}" name="price_${esc(i.id)}" data-admin-price-item-id="${esc(i.id)}" type="number" inputmode="numeric" step="1" min="0" max="100000000" placeholder="개당 판매가" value="${i.unit_price??''}" aria-label="${esc(i.product_name||'상품')} 개당 판매가"><span>원</span></div>
    </div>`).join('')}
   </div>

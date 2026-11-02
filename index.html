@@ -1804,6 +1804,7 @@ body:has(.overlay) .floating-actions{opacity:0;visibility:hidden;pointer-events:
  font-size:12px;font-weight:760
 }
 .admin-quote-attention b{margin-left:3px}
+.supplier-order-clean-head{display:flex;justify-content:space-between;align-items:center;margin:10px 0 12px;font-size:16px}.supplier-order-clean-head span{font-size:12px;color:#666}.supplier-order-clean-list{display:grid;gap:9px}.supplier-order-clean-card{border:1px solid #e5e5e5;border-radius:12px;background:#fff;overflow:hidden}.supplier-order-clean-card>summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:15px 14px;cursor:pointer}.supplier-order-clean-card>summary::-webkit-details-marker{display:none}.supplier-order-clean-card>summary>span:first-child{display:grid;gap:5px}.supplier-order-clean-card>summary b{font-size:15px}.supplier-order-clean-card>summary small{font-size:12px;color:#777}.supplier-order-clean-progress{font-size:12px;color:#477658;white-space:nowrap}.supplier-order-clean-body{padding:0 14px 13px}.supplier-order-clean-item{border-top:1px solid #eee;padding:10px 0;display:flex;justify-content:space-between;gap:10px}.supplier-order-clean-item span{display:grid;gap:3px}.supplier-order-clean-item b{font-size:13px}.supplier-order-clean-item small{font-size:12px;color:#777}.supplier-order-clean-item strong{font-size:13px}.supplier-order-actions-fold{margin-top:15px;border-top:1px solid #eee;padding-top:13px}.supplier-order-actions-fold>summary{font-size:13px;font-weight:750;cursor:pointer;color:#444;margin-bottom:10px}
 .admin-supplier-payments-center{padding-bottom:14px}
 .admin-supplier-payments-heading{padding:12px 13px;background:#f8f9fb;border:1px solid #e4e8ef;border-radius:10px}
 .admin-supplier-payments-heading h3{margin:0 0 6px;font-size:16px}
@@ -8337,24 +8338,18 @@ function isOtherRoundQuote(q){
  return q.status==='quoted'&&['next_round','on_hold','undecided'].includes(q.purchase_intent||'undecided');
 }
 function renderSupplierPaymentCenter(){
- const openBatches=state.supplierBatches.filter(b=>!b.ordered_at);
- const pending=openBatches.filter(b=>supplierBatchPaymentState(b).people.some(p=>p.selected.some(x=>x.q.status==='confirmed')));
- const waiting=openBatches.map(batch=>{
-  const quoteIds=new Set((batch.item_ids||[]).flatMap(id=>
-   state.quotes.filter(q=>(q.items||[]).some(item=>item.id===id)&&q.status==='quoted').map(q=>q.id)));
-  return {batch,count:quoteIds.size};
- }).filter(x=>x.count>0);
+ const rows=state.supplierBatches.filter(b=>!b.ordered_at).map(b=>{
+  const items=(b.item_ids||[]).map(id=>state.quotes.flatMap(q=>(q.items||[]).map(item=>({q,item}))).find(x=>x.item.id===id)).filter(x=>x&&x.item.fulfillment!=='sold_out'&&!x.item.supplier_ordered_at&&!x.q.supplier_ordered_at);
+  return {b,items,qty:items.reduce((n,x)=>n+Number(x.item.quantity||1),0),buyers:new Set(items.map(x=>x.q.id)).size,ready:new Set(items.filter(x=>x.q.status==='confirmed'&&readyQuote(x.q)&&orderPaymentParts(x.q).goodsMissing===0).map(x=>x.q.id)).size};
+ }).filter(x=>x.items.length);
  return `<section class="admin-supplier-payments-center">
-  <p class="admin-compact-note">배송비 배분 완료는 발주 완료가 아니에요. 구매확정과 입금 확인 후 발주 처리해 주세요.</p>
-  ${!state.supplierBatchesReady?`<p class="noticefail">${esc(state.supplierBatchesError||'배분 내역을 불러오지 못했어요. 새로고침해 주세요.')}</p>`:''}
-  ${state.supplierBatchesReady&&openBatches.length?`<div class="supplier-payment-waiting-confirm">
-   <strong>배송비 배분 완료 ${openBatches.length}곳 · 도매 발주 전</strong>
-   ${waiting.length?`${waiting.map(({batch,count})=>`<div class="supplier-payment-waiting-row"><b>${esc(batch.supplier||'거래처')}</b><span>입금·주문확정 대기 ${count}건</span></div>`).join('')}
-    <button type="button" data-tab="quotes" data-nav-filter="final_confirmation">입금 대기 주문 확인</button>`:'<p class="smallnote">입금 대기 주문이 없어요. 아래에서 입금 및 발주를 처리하세요.</p>'}
-   </div>`:''}
-  ${state.supplierBatchesReady&&!openBatches.length?'<p class="admin-compact-note">현재 도매 발주 대기 중인 거래처가 없어요.</p>':''}
-  ${state.supplierBatchesReady&&openBatches.length&&!pending.length?'<p class="admin-compact-note">현재 최종확정된 주문은 없어요. 위에서 구매확정 대기 주문을 확인하세요.</p>':''}
-  ${renderSupplierBulkManager(true,true)}
+ <div class="supplier-order-clean-head"><strong>발주해야 할 거래처</strong><span>${rows.length}곳</span></div>
+ ${!state.supplierBatchesReady?'<p class="noticefail">내역을 불러오지 못했어요. 새로고침해 주세요.</p>':''}
+ <div class="supplier-order-clean-list">${rows.length?rows.map(({b,items,qty,buyers,ready})=>`<details class="supplier-order-clean-card" data-fold-key="supplier-order-clean-${esc(b.id)}">
+ <summary><span><b>${esc(b.supplier||'거래처')}</b><small>${items.length}종 · ${qty}개 · 주문 ${buyers}건</small></span><span class="supplier-order-clean-progress">${ready}/${buyers}건 입금확인　⌄</span></summary>
+ <div class="supplier-order-clean-body">${items.map(({q,item})=>`<div class="supplier-order-clean-item"><span><b>${esc(item.product_name||'상품')}</b><small>${esc(item.color||'-')} / ${esc(item.size||'-')} · ${esc(q.buyer_name||'구매자')}</small></span><strong>×${Number(item.quantity||1)}</strong></div>`).join('')}</div>
+ </details>`).join(''):'<div class="empty">발주 대기 중인 거래처가 없어요.</div>'}</div>
+ <details class="supplier-order-actions-fold" data-fold-key="supplier-order-actions-fold"><summary>발주서 복사 · 입금 확인 · 발주 완료 처리</summary>${renderSupplierBulkManager(true,true)}</details>
  </section>`;
 }
 

@@ -3303,6 +3303,9 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 .confirmed-payment-parts{display:flex;flex-direction:column;gap:7px;margin:10px 0}
 .confirmed-payment-parts>div{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:12px;color:#555}
 .confirmed-payment-parts strong{white-space:nowrap;font-size:12px;color:#333}
+/* Keep source Namdaemun shop visible alongside the product, distinct from the delivery supplier. */
+.supplier-bulk-namdaemun-store{font-size:12px;font-weight:700;color:#686868}
+.supplier-bulk-batch-item{padding:4px 0;overflow-wrap:anywhere}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -6871,9 +6874,9 @@ function renderSupplierBulkManager(historyOnly=false,expanded=false){
    const assigned=supplierItemBatch(item.id);
    return `<label class="supplier-bulk-item ${assigned?'is-assigned':''}">
     <input type="checkbox" data-supplier-item-select="${esc(item.id)}" ${state.supplierBulkSelected.has(item.id)?'checked':''}
-     ${supplierBulkAvailableItem(q,item)&&!existingPending?'':'disabled'} aria-label="${esc(q.buyer_name)} ${esc(item.product_name)} 배송비 대상 선택">
+     ${supplierBulkAvailableItem(q,item)&&!existingPending?'':'disabled'} aria-label="${esc(q.buyer_name)} 남대문 가게 ${esc(item.store_name||'미입력')} ${esc(item.product_name)} 배송비 대상 선택">
     <span class="supplier-bulk-item-detail">
-     <b>${esc(item.product_name)}</b>
+     <b><span class="supplier-bulk-namdaemun-store">남대문 ${esc(item.store_name||'가게명 미입력')}</span> · ${esc(item.product_name)}</b>
      <small>${esc(item.color)} / ${esc(item.size)} · ${item.quantity}개 · ${esc(statusLabel[q.status]||q.status)}</small>
      ${assigned?`<small class="supplier-item-mark">${assigned.ordered_at?'도매 발주 완료':'배송비 배분 완료'}</small>`:item.supplier_ordered_at?'<small class="supplier-item-mark">도매 발주 완료</small>':''}
     </span>
@@ -6949,7 +6952,7 @@ function renderSupplierBulkManager(historyOnly=false,expanded=false){
       ${inv?'<div class="smallnote" style="margin:5px 0;overflow-wrap:anywhere">✉️ '+(recipient?esc(recipient)+' · ':'고객 이메일 미등록 · ')+esc(mailState)+'</div>':''}
       ${actions}</div>`;
     }).join('')}
-    <details class="supplier-bulk-items-compact"><summary>배분 상품 ${batchItems.length}종 보기</summary><div>${batchItems.map(i=>esc(i.product_name)).join(' · ')||'기록 확인 필요'}</div></details>
+    <details class="supplier-bulk-items-compact"><summary>배분 상품 ${batchItems.length}종 보기</summary><div>${batchItems.map(i=>'<div class="supplier-bulk-batch-item">남대문 '+esc(i.store_name||'가게명 미입력')+' · '+esc(i.product_name)+'</div>').join('')||'기록 확인 필요'}</div></details>
     ${ordered?`<div class="supplier-bulk-done">이 거래처 발주 완료: ${fmtDate(batch.ordered_at)}</div>`:
       `<button type="button" class="btn block" data-action="supplier-bulk-ordered" data-id="${esc(batch.id)}" ${checked.canOrder&&!unpaidRequests?'':'disabled'}>전체 주문 입금 확인 → 도매 발주 완료</button>
        <button type="button" class="btn block secondary" style="margin-top:7px" data-action="supplier-bulk-ordered-partial" data-id="${esc(batch.id)}" ${checked.partialReady?'':'disabled'}>이 거래처만 선입금 확인 → 발주 완료</button>

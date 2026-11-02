@@ -8995,11 +8995,21 @@ function parseSupplierShippingValues(totalInput,peopleInput){
  const total=Number(t),people=Number(p);
  return {total,people,share:Math.ceil(total/people)};
 }
+// A mixed order needs freight allocated only for domestic supplier items.
+// 1688 direct-import items are excluded from Korean wholesale-freight splitting.
+function needsDomesticFreightAllocation(i){
+ if(i.fulfillment==='sold_out'||i.supplier_ordered_at)return false;
+ return !isDirect1688ProductMeta(state.productPrivate?.[i.product_id]);
+}
+function unallocatedDomesticItems(q){
+ return (q.items||[]).filter(i=>
+  needsDomesticFreightAllocation(i)&&!supplierItemBatch(i.id));
+}
 function adminFreightReady(q){
- if(q.status==='quoted'&&q.supplier_shipping_manual_confirmed_at)return true;
  if(q.status==='confirmed'||q.supplier_shipping_manual_confirmed_at)return true;
  const live=(q.items||[]).filter(i=>i.fulfillment!=='sold_out');
- return Boolean(state.supplierBatchesReady&&live.length&&live.every(i=>supplierItemBatch(i.id))&&readyQuote(q));
+ return Boolean(state.supplierBatchesReady&&state.productPrivateReady&&live.length&&
+  unallocatedDomesticItems(q).length===0&&readyQuote(q));
 }
 function renderSupplierShippingForm(q){
  if(!state.admin||state.page!=='admin')return '';
@@ -9016,7 +9026,7 @@ function renderSupplierShippingForm(q){
  if(batches.length)return `<div class="supplier-shipping-batched"><b>거래처별 도매배송비</b>
   ${batches.map(b=>`<div class="smallnote">· ${esc(b.supplier)} · ${b.people}명 분담 · ${b.ordered_at?'도매 발주 완료':'발주 대기'}</div>`).join('')}
   <div class="smallnote">이 주문 도매배송비 합계 <b>${money(supplierShippingShare(q))}</b></div>
-  <p class="smallnote">다른 거래처 상품은 상단 배송비 배분에서 별도로 선택할 수 있어요.</p></div>`;
+  ${adminFreightReady(q)?'<p class="smallnote">남대문 도매배송비 배분 완료 · 1688 중국 사입 상품은 배분 대상에서 제외했어요. 이제 고객이 최종 주문을 확정할 수 있어요.</p>':'<p class="smallnote">배송비 미배분인 남대문 상품이 남아 있다면 배분 화면에서 확인해 주세요. 1688 상품은 배분하지 않아요.</p>'}</div>`;
  const total=Number(q.supplier_shipping_total||0),people=Number(q.supplier_shipping_people||1);
  const disabled=q.status==='cancelled';
  return `<details class="supplier-shipping-optional"><summary>개별 도매배송비 조정 (예외적으로 직접 입력)</summary><form class="supplier-shipping-form" data-supplier-shipping="${esc(q.id)}">
@@ -9321,7 +9331,7 @@ if(a==='admin-confirm-order'){
  const total=totalDue(q),recorded=Number(q.amount_paid||0)-Number(q.amount_refunded||0);
  const unrecorded=Math.max(0,total-recorded);
  const freightPending=!q.supplier_shipping_manual_confirmed_at&&
-  (q.items||[]).some(i=>i.fulfillment!=='sold_out'&&!supplierItemBatch(i.id));
+  unallocatedDomesticItems(q).length>0;
  const notice=q.buyer_name+'님 · '+fmtDate(q.created_at)+' 주문\n'+
   '최종 결제금액: '+money(total)+'\n'+
   '앱에 기록된 입금액: '+money(recorded)+'\n'+

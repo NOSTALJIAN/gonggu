@@ -3986,6 +3986,14 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 .admin-history-modal .supplier-bulk-batch>summary{padding:13px 11px}
 .admin-supplier-payments-center .supplier-order-clean-actions:has([data-action="complete-china-procurement"]){grid-template-columns:1fr}
 
+/* Paid orders show a small receipt, not the original payment entry form. */
+.admin-settled-payment{display:flex;flex-direction:column;gap:9px;padding:8px 0 2px}
+.admin-settled-payment-row{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:12px;color:#3e6650;font-weight:760}
+.admin-settled-payment-row strong{font-size:14px;color:#242424;white-space:nowrap;font-variant-numeric:tabular-nums}
+.admin-settled-payment p{font-size:11px;color:#777;line-height:1.5;margin:0}
+.admin-settled-payment .admin-settled-payment-warning{color:#a05d25}
+.admin-settled-payment-edit{align-self:flex-start;border:1px solid #e1e1e1;background:#fff;border-radius:9px;min-height:36px;padding:8px 12px;font-size:12px;font-weight:730;color:#4e4e4e}
+
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -7069,8 +7077,16 @@ function adminConfirmButton(q){
   <button type="button" class="admin-manual-confirm-action" data-action="admin-confirm-order" data-id="${esc(q.id)}">예외: 관리자 직접 주문 확정</button>
   </details>`:'';
 }
+/* Hide payment entry after the full amount is recorded; allow manual corrections in a popup. */
+function adminPaymentSettled(q){
+ if(!q||!adminCanRecordPayment(q)||!readyQuote(q))return false;
+ const due=totalDue(q);
+ const net=Number(q.amount_paid||0)-Number(q.amount_refunded||0);
+ return due>0&&net>=0&&balanceDue(q)===0&&net+paymentWaiver(q)>=due;
+}
 function renderCompactInlinePayment(q,finalReady){
  if(!state.admin||!finalReady||!adminCanRecordPayment(q)||q.cancel_requested_at||q.delivery_change_requested_at)return '';
+ if(adminPaymentSettled(q))return '';
  return `<form class="compact-inline-payment" data-payment="${esc(q.id)}" data-compact-inline-payment="1">
   <div class="compact-inline-payment-heading">항목별 실제 입금 기록</div>
   ${paymentSplitMarkup(q)}
@@ -7818,6 +7834,17 @@ function renderPaymentWaiverControl(q){
 function renderOrderDepositControl(q,showFreightRequest=true){
  const missing=orderOutstanding(q),p=orderPaymentParts(q),freightOnly=supplierFreightOnlyDue(q);
  if(missing===null)return '<span class="related-deposit-info">결제금액 미확정</span>';
+ if(adminPaymentSettled(q)){
+  const received=Number(q.amount_paid||0)-Number(q.amount_refunded||0);
+  const waived=paymentWaiver(q);
+  const overpaid=received>totalDue(q);
+  return `<div class="related-deposit-payment admin-settled-payment">
+   <div class="admin-settled-payment-row"><span>${waived?'차액 인정 · 정산 완료':'✓ 입금 확인 완료'}</span><strong>${money(received)}</strong></div>
+   ${waived?`<p>관리자 차액 인정 ${money(waived)} · 실제 입금액과 구분해 기록했어요.</p>`:''}
+   ${overpaid?`<p class="admin-settled-payment-warning">초과 입금 ${money(received-totalDue(q))} · 환불 여부 확인</p>`:''}
+   <button type="button" class="admin-settled-payment-edit" data-action="compact-open-tool" data-tool="payment" data-id="${esc(q.id)}">입금 기록 수정</button>
+  </div>`;
+ }
  return `<div class="related-deposit-payment">
   <div class="order-payment-split">
    ${freightOnly?'<div class="order-payment-line"><span>상품대금</span><strong class="paid">입금 완료</strong></div>'+

@@ -3184,6 +3184,21 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 .admin-orders-page .admin-price-section-title .sub{display:none}
 @media(max-width:360px){.admin-orders-filterbar{gap:3px}.admin-orders-filterbar button{font-size:10px}}
 
+
+.admin-request-photo-fold,.admin-request-email-fold,.admin-request-delete-fold{margin:10px 0 3px;border:1px solid #e7e7eb;border-radius:9px;padding:9px 11px;background:#fbfbfc}
+.admin-request-photo-fold>summary,.admin-request-email-fold>summary,.admin-request-delete-fold>summary{cursor:pointer;color:#62626d;font-weight:700;font-size:12px}
+.admin-request-photo-fold .request-photo-gallery{margin-top:12px}
+.admin-request-email-fold .admin-customer-email-editor{margin-top:10px}
+.admin-request-delete-fold .request-delete-btn{margin-top:9px}
+.admin-reorganized .request-card{border:1px solid #eaeaf0;border-radius:13px;box-shadow:none;padding:13px}
+.admin-reorganized .request-card .request-category-label{font-size:11px}
+.admin-product-category-fold{border:0;margin:4px 0 10px}
+.admin-product-category-fold>summary{font-size:11px;font-weight:750;color:#777;padding:6px;cursor:pointer}
+.admin-product-category-fold .admin-category-list{margin-top:8px}
+.admin-reorganized .admin-product-card{box-shadow:none;border:1px solid #eaeaf0;border-radius:12px}
+.admin-reorganized .admin-catalog-panel>.card:first-child{border:0;box-shadow:none;background:transparent;padding:5px 3px;margin:0 0 8px!important}
+.admin-reorganized .admin-catalog-panel>.card:first-child>summary{font-size:11px!important;color:#777}
+.admin-reorganized .admin-customer-subnav{margin-top:0}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -5113,7 +5128,7 @@ function renderAdmin(){
    </div>
   </header>
   <nav class="admin-manager-nav" aria-label="관리자 주요 메뉴">
-   ${tabs.map(([key,label])=>`<button type="button" data-tab="${key}" class="${page===key?'active':''}" aria-current="${page===key?'page':'false'}">${label}${key==='requests'&&state.requests.filter(x=>x.status==='pending').length?`<span class="admin-nav-count">${state.requests.filter(x=>x.status==='pending').length}</span>`:''}</button>`).join('')}
+   ${tabs.map(([key,label])=>`<button type="button" data-tab="${key}" class="${(page===key||(key==='buyers'&&['items','vendors'].includes(page)))?'active':''}" aria-current="${(page===key||(key==='buyers'&&['items','vendors'].includes(page)))?'page':'false'}">${label}${key==='requests'&&state.requests.filter(x=>x.status==='pending').length?`<span class="admin-nav-count">${state.requests.filter(x=>x.status==='pending').length}</span>`:''}</button>`).join('')}
   </nav>
   <div class="admin-manager-body">
    ${page==='home'?renderAdminHome():
@@ -5121,9 +5136,11 @@ function renderAdmin(){
     page==='payments'?renderAdminPayments():
     page==='requests'?renderAdminRequests():
     page==='products'?renderAdminProducts():
-    page==='buyers'?renderBuyerStats():
-    page==='items'?renderProductStats():
-    page==='vendors'?renderVendorSummary():
+    ['buyers','items','vendors'].includes(page)?`<nav class="admin-subnav admin-customer-subnav" aria-label="고객 및 주문 집계">
+     <button type="button" data-tab="buyers" class="${page==='buyers'?'active':''}">구매자별</button>
+     <button type="button" data-tab="items" class="${page==='items'?'active':''}">상품별 주문</button>
+     <button type="button" data-tab="vendors" class="${page==='vendors'?'active':''}">가게별</button>
+    </nav>`+(page==='buyers'?renderBuyerStats():page==='items'?renderProductStats():renderVendorSummary()):
     renderAdminSettings()}
   </div>
  </section>`;
@@ -5470,8 +5487,8 @@ function renderAdminRequests(){
  </div>
  <div class="request-status-count" aria-live="polite">${statuses.find(st=>st.key===selected).label} · ${filtered.length}건</div>
  ${!filtered.length?`<div class="empty">${statuses.find(st=>st.key===selected).empty}</div>`:filtered.map(r=>`<div class="card request-card"><div class="row between"><div><span class="chip ${r.status==='pending'?'orange':r.status==='approved'?'green':'red'}">${r.status==='pending'?'검토 대기':r.status==='approved'?'상품 등록 완료':'반려'}</span><div class="tiny">${fmtDate(r.created_at)}</div></div><div class="tiny">${esc(r.customer_name||'신청자 미기재')}</div></div>
- ${requestPhotoGallery(r)}
- ${renderAdminEmailEditor('product_request',r)}
+ <details class="admin-request-photo-fold"><summary>상품 사진 ${requestPhotoPaths(r).length}장 보기</summary>${requestPhotoGallery(r)}</details>
+ <details class="admin-request-email-fold"><summary>고객 이메일 설정</summary>${renderAdminEmailEditor('product_request',r)}</details>
  <div class="smallnote">남대문 도매업체</div><h3 style="margin:2px 0 9px">${esc(r.store_name)}</h3><div class="smallnote">상품명</div><b>${esc(r.product_name)}</b><div class="request-category-label">카테고리 · ${esc(categoryLabel(r))}</div>${r.note?`<p class="sub">요청 내용: ${esc(r.note)}</p>`:''}
  ${r.status==='rejected'?`<div class="request-rejection-summary"><b>반려 사유: ${esc(r.rejection_reason||'사유 미기록')}</b>${r.rejection_note?`<div>${esc(r.rejection_note)}</div>`:''}</div><div class="row wrap" style="margin-top:10px"><button class="btn sm secondary" data-action="copy-rejection-notice" data-id="${esc(r.id)}">반려 안내문 복사</button><button class="btn sm secondary request-delete-btn" type="button" data-action="delete-product-request" data-id="${esc(r.id)}">신청 삭제</button></div>`:''}
  ${r.status==='pending'?`<div class="row wrap" style="margin-top:12px"><button class="btn sm" data-action="approve-request" data-id="${esc(r.id)}">검토 후 상품 등록</button><button class="btn sm danger" data-action="reject-request" data-id="${esc(r.id)}">반려 사유 선택</button><button class="btn sm secondary request-delete-btn" type="button" data-action="delete-product-request" data-id="${esc(r.id)}">신청 삭제</button></div>`:''}
@@ -5595,12 +5612,14 @@ function renderAdminProducts(){
       ${filters.map(filter=>`<button type="button" class="admin-product-filter ${activeFilter===filter.key?'active':''}" data-action="catalog-filter" data-filter-state="${filter.key}" aria-label="${filter.label} ${filter.count}개" aria-pressed="${activeFilter===filter.key}">${filter.label}</button>`).join('')}
      </div>
     </div>
+    <details class="admin-product-category-fold" data-fold-key="product-category"><summary>카테고리 필터 · ${activeCategory==='all'?'전체':activeCategory}</summary>
     <div class="admin-compact-filter-row">
      <span class="admin-filter-caption" aria-hidden="true">분류</span>
      <div class="admin-category-list" role="group" aria-label="관리자 상품 카테고리 필터">
       ${categoryFilterKeys.map(k=>`<button type="button" class="admin-category-tab ${activeCategory===k?'active':''}" data-action="admin-category" data-category="${k}" aria-label="${k==='all'?'전체':k==='uncategorized'?'미분류':k} ${all.filter(p=>matchesCategory(p,k)).length}개" aria-pressed="${activeCategory===k}">${k==='all'?'전체':k==='uncategorized'?'미분류':k}</button>`).join('')}
      </div>
     </div>
+   </details>
     <div class="admin-product-toolbar-footer">
      <div class="admin-product-filter-result" aria-live="polite"><strong id="admin-product-result-count">${matchingCount}</strong>개 상품</div>
      <div class="admin-product-sortbar">
@@ -8715,8 +8734,8 @@ if(a==='show-pending-item-options'){
  if(!r)throw Error('확인할 옵션 변경 요청이 없어요.');
  const q=state.quotes.find(x=>x.id===r.quote_id);
  if(!q)throw Error('변경 요청에 연결된 주문이 없어요. 새로고침해 주세요.');
- state.filter=isRoundBuyer(q)?'buy_now':isWholesaleCompleted(q)?'wholesale_completed':
-  q.status==='confirmed'?'all_history':'all';
+ state.tab='quotes';
+ state.filter='all_history';
  state.dateGroupsOpen={};state.orderCardsOpen={};
  const visible=state.quotes.filter(x=>state.filter==='buy_now'?isRoundBuyer(x)&&!isFinishedOrder(x):
   state.filter==='all'?x.status==='requested'||(x.status==='quoted'&&(!x.purchase_intent||x.purchase_intent==='undecided')):
@@ -9946,7 +9965,7 @@ app.addEventListener('click',e=>{
  }
 },true);
 
-app.addEventListener('click',e=>{const orderSummary=e.target.closest('.admin-order-fold > summary');if(orderSummary){const order=orderSummary.parentElement;state.orderCardsOpen[order.dataset.adminOrderId]=!order.open;return}const summary=e.target.closest('.admin-date-group > summary');if(summary){const group=summary.parentElement;state.dateGroupsOpen[group.dataset.orderDate]=!group.open;return}const tab=e.target.closest('[data-tab]'),filter=e.target.closest('[data-filter]');if(tab){state.tab=tab.dataset.tab;if(tab.dataset.navFilter)state.filter=tab.dataset.navFilter;else if(state.tab==='payments'&&!['buy_now','supplier_payments'].includes(state.filter))state.filter='buy_now';else if(state.tab==='quotes'&&['buy_now','supplier_payments'].includes(state.filter))state.filter='all';if(tab.dataset.navView)state.adminCatalogView=tab.dataset.navView;if(state.tab==='requests')state.requestStatusFilter='pending';render();return}if(filter){state.filter=filter.dataset.filter;state.supplierBulkSelected.clear();
+app.addEventListener('click',e=>{const orderSummary=e.target.closest('.admin-order-fold > summary');if(orderSummary){const order=orderSummary.parentElement;state.orderCardsOpen[order.dataset.adminOrderId]=!order.open;return}const summary=e.target.closest('.admin-date-group > summary');if(summary){const group=summary.parentElement;state.dateGroupsOpen[group.dataset.orderDate]=!group.open;return}const tab=e.target.closest('[data-tab]'),filter=e.target.closest('[data-filter]');if(tab){state.tab=tab.dataset.tab;if(tab.dataset.navFilter)state.filter=tab.dataset.navFilter;else if(state.tab==='payments'&&!['buy_now','supplier_payments'].includes(state.filter))state.filter='buy_now';else if(state.tab==='quotes'&&['buy_now','supplier_payments'].includes(state.filter))state.filter='pricing';if(tab.dataset.navView)state.adminCatalogView=tab.dataset.navView;if(state.tab==='requests')state.requestStatusFilter='pending';render();return}if(filter){state.filter=filter.dataset.filter;state.supplierBulkSelected.clear();
  if(state.filter==='supplier_payments'){
   for(const batch of state.supplierBatches.filter(b=>!b.ordered_at))
    adminFoldState.set('supplier-batch-'+batch.id,true);

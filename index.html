@@ -3647,6 +3647,24 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
  font-variant-numeric:tabular-nums;
 }
 
+
+/* Price editing uses the same compact, scrollable mobile sheet as payment edit. */
+.admin-price-popup-intro{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline;margin:0 0 14px;padding-bottom:12px;border-bottom:1px solid #ececec}
+.admin-price-popup-intro strong{font-size:14px;color:#222}
+.admin-price-popup-intro small{font-size:11px;color:#777}
+.admin-price-popup-form{display:flex;flex-direction:column;gap:12px;max-width:100%;min-width:0}
+.admin-price-popup-help,.admin-price-popup-footnote{font-size:11px;color:#747474;line-height:1.65;margin:0}
+.admin-price-popup-items{display:flex;flex-direction:column;gap:0;max-height:min(52dvh,510px);overflow-y:auto;min-height:0;overscroll-behavior:contain}
+.admin-price-popup-item{padding:12px 0;border-bottom:1px solid #ededed;display:flex;flex-direction:column;gap:9px;min-width:0}
+.admin-price-popup-item:first-child{padding-top:4px}
+.admin-price-popup-item label{display:flex;flex-direction:column;gap:4px;min-width:0;word-break:keep-all;line-height:1.45}
+.admin-price-popup-item label strong{font-size:13px;color:#222;overflow-wrap:anywhere}
+.admin-price-popup-item label small{font-size:11px;color:#777}
+.admin-price-popup-input-wrap{position:relative;display:block;min-width:0}
+.admin-price-popup-input-wrap input{width:100%;height:45px;min-height:45px;font-size:16px!important;border-radius:9px;padding:8px 39px 8px 12px;box-sizing:border-box;text-align:right;font-variant-numeric:tabular-nums}
+.admin-price-popup-input-wrap>span{position:absolute;right:13px;top:50%;transform:translateY(-50%);font-size:12px;color:#777;pointer-events:none}
+.admin-price-popup-save{min-height:46px!important;font-size:13px!important}
+
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -6774,7 +6792,7 @@ function compactQuoteNextTask(q){
  if(attention)return {text:'옵션 변경 요청 '+attention+'건',label:'옵션 변경 확인',tool:'prices'};
  if(q.delivery_change_requested_at)return {text:'수령방식 변경 요청 확인',label:'변경 요청 보기',action:'review-delivery'};
  if(q.status==='cancelled')return {text:'취소 완료',label:'취소 기록 보기',tool:'advanced'};
- if(unknown(q))return {text:'판매가 미입력 '+unknown(q)+'종',label:'가격 입력',tool:'prices'};
+ if(unknown(q))return {text:'판매가 미입력 '+unknown(q)+'종',label:'가격 입력',action:'admin-price-popup'};
  if(q.status==='requested')return {text:'견적 발송 필요',label:'견적 안내하기',action:'publish-quote'};
  if(q.status==='quoted'&&q.purchase_intent==='next_round')return {text:'다음 회차 구매 대기',label:'상세 확인',tool:'advanced'};
  if(q.status==='quoted'&&q.purchase_intent==='on_hold')return {text:'구매 보류 중',label:'상세 확인',tool:'advanced'};
@@ -8493,6 +8511,33 @@ if(m.type==='entry-push')return wrap('신상·주문 알림 받기',renderEntryP
 if(m.type==='admin-delivery-queue'&&state.admin)return wrap('수령방식 변경 요청',renderAdminDeliveryQueue());
 if(m.type==='admin-option-requests'&&state.admin&&state.page==='admin')return wrap('옵션 변경 요청',adminOptionRequestsModalBody(m));
 if(m.type==='admin-delivery-review'&&state.admin){const q=state.quotes.find(x=>x.id===m.id);return wrap('수령방식 변경 요청',q?.delivery_change_requested_at?renderAdminDeliveryRequest(q):'<div class="empty">이미 처리된 요청이에요.</div>');}
+if(m.type==='admin-price-edit'){
+ if(!state.admin||state.page!=='admin')return '';
+ const q=state.quotes.find(x=>x.id===m.id);
+ if(!q||q.status==='cancelled')return wrap('판매가 입력','<p class="smallnote">수정할 수 없는 주문이에요. 주문 목록에서 다시 확인해 주세요.</p>');
+ const items=(q.items||[]).filter(i=>i.fulfillment!=='sold_out');
+ if(!items.length)return wrap('판매가 입력','<p class="smallnote">가격을 입력할 판매 상품이 없어요.</p>');
+ const missing=items.filter(i=>i.unit_price==null).length;
+ return wrap('상품 가격 입력',`<div class="admin-price-popup-intro">
+  <strong>${esc(q.buyer_name||'주문자')} ${q.baby_name?'· '+esc(q.baby_name):''}</strong>
+  <small>상품 ${items.length}종 · 판매가 미입력 ${missing}종</small>
+ </div>
+ <form id="admin-price-popup-form" data-quote-id="${esc(q.id)}" class="admin-price-popup-form">
+  <p class="admin-price-popup-help">상품별 <b>개당 판매가</b>를 입력해 주세요. 아직 모르는 가격은 빈칸으로 두고 나중에 저장할 수 있어요.</p>
+  <div class="admin-price-popup-items">
+   ${items.map((i,index)=>`<div class="admin-price-popup-item">
+    <label for="admin-price-popup-input-${index}">
+      <strong>${esc(adminOrderItemName(i))}</strong>
+      <small>${esc(i.color||'색상 미입력')} / ${esc(i.size||'사이즈 미입력')} · ${Number(i.quantity)||0}개</small>
+    </label>
+    <div class="admin-price-popup-input-wrap"><input id="admin-price-popup-input-${index}" name="price_${esc(i.id)}" data-admin-price-item-id="${esc(i.id)}" type="number" inputmode="numeric" step="1" min="0" max="100000000" placeholder="개당 판매가" value="${i.unit_price??''}" aria-label="${esc(i.product_name||'상품')} 개당 판매가"><span>원</span></div>
+   </div>`).join('')}
+  </div>
+  <p class="admin-price-popup-footnote">입력한 가격만 저장돼요. 모든 상품 가격이 입력되면 기존 자동 견적 안내가 진행될 수 있어요.</p>
+  <button class="btn block admin-price-popup-save" type="submit">입력한 가격 한 번에 저장</button>
+  <button type="button" class="btn block secondary" data-action="close">닫기</button>
+ </form>`);
+}
 if(m.type==='admin-payment-edit'){
  if(!state.admin||state.page!=='admin')return '';
  const q=state.quotes.find(x=>x.id===m.id);
@@ -10476,6 +10521,14 @@ if(a==='supplier-freight-request'||a==='supplier-freight-cancel'||a==='supplier-
  }finally{busy=false;if(b.isConnected)b.disabled=false;}
  return;
 }
+if(a==='admin-price-popup'){
+ if(!state.admin||state.page!=='admin')throw Error('관리자 주문 화면에서만 가격을 수정할 수 있어요.');
+ const q=state.quotes.find(row=>row.id===id);
+ if(!q||q.status==='cancelled'||!(q.items||[]).some(i=>i.fulfillment!=='sold_out'))
+  throw Error('판매가를 입력할 수 있는 주문이 아니에요.');
+ modalOpen('admin-price-edit',id);
+ return;
+}
 if(a==='compact-open-tool'){
  if(b.dataset.tool==='payment'){
   modalOpen('admin-payment-edit',id);
@@ -10920,7 +10973,7 @@ async function submit(e){const f=e.target;
 // All in-app forms are handled by JavaScript. Never allow a native browser GET
 // to replace ?page=admin and appear to sign the administrator out.
 e.preventDefault();
-if(!f.dataset.lowerPriceReport&&!f.dataset.sizeChartForm&&!f.dataset.customerEmail&&!['new-arrival-push-form','gmail-settings-form','hero-photo-form','reject-request-form','admin-pin-form','pin-register-form','pin-lookup-form','import-track-form','pick','request','store-form','product-form','login','suggest-form','approve-form','bundle-form','merge-shipping-form','edit-delivery-form','bulk-supplier-shipping-form','admin-payment-popup-form','admin-option-decision-form'].includes(f.id)&&!f.dataset.itemOptions&&!f.dataset.buyerOptionRequest&&!f.dataset.price&&!f.dataset.payment&&!f.dataset.shipping&&!f.dataset.supplierShipping&&!f.dataset.ship&&!f.dataset.bundleShip)return;if(busy)return;busy=true;const data=new FormData(f);try{if(f.id==='admin-option-decision-form'){
+if(!f.dataset.lowerPriceReport&&!f.dataset.sizeChartForm&&!f.dataset.customerEmail&&!['new-arrival-push-form','gmail-settings-form','hero-photo-form','reject-request-form','admin-pin-form','pin-register-form','pin-lookup-form','import-track-form','pick','request','store-form','product-form','login','suggest-form','approve-form','bundle-form','merge-shipping-form','edit-delivery-form','bulk-supplier-shipping-form','admin-payment-popup-form','admin-price-popup-form','admin-option-decision-form'].includes(f.id)&&!f.dataset.itemOptions&&!f.dataset.buyerOptionRequest&&!f.dataset.price&&!f.dataset.payment&&!f.dataset.shipping&&!f.dataset.supplierShipping&&!f.dataset.ship&&!f.dataset.bundleShip)return;if(busy)return;busy=true;const data=new FormData(f);try{if(f.id==='admin-option-decision-form'){
  if(!state.admin||state.page!=='admin'||state.modal?.type!=='admin-option-requests')
   throw Error('관리자 옵션 변경 요청 팝업에서 다시 시도해 주세요.');
  const requestId=String(data.get('request_id')||''),decision=String(e.submitter?.value||'');
@@ -10936,6 +10989,57 @@ if(!f.dataset.lowerPriceReport&&!f.dataset.sizeChartForm&&!f.dataset.customerEma
  if(!result)throw Error('옵션 변경 처리 결과를 확인할 수 없어요. 새로고침 후 확인해 주세요.');
  await loadAdmin();
  notif(decision==='approve'?'옵션 변경 승인 완료 · 주문에 반영했어요. 다음 요청을 확인하세요.':'요청 반려 완료 · 다음 요청을 확인하세요.');
+}else if(f.id==='admin-price-popup-form'){
+ if(!state.admin||state.page!=='admin'||state.modal?.type!=='admin-price-edit'||state.modal.id!==f.dataset.quoteId)
+  throw Error('관리자 판매가 입력 팝업에서 다시 시도해 주세요.');
+ const q=state.quotes.find(row=>row.id===f.dataset.quoteId);
+ if(!q||q.status==='cancelled')throw Error('주문 상태가 변경됐어요. 새로고침 후 확인해 주세요.');
+ const active=(q.items||[]).filter(i=>i.fulfillment!=='sold_out');
+ const changed=[];
+ for(const item of active){
+  const field=f.elements.namedItem('price_'+item.id);
+  if(!field)throw Error('상품 가격 입력칸을 찾지 못했어요. 다시 열어 주세요.');
+  const raw=String(field.value??'').trim();
+  if(!raw)continue;
+  if(!/^(0|[1-9][0-9]{0,8})$/.test(raw)||Number(raw)>100000000)
+   throw Error(adminOrderItemName(item)+'의 가격은 0원부터 1억원까지 입력해 주세요.');
+  const newPrice=Number(raw);
+  if(item.unit_price!==newPrice)changed.push({id:item.id,old:item.unit_price,next:newPrice,qty:Number(item.quantity)||0});
+ }
+ if(!changed.length){notif('변경할 가격이 없어요. 입력한 금액을 확인해 주세요.');return;}
+ if(q.status==='confirmed'){
+  const newTotal=totalDue(q)+changed.reduce((sum,item)=>sum+(item.next-Number(item.old??0))*item.qty,0);
+  if(!window.confirm('확정된 주문의 판매가를 수정할까요?\\n현재 결제금액 '+money(totalDue(q))+' → 변경 후 '+money(newTotal)+'\\n구매자 안내와 입금 차액을 확인해 주세요.'))return;
+ }
+ const previouslyUnpriced=new Set(state.quotes.filter(order=>
+  order.status==='requested'&&(order.items||[]).some(item=>item.unit_price==null)).map(order=>order.id));
+ let successful=0,propagated=0;
+ try{
+  for(const item of changed){
+   const result=await adminItemPrice(item.id,item.next);
+   successful++;
+   propagated+=Number(result?.auto_updated)||0;
+  }
+ }catch(err){
+  // Earlier saves in this batch may have already succeeded. Refresh before
+  // allowing another attempt so the admin never sees a stale order.
+  state.modal=null;
+  await loadAdmin();
+  throw Error(successful>0?successful+'개 가격은 저장됐지만 나머지 상품에서 오류가 발생했어요. 최신 목록에서 확인해 주세요. '+errorText(err):errorText(err));
+ }
+ const rootId=bundleRootId(q);
+ const cardId=state.quotes.some(x=>x.id===rootId)?rootId:q.id;
+ state.orderCardsOpen[cardId]=true;
+ state.dateGroupsOpen['pending|'+receivedDayKey(q.created_at)]=true;
+ state.dateGroupsOpen['saved|'+receivedDayKey(q.created_at)]=true;
+ state.modal=null;
+ await loadAdmin();
+ const serverSent=state.quotes.filter(order=>previouslyUnpriced.has(order.id)&&order.status==='quoted'&&readyProductEstimate(order)).length;
+ const automatic=await autoPublishAfterSavedPrices(previouslyUnpriced);
+ const totalSent=serverSent+automatic.sent;
+ notif(changed.length+'개 상품 가격 저장 완료'+(propagated?' · 다른 미입력 견적 '+propagated+'건에도 반영':'')+
+  (totalSent?' · 자동 견적 안내 '+totalSent+'건':'')+
+  (automatic.errors.length?' · 일부 견적 안내 실패, 견적 탭에서 확인':''));
 }else if(f.id==='admin-payment-popup-form'){
  if(!state.admin||state.page!=='admin'||state.modal?.type!=='admin-payment-edit'||state.modal.id!==f.dataset.quoteId)
   throw Error('관리자 입금 수정 창에서 다시 시도해 주세요.');

@@ -3237,7 +3237,7 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 .admin-orders-page .compact-order-products{padding:0;margin-bottom:10px}
 .admin-orders-page .compact-order-next{margin-top:11px}
 .admin-orders-page .compact-order-next>span{display:none}
-.compact-inline-payment{margin:14px 0 5px;display:flex;flex-direction:column;gap:7px;border-top:1px solid #e8e8e8;padding-top:14px;max-width:100%}
+.compact-inline-payment{width:100%;min-width:0;align-self:stretch;margin:14px 0 5px;display:flex;flex-direction:column;gap:7px;border-top:1px solid #e8e8e8;padding-top:14px;max-width:100%}
 .compact-inline-payment>label{font-size:12px;font-weight:800;color:#393939}
 .compact-inline-payment-row{display:flex;align-items:stretch;gap:8px;min-width:0}
 .compact-inline-payment-input{position:relative;flex:1;min-width:0}
@@ -7004,33 +7004,6 @@ function renderOrderDepositControl(q){
   ${renderSupplierFreightRequestControl(q)}
   ${renderPaymentWaiverControl(q)}
  </div>`;
-}
-function renderOtherBuyerDeposits(group){
- const excluded=new Set(group.map(q=>q.id)),base=group[0];
- const others=state.quotes.filter(q=>q.status==='confirmed'&&!excluded.has(q.id)&&sameShippingCustomer(base,q))
-  .sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at)));
- if(!others.length)return '';
- const outstanding=others.reduce((n,q)=>n+(orderOutstanding(q)||0),0);
- const goodsOutstanding=others.reduce((n,q)=>n+(readyQuote(q)?orderPaymentParts(q).goodsMissing:0),0);
- const shippingOutstanding=others.reduce((n,q)=>n+(readyQuote(q)?orderPaymentParts(q).shippingMissing:0),0);
- return `<details class="related-deposit-orders" ${outstanding?'open':''}>
-  <summary>같은 구매자의 별도 주문 ${others.length}건${goodsOutstanding?' · 상품대금 미입금 '+money(goodsOutstanding):''}${shippingOutstanding?' · 택배비 별도 '+money(shippingOutstanding):''}</summary>
-  ${others.map(q=>`<section class="related-deposit-order" data-related-order-id="${esc(q.id)}">
-   <div class="related-deposit-order-head"><b>별도 주문 · ${fmtDate(q.created_at)}</b><strong>${readyQuote(q)?money(totalDue(q)):'금액 확인 중'}</strong></div>
-   <div class="related-deposit-order-meta">${esc(deliveryLabel(q))} · ${esc(statusLabel[q.status]||q.status)} · 상품 ${(q.items||[]).length}종</div>
-   <div class="related-deposit-items">
-    ${(q.items||[]).map(i=>`<div class="related-deposit-item">
-     <span><b>${adminOrderItemName(i)}</b><small>${esc(i.color)} / ${esc(i.size)} · ${Number(i.quantity)||0}개${i.fulfillment==='sold_out'?' · 품절':''}</small></span>
-     <strong>${i.unit_price==null?'가격 미정':money(i.fulfillment==='sold_out'?0:Number(i.unit_price)*(Number(i.quantity)||0))}</strong>
-    </div>`).join('')}
-   </div>
-   <div class="related-deposit-breakdown"><span>상품 합계</span><strong>${money(previewOrderSum(q))}</strong></div>
-   ${q.delivery_method==='courier'||appliedShipping(q)>0?`<div class="related-deposit-breakdown"><span>택배비${isBundle(q)?' · 합배송 적용':''}</span><strong>${money(appliedShipping(q))}</strong></div>`:''}
-   ${supplierShippingShare(q)>0?`<div class="related-deposit-breakdown"><span>도매 배송비</span><strong>${money(supplierShippingShare(q))}</strong></div>`:''}
-   <div class="related-deposit-breakdown total"><span>결제금액</span><strong>${readyQuote(q)?money(totalDue(q)):'확인 중'}</strong></div>
-   ${renderOrderDepositControl(q)}
-  </section>`).join('')}
- </details>`;
 }
 function renderCollapsibleAdminOrder(group,section){
  const root=group.length>1?roundOrderRoot(group):group[0];

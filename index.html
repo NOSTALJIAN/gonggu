@@ -6934,8 +6934,14 @@ function renderSupplierBulkManager(historyOnly=false,expanded=false){
       inv?.email_status==='failed'?'발송 실패':
       inv?.email_status==='skipped'?'발송 취소·건너뜀':
       recipient?'메일 미발송':'이메일 미등록';
-     const canAsk=!ordered&&!p.eligible&&p.selected.length>0&&p.selected.every(({q,item})=>
+     const selectedQuotes=[...new Map(p.selected.map(({q})=>[q.id,q])).values()];
+     const selectedGoods=p.selected.reduce((n,{item})=>n+Number(item.unit_price||0)*Number(item.quantity||0),0);
+     const selectedInvoiceAmount=selectedGoods+Number(p.payer.amount||0);
+     const hasMoneyInSelected=selectedQuotes.some(q=>Number(q.amount_paid||0)>Number(q.amount_refunded||0));
+     // The partial-invoice RPC charges the full supplier subtotal, so don't double-request paid merchandise.
+     const canAsk=!ordered&&!p.eligible&&!hasMoneyInSelected&&p.selected.length>0&&p.selected.every(({q,item})=>
       ['quoted','confirmed'].includes(q.status)&&(q.status==='confirmed'||q.purchase_intent==='buy_now')&&
+      !q.cancel_requested_at&&!q.delivery_change_requested_at&&
       item.unit_price!==null&&item.unit_price!==undefined&&!item.supplier_ordered_at&&item.fulfillment!=='sold_out');
      const canConfirmFull=canConfirmSupplierBuyerFullPaid(batch,p);
      const unpaidOrders=p.orders.filter(q=>q.status==='confirmed'&&readyQuote(q)&&(orderOutstanding(q)||0)>0);
@@ -6945,7 +6951,7 @@ function renderSupplierBulkManager(historyOnly=false,expanded=false){
      const confirmLabel=ordered?'발주 완료':p.eligible?'✓ 입금 완료':inv?.paid_at?'✓ 선입금 확인':pendingSelected.length?'최종 주문확정 대기 '+new Set(pendingSelected.map(({q})=>q.id)).size+'건':p.reason;
      const confirmButton=canConfirmFull?`<button type="button" class="supplier-buyer-confirm" data-action="supplier-buyer-full-paid" data-id="${esc(batch.id)}" data-buyer-key="${esc(p.payer.buyer_key)}">입금 확인</button>`:'';
      const actions=ordered?'':`<div class="row wrap" style="margin-top:6px;gap:6px">
-      <button type="button" class="btn sm secondary" data-action="supplier-partial-request" data-id="${esc(batch.id)}" data-buyer-key="${esc(p.payer.buyer_key)}" ${canAsk&&!inv?.paid_at?'':'disabled'}>${inv?'요청금액 갱신·메일 재발송':'이 거래처 상품 입금 요청'}</button>
+      ${inv&&!inv.paid_at?`<button type="button" class="btn sm secondary" data-action="supplier-partial-request" data-id="${esc(batch.id)}" data-buyer-key="${esc(p.payer.buyer_key)}" ${canAsk?'':'disabled'}>입금 요청금액 갱신</button>`:''}
       ${inv?`<button type="button" class="btn sm secondary" data-action="supplier-partial-email" data-id="${esc(inv.id)}" ${!recipient||inv.paid_at?'disabled':''}>안내 메일 ${inv.email_status==='sent'?'다시 보내기':'보내기'}</button>
       <button type="button" class="btn sm outline" data-action="supplier-partial-copy" data-id="${esc(inv.id)}" ${inv.paid_at?'disabled':''}>입금 안내 복사</button>
       <button type="button" class="btn sm ${inv.paid_at?'neutral':'secondary'}" data-action="supplier-partial-paid" data-id="${esc(inv.id)}" ${inv.paid_at?'disabled':''}>${inv.paid_at?'입금 확인됨':'입금 확인 처리'}</button>
@@ -6953,9 +6959,21 @@ function renderSupplierBulkManager(historyOnly=false,expanded=false){
      </div>`;
      return `<div class="supplier-bulk-person" style="display:block">
       <div class="supplier-buyer-check-row">
-       <span class="supplier-buyer-name">${esc(p.buyerName)} · ${money(p.payer.amount)} 배송비</span>
+       <span class="supplier-buyer-name">${esc(p.buyerName)} · 도매 배송비 ${money(p.payer.amount)}</span>
        <span class="supplier-buyer-check-actions"><span class="${alreadyPaid||ordered?'is-paid':'is-waiting'}">${esc(confirmLabel)}</span>${confirmButton}</span>
       </div>
+      <div class="supplier-buyer-order-details">
+       ${selectedQuotes.map(q=>`<div class="supplier-buyer-order-line">
+        <strong>${esc(fmtDate(q.created_at))} · ${q.status==='confirmed'?'최종 주문확정':q.status==='quoted'&&q.purchase_intent==='buy_now'?'구매 의사 확인 · 최종 주문확정 대기':esc(statusLabel[q.status]||q.status)}</strong>
+        <small>오뜨베베 상품 ${money(p.selected.filter(x=>x.q.id===q.id).reduce((n,x)=>n+Number(x.item.unit_price||0)*Number(x.item.quantity||0),0))} · 주문 입금기록 ${money(Number(q.amount_paid||0)-Number(q.amount_refunded||0))}${q.status==='confirmed'&&appliedShipping(q)>0?' · 고객 택배비 '+(orderPaymentParts(q).shippingMissing?'미입금 '+money(orderPaymentParts(q).shippingMissing):'입금완료'):''}</small>
+       </div>`).join('')}
+      </div>
+      ${!ordered&&!p.eligible&&!inv?.paid_at?`<div class="supplier-buyer-request-box">
+       <strong>이 도매처 상품 입금 요청 · ${money(selectedInvoiceAmount)}</strong>
+       <small>상품 ${money(selectedGoods)} + 도매 배송비 ${money(p.payer.amount)} · 고객 택배비 제외</small>
+       <button type="button" class="btn block supplier-request-main" data-action="supplier-partial-request" data-id="${esc(batch.id)}" data-buyer-key="${esc(p.payer.buyer_key)}" ${canAsk?'':'disabled'}>입금 요청 · ${money(selectedInvoiceAmount)}</button>
+       ${hasMoneyInSelected?'<small class="supplier-request-warning">기존 입금 기록이 있어 중복 청구 방지를 위해 요청을 잠시 막았어요. 주문별 입금액을 먼저 확인해 주세요.</small>':!canAsk?'<small class="supplier-request-warning">구매 의사나 상품 변경 요청부터 확인해 주세요.</small>':''}
+      </div>`:''}
       ${showOrderPayments?`<details class="supplier-individual-deposits" open><summary>주문별 입금 확인 · ${unpaidOrders.length}건</summary>${unpaidOrders.map(q=>`<div class="supplier-individual-deposit"><b>${fmtDate(q.created_at)} · ${money(totalDue(q))}</b>${renderOrderDepositControl(q)}</div>`).join('')}</details>`:''}
       ${inv?`<div class="smallnote" style="margin-top:5px">선입금: 상품 ${money(inv.item_total)} + 배송비 ${money(inv.freight)} = <b>${money(inv.amount)}</b> · ${inv.paid_at?'입금 확인':'요청 중'}</div>`:''}
       ${inv?'<div class="smallnote" style="margin:5px 0;overflow-wrap:anywhere">✉️ '+(recipient?esc(recipient)+' · ':'고객 이메일 미등록 · ')+esc(mailState)+'</div>':''}

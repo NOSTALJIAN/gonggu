@@ -9825,9 +9825,20 @@ if(a==='mark-order-payment-part'){
   if(!Number.isInteger(newPaid)||newPaid>1000000000)throw Error('누적 입금액이 올바르지 않아요.');
   if(!window.confirm(q.buyer_name+'님 · '+fmtDate(q.created_at)+' 주문\n'+kind+' '+money(amount)+'을 실제로 입금받았나요?\n\n이 주문의 누적 입금액만 '+money(newPaid)+'으로 기록해요.'))return;
   busy=true;b.disabled=true;
-  try{const oldY=window.scrollY;state.orderCardsOpen[q.bundle_parent_id||q.id]=true;
-   await adminPayment(id,newPaid,refunded);await loadAdmin();window.scrollTo({top:oldY,behavior:'instant'});
-   notif(kind+' '+money(amount)+' 입금 확인 완료');
+  try{
+   const oldY=window.scrollY;
+   state.orderCardsOpen[q.bundle_parent_id||q.id]=true;
+   adminFoldState.set('compact-payment-'+id,true);
+   adminFoldState.set('direct-payment-'+id,true);
+   await adminPayment(id,newPaid,refunded);
+   await loadAdmin();
+   const updated=state.quotes.find(x=>x.id===id);
+   if(q.status==='quoted'&&updated?.status==='confirmed'&&state.tab==='quotes'&&state.filter==='final_confirmation'){
+    state.filter='buy_now';
+    render();
+   }
+   window.scrollTo({top:oldY,behavior:'instant'});
+   notif(updated?.status==='confirmed'&&q.status==='quoted'?'입금 기록 완료 · 최종 주문확정으로 자동 변경됐어요.':kind+' '+money(amount)+' 입금 확인 완료');
   }finally{busy=false;b.disabled=false;}
   return;
  }

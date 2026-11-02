@@ -3855,6 +3855,18 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 .supplier-bulk-more-actions .supplier-bulk-cancel{margin-top:8px}
 @media(max-width:430px){.supplier-bulk-person-collapsible .supplier-buyer-name{font-size:11px}.supplier-bulk-person-collapsible .supplier-buyer-check-actions span{font-size:10px}}
 
+/* Wholesale order list: status per actual allocated item, and one safe clipboard action. */
+.supplier-order-clean-note{margin:8px 0 3px;font-size:12px;font-weight:700;color:#333}
+.supplier-order-clean-item>span{min-width:0;flex:1}
+.supplier-order-clean-item b{line-height:1.45;word-break:keep-all;overflow-wrap:anywhere}
+.supplier-order-clean-right{display:flex;flex-direction:column;gap:5px;align-items:flex-end;flex:0 0 auto}
+.supplier-order-clean-right small{font-size:10px;font-weight:750;white-space:nowrap}
+.supplier-order-clean-right small.is-ready{color:#3f7953}
+.supplier-order-clean-right small.is-pending{color:#946c45}
+.supplier-order-clean-copy{margin-top:12px;min-height:42px;border-radius:8px;font-size:13px;font-weight:800}
+.supplier-order-clean-copy:disabled{background:#ededed;color:#888;border-color:#ededed}
+.supplier-order-clean-hint{font-size:11px;color:#777;line-height:1.5;margin:8px 0 1px}
+
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -7970,15 +7982,19 @@ function renderSupplierBulkManager(historyOnly=false,expanded=false){
   const splitMargin=charged-Number(batch.total||0);
   const shareText=!shares.length?'0원':shares.every(value=>value===shares[0])?money(shares[0]):money(Math.min(...shares))+'~'+money(Math.max(...shares));
   const batchItems=(batch.item_ids||[]).filter(id=>!payView||confirmedIds.has(id)).map(id=>state.quotes.flatMap(q=>q.items||[]).find(i=>i.id===id)).filter(Boolean);
+  const allPendingRows=payView?supplierPendingBatchItems(batch):[];
+  const allPendingQuoteIds=new Set(allPendingRows.map(({q})=>q.id));
+  const confirmedPendingQuoteIds=new Set(allPendingRows.filter(({q})=>q.status==='confirmed').map(({q})=>q.id));
+  const paidPendingQuoteIds=new Set(allPendingRows.filter(({q})=>supplierOrderPaidForCopy(q)).map(({q})=>q.id));
   return `<details class="supplier-bulk-batch" data-fold-key="supplier-batch-${esc(batch.id)}" data-supplier-batch-id="${esc(batch.id)}">
    <summary><span><strong>${esc(batch.supplier||'거래처')} · ${ordered?'도매 발주 완료':'발주 대기'}</strong>
-    <small>${payView?'구매자 '+visiblePeople.length+'명 · 상품 '+batchItems.length+'종 · 도매배송비 실비 '+money(batch.total):batch.people+'명 · '+batchItems.length+'종 · 업체 실비 '+money(batch.total)+' · 1인 '+shareText+' · 청구합계 '+money(charged)+(splitMargin>0?' · 차액 '+money(splitMargin)+' (수익)':'')}</small>
+    <small>${payView?'전체 '+allPendingQuoteIds.size+'건 중 확정 '+confirmedPendingQuoteIds.size+'건 · 입금 확인 '+paidPendingQuoteIds.size+'건 · 도매배송비 실비 '+money(batch.total):batch.people+'명 · '+batchItems.length+'종 · 업체 실비 '+money(batch.total)+' · 1인 '+shareText+' · 청구합계 '+money(charged)+(splitMargin>0?' · 차액 '+money(splitMargin)+' (수익)':'')}</small>
     </span>
-    <em>${ordered?'완료':checked.people.filter(p=>supplierPartialInvoice(batch.id,p.payer.buyer_key)?.paid_at).length?checked.people.filter(p=>supplierPartialInvoice(batch.id,p.payer.buyer_key)?.paid_at).length+'/'+batch.people+'명 선입금 확인':(payView?visiblePeople.filter(p=>p.selected.filter(({q})=>q.status==='confirmed').every(({q})=>readyQuote(q)&&orderPaymentParts(q).goodsMissing===0)).length+'/'+visiblePeople.length+'명 상품대금 확인':checked.paid+'/'+batch.people+'명 발주 준비 완료')}</em>
+    <em>${ordered?'완료':checked.people.filter(p=>supplierPartialInvoice(batch.id,p.payer.buyer_key)?.paid_at).length?checked.people.filter(p=>supplierPartialInvoice(batch.id,p.payer.buyer_key)?.paid_at).length+'/'+batch.people+'명 선입금 확인':(payView?paidPendingQuoteIds.size+'/'+allPendingQuoteIds.size+'건 입금확인':checked.paid+'/'+batch.people+'명 발주 준비 완료')}</em>
     ${payView?'':`<button type="button" class="btn sm secondary supplier-bulk-copy-btn" data-action="copy-supplier-batch-procurement" data-id="${esc(batch.id)}" aria-label="${esc(batch.supplier||'거래처')} 발주서 복사">발주서 복사</button>`}
    </summary>
    <div class="supplier-bulk-batch-body">
-    ${payView?`<div class="supplier-bulk-compact-tools"><button type="button" class="btn sm secondary" data-action="copy-supplier-batch-procurement" data-id="${esc(batch.id)}">발주서 복사</button><span>${money(charged)} 청구 · ${splitMargin>0?'차액 '+money(splitMargin)+' (수익)':'배송비 정산 확인'}</span></div>`:''}
+    ${payView?`<div class="supplier-bulk-compact-tools"><span>아래에는 최종 확정된 구매자만 표시돼요 · ${money(charged)} 청구 · ${splitMargin>0?'차액 '+money(splitMargin)+' (수익)':'배송비 정산 확인'}</span></div>`:''}
     ${visiblePeople.map(p=>{
      const originalInvoice=supplierPartialInvoice(batch.id,p.payer.buyer_key);
      const inv=payView&&originalInvoice&&state.quotes.find(q=>q.id===originalInvoice.charged_quote_id)?.status!=='confirmed'?null:originalInvoice;
@@ -8369,19 +8385,50 @@ function renderCompletedProcurementSheet(){
 function isOtherRoundQuote(q){
  return q.status==='quoted'&&['next_round','on_hold','undecided'].includes(q.purchase_intent||'undecided');
 }
+/* The same exact unfulfilled allocation rows power both the visible list
+   and its clipboard action. Never silently include a pending/cancelled order. */
+function supplierPendingBatchItems(batch){
+ const byId=new Map(state.quotes.flatMap(q=>(q.items||[]).map(item=>[item.id,{q,item}])));
+ return (batch?.item_ids||[]).map(id=>byId.get(id))
+  .filter(row=>row&&row.q.status!=='cancelled'&&
+   !['sold_out','received','delivered'].includes(row.item.fulfillment)&&
+   !row.item.supplier_ordered_at&&!row.q.supplier_ordered_at);
+}
+function supplierOrderPaidForCopy(q){
+ return !!(q&&q.status==='confirmed'&&readyQuote(q)&&
+  orderPaymentParts(q).goodsMissing===0&&!q.cancel_requested_at&&!q.delivery_change_requested_at&&
+  ['new','preparing'].includes(workflowStage(q)));
+}
+function supplierOrderRowStatus(q){
+ if(q.status==='quoted')return '확정 대기';
+ if(q.status!=='confirmed')return '주문 확인 필요';
+ if(!readyQuote(q))return '가격 확인 필요';
+ if(q.cancel_requested_at||q.delivery_change_requested_at)return '변경 요청 확인';
+ if(orderPaymentParts(q).goodsMissing>0)return '입금 대기';
+ return supplierOrderPaidForCopy(q)?'입금 확인':'발주 상태 확인';
+}
 function renderSupplierPaymentCenter(){
  const rows=state.supplierBatches.filter(b=>!b.ordered_at).map(b=>{
-  const items=(b.item_ids||[]).map(id=>state.quotes.flatMap(q=>(q.items||[]).map(item=>({q,item}))).find(x=>x.item.id===id)).filter(x=>x&&x.item.fulfillment!=='sold_out'&&!x.item.supplier_ordered_at&&!x.q.supplier_ordered_at);
-  return {b,items,qty:items.reduce((n,x)=>n+Number(x.item.quantity||1),0),buyers:new Set(items.map(x=>x.q.id)).size,ready:new Set(items.filter(x=>x.q.status==='confirmed'&&readyQuote(x.q)&&orderPaymentParts(x.q).goodsMissing===0).map(x=>x.q.id)).size};
+  const items=supplierPendingBatchItems(b);
+  const eligible=items.filter(({q})=>supplierOrderPaidForCopy(q));
+  return {b,items,eligible,qty:items.reduce((n,x)=>n+Number(x.item.quantity||1),0),
+   buyers:new Set(items.map(x=>x.q.id)).size,
+   ready:new Set(eligible.map(x=>x.q.id)).size,
+   eligibleQty:eligible.reduce((n,x)=>n+Number(x.item.quantity||1),0)};
  }).filter(x=>x.items.length);
  return `<section class="admin-supplier-payments-center">
  <div class="supplier-order-clean-head"><strong>발주해야 할 거래처</strong><span>${rows.length}곳</span></div>
  ${!state.supplierBatchesReady?'<p class="noticefail">내역을 불러오지 못했어요. 새로고침해 주세요.</p>':''}
- <div class="supplier-order-clean-list">${rows.length?rows.map(({b,items,qty,buyers,ready})=>`<details class="supplier-order-clean-card" data-fold-key="supplier-order-clean-${esc(b.id)}">
+ <div class="supplier-order-clean-list">${rows.length?rows.map(({b,items,eligible,qty,buyers,ready,eligibleQty})=>`<details class="supplier-order-clean-card" data-fold-key="supplier-order-clean-${esc(b.id)}">
  <summary><span><b>${esc(b.supplier||'거래처')}</b><small>${items.length}종 · ${qty}개 · 주문 ${buyers}건</small></span><span class="supplier-order-clean-progress">${ready}/${buyers}건 입금확인　⌄</span></summary>
- <div class="supplier-order-clean-body">${items.map(({q,item})=>`<div class="supplier-order-clean-item"><span><b>${esc(item.product_name||'상품')}</b><small>${esc(item.color||'-')} / ${esc(item.size||'-')} · ${esc(q.buyer_name||'구매자')}</small></span><strong>×${Number(item.quantity||1)}</strong></div>`).join('')}</div>
+ <div class="supplier-order-clean-body">
+  <p class="supplier-order-clean-note">입금 확인 ${eligible.length}종 · 확인 대기 ${items.length-eligible.length}종</p>
+  ${items.map(({q,item})=>`<div class="supplier-order-clean-item"><span><b>${esc(item.store_name||'가게명 미입력')} · ${esc(item.product_name||'상품')}</b><small>${esc(item.color||'-')} / ${esc(item.size||'-')} · ${esc(q.buyer_name||'구매자')}</small></span><div class="supplier-order-clean-right"><strong>×${Number(item.quantity||1)}</strong><small class="${supplierOrderPaidForCopy(q)?'is-ready':'is-pending'}">${esc(supplierOrderRowStatus(q))}</small></div></div>`).join('')}
+  <button type="button" class="btn block supplier-order-clean-copy" data-action="copy-supplier-ready-procurement" data-id="${esc(b.id)}" ${eligible.length&&state.productPrivateReady?'':'disabled'}>발주서 복사 · 입금 확인 ${eligible.length}종 / ${eligibleQty}개</button>
+  <p class="supplier-order-clean-hint">입금 확인된 이 거래처 상품만 복사해요. 확정·입금 대기 상품은 제외하며, 복사만으로 발주 완료 처리되지 않아요.</p>
+ </div>
  </details>`).join(''):'<div class="empty">발주 대기 중인 거래처가 없어요.</div>'}</div>
- <details class="supplier-order-actions-fold" data-fold-key="supplier-order-actions-fold"><summary>거래처별 입금 확인 · 발주 처리</summary><p class="supplier-order-actions-guide">거래처를 열면 구매자별 입금 상태가 먼저 보여요. 상품 상세와 추가 작업은 필요한 항목만 펼쳐 확인하세요.</p>${renderSupplierBulkManager(true,true)}</details>
+ <details class="supplier-order-actions-fold" data-fold-key="supplier-order-actions-fold"><summary>입금 확인 · 발주 완료 처리 (상세)</summary><p class="supplier-order-actions-guide">위 목록은 전체 미발주 상품이고, 이 상세 화면은 최종 확정된 주문만 보여줘요. 발주서 복사는 위 거래처 카드에서 해주세요.</p>${renderSupplierBulkManager(true,true)}</details>
  </section>`;
 }
 
@@ -10431,6 +10478,22 @@ if(a==='admin-complete-wholesale'){
  await rpc('gq_admin_mark_quote_wholesale_ordered_v61',{p_quote_id:id},true);
  await loadAdmin();
  notif('이번 회차 도매주문 완료 처리했어요. 고객 옵션 변경 요청이 마감됐어요.');
+ return;
+}
+if(a==='copy-supplier-ready-procurement'){
+ e.preventDefault();
+ if(!state.admin||state.page!=='admin'||state.tab!=='payments'||state.filter!=='supplier_payments'||!state.supplierBatchesReady)
+  throw Error('관리자 입금·발주 화면에서 복사해 주세요.');
+ const batch=state.supplierBatches.find(x=>x.id===id);
+ if(!batch||batch.ordered_at)throw Error('이미 발주 완료했거나 거래처 배분 내역이 없어요. 새로고침해 주세요.');
+ const eligibleIds=new Set(supplierPendingBatchItems(batch)
+  .filter(({q})=>supplierOrderPaidForCopy(q)).map(({item})=>item.id));
+ if(!eligibleIds.size)throw Error('아직 최종 확정과 입금이 모두 확인된 상품이 없어요.');
+ const rows=supplierBatchProcurementRows(batch).filter(r=>eligibleIds.has(r.item.id));
+ if(rows.length!==eligibleIds.size)throw Error('복사할 상품 내역이 달라졌어요. 화면을 새로고침한 뒤 확인해 주세요.');
+ await copy(formatWholesaleOrderCopy(rows,true,'도매처',true));
+ const missing=rows.filter(r=>r.unit===null).length;
+ notif('‘'+batch.supplier+'’ 거래처 입금확인 상품 '+rows.length+'종 · '+rows.reduce((n,r)=>n+r.qty,0)+'개 발주서 복사 완료.'+(missing?' 도매가 미등록 '+missing+'종을 확인해 주세요.':''));
  return;
 }
 if(a==='copy-supplier-batch-procurement'){

@@ -4403,7 +4403,7 @@ function applyHeroSettings(stores){
  const setting=configs[0]||null;
  const photoPath=setting?String(setting.name).slice(HERO_META_PREFIX.length):'';
  state.heroStoreId=setting?.id||null;
- state.heroPhotoUrl=/^covers\/[A-Za-z0-9-]{8,80}\.jpg$/.test(photoPath)?publicPhotoUrl(photoPath):null;
+ state.heroPhotoUrl=/^covers\/[A-Za-z0-9-]{8,80}\.(?:jpg|gif)$/.test(photoPath)?publicPhotoUrl(photoPath):null;
  return stores.filter(x=>!String(x.name||'').startsWith(HERO_META_PREFIX));
 }
 
@@ -4939,7 +4939,7 @@ async function saveHeroPhoto(file){
   throw Error('사진은 업로드됐지만 메인 사진 설정을 저장하지 못했어요: '+(error.message||error));
  }
  await loadCatalog(true);
- if(!state.heroPhotoUrl)throw Error('설정을 저장했지만 새 메인 사진이 확인되지 않아요.');
+ if(state.heroPhotoUrl!==publicPhotoUrl(photoPath))throw Error('메인 사진 저장 확인에 실패했어요. 페이지를 새로고침한 후 확인해 주세요.');
  render();
 }
 /* Random homepage hero: only published, in-stock products from active stores.

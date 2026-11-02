@@ -6750,7 +6750,7 @@ function renderCompactInlinePayment(q,finalReady){
   <div class="compact-inline-payment-heading">항목별 실제 입금 기록</div>
   ${paymentSplitMarkup(q)}
   <input type="hidden" name="refunded" value="${Number(q.amount_refunded||0)}">
-  <button class="btn compact-inline-payment-save" type="submit">항목별 입금 저장</button>
+  <button class="btn compact-inline-payment-save" type="button" data-action="payment-full-oneclick" data-id="${esc(q.id)}">전액 입금 확인</button>\n  <button class="btn secondary compact-inline-payment-save" type="submit">직접 입력 저장</button>
   <small>각 항목에 실제 받은 누적 금액을 입력하세요. 합계·미입금액은 자동 계산돼요.</small>
  </form>`;
 }
@@ -10164,6 +10164,19 @@ async function click(e){
  if(e.target.matches?.('[data-product-store-search]')){productStoreSearchResults(e.target,true);return;}
  if(!e.target.closest?.('[data-product-store-picker]'))closeProductStoreSearch(app.querySelector('#product-form'));
  const pg=e.target.closest('[data-page]');if(pg){goto(pg.dataset.page);if(pg.classList.contains('brand-home'))window.scrollTo({top:0,behavior:'auto'});return}const b=e.target.closest('[data-action]');if(!b)return;const a=b.dataset.action,id=b.dataset.id;try{
+if(a==='payment-full-oneclick'){
+ const q=state.quotes.find(x=>x.id===id),f=b.closest('form[data-payment]');
+ if(!state.admin||!q||!f||!adminCanRecordPayment(q))throw Error('입금 확인 가능한 주문이 아니에요.');
+ if(!readyQuote(q))throw Error('최종 결제금액이 확정된 뒤 이용해 주세요.');
+ const goods=previewOrderSum(q),delivery=appliedShipping(q),freight=supplierShippingShare(q);
+ if(![goods,delivery,freight].every(n=>Number.isSafeInteger(n)&&n>=0))throw Error('결제금액을 확인해 주세요.');
+ if(Number(q.amount_refunded||0)>0||paymentWaiver(q)>0)throw Error('환불 또는 차액 인정 내역이 있어 직접 확인이 필요해요.');
+ if(!window.confirm('실제 입금 확인\\n상품 '+money(goods)+' · 택배 '+money(delivery)+' · 도매배송 '+money(freight)+'\\n총 '+money(goods+delivery+freight)+'을 실제로 모두 받았나요?'))return;
+ for(const [key,value] of [['paid_goods',goods],['paid_delivery',delivery],['paid_freight',freight]])f.elements[key].value=String(value);
+ updatePaymentSplitTotal(f);
+ f.requestSubmit();
+ return;
+}
 if(a==='accept-payment-shortfall'||a==='revoke-payment-shortfall'){
  if(!connected||!state.admin||state.page!=='admin')throw Error('관리자만 차액을 인정할 수 있어요.');
  if(busy)return;

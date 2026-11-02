@@ -6941,7 +6941,8 @@ function renderSupplierBulkManager(historyOnly=false,expanded=false){
      const unpaidOrders=p.orders.filter(q=>q.status==='confirmed'&&readyQuote(q)&&(orderOutstanding(q)||0)>0);
      const showOrderPayments=!ordered&&!canConfirmFull&&unpaidOrders.length>0;
      const alreadyPaid=Boolean(p.eligible||inv?.paid_at);
-     const confirmLabel=ordered?'발주 완료':p.eligible?'✓ 입금 완료':inv?.paid_at?'✓ 선입금 확인':p.reason;
+     const pendingSelected=p.selected.filter(({q})=>q.status==='quoted'&&q.purchase_intent==='buy_now');
+     const confirmLabel=ordered?'발주 완료':p.eligible?'✓ 입금 완료':inv?.paid_at?'✓ 선입금 확인':pendingSelected.length?'최종 주문확정 대기 '+new Set(pendingSelected.map(({q})=>q.id)).size+'건':p.reason;
      const confirmButton=canConfirmFull?`<button type="button" class="supplier-buyer-confirm" data-action="supplier-buyer-full-paid" data-id="${esc(batch.id)}" data-buyer-key="${esc(p.payer.buyer_key)}">입금 확인</button>`:'';
      const actions=ordered?'':`<div class="row wrap" style="margin-top:6px;gap:6px">
       <button type="button" class="btn sm secondary" data-action="supplier-partial-request" data-id="${esc(batch.id)}" data-buyer-key="${esc(p.payer.buyer_key)}" ${canAsk&&!inv?.paid_at?'':'disabled'}>${inv?'요청금액 갱신·메일 재발송':'이 거래처 상품 입금 요청'}</button>

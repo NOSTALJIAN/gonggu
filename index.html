@@ -5100,13 +5100,23 @@ const MINI_PAYMENT_ACCOUNT='3333183216754';
 const MINI_PAYMENT_DISPLAY='3333-18-3216754';
 const MINI_PAYMENT_HOLDER='서지안';
 function miniPaymentLabel(){return MINI_PAYMENT_BANK+' '+MINI_PAYMENT_DISPLAY+' · 예금주 '+MINI_PAYMENT_HOLDER;}
+function buyerFinalPaymentReady(q){
+ return !!q&&(q.status==='confirmed'||(q.status==='quoted'&&q.purchase_intent==='buy_now'&&!q.direct_1688&&q.supplier_shipping_ready&&readyQuote(q)&&!q.cancel_requested_at&&!q.delivery_change_requested_at));
+}
+function buyerOrderPhase(q){
+ if(!q)return '주문 확인 중';
+ if(q.status==='quoted'&&q.purchase_intent==='buy_now'&&!q.direct_1688)return buyerFinalPaymentReady(q)?'최종 입금 안내 · 입금 대기':'구매 신청 완료 · 배송비 계산 중';
+ if(q.status==='confirmed'&&!isWholesaleCompleted(q))return balanceDue(q)>0?'입금 확인 대기':'입금 확인 완료 · 도매 발주 대기';
+ if(isWholesaleCompleted(q))return '도매 발주 완료';
+ return statusLabel[q.status]||q.status||'진행 중';
+}
 function confirmedPaymentWidget(q){
- if(!q||q.status!=='confirmed')return '';
+ if(!buyerFinalPaymentReady(q))return '';
  const due=readyQuote(q)?balanceDue(q):null;
  const paid=due===0;
  const p=orderPaymentParts(q),freightOnly=supplierFreightOnlyDue(q);
  return `<section class="confirmed-payment-card" aria-label="입금 계좌 안내">
- <div class="confirmed-payment-head"><strong>최종 주문 확정 · 입금 안내</strong></div>
+ <div class="confirmed-payment-head"><strong>${q.status==='quoted'?'배송비 배분 완료 · 최종 입금 안내':'최종 주문 확정 · 입금 안내'}</strong></div>
  <div class="confirmed-payment-label">입금 계좌</div>
  <div class="confirmed-payment-bank">${MINI_PAYMENT_BANK} <b>${MINI_PAYMENT_DISPLAY}</b></div>
  <div class="confirmed-payment-holder">예금주 <b>${MINI_PAYMENT_HOLDER}</b></div>
@@ -5124,13 +5134,13 @@ function confirmedPaymentWidget(q){
  </section>`;
 }
 function confirmedPaymentNotice(q){
- if(!q||q.status!=='confirmed')throw Error('최종 주문이 확정된 건만 입금 안내할 수 있어요.');
+ if(!buyerFinalPaymentReady(q))throw Error('이번 회차 구매 신청과 배송비 배분 완료 후 입금 안내를 보낼 수 있어요.');
  if(!q.lookup_token)throw Error('주문조회 링크를 확인할 수 없어요.');
  const due=readyQuote(q)?balanceDue(q):null;
  const p=orderPaymentParts(q),freightOnly=supplierFreightOnlyDue(q);
- return `[미니예나] 최종 주문 확정 · 입금 안내
+ return `[미니예나] 최종 결제금액 · 입금 안내
 
-${q.buyer_name||'고객'}님, 최종 주문이 확정됐어요.
+${q.buyer_name||'고객'}님, ${q.status==='quoted'?'이번 회차 구매 신청이 접수됐고 배송비 배분이 끝났어요. 아래 금액을 한 번에 입금해 주세요.':'주문 입금 내역을 안내드려요.'}
 
 주문금액: ${readyQuote(q)?money(totalDue(q)):'주문조회에서 확인'}
 상품대금 남은 금액: ${readyQuote(q)?money(freightOnly?0:p.goodsMissing):'확인 중'}
@@ -5154,19 +5164,20 @@ function buyerRoundIntent(q){
   </section>`;
  }
  const intent=q.purchase_intent||'undecided';
- return `<section class="buyer-purchase-simple" aria-label="구매 여부">
-  <h3>구매 여부</h3>
+ return `<section class="buyer-purchase-simple" aria-label="이번 회차 구매 신청">
+  <h3>이번 회차 구매 신청</h3>
+  <p class="buyer-hint">상품 견적을 확인한 뒤 구매할 회차를 선택해 주세요. 배송비까지 정해지면 한 번에 입금합니다.</p>
   <div class="purchase-round-actions">
-   <button type="button" data-action="set-purchase-intent" data-intent="buy_now" class="${intent==='buy_now'?'is-selected':''}" aria-pressed="${intent==='buy_now'}">이번에 구매</button>
-   <button type="button" data-action="set-purchase-intent" data-intent="next_round" class="${intent==='next_round'?'is-selected':''}" aria-pressed="${intent==='next_round'}">다음에 구매</button>
-   <button type="button" data-action="set-purchase-intent" data-intent="on_hold" class="${intent==='on_hold'?'is-selected':''}" aria-pressed="${intent==='on_hold'}">구매 보류</button>
+   <button type="button" data-action="set-purchase-intent" data-intent="buy_now" class="${intent==='buy_now'?'is-selected':''}" aria-pressed="${intent==='buy_now'}">이번 회차 구매 신청</button>
+   <button type="button" data-action="set-purchase-intent" data-intent="next_round" class="${intent==='next_round'?'is-selected':''}" aria-pressed="${intent==='next_round'}" ${ready&&intent==='buy_now'?'disabled':''}>다음 회차</button>
+   <button type="button" data-action="set-purchase-intent" data-intent="on_hold" class="${intent==='on_hold'?'is-selected':''}" aria-pressed="${intent==='on_hold'}" ${ready&&intent==='buy_now'?'disabled':''}>구매 보류</button>
   </div>
   ${intent==='buy_now'
    ? ready
-      ? `<button type="button" class="btn block buyer-confirm-btn" data-action="confirm-quote" ${q.cancel_requested_at||q.delivery_change_requested_at?'disabled':''}>최종 주문 확정</button>`
-      : '<p class="buyer-hint">배송비 계산 중 · 최종 금액 안내 전에는 송금하지 마세요.</p>'
-   : intent==='next_round'?'':intent==='on_hold'?'':''}
-  ${q.delivery_change_requested_at?'<p class="buyer-hint">수령방식 변경 승인 후 주문 확정할 수 있어요.</p>':''}
+      ? '<p class="buyer-hint">✓ 구매 신청 · 배송비 배분 완료. 아래 최종 결제금액을 한 번에 입금해 주세요. 입금 확인 후 주문확정 및 발주가 진행돼요. 별도 주문확정 버튼은 누르지 않아도 돼요.</p>'
+      : '<p class="buyer-hint">✓ 이번 회차 구매 신청 완료 · 배송비 계산 중. 최종 금액 안내 전에는 송금하지 마세요.</p>'
+   : intent==='next_round'?'<p class="buyer-hint">다음 회차 구매로 접수했어요.</p>':intent==='on_hold'?'<p class="buyer-hint">구매가 보류됐어요.</p>':''}
+  ${q.delivery_change_requested_at?'<p class="buyer-hint">수령방식 변경 승인 후 최종 금액을 안내해 드려요.</p>':''}
  </section>`;
 }
 function intentBadge(q){
@@ -5272,7 +5283,7 @@ function renderTrack(){
   return '<section class="content buyer-simple"><h1>내 주문조회</h1><div class="empty">견적 내역에서 주문을 선택해 주세요.</div></section>';
  if(!q)
   return '<section class="content buyer-simple"><h1>내 주문조회</h1><div class="card">주문을 불러오는 중이에요.<div class="space"></div><button class="btn secondary" data-action="load-track">다시 불러오기</button></div></section>';
- const status=q.status==='requested'?'가격 확인 중':q.status==='quoted'?'상품 견적':q.status==='confirmed'?'주문 확정':'취소됨';
+ const status=buyerOrderPhase(q);
  const itemMarkup=(q.items||[]).map(i=>`<article class="buyer-simple-item">
    <div class="buyer-simple-product"><b>${esc(i.store_name)} · ${esc(i.product_name)}</b><span>${Number(i.quantity)}개</span></div>
    <div class="buyer-simple-variant">${esc(i.color)} / ${esc(i.size)}</div>
@@ -6287,7 +6298,13 @@ function roundGroupTask(group){
  const requested=group.filter(q=>q.status==='requested');
  if(requested.length)return {title:'견적 안내 '+requested.length+'건 필요',hint:'가격을 확인하고 견적을 보내세요.',action:'round-open-orders',label:'견적 확인'};
  const pending=group.filter(q=>q.status==='quoted'&&q.purchase_intent==='buy_now');
- if(pending.length)return {title:'최종 주문확정 '+pending.length+'건 대기',hint:'구매자가 확정하거나, 관리자가 입금과 구매 의사를 확인한 후 대신 확정할 수 있어요.',action:'copy-customer-link',id:pending[0].id,label:'확정 링크 복사'};
+ if(pending.length){
+  const unallocated=pending.find(q=>!adminFreightReady(q));
+  if(unallocated)return {title:'배송비 배분 대기 · 구매 신청 '+pending.length+'건',hint:'구매자 모집 후 거래처별 배송비를 배분하고 최종 금액을 한 번만 청구하세요.',filter:'buy_now',label:'배송비 배분'};
+  const toPay=pending.find(q=>balanceDue(q)>0);
+  if(toPay)return {title:'최종 금액 입금 요청 · '+pending.length+'건',hint:'상품값·도매 배송비·택배비를 한 번에 안내한 뒤 실제 입금액을 기록하세요.',action:'copy-final-payment-notice',id:toPay.id,label:'입금 안내 복사'};
+  return {title:'입금 확인 · '+pending.length+'건',hint:'실제 입금액 기록 후 자동 주문확정 여부를 확인하세요.',action:'round-open-orders',label:'입금 내역'};
+ }
  const undecided=group.filter(q=>q.status==='quoted');
  if(undecided.length)return {title:'구매자 선택 '+undecided.length+'건 대기',hint:'구매자가 이번 회차를 선택할 차례예요.',action:'copy-customer-link',id:undecided[0].id,label:'선택 링크 복사'};
  const total=group.reduce((n,q)=>n+totalDue(q),0),paid=group.reduce((n,q)=>n+(Number(q.amount_paid)||0)-(Number(q.amount_refunded)||0),0);
@@ -6525,9 +6542,9 @@ function compactQuoteNextTask(q){
  if(q.status==='quoted'&&q.purchase_intent==='on_hold')return {text:'구매 보류 중',label:'상세 확인',tool:'advanced'};
  if(q.status==='quoted'&&(!q.purchase_intent||q.purchase_intent==='undecided'))return {text:'고객 구매 선택 기다리는 중',label:'고객 확인 링크 복사',action:'copy-customer-link'};
  if(q.status==='quoted'&&q.purchase_intent==='buy_now'){
-  if(!adminFreightReady(q))return {text:'거래처 배송비 배분 필요',label:'배송비 배분 화면',filter:'buy_now'};
-  if(unpaid>0)return {text:'입금 '+money(unpaid)+' 확인 필요',label:'입금 기록 수정',tool:'payment'};
-  return {text:'주문확정 상태 확인',label:'상세 보기',tool:'advanced'};
+  if(!adminFreightReady(q))return {text:'구매 신청 접수 · 도매 배송비 배분 필요',label:'배송비 배분',filter:'buy_now'};
+  if(unpaid>0)return {text:'최종 결제금액 '+money(totalDue(q))+' · 입금 요청 대기 '+money(unpaid),label:'입금 안내 복사',action:'copy-final-payment-notice'};
+  return {text:'입금 확인 후 자동 확정 확인',label:'입금 내역 보기',tool:'payment'};
  }
  if(q.status==='confirmed'){
   if(unpaid>0){const freightOnly=supplierFreightOnlyDue(q);
@@ -10098,8 +10115,15 @@ if(a==='date-open-all'||a==='date-close-all'){
 }
 if(a==='scroll-top'){window.scrollTo({top:0,behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});return;}
 if(a==='copy-payment-account'||a==='copy-payment-details'){
- if(state.page!=='track'||state.tracking?.status!=='confirmed')throw Error('최종 주문 확정 후 계좌를 확인할 수 있어요.');
+ if(state.page!=='track'||!buyerFinalPaymentReady(state.tracking))throw Error('이번 회차 구매 신청과 배송비 배분 후 계좌를 확인할 수 있어요.');
  await copy(a==='copy-payment-account'?MINI_PAYMENT_ACCOUNT:miniPaymentLabel());return;
+}
+if(a==='copy-final-payment-notice'){
+ if(!state.admin||state.page!=='admin')throw Error('관리자만 최종 입금 안내를 복사할 수 있어요.');
+ const q=state.quotes.find(row=>row.id===id);
+ if(!q||q.status!=='quoted'||q.purchase_intent!=='buy_now'||!adminFreightReady(q)||!readyQuote(q))
+  throw Error('배송비 배분이 끝난 이번 회차 구매 신청에서만 입금 안내를 복사할 수 있어요.');
+ await copy(confirmedPaymentNotice(q));return;
 }
 if(a==='copy-payment-notice'){
  if(!state.admin||state.page!=='admin')throw Error('관리자 로그인 후 입금 안내문을 복사할 수 있어요.');

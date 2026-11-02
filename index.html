@@ -3317,6 +3317,10 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 .admin-payment-popup-waive small{font-size:11px;color:#777;font-weight:500}
 .admin-payment-popup-preview{border-radius:9px;background:#f5f5f5;color:#333;padding:12px;font-size:12px;font-weight:680;line-height:1.6}
 .admin-payment-popup-form>.btn{min-height:47px;border-radius:8px;font-size:13px}
+.admin-override-confirm{border-top:1px solid #ededed;margin-top:8px;padding:8px 0}
+.admin-override-confirm>summary{font-size:11px;color:#858585;font-weight:600;cursor:pointer}
+.admin-override-confirm .smallnote{padding:5px 0;font-size:11px}
+.admin-override-confirm>.admin-manual-confirm-action{width:100%;font-size:12px}
 .supplier-freight-payment-request,.buyer-supplier-freight-request{border:1px solid #dedede;border-radius:11px;padding:12px;margin:13px 0;background:#fafafa;color:#272727;display:flex;flex-direction:column;gap:8px}
 .supplier-freight-payment-title{display:flex;flex-direction:column;gap:4px}
 .supplier-freight-payment-title b,.buyer-supplier-freight-request>b{font-size:13px;font-weight:820}
@@ -5105,7 +5109,10 @@ function buyerFinalPaymentReady(q){
 }
 function buyerOrderPhase(q){
  if(!q)return '주문 확인 중';
- if(q.status==='quoted'&&q.purchase_intent==='buy_now'&&!q.direct_1688)return buyerFinalPaymentReady(q)?'최종 입금 안내 · 입금 대기':'구매 신청 완료 · 배송비 계산 중';
+ if(q.status==='quoted'&&q.purchase_intent==='buy_now'&&!q.direct_1688){
+  const ready=buyerFinalPaymentReady(q)||(state.page==='admin'&&state.admin&&readyQuote(q)&&adminFreightReady(q));
+  return ready?'최종 입금 안내 · 입금 대기':'구매 신청 완료 · 배송비 계산 중';
+ }
  if(q.status==='confirmed'&&!isWholesaleCompleted(q))return balanceDue(q)>0?'입금 확인 대기':'입금 확인 완료 · 도매 발주 대기';
  if(isWholesaleCompleted(q))return '도매 발주 완료';
  return statusLabel[q.status]||q.status||'진행 중';
@@ -5134,7 +5141,8 @@ function confirmedPaymentWidget(q){
  </section>`;
 }
 function confirmedPaymentNotice(q){
- if(!buyerFinalPaymentReady(q))throw Error('이번 회차 구매 신청과 배송비 배분 완료 후 입금 안내를 보낼 수 있어요.');
+ if(!buyerFinalPaymentReady(q)&&!(state.admin&&state.page==='admin'&&q?.status==='quoted'&&q.purchase_intent==='buy_now'&&!isDirect1688Admin(q)&&readyQuote(q)&&adminFreightReady(q)))
+  throw Error('이번 회차 구매 신청과 배송비 배분 완료 후 입금 안내를 보낼 수 있어요.');
  if(!q.lookup_token)throw Error('주문조회 링크를 확인할 수 없어요.');
  const due=readyQuote(q)?balanceDue(q):null;
  const p=orderPaymentParts(q),freightOnly=supplierFreightOnlyDue(q);
@@ -6297,6 +6305,8 @@ function roundGroupTask(group){
  if(missing.length)return {title:'가격 미입력 '+missing.length+'종',hint:'아래 주문별 수정에서 판매가를 입력하세요.',action:'round-open-orders',label:'가격 입력'};
  const requested=group.filter(q=>q.status==='requested');
  if(requested.length)return {title:'견적 안내 '+requested.length+'건 필요',hint:'가격을 확인하고 견적을 보내세요.',action:'round-open-orders',label:'견적 확인'};
+ const directPending=group.find(q=>q.status==='quoted'&&q.purchase_intent==='buy_now'&&isDirect1688Admin(q));
+ if(directPending)return {title:'1688 주문확정 대기',hint:'1688 주문은 기존 방식대로 구매자가 최종 확정합니다.',action:'copy-customer-link',id:directPending.id,label:'확정 링크 복사'};
  const pending=group.filter(q=>q.status==='quoted'&&q.purchase_intent==='buy_now');
  if(pending.length){
   const unallocated=pending.find(q=>!adminFreightReady(q));
@@ -6326,12 +6336,15 @@ function adminConfirmEligible(q){
 }
 function adminConfirmButton(q){
  return adminConfirmEligible(q)?
-  `<button type="button" class="admin-manual-confirm-action" data-action="admin-confirm-order" data-id="${esc(q.id)}">관리자가 주문 확정하기</button>`:'';
+  `<details class="admin-override-confirm"><summary>예외 처리 · 관리자가 직접 주문 확정</summary>
+  <p class="smallnote">일반 공동구매는 배송비 배분 후 실제 입금액을 기록하면 자동 확정돼요. 이 기능은 예외 상황에서만 사용해 주세요.</p>
+  <button type="button" class="admin-manual-confirm-action" data-action="admin-confirm-order" data-id="${esc(q.id)}">예외: 관리자 직접 주문 확정</button>
+  </details>`:'';
 }
 function renderRoundQuickOrder(q,index){
  const due=totalDue(q);
  const paid=(Number(q.amount_paid)||0)-(Number(q.amount_refunded)||0);
- const status=q.status==='confirmed'?'최종 확정':q.status==='quoted'&&q.purchase_intent==='buy_now'?'최종확정 대기':statusLabel[q.status]||q.status;
+ const status=buyerOrderPhase(q);
  return `<details class="round-single-order" data-round-order-id="${esc(q.id)}">
   <summary><span>${index+1}번째 주문 · ${esc(fmtDate(q.created_at))}</span><b>${money(due)} · ${esc(status)} ⌄</b></summary>
   <div class="round-order-quick-content">
@@ -6371,7 +6384,7 @@ function renderSameRoundCard(group){
  const rows=[...products.values()];
  const total=group.reduce((n,q)=>n+totalDue(q),0);
  const received=group.reduce((n,q)=>n+(Number(q.amount_paid)||0)-(Number(q.amount_refunded)||0),0);
- const complete=group.every(readyQuote);
+ const complete=group.every(q=>readyQuote(q)&&(q.status!=='quoted'||q.purchase_intent==='buy_now'&&adminFreightReady(q)));
  const task=roundGroupTask(group);
  const courier=group.filter(q=>q.delivery_method==='courier');
  const courierFees=courier.reduce((n,q)=>n+appliedShipping(q),0);
@@ -6542,6 +6555,7 @@ function compactQuoteNextTask(q){
  if(q.status==='quoted'&&q.purchase_intent==='on_hold')return {text:'구매 보류 중',label:'상세 확인',tool:'advanced'};
  if(q.status==='quoted'&&(!q.purchase_intent||q.purchase_intent==='undecided'))return {text:'고객 구매 선택 기다리는 중',label:'고객 확인 링크 복사',action:'copy-customer-link'};
  if(q.status==='quoted'&&q.purchase_intent==='buy_now'){
+  if(isDirect1688Admin(q))return {text:'1688 주문 · 구매자 최종 주문확정 대기',label:'주문확정 링크 복사',action:'copy-customer-link'};
   if(!adminFreightReady(q))return {text:'구매 신청 접수 · 도매 배송비 배분 필요',label:'배송비 배분',filter:'buy_now'};
   if(unpaid>0)return {text:'최종 결제금액 '+money(totalDue(q))+' · 입금 요청 대기 '+money(unpaid),label:'입금 안내 복사',action:'copy-final-payment-notice'};
   return {text:'입금 확인 후 자동 확정 확인',label:'입금 내역 보기',tool:'payment'};
@@ -6571,12 +6585,13 @@ function renderAdminQuoteCard(q){
  const paid=(Number(q.amount_paid)||0)-(Number(q.amount_refunded)||0);
  const due=totalDue(q);
  const priced=readyQuote(q);
+ const finalReady=priced&&(q.status==='confirmed'||q.status==='quoted'&&q.purchase_intent==='buy_now'&&adminFreightReady(q));
  const task=compactQuoteNextTask(q);
  const urgent=q.cancel_requested_at||q.delivery_change_requested_at||pendingItemOptionRequests(q).length;
  const active=(q.items||[]).filter(i=>i.fulfillment!=='sold_out');
  const command=task.filter?`data-filter="${esc(task.filter)}"`:task.action?`data-action="${esc(task.action)}" data-id="${esc(q.id)}" ${task.stage?`data-stage="${esc(task.stage)}"`:''}`:`data-action="compact-open-tool" data-id="${esc(q.id)}" data-tool="${esc(task.tool||'advanced')}"`;
  return `<div class="card ordercard compact-order-card" data-compact-order="${esc(q.id)}">
-  <div class="compact-order-top"><strong>${(q.items||[]).length}종 · ${qty}개</strong><span>${esc(deliveryLabel(q))} · ${esc(statusLabel[q.status]||q.status)}</span></div>
+  <div class="compact-order-top"><strong>${(q.items||[]).length}종 · ${qty}개</strong><span>${esc(deliveryLabel(q))} · ${esc(buyerOrderPhase(q))}</span></div>
   <div class="compact-order-products">${(q.items||[]).map(i=>`<div class="compact-order-product">
    <span><b>${adminOrderItemName(i)}</b><small>${esc(i.color)} / ${esc(i.size)} · ${Number(i.quantity)||0}개${i.fulfillment==='sold_out'?' · 품절':''}</small></span>
    <strong>${i.unit_price==null?'가격 미정':money(Number(i.unit_price)*(Number(i.quantity)||0))}</strong>
@@ -6587,11 +6602,11 @@ function renderAdminQuoteCard(q){
     ${q.delivery_method==='courier'||appliedShipping(q)>0?`<div><span>택배비${isBundle(q)?' · 합배송':''}</span><b>${money(appliedShipping(q))}</b></div>`:''}
     ${supplierShippingShare(q)>0?`<div><span>도매 배송비</span><b>${money(supplierShippingShare(q))}</b></div>`:''}
    </div>`:''}
-   <div><span>결제금액</span><b>${priced?money(due):'확인 중'}</b></div>
+   <div><span>최종 결제금액</span><b>${finalReady?money(due):'배송비 배분 후 확정'}</b></div>
    <div><span>받은 금액</span><b>${money(paid)}</b></div>
    ${paymentWaiver(q)?`<div><span>관리자 차액 인정</span><b>${money(paymentWaiver(q))}</b></div>`:''}
    ${priced&&q.status==='confirmed'?`<div class="compact-order-payment-status">${orderPaymentParts(q).goodsMissing?'상품대금 미입금 '+money(orderPaymentParts(q).goodsMissing):'상품대금 입금 완료'}${orderPaymentParts(q).shippingMissing?' · 택배비 '+money(orderPaymentParts(q).shippingMissing)+' 별도':''}</div>`:''}
-   <div class="compact-order-balance"><span>남은 금액</span><b>${priced?money(balanceDue(q)):'확인 필요'}</b></div>
+   <div class="compact-order-balance"><span>남은 금액</span><b>${finalReady?money(balanceDue(q)):'입금 요청 전'}</b></div>
    ${priced&&paid>due?`<p class="compact-order-warning">초과 입금 ${money(paid-due)} · 환불 여부 확인</p>`:''}
   </div>
   <div class="compact-order-next ${urgent?'is-urgent':''}">

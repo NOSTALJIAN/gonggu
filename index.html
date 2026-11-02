@@ -3503,6 +3503,24 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 .supplier-payment-waiting-row:first-of-type{margin-top:7px}
 .supplier-payment-waiting-row span{color:#777;font-size:11px}
 .supplier-payment-waiting-confirm>button{background:#272727;color:#fff;border:0;border-radius:8px;min-height:38px;width:100%;font-size:12px;font-weight:730;margin-top:8px}
+
+/* Three separate received-payment categories on every admin order */
+.payment-split-fields{display:flex;flex-direction:column;gap:9px;width:100%;min-width:0}
+.payment-split-field{display:flex!important;align-items:center;gap:8px;justify-content:space-between;min-width:0;color:#252525;font-size:12px;font-weight:750}
+.payment-split-name{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;line-height:1.25}
+.payment-split-name small{color:#777;font-size:10px;font-weight:500}
+.payment-split-input{position:relative;display:block;flex:0 1 155px;min-width:112px;max-width:48%}
+.payment-split-input input{width:100%;height:42px;min-height:42px;border-radius:9px;padding:7px 28px 7px 9px;text-align:right;font-variant-numeric:tabular-nums;font-size:14px!important}
+.payment-split-input i{position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:11px;font-style:normal;color:#777;pointer-events:none}
+.payment-split-total{display:flex;justify-content:space-between;align-items:center;border-top:1px solid #e9e9e9;margin-top:5px;padding:10px 0 2px;font-size:12px;color:#666}
+.payment-split-total strong{font-size:16px;color:#161616;font-variant-numeric:tabular-nums}
+.payment-split-legacy{display:block;font-size:10px;line-height:1.5;color:#926318}
+.compact-inline-payment-heading,.payment-split-popup-title{font-weight:800;font-size:12px;color:#252525}
+.compact-inline-payment .compact-inline-payment-save{align-self:stretch;width:100%;margin-top:4px}
+.payment-split-generic{display:flex;flex-direction:column;gap:10px;max-width:100%}
+.payment-split-generic>.btn{width:100%}
+.admin-payment-popup-form>.payment-split-total{margin-top:0}
+
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -6338,7 +6356,7 @@ function renderBundleLedger(q,idx,root){
     ${groupedAdminQuoteItems(q,true)}${adminPriceTotalMarkup([q],true)}
     ${q.delivery_method==='pickup'?'<div class="tiny">직접수령 · 고객 수령 배송비 0원 (도매배송비 별도)</div>':child?'<div class="tiny">묶음 추가 주문 · 배송비 0원 (대표 주문에서만 배송비 변경)</div>':q.status==='requested'||(q.status==='quoted'&&q.purchase_intent!=='buy_now')?'<div class="tiny">고객 수령 택배비 3,000원 자동 적용 · 묶음 추가 주문 0원</div>':`<form data-shipping="${q.id}" class="shipping-form"><label class="label">묶음 대표 주문 배송비<input name="shipping" type="number" min="0" max="1000000" step="1" required value="${hasShipping(q)?q.shipping_fee:''}" ${q.status==='cancelled'?'disabled':''}></label><button class="btn sm secondary" type="submit" ${q.status==='cancelled'?'disabled':''}>배송비 저장</button></form>`}
     ${renderSupplierShippingForm(q)}
-    ${['confirmed','cancelled'].includes(q.status)?`<form data-payment="${q.id}" class="two"><div><label class="label">입금받은 총액<input name="paid" type="number" min="0" value="${q.amount_paid||0}"></label></div><div><label class="label">환불해 준 총액<input name="refunded" type="number" min="0" value="${q.amount_refunded||0}"></label></div><button class="btn secondary" style="grid-column:span 2" type="submit">이 주문의 입금·환불 기록 저장</button></form>${refundDue(q)>0?`<div class="noticefail">추가 환불 확인: ${money(refundDue(q))} · 실제 송금 후 기록</div>`:''}`:''}
+    ${['confirmed','cancelled'].includes(q.status)?`<form data-payment="${q.id}" class="payment-split-generic">${paymentSplitMarkup(q)}<label class="label">환불해 준 누적 금액<input name="refunded" type="number" min="0" value="${q.amount_refunded||0}" required></label><button class="btn secondary" type="submit">항목별 입금·환불 저장</button></form>${refundDue(q)>0?`<div class="noticefail">추가 환불 확인: ${money(refundDue(q))} · 실제 송금 후 기록</div>`:''}`:''}
     ${q.status==='requested'?`<button class="btn block" data-action="publish-quote" data-id="${q.id}" ${!readyProductEstimate(q)?'disabled':''}>${isDirect1688Admin(q)?'1688 견적 보내기 · 바로 주문확정':'견적 먼저 보내기 · 구매 회차 선택 요청'}</button>`:''}
     ${q.status==='confirmed'?`<details class="bundle-ledger-work"><summary>이 주문의 진행 단계 개별 조정</summary>${adminWorkflow(q)}</details>`:''}
     <div class="row wrap"><button class="btn sm neutral" data-action="copy-quote" data-id="${q.id}">견적 내용 복사</button><button class="btn sm neutral" data-action="copy-customer-link" data-id="${q.id}">개인 견적 링크 복사</button>${adminPinButton(q)}${q.status==='quoted'?`<button class="btn sm secondary" data-action="copy-quote-notice" data-id="${q.id}">견적 안내문 복사</button>`:''}${q.status==='confirmed'?`<button class="btn sm secondary" data-action="copy-payment-notice" data-id="${esc(q.id)}">입금 안내문 복사</button>`:''}<button class="btn sm outline" data-action="bundle-order" data-id="${q.id}">묶음배송 변경·해제</button><button class="btn sm neutral" data-action="edit-baby" data-id="${q.id}">아기 이름 수정</button></div>
@@ -6399,13 +6417,11 @@ function adminConfirmButton(q){
 function renderCompactInlinePayment(q,finalReady){
  if(!state.admin||!finalReady||!adminCanRecordPayment(q)||q.cancel_requested_at||q.delivery_change_requested_at)return '';
  return `<form class="compact-inline-payment" data-payment="${esc(q.id)}" data-compact-inline-payment="1">
-  <label for="compact-inline-payment-${esc(q.id)}">실제 받은 누적 입금액</label>
-  <div class="compact-inline-payment-row">
-   <div class="compact-inline-payment-input"><input id="compact-inline-payment-${esc(q.id)}" type="number" name="paid" inputmode="numeric" min="0" max="1000000000" step="1" required value="${Number(q.amount_paid||0)}" aria-label="실제 받은 누적 입금액, 원"><span>원</span></div>
-   <input type="hidden" name="refunded" value="${Number(q.amount_refunded||0)}">
-   <button class="btn compact-inline-payment-save" type="submit">입금 저장</button>
-  </div>
-  <small>이번 주문에 실제 받은 총액만 입력 · 저장 후 남은 금액 자동 계산</small>
+  <div class="compact-inline-payment-heading">항목별 실제 입금 기록</div>
+  ${paymentSplitMarkup(q)}
+  <input type="hidden" name="refunded" value="${Number(q.amount_refunded||0)}">
+  <button class="btn compact-inline-payment-save" type="submit">항목별 입금 저장</button>
+  <small>각 항목에 실제 받은 누적 금액을 입력하세요. 합계·미입금액은 자동 계산돼요.</small>
  </form>`;
 }
 function renderRoundQuickOrder(q,index){
@@ -6918,6 +6934,58 @@ async function handleMergeShippingSubmit(f,data){
  notif('합배송 '+Number(result?.orders||ids.length+1)+'건 설정 완료');
  if(Number(result?.possible_refund||0)>0)
   window.alert('기존 택배비 중복 입금 여부를 확인해 주세요. 실제 환불 후 환불액을 기록해야 해요. (중복 가능 배송비 '+money(Number(result.possible_refund))+')');
+}
+
+
+/* Cumulative payments are categorized for admin bookkeeping, while
+   amount_paid remains the authoritative gross received total. */
+function paymentSplitAmounts(q){
+ const total=Math.max(0,Number(q.amount_paid||0));
+ const saved=[q.paid_goods_amount,q.paid_delivery_amount,q.paid_freight_amount];
+ const valid=saved.every(v=>v!==null&&v!==undefined&&Number.isSafeInteger(Number(v))&&Number(v)>=0)&&
+  saved.reduce((sum,v)=>sum+Number(v||0),0)===total;
+ if(valid)return {goods:Number(saved[0]),delivery:Number(saved[1]),freight:Number(saved[2]),legacy:false};
+ // Existing payments were historically recorded as one amount, never discard them.
+ // Allocation is a provisional visual estimate until the administrator saves categories.
+ let left=total;
+ const goods=Math.min(left,Math.max(0,previewOrderSum(q)));left-=goods;
+ const delivery=Math.min(left,Math.max(0,appliedShipping(q)));left-=delivery;
+ const freight=Math.min(left,Math.max(0,supplierShippingShare(q)));left-=freight;
+ return {goods:goods+left,delivery,freight,legacy:total>0};
+}
+function paymentSplitMarkup(q){
+ const v=paymentSplitAmounts(q);
+ const fields=[
+  ['goods','상품값',previewOrderSum(q),v.goods],
+  ['delivery','택배비',appliedShipping(q),v.delivery],
+  ['freight','도매배송비',supplierShippingShare(q),v.freight]
+ ];
+ return '<div class="payment-split-fields">'+fields.map(([key,title,due,paid])=>
+  '<label class="payment-split-field"><span class="payment-split-name">'+title+
+  '<small>결제금 '+money(Math.max(0,due))+'</small></span>'+
+  '<span class="payment-split-input"><input name="paid_'+key+'" type="number" inputmode="numeric" min="0" max="1000000000" step="1" value="'+paid+'" required aria-label="'+title+' 받은 금액 (원)"><i>원</i></span></label>'
+ ).join('')+'</div>'+
+ '<div class="payment-split-total"><span>받은 금액 합계</span><strong data-payment-live-total>'+money(Number(q.amount_paid||0))+'</strong></div>'+
+ (v.legacy?'<small class="payment-split-legacy">기존 총입금액을 임시로 나눈 값이에요. 항목별 실제 입금액을 확인한 뒤 저장해 주세요.</small>':'');
+}
+function paymentSplitFromForm(form){
+ const values={};
+ for(const [key,name] of [['goods','paid_goods'],['delivery','paid_delivery'],['freight','paid_freight']]){
+  const raw=String(form.elements[name]?.value??'').trim();
+  if(!/^[0-9]+$/.test(raw))throw Error('상품값·택배비·도매배송비 입금액을 각각 0원 이상 입력해 주세요.');
+  const amount=Number(raw);
+  if(!Number.isSafeInteger(amount)||amount>1000000000)throw Error('입금액은 항목별 최대 10억 원이에요.');
+  values[key]=amount;
+ }
+ values.paid=values.goods+values.delivery+values.freight;
+ if(!Number.isSafeInteger(values.paid)||values.paid>1000000000)throw Error('합계 입금액은 최대 10억 원이에요.');
+ return values;
+}
+function updatePaymentSplitTotal(form){
+ const el=form?.querySelector('[data-payment-live-total]');
+ if(!el)return;
+ try{el.textContent=money(paymentSplitFromForm(form).paid)}
+ catch(e){el.textContent='입금액 확인 필요'}
 }
 
 function orderPaymentParts(q){
@@ -8193,9 +8261,8 @@ if(m.type==='admin-payment-edit'){
   <span>현재 기록된 입금 <strong>${money(paid-refunded)}</strong></span>
  </div>
  <form id="admin-payment-popup-form" data-quote-id="${esc(q.id)}" data-total="${totalDue(q)}" class="admin-payment-popup-form">
-  <label>실제로 받은 누적 입금액 (원)
-   <input name="paid" type="number" inputmode="numeric" min="0" step="1" max="1000000000" value="${paid}" required>
-  </label>
+  <div class="payment-split-popup-title">항목별 누적 입금액</div>
+  ${paymentSplitMarkup(q)}
   <label>누적 환불액 (원)
    <input name="refunded" type="number" inputmode="numeric" min="0" step="1" max="1000000000" value="${refunded}" required>
   </label>
@@ -8610,16 +8677,19 @@ function clearCartReview(){
 }
 function updateAdminPaymentPopupPreview(form){
  if(!form)return;
- const total=Number(form.dataset.total),paid=Number(form.elements.paid?.value),refunded=Number(form.elements.refunded?.value);
- const valid=Number.isSafeInteger(paid)&&Number.isSafeInteger(refunded)&&paid>=0&&refunded>=0&&refunded<=paid;
+ const total=Number(form.dataset.total),refunded=Number(form.elements.refunded?.value);
  const output=form.querySelector('.admin-payment-popup-preview');
  if(!output)return;
- if(!valid){output.textContent='입금액과 환불액을 확인해 주세요.';return;}
- const remaining=Math.max(0,total-(paid-refunded));
- const waive=form.elements.waive_shortfall?.checked===true;
- output.textContent=waive
+ try{
+  const {paid}=paymentSplitFromForm(form);
+  updatePaymentSplitTotal(form);
+  if(!Number.isSafeInteger(refunded)||refunded<0||refunded>paid)throw Error('환불액을 확인해 주세요.');
+  const remaining=Math.max(0,total-(paid-refunded));
+  const waive=form.elements.waive_shortfall?.checked===true;
+  output.textContent=waive
    ?'실제 순입금 '+money(paid-refunded)+' · 차액 인정 '+money(remaining)+' · 추가 입금 0원'
    :'실제 순입금 '+money(paid-refunded)+' · 남은 금액 '+money(remaining);
+ }catch(e){output.textContent=e.message||'입금액과 환불액을 확인해 주세요.';}
 }
 function modalOpen(type,id=null){
  if(type==='approve'||type==='product')initAdminPhotoSequence(type,id);
@@ -9453,7 +9523,7 @@ function workflowNotice(q){
  pieces.push('주문 확인: '+trackLink(q.id,q.lookup_token));return pieces.join('\n\n');
 }
 
-async function adminPayment(id,paid,refunded){if(refunded>paid)throw Error('환불 완료액은 받은 금액보다 클 수 없어요');if(!connected){Object.assign(demo.quotes.find(x=>x.id===id),{amount_paid:paid,amount_refunded:refunded});saveDemo();return}await api('/rest/v1/gq_quotes?id=eq.'+id,{method:'PATCH',admin:true,body:{amount_paid:paid,amount_refunded:refunded}})}
+async function adminPayment(id,paid,refunded,split=null){if(refunded>paid)throw Error('환불 완료액은 받은 금액보다 클 수 없어요');const body={amount_paid:paid,amount_refunded:refunded};if(split){Object.assign(body,{paid_goods_amount:split.goods,paid_delivery_amount:split.delivery,paid_freight_amount:split.freight})}if(!connected){Object.assign(demo.quotes.find(x=>x.id===id),body);saveDemo();return}await api('/rest/v1/gq_quotes?id=eq.'+id,{method:'PATCH',admin:true,body})}
 const copy=async text=>{try{await navigator.clipboard.writeText(text)}catch{const a=document.createElement('textarea');a.value=text;document.body.append(a);a.select();document.execCommand('copy');a.remove()}notif('복사했어요')};
 const csv=()=>{const rows=[['견적번호','주문자','아기 이름(태명)','가게','상품명','컬러','사이즈','수량','단가','주문 배송비','도매 배송비 분담금','최종 결제금액','견적상태','주문진행','상품 입고/품절','송장정보','받은금액','환불완료','요청일']];for(const q of state.quotes)for(const i of q.items)rows.push([q.id,q.buyer_name,q.baby_name||'',i.store_name,i.product_name,i.color,i.size,i.quantity,i.unit_price??'',hasShipping(q)?q.shipping_fee:'',supplierShippingShare(q),readyQuote(q)?totalDue(q):'',statusLabel[q.status],q.status==='confirmed'?workflowLabel(q):'',itemStatusLabel(q,i),trackingInfo(q),q.amount_paid,q.amount_refunded,q.created_at]);const text='\ufeff'+rows.map(a=>a.map(x=>'"'+String(x??'').replace(/"/g,'""')+'"').join(',')).join('\r\n');const blob=new Blob([text],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='미니예나_견적및주문_'+new Date().toISOString().slice(0,10)+'.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
 const findTrack=id=>state.receipts.find(x=>x.id===id);
@@ -10623,9 +10693,10 @@ if(!f.dataset.lowerPriceReport&&!f.dataset.sizeChartForm&&!f.dataset.customerEma
   throw Error('관리자 입금 수정 창에서 다시 시도해 주세요.');
  const id=state.modal.id,q=state.quotes.find(x=>x.id===id);
  if(!q||!adminCanRecordPayment(q))throw Error('이 주문의 입금 수정이 현재 불가능해요.');
- const paidRaw=String(data.get('paid')??'').trim(),refundRaw=String(data.get('refunded')??'').trim();
- if(!/^[0-9]+$/.test(paidRaw)||!/^[0-9]+$/.test(refundRaw))throw Error('입금액과 환불액은 0원 이상 숫자로 입력해 주세요.');
- const paid=Number(paidRaw),refunded=Number(refundRaw);
+ const {paid,goods,delivery,freight}=paymentSplitFromForm(f);
+ const refundRaw=String(data.get('refunded')??'').trim();
+ if(!/^[0-9]+$/.test(refundRaw))throw Error('환불액은 0원 이상 숫자로 입력해 주세요.');
+ const refunded=Number(refundRaw);
  if(!Number.isSafeInteger(paid)||!Number.isSafeInteger(refunded)||paid>1000000000||refunded>paid)
   throw Error('실제로 받은 누적 입금액과 환불액을 확인해 주세요.');
  const net=paid-refunded,total=totalDue(q),waive=data.has('waive_shortfall');
@@ -10635,11 +10706,12 @@ if(!f.dataset.lowerPriceReport&&!f.dataset.sizeChartForm&&!f.dataset.customerEma
  if(q.status==='quoted'&&net>=total&&!waive&&
   !window.confirm('결제금액 전체를 받은 것으로 기록하면 최종 주문이 자동 확정될 수 있어요. 실제 입금을 확인했나요?'))return;
  if(waive&&!window.confirm('실제 누적 입금 '+money(paid)+' · 환불 '+money(refunded)+' · 이번 주문 차액 인정 '+money(waiver)+'\\n\\n받지 않은 차액을 실제 입금액에 추가하지 않고 정산 완료할까요?'))return;
- const paymentChanged=paid!==Number(q.amount_paid||0)||refunded!==Number(q.amount_refunded||0);
+ const paymentChanged=paid!==Number(q.amount_paid||0)||refunded!==Number(q.amount_refunded||0)||
+  goods!==Number(q.paid_goods_amount??-1)||delivery!==Number(q.paid_delivery_amount??-1)||freight!==Number(q.paid_freight_amount??-1);
  const waiverChanged=waiver!==paymentWaiver(q);
  if(paymentChanged||waiverChanged){
   await api('/rest/v1/gq_quotes?id=eq.'+encodeURIComponent(id),{method:'PATCH',admin:true,body:{
-   amount_paid:paid,amount_refunded:refunded,payment_waived_amount:waiver,
+   amount_paid:paid,amount_refunded:refunded,paid_goods_amount:goods,paid_delivery_amount:delivery,paid_freight_amount:freight,payment_waived_amount:waiver,
    payment_waived_at:waive?(waiverChanged||!q.payment_waived_at?new Date().toISOString():q.payment_waived_at):null,
    payment_waived_by:waive?(session?.user?.id||null):null}});
  }
@@ -10922,7 +10994,8 @@ else if(f.dataset.payment){
  const quoteId=f.dataset.payment;
  const q=state.quotes.find(x=>x.id===quoteId);
  if(!q||!state.admin||state.page!=='admin'||!adminCanRecordPayment(q))throw Error('관리자에서 구매 진행 중인 주문의 입금액을 수정해 주세요.');
- const paid=Number(data.get('paid')),refunded=Number(data.get('refunded'));
+ const split=paymentSplitFromForm(f);
+ const paid=split.paid,refunded=Number(data.get('refunded'));
  if(!Number.isSafeInteger(paid)||!Number.isSafeInteger(refunded)||paid<0||refunded<0||paid>1000000000||refunded>paid)
   throw Error('누적 입금액과 환불액을 확인해 주세요.');
  const previouslyReceived=Number(q.amount_paid||0)-Number(q.amount_refunded||0);
@@ -10935,7 +11008,7 @@ else if(f.dataset.payment){
  }
  state.orderCardsOpen[q.bundle_parent_id||q.id]=true;
  const priorY=window.scrollY;
- await adminPayment(quoteId,paid,refunded);
+ await adminPayment(quoteId,paid,refunded,split);
  await loadAdmin();
  const updated=state.quotes.find(x=>x.id===quoteId);
  if(q.status==='quoted'&&updated?.status==='confirmed'&&state.tab==='quotes'&&state.filter==='final_confirmation'){
@@ -11075,6 +11148,9 @@ function updateShopSearchResults(){
  if(count&&nextCount)count.textContent=nextCount.textContent;
 }
 function input(e){
+ if(e.target.closest?.('form[data-payment]')){
+  updatePaymentSplitTotal(e.target.closest('form'));return;
+ }
  if(e.target.closest?.('#admin-payment-popup-form')){
   updateAdminPaymentPopupPreview(e.target.closest('form'));return;
  }

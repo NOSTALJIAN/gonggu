@@ -3298,6 +3298,11 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 .order-payment-received{border-top:1px solid #e4e4e5;margin-top:6px;padding-top:7px;color:#777;font-size:11px}
 .order-payment-quick{width:100%;min-height:40px!important;font-size:12px!important}
 .compact-order-payment-status{font-size:12px;color:#356d52;padding:7px 0;line-height:1.5}
+
+/* Show individual payment balances to buyers, without treating courier fees as unpaid merchandise. */
+.confirmed-payment-parts{display:flex;flex-direction:column;gap:7px;margin:10px 0}
+.confirmed-payment-parts>div{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:12px;color:#555}
+.confirmed-payment-parts strong{white-space:nowrap;font-size:12px;color:#333}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -4946,14 +4951,18 @@ function confirmedPaymentWidget(q){
  if(!q||q.status!=='confirmed')return '';
  const due=readyQuote(q)?balanceDue(q):null;
  const paid=due===0;
+ const p=orderPaymentParts(q);
  return `<section class="confirmed-payment-card" aria-label="입금 계좌 안내">
  <div class="confirmed-payment-head"><strong>최종 주문 확정 · 입금 안내</strong></div>
  <div class="confirmed-payment-label">입금 계좌</div>
  <div class="confirmed-payment-bank">${MINI_PAYMENT_BANK} <b>${MINI_PAYMENT_DISPLAY}</b></div>
  <div class="confirmed-payment-holder">예금주 <b>${MINI_PAYMENT_HOLDER}</b></div>
  <div class="confirmed-payment-buttons"><button class="btn sm secondary" type="button" data-action="copy-payment-account">계좌번호 복사</button><button class="btn sm outline" type="button" data-action="copy-payment-details">입금 정보 복사</button></div>
- ${due===null?'':`<div class="confirmed-payment-total"><span>${paid?'추가 입금할 금액':'현재 남은 입금액'}</span><strong>${money(due)}</strong></div>`}
- <p class="confirmed-payment-note">${paid?'이미 입금 처리된 금액 기준으로 추가 송금이 필요하지 않아요. 중복 송금하지 마세요.':q.cancel_requested_at?'취소 요청이 접수되어 있어요. 입금 전에 관리자에게 확인해 주세요.':'입금 확인은 관리자가 처리해요. 송금 후 주문조회에서 입금 확인 상태를 확인해 주세요.'}</p>
+ ${due===null?'':`<div class="confirmed-payment-parts">
+  <div><span>상품대금${supplierShippingShare(q)?' · 도매 배송비 포함':''}</span><strong>${p.goodsMissing?'남은 '+money(p.goodsMissing):'입금 완료'}</strong></div>
+  ${p.shipping>0?`<div><span>택배비 · 별도 정산</span><strong>${p.shippingMissing?'남은 '+money(p.shippingMissing):'입금 완료'}</strong></div>`:''}
+ </div><div class="confirmed-payment-total"><span>${paid?'추가 입금할 금액':!p.goodsMissing&&p.shippingMissing?'택배비 잔액 (별도)':'현재 남은 입금액'}</span><strong>${money(due)}</strong></div>`}
+ <p class="confirmed-payment-note">${paid?'입금이 모두 확인됐어요. 중복 송금하지 마세요.':q.cancel_requested_at?'취소 요청이 접수되어 있어요. 입금 전에 관리자에게 확인해 주세요.':due!==null&&!p.goodsMissing&&p.shippingMissing?'상품대금 입금 완료! 택배비는 별도로 정산해요. 합배송 시 택배비가 조정될 수 있어요.':'입금 확인은 관리자가 처리해요. 송금 후 주문조회에서 입금 확인 상태를 확인해 주세요.'}</p>
  ${q.amount_changed_at?'<p class="confirmed-payment-note">주문 금액이 변경된 적이 있어요. 입금 전 최신 금액을 확인해 주세요.</p>':''}
  </section>`;
 }
@@ -4961,12 +4970,14 @@ function confirmedPaymentNotice(q){
  if(!q||q.status!=='confirmed')throw Error('최종 주문이 확정된 건만 입금 안내할 수 있어요.');
  if(!q.lookup_token)throw Error('주문조회 링크를 확인할 수 없어요.');
  const due=readyQuote(q)?balanceDue(q):null;
+ const p=orderPaymentParts(q);
  return `[미니예나] 최종 주문 확정 · 입금 안내
 
 ${q.buyer_name||'고객'}님, 최종 주문이 확정됐어요.
 
 주문금액: ${readyQuote(q)?money(totalDue(q)):'주문조회에서 확인'}
-현재 남은 입금액: ${due===null?'주문조회에서 확인':money(due)}
+상품대금 남은 금액: ${readyQuote(q)?money(p.goodsMissing):'확인 중'}
+${p.shipping>0?'택배비 (별도 정산): '+money(p.shipping)+' · 미입금 '+money(p.shippingMissing)+'\n':''}현재 남은 입금액: ${due===null?'주문조회에서 확인':money(due)}
 
 ${miniPaymentLabel()}
 

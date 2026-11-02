@@ -10174,7 +10174,7 @@ if(a==='payment-full-oneclick'){
  if(!window.confirm('실제 입금 확인\\n상품 '+money(goods)+' · 택배 '+money(delivery)+' · 도매배송 '+money(freight)+'\\n총 '+money(goods+delivery+freight)+'을 실제로 모두 받았나요?'))return;
  for(const [key,value] of [['paid_goods',goods],['paid_delivery',delivery],['paid_freight',freight]])f.elements[key].value=String(value);
  updatePaymentSplitTotal(f);
- f.requestSubmit();
+ f.dataset.fullPaymentConfirmed='1';\n f.requestSubmit();
  return;
 }
 if(a==='accept-payment-shortfall'||a==='revoke-payment-shortfall'){
@@ -11630,7 +11630,7 @@ else if(f.dataset.payment){
   throw Error('누적 입금액과 환불액을 확인해 주세요.');
  const previouslyReceived=Number(q.amount_paid||0)-Number(q.amount_refunded||0);
  const nextReceived=paid-refunded;
- if(q.status==='quoted'&&nextReceived>=totalDue(q)&&previouslyReceived<totalDue(q)&&
+ if(!f.dataset.fullPaymentConfirmed&&q.status==='quoted'&&nextReceived>=totalDue(q)&&previouslyReceived<totalDue(q)&&
   !window.confirm('기록할 순입금액 '+money(nextReceived)+'이 결제금액 '+money(totalDue(q))+' 이상이에요.\n\n이 주문은 입금 확인 시 자동으로 최종 주문확정될 수 있어요. 실제 입금내역을 확인했나요?'))return;
  if(!f.hasAttribute('data-compact-inline-payment')){
   adminFoldState.set('compact-payment-'+quoteId,true);

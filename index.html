@@ -7731,7 +7731,7 @@ function renderAdminQuotes(){
   bundledQuoteGroups(qq,['all_history','finished'].includes(filter)):sameRoundGroups(qq);
  const waiting=groups.filter(g=>g.some(q=>q.status==='requested'||quoteNeedsPriceInput(q)));
  const priced=groups.filter(g=>!waiting.includes(g));
- const tabs=[['pricing','견적',nPrice],['waiting_buyer','구매 선택',nWaiting],['final_confirmation','최종확정 대기',nFinalWaiting],['wholesale_completed','입고·배송',nDelivery],['all_history','전체',all.length]];
+ const tabs=[['pricing','견적',nPrice],['waiting_buyer','구매 선택',nWaiting],['final_confirmation','확정 대기',nFinalWaiting],['wholesale_completed','입고·배송',nDelivery],['all_history','전체',all.length]];
  const extras=[['all','견적·선택',nPre],['buy_now','구매 진행',count(q=>isRoundBuyer(q)&&!isFinishedOrder(q))],['preparing_orders','발주 준비',count(q=>q.status==='confirmed'&&!isWholesaleCompleted(q)&&!isFinishedOrder(q))],['finished','완료',nFinished],['other','보류·다음 회차',nOther],['cancel_requested','취소 요청',nCancel],['requested','견적 요청',count(q=>q.status==='requested')],['quoted','견적 안내',count(q=>q.status==='quoted')],['confirmed','주문 확정',count(q=>q.status==='confirmed')]];
  const detailKeys=['flow_new','flow_preparing','flow_pickup_ready','flow_shipped','flow_completed','flow_soldout_closed','cancelled'];
  const extraActive=!tabs.some(([key])=>key===filter);

@@ -3317,6 +3317,15 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 .admin-payment-popup-waive small{font-size:11px;color:#777;font-weight:500}
 .admin-payment-popup-preview{border-radius:9px;background:#f5f5f5;color:#333;padding:12px;font-size:12px;font-weight:680;line-height:1.6}
 .admin-payment-popup-form>.btn{min-height:47px;border-radius:8px;font-size:13px}
+.supplier-freight-payment-request,.buyer-supplier-freight-request{border:1px solid #dedede;border-radius:11px;padding:12px;margin:13px 0;background:#fafafa;color:#272727;display:flex;flex-direction:column;gap:8px}
+.supplier-freight-payment-title{display:flex;flex-direction:column;gap:4px}
+.supplier-freight-payment-title b,.buyer-supplier-freight-request>b{font-size:13px;font-weight:820}
+.supplier-freight-payment-title small,.supplier-freight-payment-request small,.buyer-supplier-freight-request .smallnote{color:#777;font-size:11px;line-height:1.6}
+.supplier-freight-payment-request p,.buyer-supplier-freight-request p{margin:0;font-size:12px;line-height:1.6}
+.supplier-freight-payment-request .btn{white-space:normal}
+.buyer-supplier-freight-request{background:#fff;border-color:#d6d6d6}
+.buyer-supplier-freight-request .row strong{font-size:19px;color:#171717}
+.buyer-supplier-freight-request .btn{align-self:flex-start}
 
 /* Show individual payment balances to buyers, without treating courier fees as unpaid merchandise. */
 .confirmed-payment-parts{display:flex;flex-direction:column;gap:7px;margin:10px 0}
@@ -5312,6 +5321,7 @@ function renderTrack(){
   </div>
   ${deliverySection}
   ${buyerSupplierPartialMarkup()}
+  ${renderBuyerSupplierFreightRequest(q)}
   ${q.status==='quoted'?buyerRoundIntent(q):q.status==='requested'?'<p class="buyer-hint">상품 가격 확인 중</p>':''}
   ${confirmedPaymentWidget(q)}
   ${buyerWholesaleStatus(q)}
@@ -6829,6 +6839,48 @@ function orderOutstanding(q){
  if(!adminCanRecordPayment(q))return null;
  return balanceDue(q);
 }
+function supplierFreightOnlyDue(q){
+ if(!q||q.status!=='confirmed'||!readyQuote(q)||paymentWaiver(q)>0||supplierShippingShare(q)<=0)return 0;
+ const net=Number(q.amount_paid||0)-Number(q.amount_refunded||0);
+ const base=previewOrderSum(q)+appliedShipping(q);
+ if(net<base)return 0;
+ return Math.max(0,Math.min(supplierShippingShare(q),totalDue(q)-net));
+}
+function activeSupplierFreightRequest(q){
+ const due=supplierFreightOnlyDue(q),requested=Number(q?.supplier_freight_request_amount||0);
+ return q?.supplier_freight_requested_at&&due>0&&requested>=due?due:0;
+}
+function supplierFreightPaymentNotice(q){
+ const due=activeSupplierFreightRequest(q);
+ if(!due||!q.lookup_token)throw Error('유효한 배송비 분담금 입금 요청이 없어요. 새로고침 후 확인해 주세요.');
+ return '[미니예나] 도매 배송비 분담금 입금 안내\n\n'+q.buyer_name+'님, 기존 상품대금과 별도로 남은 도매 배송비 분담금만 안내드려요.\n\n'+
+  '이번에 추가로 입금할 금액: '+money(due)+'\n누적 실제 입금액: '+money(Number(q.amount_paid||0)-Number(q.amount_refunded||0))+
+  '\n'+miniPaymentLabel()+'\n\n상품대금과 고객 수령 택배비를 다시 청구하는 것이 아니에요. 이미 송금했다면 중복으로 보내지 마시고 관리자에게 알려 주세요.\n\n주문조회: '+trackLink(q.id,q.lookup_token);
+}
+function renderSupplierFreightRequestControl(q){
+ if(!state.admin||!q||q.status!=='confirmed'||supplierShippingShare(q)<=0)return '';
+ const due=supplierFreightOnlyDue(q),requested=Number(q.supplier_freight_request_amount||0);
+ const active=activeSupplierFreightRequest(q)>0;
+ const heading='<div class="supplier-freight-payment-title"><b>도매 배송비 분담금 입금 요청</b><small>상품값·고객 택배비와 별도 · 주문별 분담금</small></div>';
+ const buttons=due>0?
+  (active?'<strong>요청 중 · 현재 남은 '+money(due)+'</strong><div class="row wrap"><button type="button" class="btn sm secondary" data-action="supplier-freight-copy" data-id="'+esc(q.id)+'">입금 안내 복사</button><button type="button" class="btn sm neutral" data-action="supplier-freight-cancel" data-id="'+esc(q.id)+'">요청 취소</button></div>'
+  :'<p>추가 입금 필요 '+money(due)+' · 실제 입금액은 변경되지 않아요.</p><button type="button" class="btn sm secondary" data-action="supplier-freight-request" data-id="'+esc(q.id)+'">분담금 '+money(due)+' 입금 요청</button>')
+  :requested>0?'<small>현재 추가 요청할 도매 배송비가 없어요. (완납·면제 또는 금액 변경)</small><button type="button" class="btn sm neutral" data-action="supplier-freight-cancel" data-id="'+esc(q.id)+'">기존 요청 삭제</button>'
+  :'<small>상품대금과 고객 수령 택배비를 받은 뒤, 도매 배송비만 남으면 요청할 수 있어요.</small>';
+ return '<div class="supplier-freight-payment-request">'+heading+buttons+'</div>';
+}
+function renderBuyerSupplierFreightRequest(q){
+ const due=activeSupplierFreightRequest(q);
+ if(!due)return '';
+ return `<section class="buyer-supplier-freight-request" aria-label="도매 배송비 입금 요청">
+ <b>도매 배송비 분담금 추가 입금 요청</b>
+ <p>상품대금·고객 수령 택배비 중복 청구가 아닌, 아직 남은 도매 배송비만 안내드려요.</p>
+ <div class="row between"><span>추가 입금할 금액</span><strong>${money(due)}</strong></div>
+ <div class="smallnote">입금 계좌 · ${esc(miniPaymentLabel())}</div>
+ <button type="button" class="btn sm secondary" data-action="copy-payment-account">계좌번호 복사</button>
+ <p class="smallnote">이미 송금했다면 중복으로 보내지 마시고 판매자에게 알려 주세요. 입금 확인은 관리자가 처리해요.</p>
+ </section>`;
+}
 function renderPaymentWaiverControl(q){
  if(!state.admin||!adminCanRecordPayment(q))return '';
  const waived=paymentWaiver(q),missing=balanceDue(q),received=Math.max(0,Number(q.amount_paid||0)-Number(q.amount_refunded||0));
@@ -6849,6 +6901,7 @@ function renderOrderDepositControl(q){
   ${p.goodsMissing>0?`<button class="btn sm order-payment-quick" data-action="mark-order-payment-part" data-part="goods" data-id="${esc(q.id)}">상품대금 ${money(p.goodsMissing)} 입금 확인</button>`:''}
   ${!p.goodsMissing&&p.shippingMissing>0?`<button class="btn sm secondary order-payment-quick" data-action="mark-order-payment-part" data-part="shipping" data-id="${esc(q.id)}">택배비 ${money(p.shippingMissing)} 입금 확인</button>`:''}
   <details class="related-deposit-edit" data-fold-key="direct-payment-${esc(q.id)}"><summary>금액 직접 수정 · 부분입금/환불</summary><form data-payment="${esc(q.id)}"><label>누적 입금액<input name="paid" type="number" min="0" step="1" inputmode="numeric" required value="${Number(q.amount_paid||0)}"></label><label>누적 환불액<input name="refunded" type="number" min="0" step="1" inputmode="numeric" required value="${Number(q.amount_refunded||0)}"></label><button class="btn sm secondary" type="submit">이 주문에 저장</button></form></details>
+  ${renderSupplierFreightRequestControl(q)}
   ${renderPaymentWaiverControl(q)}
  </div>`;
 }
@@ -8078,7 +8131,8 @@ if(m.type==='admin-payment-edit'){
   <div class="admin-payment-popup-preview" aria-live="polite"></div>
   <button type="submit" class="btn block">입금 기록 저장</button>
   <button type="button" class="btn block secondary" data-action="close">취소</button>
- </form>`);
+ </form>
+ ${renderSupplierFreightRequestControl(q)}`);
 }
 if(m.type==='buyer-order-details'){
  if(!state.admin||state.page!=='admin')return '';

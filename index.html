@@ -3802,6 +3802,23 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 .round-shipping-consolidation .round-shipping-consolidation-refund{color:#784b31}
 .round-shipping-consolidation-button{display:flex;align-items:center;justify-content:center;min-height:39px;width:100%;border:0;border-radius:8px;background:#272727;color:#fff;font-size:12px;font-weight:800;padding:9px 12px}
 
+
+/* Bundle refund confirmation: only record money actually transferred outside MINIYENA. */
+.bundle-refund-alert{display:flex;flex-direction:column;align-items:stretch;gap:9px}
+.bundle-refund-action{width:100%;min-height:42px;border-radius:8px;font-size:13px;font-weight:800;color:#5e2d23;background:#fff;border:1px solid #d7a99c}
+.bundle-refund-review{display:flex;flex-direction:column;gap:12px}
+.bundle-refund-overview{padding:14px;border:1px solid #ece4e0;border-radius:10px;background:#faf8f7}
+.bundle-refund-overview>span{display:block;font-size:12px;color:#666;margin-bottom:5px}
+.bundle-refund-overview>strong{display:block;font-size:23px;font-weight:850;color:#a1442d}
+.bundle-refund-overview>small{display:block;color:#666;font-size:11px;margin-top:6px;line-height:1.6}
+.bundle-refund-list{display:flex;flex-direction:column;gap:8px;font-size:12px}
+.bundle-refund-list>div{display:flex;justify-content:space-between;gap:10px;border-bottom:1px solid #eee;padding:8px 1px}
+.bundle-refund-confirm{display:flex;align-items:flex-start;gap:10px;padding:12px;border:1px solid #dedede;border-radius:9px;background:#fafafa;font-size:12px;line-height:1.6}
+.bundle-refund-confirm input{width:20px;height:20px;min-height:20px;flex:0 0 20px;margin-top:1px;accent-color:#222}
+.bundle-refund-confirm small{display:block;color:#666;font-size:11px;margin-top:4px}
+.bundle-refund-review form{display:flex;flex-direction:column;gap:10px}
+.bundle-refund-review form>.btn{min-height:44px}
+
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -6838,7 +6855,7 @@ function renderBundleCard(group){
  ${adminPriceTotalMarkup(group,true)}
  <div class="sumline"><span>총 상품금액</span><strong>${group.some(unknown)?'일부 가격 미정':money(group.reduce((n,q)=>n+previewOrderSum(q),0))}</strong></div><div class="sumline"><span>고객 배송비 합계 (한 번)</span><strong>${money(group.reduce((n,q)=>n+appliedShipping(q),0))}</strong></div><div class="sumline"><span>도매 배송비 분담금 합계</span><strong>${money(group.reduce((n,q)=>n+supplierShippingShare(q),0))}</strong></div><div class="sumline total"><span>묶음 결제금액</span><strong>${costKnown?money(due):'견적 작성 중'}</strong></div>
  <div class="smallnote">입금 합계 ${money(paid)} · 환불 완료 ${money(refunded)} · 잔여 결제액 ${money(group.reduce((n,q)=>n+balanceDue(q),0))}${group.some(q=>paymentWaiver(q)>0)?' · 관리자 차액 인정 '+money(group.reduce((n,q)=>n+paymentWaiver(q),0)):''}</div>
- ${refundCheck?`<div class="noticefail">주문별로 추가 확인할 환불액 합계 ${money(refundCheck)}. 실제 환불 후 주문별 정산에 기록해 주세요.</div>`:''}
+ ${refundCheck?`<div class="noticefail bundle-refund-alert"><div>환불 필요 금액 <b>${money(refundCheck)}</b> · 실제 송금 후 환불 완료를 기록해 주세요.</div>${costKnown?`<button type="button" class="btn sm secondary bundle-refund-action" data-action="bundle-refund-open" data-id="${esc(root.id)}">환불 완료 확인</button>`:''}</div>`:''}
  ${bundleWorkControls(group)}
  <details class="bundle-children"><summary>주문별 입금·가격 관리 <span class="bundle-expand-note">(${group.length}건 · 필요할 때만 펼치기)</span></summary><div class="bundle-children-inner">${group.map((q,idx)=>renderBundleLedger(q,idx,root)).join('')}</div></details>
  </div>`;
@@ -8718,6 +8735,23 @@ if(m.type==='admin-price-edit'){
   <button class="btn block admin-price-popup-save" type="submit">입력한 가격 한 번에 저장</button>
   <button type="button" class="btn block secondary" data-action="close">닫기</button>
  </form>`);
+}
+if(m.type==='admin-bundle-refund'){
+ if(!state.admin||state.page!=='admin')return '';
+ const root=state.quotes.find(q=>q.id===m.id&&q.bundle_parent_id===null&&q.status!=='cancelled');
+ const group=root?state.quotes.filter(q=>q.status!=='cancelled'&&bundleRootId(q)===root.id):[];
+ const pending=group.filter(q=>readyQuote(q)&&refundDue(q)>0).sort((a,b)=>String(a.created_at).localeCompare(String(b.created_at)));
+ const total=pending.reduce((sum,q)=>sum+refundDue(q),0);
+ if(!root||!pending.length||group.some(q=>!readyQuote(q)))return wrap('환불 완료 확인','<div class="smallnote">현재 환불 필요 금액이 없거나 결제금액을 다시 확인해야 해요. 주문 목록을 새로고침해 주세요.</div>');
+ return wrap('환불 완료 확인',`<div class="bundle-refund-review">
+  <div class="bundle-refund-overview"><span>${esc(root.buyer_name)} · ${group.length}건 합배송</span><strong>${money(total)}</strong><small>아래 주문의 초과 입금액을 실제로 돌려드렸을 때만 완료 처리하세요.</small></div>
+  <div class="bundle-refund-list">${pending.map(q=>`<div><span>${fmtDate(q.created_at)} 주문</span><b>${money(refundDue(q))}</b></div>`).join('')}</div>
+  <form id="admin-bundle-refund-form" data-root-id="${esc(root.id)}" data-refund-total="${total}">
+   <label class="bundle-refund-confirm"><input type="checkbox" name="transferred" required><span><b>위 금액을 실제로 환불했습니다.</b><small>이 버튼은 은행 송금을 실행하지 않고, 미니예나에 환불 완료 기록만 남겨요.</small></span></label>
+   <button type="submit" class="btn block">환불 완료 ${money(total)} 기록</button>
+   <button type="button" class="btn block secondary" data-action="close">취소</button>
+  </form>
+ </div>`);
 }
 if(m.type==='admin-payment-edit'){
  if(!state.admin||state.page!=='admin')return '';
@@ -11027,6 +11061,13 @@ if(a==='edit-delivery'){
   await loadAdmin();
   if(state.modal?.type==='admin-delivery-queue'&&!state.quotes.some(q=>q.delivery_change_requested_at)){state.modal=null;render();}
   notif(approve?'수령방식 변경을 승인했어요':'변경 요청을 반려했어요');
+}else if(a==='bundle-refund-open'){
+ if(!connected||!state.admin||state.page!=='admin')throw Error('관리자 로그인 후 환불을 기록할 수 있어요.');
+ const root=state.quotes.find(q=>q.id===id&&q.bundle_parent_id===null);
+ const group=root?state.quotes.filter(q=>q.status!=='cancelled'&&bundleRootId(q)===id):[];
+ if(!root||group.length<2||!group.every(readyQuote)||!group.some(q=>refundDue(q)>0))
+  throw Error('환불이 필요한 합배송 주문을 다시 확인해 주세요.');
+ modalOpen('admin-bundle-refund',id);
 }else if(a==='merge-shipping'){
  if(!state.admin||state.page!=='admin')throw Error('관리자에서만 합배송할 수 있어요.');
  const quote=state.quotes.find(q=>q.id===id);
@@ -11154,7 +11195,41 @@ async function submit(e){const f=e.target;
 // All in-app forms are handled by JavaScript. Never allow a native browser GET
 // to replace ?page=admin and appear to sign the administrator out.
 e.preventDefault();
-if(!f.dataset.lowerPriceReport&&!f.dataset.sizeChartForm&&!f.dataset.customerEmail&&!['new-arrival-push-form','gmail-settings-form','hero-photo-form','reject-request-form','admin-pin-form','pin-register-form','pin-lookup-form','import-track-form','pick','request','store-form','product-form','login','suggest-form','approve-form','bundle-form','merge-shipping-form','edit-delivery-form','bulk-supplier-shipping-form','admin-payment-popup-form','admin-price-popup-form','admin-option-decision-form'].includes(f.id)&&!f.dataset.itemOptions&&!f.dataset.buyerOptionRequest&&!f.dataset.price&&!f.dataset.payment&&!f.dataset.shipping&&!f.dataset.supplierShipping&&!f.dataset.ship&&!f.dataset.bundleShip)return;if(busy)return;busy=true;const data=new FormData(f);try{if(f.id==='admin-option-decision-form'){
+if(!f.dataset.lowerPriceReport&&!f.dataset.sizeChartForm&&!f.dataset.customerEmail&&!['new-arrival-push-form','gmail-settings-form','hero-photo-form','reject-request-form','admin-pin-form','pin-register-form','pin-lookup-form','import-track-form','pick','request','store-form','product-form','login','suggest-form','approve-form','bundle-form','merge-shipping-form','edit-delivery-form','bulk-supplier-shipping-form','admin-payment-popup-form','admin-bundle-refund-form','admin-price-popup-form','admin-option-decision-form'].includes(f.id)&&!f.dataset.itemOptions&&!f.dataset.buyerOptionRequest&&!f.dataset.price&&!f.dataset.payment&&!f.dataset.shipping&&!f.dataset.supplierShipping&&!f.dataset.ship&&!f.dataset.bundleShip)return;if(busy)return;busy=true;const data=new FormData(f);try{if(f.id==='admin-bundle-refund-form'){
+ if(!connected||!state.admin||state.page!=='admin'||state.modal?.type!=='admin-bundle-refund'||
+    state.modal.id!==f.dataset.rootId)throw Error('관리자 환불 확인 창에서 다시 시도해 주세요.');
+ if(!data.has('transferred'))throw Error('실제 환불을 완료한 경우에만 체크해 주세요.');
+ const rootId=state.modal.id,expected=Number(f.dataset.refundTotal);
+ if(!Number.isSafeInteger(expected)||expected<=0)throw Error('환불 확인 금액을 다시 확인해 주세요.');
+ // Refresh before writing. Never turn an outdated or double-tapped screen into a second refund record.
+ await loadAdmin();
+ const root=state.quotes.find(q=>q.id===rootId&&q.bundle_parent_id===null&&q.status!=='cancelled');
+ const group=root?state.quotes.filter(q=>q.status!=='cancelled'&&bundleRootId(q)===rootId):[];
+ const pending=group.filter(q=>readyQuote(q)&&refundDue(q)>0);
+ const current=pending.reduce((sum,q)=>sum+refundDue(q),0);
+ if(!root||group.length<2||!group.every(readyQuote)||current!==expected)
+  throw Error('주문 금액 또는 환불 내역이 변경됐어요. 현재 금액을 다시 확인한 후 처리해 주세요.');
+ let completed=0;
+ try{
+  for(const q of pending){
+   const old=Number(q.amount_refunded||0),received=Number(q.amount_paid||0),refund=refundDue(q);
+   const rows=await api('/rest/v1/gq_quotes?id=eq.'+encodeURIComponent(q.id)+
+    '&amount_paid=eq.'+received+'&amount_refunded=eq.'+old+
+    '&status=eq.'+encodeURIComponent(q.status)+
+    '&bundle_parent_id='+ (q.bundle_parent_id?'eq.'+encodeURIComponent(rootId):'is.null'),
+    {method:'PATCH',admin:true,body:{amount_refunded:old+refund}});
+   if(!Array.isArray(rows)||rows.length!==1)throw Error('다른 화면에서 입금·환불 기록이 수정됐어요.');
+   completed+=refund;
+  }
+ }catch(err){
+  await loadAdmin();
+  throw Error((completed?'일부 주문만 기록됐어요 ('+money(completed)+'). ':'')+
+    '남은 환불 내역을 확인해 주세요. '+errorText(err));
+ }
+ state.modal=null;
+ await loadAdmin();
+ notif('환불 완료 '+money(completed)+' 기록했어요. 실제 송금액과 비교해 주세요.');
+}else if(f.id==='admin-option-decision-form'){
  if(!state.admin||state.page!=='admin'||state.modal?.type!=='admin-option-requests')
   throw Error('관리자 옵션 변경 요청 팝업에서 다시 시도해 주세요.');
  const requestId=String(data.get('request_id')||''),decision=String(e.submitter?.value||'');

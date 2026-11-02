@@ -6647,8 +6647,10 @@ function renderOtherBuyerDeposits(group){
   .sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at)));
  if(!others.length)return '';
  const outstanding=others.reduce((n,q)=>n+(orderOutstanding(q)||0),0);
+ const goodsOutstanding=others.reduce((n,q)=>n+(readyQuote(q)?orderPaymentParts(q).goodsMissing:0),0);
+ const shippingOutstanding=others.reduce((n,q)=>n+(readyQuote(q)?orderPaymentParts(q).shippingMissing:0),0);
  return `<details class="related-deposit-orders" ${outstanding?'open':''}>
-  <summary>같은 구매자의 별도 주문 ${others.length}건 ${outstanding?'· 미입금 '+money(outstanding):''}</summary>
+  <summary>같은 구매자의 별도 주문 ${others.length}건${goodsOutstanding?' · 상품대금 미입금 '+money(goodsOutstanding):''}${shippingOutstanding?' · 택배비 별도 '+money(shippingOutstanding):''}</summary>
   ${others.map(q=>`<section class="related-deposit-order" data-related-order-id="${esc(q.id)}">
    <div class="related-deposit-order-head"><b>별도 주문 · ${fmtDate(q.created_at)}</b><strong>${readyQuote(q)?money(totalDue(q)):'금액 확인 중'}</strong></div>
    <div class="related-deposit-order-meta">${esc(deliveryLabel(q))} · ${esc(statusLabel[q.status]||q.status)} · 상품 ${(q.items||[]).length}종</div>

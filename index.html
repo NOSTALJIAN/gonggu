@@ -1211,8 +1211,8 @@ body:has(.overlay) .floating-actions{opacity:0;visibility:hidden;pointer-events:
 .product-estimate-detail strong{display:block;font-size:23px;color:#413126}
 .product-estimate-note{margin-top:7px;line-height:1.55;font-size:11px;color:#776d61}
 
-/* Instant storefront option picker: quiet, price-only display. */
-.product-estimate-detail.product-estimate-instant{
+/* Both storefronts: clean price-only display in product detail. */
+.product-estimate-detail{
  margin:8px 0 18px;
  padding:12px 2px 16px;
  background:transparent;
@@ -1220,12 +1220,12 @@ body:has(.overlay) .floating-actions{opacity:0;visibility:hidden;pointer-events:
  border-bottom:1px solid #e7e7e7;
  border-radius:0;
 }
-.product-estimate-detail.product-estimate-instant .product-estimate-label{
+.product-estimate-detail .product-estimate-label{
  color:#777;
  font-size:12px;
  margin-bottom:5px;
 }
-.product-estimate-detail.product-estimate-instant strong{
+.product-estimate-detail strong{
  color:#111;
  font-size:26px;
  font-weight:850;
@@ -5343,7 +5343,6 @@ function estimatedProductPrice(p,detail=false){
  if(!hasProductEstimate(p))return detail?'<div class="estimate-unavailable">가격 확인이 필요한 상품이에요.</div>':'';
  return `<div class="product-estimate ${detail?'product-estimate-detail':'product-estimate-card'} ${detail&&instantStorefront?'product-estimate-instant':''}">
   <span class="product-estimate-label">${instantStorefront?'판매가':'예상가'}</span><strong>${instantStorefront?'':'약 '}${money(storeEstimate(p))}</strong>
-  ${detail&&!instantStorefront?'<div class="product-estimate-note">참고용 예상 금액이에요. 실제 상품 가격과 배송비는 견적 확인 후 확정됩니다.</div>':''}
  </div>`;
 }
 /* Product-specific public note, separate from the Namdaemun store's shared size chart. */

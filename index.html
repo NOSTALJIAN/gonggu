@@ -4123,6 +4123,54 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 .admin-dispatch-review h3{font-size:16px;margin:5px 0 12px}
 .admin-dispatch-review p{font-size:12px;color:#666;margin:10px 0}
 .admin-dispatch-review .row{margin-top:18px}
+
+/* GitHub-only open chat invitation: floats above existing shop navigation. */
+.mini-openchat-banner{
+ position:fixed;z-index:34;
+ left:50%;transform:translateX(-50%);
+ bottom:calc(62px + env(safe-area-inset-bottom));
+ width:min(100%,860px);
+ padding:11px 49px 11px 13px;
+ border-top:1px solid #f4dbe4;border-left:1px solid #f4dbe4;border-right:1px solid #f4dbe4;
+ border-radius:15px 15px 0 0;
+ background:#fff7fa;
+ box-shadow:0 -5px 24px rgba(72,36,48,.11);
+ display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;
+ font-family:var(--site-font);
+}
+.mini-openchat-banner .mini-openchat-copy{min-width:0;display:flex;flex-direction:column;gap:2px;}
+.mini-openchat-banner .mini-openchat-overline{font-size:10px;color:#a65f7b;font-weight:760;line-height:1.4;}
+.mini-openchat-banner .mini-openchat-copy strong{font-size:12px;line-height:1.5;color:#48303a;letter-spacing:-.035em;}
+.mini-openchat-banner .mini-openchat-links{display:flex;gap:6px;flex-wrap:nowrap;}
+.mini-openchat-banner .mini-openchat-link{
+ display:inline-flex;align-items:center;justify-content:center;
+ min-height:37px;padding:7px 11px;text-decoration:none;white-space:nowrap;
+ border:1px solid #e5b7c8;border-radius:8px;background:#fff;color:#8a3a5a;
+ font-size:12px;font-weight:780;line-height:1.2;
+ -webkit-tap-highlight-color:transparent;
+}
+.mini-openchat-banner .mini-openchat-link.primary{background:#d97193;border-color:#d97193;color:#fff;}
+.mini-openchat-banner .mini-openchat-close{
+ position:absolute;right:11px;top:10px;display:grid;place-items:center;
+ width:30px;height:30px;padding:0;border:0;border-radius:50%;
+ background:transparent;color:#876575;font-size:22px;line-height:1;
+}
+.mini-openchat-banner :is(a,button):focus-visible{outline:2px solid #873d62;outline-offset:2px;}
+.shell:has(.mini-openchat-banner){padding-bottom:calc(182px + env(safe-area-inset-bottom));}
+.shell:has(.mini-openchat-banner) .floating-actions{bottom:calc(170px + env(safe-area-inset-bottom));}
+body:has(.overlay) .mini-openchat-banner,
+body:has(#search:focus) .mini-openchat-banner{display:none!important;}
+@media(max-width:460px){
+ .mini-openchat-banner{padding:9px 41px 9px 12px;gap:6px;grid-template-columns:minmax(0,1fr) auto;}
+ .mini-openchat-banner .mini-openchat-copy strong{font-size:10.5px;}
+ .mini-openchat-banner .mini-openchat-link{padding:7px 9px;min-height:36px;font-size:11px;}
+ .mini-openchat-banner .mini-openchat-links{gap:5px;}
+ .mini-openchat-banner .mini-openchat-close{right:6px;top:7px;}
+}
+@media(max-width:360px){
+ .mini-openchat-banner{grid-template-columns:minmax(0,1fr);gap:5px;padding-right:41px;}
+ .mini-openchat-banner .mini-openchat-links{justify-content:flex-start;}
+}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -4338,6 +4386,21 @@ function matchesCategory(p,key){
 // Public site pricing: Cloudflare keeps current estimates; only the GitHub storefront uses alternate estimates.
 const githubStorefront=location.hostname.toLowerCase()==='nostaljian.github.io';
 const instantStorefront=location.hostname.toLowerCase()==='miniyena.pages.dev';
+
+const MINI_OPENCHAT_DISMISS_KEY='mini_openchat_banner_dismissed_v1';
+function renderOpenChatBanner(){
+ if(!githubStorefront||state.page!=='shop')return '';
+ try{if(sessionStorage.getItem(MINI_OPENCHAT_DISMISS_KEY)==='1')return '';}catch(_){}
+ return `<aside class="mini-openchat-banner" aria-label="미니예나 오픈채팅 안내">
+  <div class="mini-openchat-copy"><span class="mini-openchat-overline">🧸 미니예나 오픈채팅</span><strong>신상 소식과 아기옷 이야기 함께해요 ෆ</strong></div>
+  <div class="mini-openchat-links">
+   <a class="mini-openchat-link primary" href="https://open.kakao.com/o/gCxVTsVi" target="_blank" rel="noopener noreferrer" aria-label="미니예나 공지방 오픈채팅 입장">📢 공지방</a>
+   <a class="mini-openchat-link" href="https://open.kakao.com/o/gDs8ntVi" target="_blank" rel="noopener noreferrer" aria-label="미니예나 소통방 오픈채팅 입장">💬 소통방</a>
+  </div>
+  <button type="button" class="mini-openchat-close" data-action="dismiss-openchat-banner" aria-label="오픈채팅 안내 배너 닫기" title="닫기">×</button>
+ </aside>`;
+}
+
 function storeEstimate(p){const raw=githubStorefront?p?.github_estimated_price:p?.estimated_price;return Number.isInteger(raw)&&raw>0?raw:null;}
 const app=$('#app');
 const fmtDate=x=>x?new Date(x).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):'';
@@ -5735,7 +5798,7 @@ function syncHeroContrast(){
 function render(){
  const categoryScrollBefore=app.querySelector('.shop-category-list')?.scrollLeft||0;
  const adminScrollPositions=['.admin-main-tabs','.admin-product-filter-list','.admin-category-list','.admin-quote-primary-filters','.admin-orders-filterbar'].map(selector=>[selector,app.querySelector(selector)?.scrollLeft||0]);
- app.querySelectorAll("details[data-fold-key]").forEach(el=>adminFoldState.set(el.dataset.foldKey,el.open));cancelAdminPhotoDrag();app.innerHTML=`<main class="shell ${state.page==='admin'?'is-admin-shell':''}">${header()}${demoNotice()}${state.page==='admin'?renderAdmin():state.page==='track'?renderTrack():renderShop()}${shopBottomNav()}<div class="floating-actions" aria-label="화면 바로가기"><button class="floating-refresh" type="button" data-action="reload-app" aria-label="최신 화면으로 새로고침" title="새로고침"><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8.1 8.1 0 0 0-15.5-2"/><path d="M4 4v5h5"/><path d="M4 13a8.1 8.1 0 0 0 15.5 2"/><path d="M20 20v-5h-5"/></svg><span>새로고침</span></button><button class="back-to-top" type="button" data-action="scroll-top" aria-label="맨 위로 이동" aria-hidden="true" tabindex="-1"><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 13 7-7 7 7M12 6v12"/></svg><span>위로</span></button></div></main>${renderModal()}`;app.querySelectorAll("details[data-fold-key]").forEach(el=>{
+ app.querySelectorAll("details[data-fold-key]").forEach(el=>adminFoldState.set(el.dataset.foldKey,el.open));cancelAdminPhotoDrag();app.innerHTML=`<main class="shell ${state.page==='admin'?'is-admin-shell':''}">${header()}${demoNotice()}${state.page==='admin'?renderAdmin():state.page==='track'?renderTrack():renderShop()}${shopBottomNav()}${renderOpenChatBanner()}<div class="floating-actions" aria-label="화면 바로가기"><button class="floating-refresh" type="button" data-action="reload-app" aria-label="최신 화면으로 새로고침" title="새로고침"><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8.1 8.1 0 0 0-15.5-2"/><path d="M4 4v5h5"/><path d="M4 13a8.1 8.1 0 0 0 15.5 2"/><path d="M20 20v-5h-5"/></svg><span>새로고침</span></button><button class="back-to-top" type="button" data-action="scroll-top" aria-label="맨 위로 이동" aria-hidden="true" tabindex="-1"><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 13 7-7 7 7M12 6v12"/></svg><span>위로</span></button></div></main>${renderModal()}`;app.querySelectorAll("details[data-fold-key]").forEach(el=>{
   if(adminFoldState.has(el.dataset.foldKey))el.open=adminFoldState.get(el.dataset.foldKey)===true;
   else if(state.page==='admin'&&['quotes','payments'].includes(state.tab)&&state.filter==='supplier_payments'&&el.classList.contains('supplier-bulk-batch'))el.open=el.hasAttribute('open');
   else el.open=false;
@@ -11107,6 +11170,11 @@ async function click(e){
  if(!e.target.closest?.('[data-product-store-picker]'))closeProductStoreSearch(app.querySelector('#product-form'));
  const pg=e.target.closest('[data-page]');if(pg){goto(pg.dataset.page);if(pg.classList.contains('brand-home'))window.scrollTo({top:0,behavior:'auto'});return}const b=e.target.closest('[data-action]');if(!b)return;const a=b.dataset.action,id=b.dataset.id;try{
 
+if(a==='dismiss-openchat-banner'){
+ try{sessionStorage.setItem(MINI_OPENCHAT_DISMISS_KEY,'1');}catch(_){}
+ app.querySelector('.mini-openchat-banner')?.remove();
+ return;
+}
 if(a==='request-dispatch'){
  if(state.page!=='track'||!state.tracking)throw Error('내 주문조회에서만 요청할 수 있어요.');
  const mode=String(b.dataset.mode||'');

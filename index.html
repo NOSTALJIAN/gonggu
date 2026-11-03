@@ -5009,7 +5009,7 @@ function supplierBulkAvailableItem(q,item){
  const phone=String(q.contact||'').replace(/\D/g,'');
  const hasPending=state.supplierBatches.some(b=>supplierBatchPrivateKey(b)===storeId&&
   !b.ordered_at&&(b.payers||[]).some(p=>p.buyer_key===phone));
- return Boolean(state.supplierBatchesReady&&storeId&&phone.length>=8&&
+ return Boolean(!q.instant_purchase&&state.supplierBatchesReady&&storeId&&phone.length>=8&&
   isRoundBuyer(q)&&item.fulfillment!=='sold_out'&&
   !q.supplier_ordered_at&&!item.supplier_ordered_at&&
   !supplierItemBatch(item.id)&&!hasPending);
@@ -6216,7 +6216,7 @@ function renderAdminPayments(){
  const hasAllocationWork=!ready||pending.length>0;
  if(ready&&!hasAllocationWork&&state.filter==='buy_now')state.filter='supplier_payments';
  const selected=hasAllocationWork&&state.filter==='buy_now'?'buy_now':'supplier_payments';
- const all=selected==='buy_now'?state.quotes.filter(q=>isRoundBuyer(q)&&!isFinishedOrder(q)&&
+ const all=selected==='buy_now'?state.quotes.filter(q=>!q.instant_purchase&&isRoundBuyer(q)&&!isFinishedOrder(q)&&
   (q.items||[]).some(item=>!!supplierItemStore(item)&&
    item.fulfillment!=='sold_out'&&!item.supplier_ordered_at&&!q.supplier_ordered_at&&
    !supplierItemBatch(item.id))):[];
@@ -8295,7 +8295,7 @@ function supplierFreightProgress(){
   if(!map.has(key))map.set(key,{id:key,name:privateSupplierDisplay(key),remaining:0,allocated:0,available:0,batches:[]});
   return map.get(key);
  };
- for(const q of state.quotes.filter(isRoundBuyer)){
+ for(const q of state.quotes.filter(q=>isRoundBuyer(q)&&!q.instant_purchase)){
   for(const item of q.items||[]){
    const key=supplierItemStore(item);
    if(!key||item.fulfillment==='sold_out'||item.supplier_ordered_at||q.supplier_ordered_at)continue;
@@ -8949,6 +8949,58 @@ function chinaProcurementCanComplete(group){
   ));
 }
 
+/* Instant Cloudflare orders: supplier freight is part of the fixed product price.
+   Group unpurchased Namdaemun items by actual supplier without charging buyers. */
+function instantDomesticPendingRows(){
+ if(!state.admin||!state.productPrivateReady)return [];
+ const rows=[];
+ for(const q of state.quotes){
+  if(!q.instant_purchase||q.status!=='confirmed'||q.supplier_ordered_at)continue;
+  for(const item of q.items||[]){
+   if(item.supplier_ordered_at||supplierItemBatch(item.id)||!['ordered','delayed'].includes(item.fulfillment))continue;
+   const meta=state.productPrivate[item.product_id];
+   if(!meta||meta.source_type!=='namdaemun')continue;
+   const supplier=String(meta.supplier_name||'').trim();
+   if(!supplier)continue;
+   rows.push({q,item,supplier});
+  }
+ }
+ return rows;
+}
+function instantDomesticEligible(row){
+ const {q,item}=row;
+ return q.status==='confirmed'&&q.instant_purchase&&supplierOrderPaidForCopy(q)&&
+  !q.cancel_requested_at&&!q.delivery_change_requested_at&&!pendingItemOptionRequests(q).length&&
+  ['new','preparing'].includes(workflowStage(q))&&!item.supplier_ordered_at;
+}
+function instantDomesticPendingGroups(){
+ const grouped=new Map();
+ for(const row of instantDomesticPendingRows()){
+  if(!grouped.has(row.supplier))grouped.set(row.supplier,[]);
+  grouped.get(row.supplier).push(row);
+ }
+ return [...grouped].sort(([a],[b])=>a.localeCompare(b,'ko')).map(([supplier,items])=>{
+  const ready=items.filter(instantDomesticEligible);
+  return {supplier,items,ready,qty:items.reduce((n,r)=>n+Number(r.item.quantity||0),0)};
+ });
+}
+function instantDomesticOrderText(group){
+ const map=new Map();
+ for(const {q,item} of group.items){
+  const key=JSON.stringify([item.store_name,item.product_name,item.color,item.size]);
+  if(!map.has(key))map.set(key,{item,qty:0,buyers:[],waiting:0});
+  const record=map.get(key),qty=Number(item.quantity)||0;
+  record.qty+=qty;
+  record.buyers.push((q.buyer_name||'구매자')+' ×'+qty);
+  if(!instantDomesticEligible({q,item}))record.waiting++;
+ }
+ return ['[남대문 즉시구매 발주 목록]','거래처: '+group.supplier,
+  ...[...map.values()].map(({item,qty,buyers,waiting})=>
+   [item.store_name,item.product_name,item.color,item.size,qty+'개'].join(' | ')+
+   '\n주문자: '+buyers.join(' · ')+(waiting?' (미입금/확인 대기 포함)':'')),
+  '※ 새 주소 구매 건입니다. 도매배송비는 상품 판매가에 포함돼 있으며 별도 고객 청구하지 않습니다.'
+ ].join('\n');
+}
 function renderSupplierPaymentCenter(){
   const domestic=state.supplierBatches.filter(b=>!b.ordered_at).map(b=>{
     const items=supplierPendingBatchItems(b);
@@ -8960,9 +9012,10 @@ function renderSupplierPaymentCenter(){
     };
   }).filter(x=>x.items.length);
   const china=chinaPendingProcurementGroups();
+  const instant=instantDomesticPendingGroups();
   const chinaQty=china.reduce((n,g)=>n+g.qty,0);
   return `<section class="admin-supplier-payments-center">
-  <div class="supplier-order-clean-head admin-supplier-overview"><strong>발주 대기</strong><span>남대문 ${domestic.length}곳 · 중국 ${chinaQty}개</span></div>
+  <div class="supplier-order-clean-head admin-supplier-overview"><strong>발주 대기</strong><span>남대문 ${domestic.length+instant.length}곳 · 중국 ${chinaQty}개</span></div>
   ${china.length?'<div class="supplier-order-clean-head"><strong>중국 사입 · 1688</strong><span>미발주 '+chinaQty+'개</span></div>':''}
   ${!state.productPrivateReady?'<p class="noticefail">사입 경로 정보를 불러오지 못했어요. 새로고침 후 확인해 주세요.</p>':''}
   ${china.length?`<div class="supplier-order-clean-list">${china.map(g=>`<details class="supplier-order-clean-card" data-fold-key="china-order-${esc(g.supplier)}">
@@ -8975,6 +9028,19 @@ function renderSupplierPaymentCenter(){
       </div>
       ${!chinaProcurementCanComplete(g)?'<p class="supplier-order-clean-finish-note">발주 완료는 주문 확정·상품대금 입금·변경 요청 확인 후 활성화돼요.</p>':''}
     </div>
+  </details>`).join('')}</div>`:''}
+  ${instant.length?'<div class="supplier-order-clean-head"><strong>남대문 · 새 주소 즉시구매</strong><span>미발주 '+instant.length+'곳</span></div>':''}
+  ${instant.length?`<div class="supplier-order-clean-list">${instant.map(g=>`<details class="supplier-order-clean-card" data-fold-key="instant-domestic-${esc(g.supplier)}">
+   <summary><span><b>${esc(g.supplier)} · 배송비 포함 판매가</b><small>${g.items.length}종 · ${g.qty}개 · 발주 가능 ${g.ready.length}종</small></span><span class="supplier-order-clean-progress">미발주　⌄</span></summary>
+   <div class="supplier-order-clean-body">
+    <p class="supplier-order-clean-note">새 주소 주문 · 구매자 도매배송비 추가 청구 없음</p>
+    ${g.items.map(({q,item})=>`<div class="supplier-order-clean-item"><span><b>${esc(item.store_name)} · ${esc(item.product_name)}</b><small>${esc(item.color||'-')} / ${esc(item.size||'-')} · ${esc(q.buyer_name||'구매자')}</small></span><div class="supplier-order-clean-right"><strong>×${Number(item.quantity||0)}</strong><small class="${instantDomesticEligible({q,item})?'is-ready':'is-pending'}">${instantDomesticEligible({q,item})?'입금 확인':'입금·변경 확인'}</small></div></div>`).join('')}
+    <div class="supplier-order-clean-actions">
+     <button type="button" class="btn supplier-order-clean-copy" data-action="copy-instant-procurement" data-supplier="${esc(g.supplier)}">발주서 복사</button>
+     <button type="button" class="btn supplier-order-clean-finish" data-action="complete-instant-procurement" data-supplier="${esc(g.supplier)}" ${g.ready.length?'':'disabled'}>입금확인 ${g.ready.length}종 발주 완료</button>
+    </div>
+    ${g.items.length!==g.ready.length?'<p class="supplier-order-clean-finish-note">미입금 상품은 발주 완료에서 자동 제외돼요.</p>':''}
+   </div>
   </details>`).join('')}</div>`:''}
   ${domestic.length?'<div class="supplier-order-clean-head"><strong>남대문 발주할 거래처</strong><span>'+domestic.length+'곳</span></div>':''}
   ${!state.supplierBatchesReady?'<p class="noticefail">남대문 배송비 배분 내역을 불러오지 못했어요. 새로고침해 주세요.</p>':''}
@@ -8991,7 +9057,7 @@ function renderSupplierPaymentCenter(){
    ${!canOrder?'<p class="supplier-order-clean-finish-note">발주 완료 처리는 해당 거래처의 주문 확정과 상품대금 입금 확인이 모두 끝나야 활성화돼요.</p>':''}
   </div>
   </details>`).join('')}</div>`:''}
-  ${!domestic.length&&!china.length&&state.supplierBatchesReady&&state.productPrivateReady?'<div class="admin-work-clear"><span aria-hidden="true">✓</span><span>현재 발주할 상품이 없어요.</span></div>':''}
+  ${!domestic.length&&!instant.length&&!china.length&&state.supplierBatchesReady&&state.productPrivateReady?'<div class="admin-work-clear"><span aria-hidden="true">✓</span><span>현재 발주할 상품이 없어요.</span></div>':''}
   ${state.supplierBatches.some(b=>!b.ordered_at)?`<button type="button" class="admin-previous-orders-link" data-action="open-admin-wholesale-history"><span>진행 중 배분·입금 수정</span><strong>관리 <span aria-hidden="true">›</span></strong></button>`:''}
   </section>`;
 }
@@ -11118,6 +11184,31 @@ if(a==='admin-complete-wholesale'){
  return;
 }
 
+if(a==='copy-instant-procurement'){
+ if(!state.admin||state.page!=='admin'||state.tab!=='payments')throw Error('관리자 도매관리에서 확인해 주세요.');
+ const group=instantDomesticPendingGroups().find(x=>x.supplier===String(b.dataset.supplier||''));
+ if(!group)throw Error('해당 거래처 발주 대상이 없어요.');
+ await copy(instantDomesticOrderText(group));
+ return;
+}
+if(a==='complete-instant-procurement'){
+ if(!state.admin||state.page!=='admin'||state.tab!=='payments')throw Error('관리자 도매관리에서 확인해 주세요.');
+ if(busy)return;
+ const group=instantDomesticPendingGroups().find(x=>x.supplier===String(b.dataset.supplier||''));
+ if(!group||!group.ready.length)throw Error('입금 확인된 발주 상품이 없어요.');
+ const ids=group.ready.map(r=>r.item.id);
+ const count=group.ready.reduce((n,r)=>n+Number(r.item.quantity||0),0);
+ if(!window.confirm(group.supplier+' 즉시구매 상품 '+count+'개를 실제로 발주 완료했나요?\n\n입금 확인된 '+ids.length+'종만 완료 처리해요. 미입금 상품과 다른 주문은 그대로 유지됩니다.'))return;
+ busy=true;b.disabled=true;
+ try{
+  const result=await rpc('gq_admin_mark_instant_items_ordered_v104',{p_item_ids:ids},true);
+  if(Number(result?.updated)!==ids.length)throw Error('처리 결과를 확인하지 못했어요. 새로고침 후 확인해 주세요.');
+  await loadAdmin();
+  notif(group.supplier+' 새 주소 상품 '+count+'개를 발주 완료 처리했어요.');
+ }catch(error){try{await loadAdmin()}catch(_){}throw error}
+ finally{busy=false;if(b.isConnected)b.disabled=false}
+ return;
+}
 if(a==='complete-china-procurement'){
   e.preventDefault();
   if(!state.admin||state.page!=='admin'||state.tab!=='payments'||!state.productPrivateReady)

@@ -4084,6 +4084,8 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 .bundle-manage-legacy .bundle-summary-card{margin:13px 0 0}
 .bundle-order-edit-popup{padding-bottom:20px}
 
+.instant-checkout-total{padding:13px 12px;border:1px solid #e1e7e2;border-radius:10px;background:#f4f8f4;color:#254a35;font-weight:800;font-size:13px;line-height:1.55;margin:13px 0}
+.admin-order-direct-badge{display:inline-flex;vertical-align:middle;border-radius:5px;background:#eaf2eb;padding:4px 6px;color:#3c694d;font-size:10px;font-weight:780;white-space:nowrap}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -5245,11 +5247,15 @@ const buyerLabel=q=>String(q.buyer_name||'이름 미입력')+' · '+(q.baby_name
    Keep the recorded technical price_channel unchanged; this is a display label. */
 function adminGithubOrderIcon(q){
  if(!state.admin||!q)return '';
- return '<span class="admin-order-gh-badge" title="공유 구매 링크 주문" aria-label="공유 구매 링크 주문">맘❤️</span>';
+ if(q.instant_purchase)return '<span class="admin-order-direct-badge" title="새 주소 · 확정가 즉시구매">바로구매</span>';
+ if(q.price_channel==='github')return '<span class="admin-order-gh-badge" title="기존 깃허브 구매 링크">맘❤️</span>';
+ return '';
 }
 function adminGithubGroupIcon(quotes){
  if(!state.admin||!Array.isArray(quotes)||!quotes.length)return '';
- return '<span class="admin-order-gh-badge" title="공유 구매 링크 주문" aria-label="공유 구매 링크 주문">맘❤️</span>';
+ const direct=quotes.some(q=>q.instant_purchase),github=quotes.some(q=>q.price_channel==='github');
+ return (direct?'<span class="admin-order-direct-badge" title="새 주소 · 확정가 즉시구매">바로구매</span>':'')+
+  (github?'<span class="admin-order-gh-badge" title="기존 깃허브 구매 링크">맘❤️</span>':'');
 }
 
 const normKey=x=>String(x||'').trim().replace(/\s+/g,'').toLowerCase();
@@ -8053,7 +8059,7 @@ function renderCollapsibleAdminOrder(group,section){
  else if(group.some(q=>q.status==='quoted'&&q.purchase_intent==='next_round'))next='다음 회차 대기';
  else if(group.some(q=>q.status==='quoted'&&q.purchase_intent==='on_hold'))next='구매 보류';
  else if(group.some(q=>q.status==='quoted'))next='구매자 선택 기다리는 중';
- else if(group.some(q=>q.status==='confirmed'))next=ordered?'발주 완료 · 입고 관리':assigned?'입금 확인 · 도매 발주':'배송비 · 발주 준비';
+ else if(group.some(q=>q.status==='confirmed'))next=ordered?'발주 완료 · 입고 관리':assigned?'입금 확인 · 도매 발주':group.some(q=>q.instant_purchase)?'입금 확인 · 발주 준비':'배송비 · 발주 준비';
  else if(group.every(q=>q.status==='cancelled'))next='취소된 주문';
  if(group.length>1&&group.every(readyQuote)){
   const total=group.reduce((n,q)=>n+totalDue(q),0);
@@ -9665,7 +9671,7 @@ if(m.type==='cart'){return wrap(instantStorefront?'주문 장바구니':'견적 
 <button type="button" class="btn block cart-review-proceed" data-action="cart-checkout">${instantStorefront?'다음: 주문·수령 정보 입력하기 →':'다음: 견적 요청 정보 입력하기 →'}</button>
 <details class="cart-review-details" id="cart-review-details">
 <summary>주문자·수령 정보 입력 <span class="cart-review-expand">펼쳐서 입력하기 ↓</span></summary>
-<div class="cart-review-checkout-form"><div class="smallnote">${instantStorefront?'표시된 판매가로 주문이 바로 확정돼요. 도매배송비는 상품가격에 포함돼요.':'견적만 요청하는 단계예요. 최종 주문은 견적 확인 후 별도로 진행돼요.'}</div><form id="request"><label class="label">주문자 이름<input name="name" maxlength="40" required placeholder="예: 지현"></label><label class="label">아기 이름 또는 태명 (필수)<input name="baby" maxlength="40" required placeholder="예: 예나, 토리"></label><label class="label">휴대폰 번호 (필수 · 주문조회용)<input name="contact" type="tel" inputmode="tel" autocomplete="tel-national" maxlength="15" required placeholder="예: 010-0000-0000"></label><label class="label">이메일 주소 (필수 · 견적 및 주문 상태 안내)<input name="email" type="email" inputmode="email" autocomplete="email" maxlength="254" required placeholder="example@gmail.com"></label><p class="smallnote">견적 접수, 견적 완료와 이후 주문 진행 상태를 기존 Gmail 주소로 안내해요. Gmail 연동이 완료된 후 실제 발송돼요.</p><label class="label">주문조회 비밀번호 (숫자 6자리 · 필수)<input name="lookup_pin" type="password" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" autocomplete="off" required placeholder="6자리 숫자"></label><label class="label">주문조회 비밀번호 확인<input name="lookup_pin_confirm" type="password" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" autocomplete="off" required placeholder="다시 입력"></label><p class="smallnote">문자 발송은 없어요. 다른 브라우저에서 이름·휴대폰 번호와 이 비밀번호로 주문을 찾을 수 있어요. 다음 주문에도 같은 비밀번호를 사용하면 한꺼번에 조회돼요.</p><div class="separator"></div><label class="label">수령방식 (필수)<select name="delivery_method" id="deliveryMethod" required><option value="">수령방식을 선택해 주세요</option><option value="pickup">직접수령 (배송비 없음)</option><option value="courier">택배수령 (+3,000원)</option></select></label><div id="courierFields" class="hidden delivery-fields"><div class="info">택배수령을 선택하면 고객 배송비 3,000원이 자동 추가돼요. 묶음배송 추가 주문은 중복 청구하지 않아요. 아래에서 배송지를 입력해 주세요.</div><label class="label">받는 사람<input name="recipient_name" maxlength="80" autocomplete="name" data-courier-required placeholder="받는 사람 이름" disabled></label><div class="address-tools"><button class="btn secondary" type="button" data-action="search-address">🔎 주소 검색</button><button class="textbutton address-manual" type="button" data-action="manual-address">주소 직접 입력</button></div><div class="postcode-search hidden" data-postcode-panel><div class="row between"><b>우편번호·주소 찾기</b><button type="button" class="btn sm neutral" data-action="close-address-search">닫기</button></div><div class="address-search-hint">도로명이나 건물 이름을 검색하고 주소를 선택해 주세요.</div><div class="postcode-mount" data-postcode-mount></div></div><label class="label">우편번호 (5자리)<input name="postal_code" readonly data-address-postal inputmode="numeric" maxlength="5" pattern="[0-9]{5}" data-courier-required placeholder="예: 34123" disabled></label><label class="label">주소<input name="address_line1" readonly data-address-primary maxlength="250" data-courier-required placeholder="도로명주소 또는 지번주소" disabled></label><label class="label">상세주소 (선택)<input name="address_line2" maxlength="250" placeholder="동·호수 등" disabled></label><label class="label">배송 요청사항 (선택)<input name="delivery_note" maxlength="200" placeholder="예: 문 앞에 놓아주세요" disabled></label></div><label class="label">요청 메모 (선택)<textarea name="note" maxlength="300" placeholder="거래처에 확인할 내용"></textarea></label><div class="info">${instantStorefront?'확정 판매가로 바로 주문합니다. 남대문 도매배송비는 상품가격에 포함되어 추가 청구하지 않아요. 택배수령 시 고객 택배비 3,000원만 추가돼요. 주문 후 계좌 안내를 확인해 주세요.':'지금은 <b>가격만 문의하는 견적 요청</b>이에요. 아직 주문이 확정되지 않아요. 제출 후 나오는 <b>고유 견적 링크를 꼭 보관</b>해 주세요. 같은 이름으로 다시 요청해도 자동으로 합쳐지지 않아요.'}</div><button class="btn block" type="submit">${instantStorefront?'전체 '+cartCount()+'개 확정가로 주문하기':'전체 '+cartCount()+'개 견적 요청하기'}</button></form></div>
+<div class="cart-review-checkout-form"><div class="smallnote">${instantStorefront?'표시된 판매가로 주문이 바로 확정돼요. 도매배송비는 상품가격에 포함돼요.':'견적만 요청하는 단계예요. 최종 주문은 견적 확인 후 별도로 진행돼요.'}</div><form id="request"><label class="label">주문자 이름<input name="name" maxlength="40" required placeholder="예: 지현"></label><label class="label">아기 이름 또는 태명 (필수)<input name="baby" maxlength="40" required placeholder="예: 예나, 토리"></label><label class="label">휴대폰 번호 (필수 · 주문조회용)<input name="contact" type="tel" inputmode="tel" autocomplete="tel-national" maxlength="15" required placeholder="예: 010-0000-0000"></label><label class="label">${instantStorefront?'이메일 주소 (필수 · 주문 상태 안내)':'이메일 주소 (필수 · 견적 및 주문 상태 안내)'}<input name="email" type="email" inputmode="email" autocomplete="email" maxlength="254" required placeholder="example@gmail.com"></label><p class="smallnote">${instantStorefront?'주문 접수와 이후 배송 진행 상태를 이메일로 안내해요.':'견적 접수, 견적 완료와 이후 주문 진행 상태를 기존 Gmail 주소로 안내해요.'} Gmail 연동이 완료된 후 실제 발송돼요.</p><label class="label">주문조회 비밀번호 (숫자 6자리 · 필수)<input name="lookup_pin" type="password" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" autocomplete="off" required placeholder="6자리 숫자"></label><label class="label">주문조회 비밀번호 확인<input name="lookup_pin_confirm" type="password" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" autocomplete="off" required placeholder="다시 입력"></label><p class="smallnote">문자 발송은 없어요. 다른 브라우저에서 이름·휴대폰 번호와 이 비밀번호로 주문을 찾을 수 있어요. 다음 주문에도 같은 비밀번호를 사용하면 한꺼번에 조회돼요.</p><div class="separator"></div><label class="label">수령방식 (필수)<select name="delivery_method" id="deliveryMethod" required><option value="">수령방식을 선택해 주세요</option><option value="pickup">직접수령 (배송비 없음)</option><option value="courier">택배수령 (+3,000원)</option></select></label><div id="courierFields" class="hidden delivery-fields"><div class="info">택배수령을 선택하면 고객 배송비 3,000원이 자동 추가돼요. 묶음배송 추가 주문은 중복 청구하지 않아요. 아래에서 배송지를 입력해 주세요.</div><label class="label">받는 사람<input name="recipient_name" maxlength="80" autocomplete="name" data-courier-required placeholder="받는 사람 이름" disabled></label><div class="address-tools"><button class="btn secondary" type="button" data-action="search-address">🔎 주소 검색</button><button class="textbutton address-manual" type="button" data-action="manual-address">주소 직접 입력</button></div><div class="postcode-search hidden" data-postcode-panel><div class="row between"><b>우편번호·주소 찾기</b><button type="button" class="btn sm neutral" data-action="close-address-search">닫기</button></div><div class="address-search-hint">도로명이나 건물 이름을 검색하고 주소를 선택해 주세요.</div><div class="postcode-mount" data-postcode-mount></div></div><label class="label">우편번호 (5자리)<input name="postal_code" readonly data-address-postal inputmode="numeric" maxlength="5" pattern="[0-9]{5}" data-courier-required placeholder="예: 34123" disabled></label><label class="label">주소<input name="address_line1" readonly data-address-primary maxlength="250" data-courier-required placeholder="도로명주소 또는 지번주소" disabled></label><label class="label">상세주소 (선택)<input name="address_line2" maxlength="250" placeholder="동·호수 등" disabled></label><label class="label">배송 요청사항 (선택)<input name="delivery_note" maxlength="200" placeholder="예: 문 앞에 놓아주세요" disabled></label></div><label class="label">요청 메모 (선택)<textarea name="note" maxlength="300" placeholder="거래처에 확인할 내용"></textarea></label>${instantStorefront?'<div class="instant-checkout-total" data-instant-final-total role="status" aria-live="polite">수령방식을 선택하면 최종 결제금액이 표시돼요.</div>':''}<div class="info">${instantStorefront?'확정 판매가로 바로 주문합니다. 남대문 도매배송비는 상품가격에 포함되어 추가 청구하지 않아요. 택배수령 시 고객 택배비 3,000원만 추가돼요. 주문 후 계좌 안내를 확인해 주세요.':'지금은 <b>가격만 문의하는 견적 요청</b>이에요. 아직 주문이 확정되지 않아요. 제출 후 나오는 <b>고유 견적 링크를 꼭 보관</b>해 주세요. 같은 이름으로 다시 요청해도 자동으로 합쳐지지 않아요.'}</div><button class="btn block" type="submit">${instantStorefront?'전체 '+cartCount()+'개 확정가로 주문하기':'전체 '+cartCount()+'개 견적 요청하기'}</button></form></div>
 </details></div>`:''}`)}
 if(m.type==='store'){
  const s=state.stores.find(x=>x.id===m.id);
@@ -9920,6 +9926,16 @@ function cartEstimateMarkup(){
   ${e.unavailableCount?`<div class="cart-estimate-unknown">주문 불가 상품 ${e.unavailableCount}종은 합계에서 제외됐어요.</div>`:''}
   <div class="cart-estimate-disclaimer">확인 가능한 상품의 예상가 합계예요. 배송비·추가비용은 제외되며 최종 금액은 견적 후 확정돼요.</div>`;
 }
+function instantCheckoutShowTotal(method){
+ if(!instantStorefront)return;
+ const el=app.querySelector('[data-instant-final-total]');if(!el)return;
+ const totals=cartEstimateTotals();
+ if(totals.unavailableCount||totals.unpricedCount){el.textContent='판매가 확인이 필요한 상품이 있어 주문할 수 없어요.';return}
+ const extra=method==='courier'?3000:0;
+ el.textContent=['pickup','courier'].includes(method)
+  ?'최종 결제금액 '+money(totals.knownTotal+extra)+' · 상품 '+money(totals.knownTotal)+(extra?' + 택배비 3,000원':' · 직접수령')
+  :'수령방식을 선택하면 최종 결제금액이 표시돼요.';
+}
 function syncCartReview(){
  const list=app.querySelector('#cart-review-list');
  if(!list||state.modal?.type!=='cart')return;
@@ -9934,7 +9950,8 @@ function syncCartReview(){
  const empty=app.querySelector('#cart-review-empty');if(empty)empty.classList.toggle('hidden',!!state.cart.length);
  const checkout=app.querySelector('#cart-review-checkout');if(checkout)checkout.classList.toggle('hidden',!state.cart.length);
  const submit=checkout?.querySelector('#request button[type="submit"]');
- if(submit)submit.textContent='전체 '+cartCount()+'개 견적 요청하기';
+ if(submit)submit.textContent='전체 '+cartCount()+'개 '+(instantStorefront?'확정가로 주문하기':'견적 요청하기');
+ instantCheckoutShowTotal(app.querySelector('#deliveryMethod')?.value);
  const mainBadge=app.querySelector('[data-cart-count]');
  if(mainBadge)mainBadge.textContent=String(cartCount());
 }
@@ -12655,7 +12672,7 @@ if(x.matches('select[data-buyer-option-color]')){
 }
 if(x.id==='deliveryMethodEdit'){
  const panel=$('#courierFieldsEdit');if(panel){const show=x.value==='courier';panel.classList.toggle('hidden',!show);if(!show){const el=panel.querySelector('[data-postcode-panel]');if(el)el.classList.add('hidden');}for(const field of panel.querySelectorAll('input')){field.disabled=!show;field.required=show&&field.hasAttribute('data-courier-required');}}return;
-}if(x.id==='deliveryMethod'){const block=$('#courierFields');if(block){const courier=x.value==='courier';block.classList.toggle('hidden',!courier);if(!courier){const el=block.querySelector('[data-postcode-panel]');if(el)el.classList.add('hidden');}for(const input of block.querySelectorAll('input')){input.disabled=!courier;input.required=courier&&input.hasAttribute('data-courier-required');}}return;}if(x.id==='suggest-photo'){updateSuggestPhotoPreviews(x);return}if(x.id==='pickColor'){state.modal.color=x.value;const p=selectedProd(state.modal.id);$('#pickSize').innerHTML=(p.options[x.value]||[]).map(s=>`<option>${esc(s)}</option>`).join('')}else if(x.dataset.tab){state.tab=x.dataset.tab;render()}else if(x.dataset.filter){state.filter=x.dataset.filter;state.supplierBulkSelected.clear();render()}else if(x.dataset.fulfillment){if(busy)return;busy=true;try{
+}if(x.id==='deliveryMethod'){instantCheckoutShowTotal(x.value);const block=$('#courierFields');if(block){const courier=x.value==='courier';block.classList.toggle('hidden',!courier);if(!courier){const el=block.querySelector('[data-postcode-panel]');if(el)el.classList.add('hidden');}for(const input of block.querySelectorAll('input')){input.disabled=!courier;input.required=courier&&input.hasAttribute('data-courier-required');}}return;}if(x.id==='suggest-photo'){updateSuggestPhotoPreviews(x);return}if(x.id==='pickColor'){state.modal.color=x.value;const p=selectedProd(state.modal.id);$('#pickSize').innerHTML=(p.options[x.value]||[]).map(s=>`<option>${esc(s)}</option>`).join('')}else if(x.dataset.tab){state.tab=x.dataset.tab;render()}else if(x.dataset.filter){state.filter=x.dataset.filter;state.supplierBulkSelected.clear();render()}else if(x.dataset.fulfillment){if(busy)return;busy=true;try{
  const q=state.quotes.find(y=>y.items.some(i=>i.id===x.dataset.fulfillment));const item=q?.items.find(i=>i.id===x.dataset.fulfillment);
  if(x.value==='sold_out'&&item?.fulfillment!=='sold_out'){
   const amount=Number(item.unit_price||0)*item.quantity;

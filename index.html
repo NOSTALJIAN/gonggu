@@ -7488,7 +7488,7 @@ function renderAdminDeliveryRequest(q){
  const method=q.requested_delivery_method==='pickup'?'직접수령':'택배수령';
  const bundled=isBundle(q)||state.quotes.some(x=>x.bundle_parent_id===q.id&&x.status!=='cancelled');
  const before=appliedShipping(q);
- const after=bundled?before:q.requested_delivery_method==='courier'?3000:0;
+ const after=bundled?before:q.requested_delivery_method==='courier'?instantRequestedCourierFee(q):0;
  const difference=after-before;
  const destination=q.requested_delivery_method==='courier'
   ?[q.requested_postal_code,q.requested_address_line1,q.requested_address_line2].filter(Boolean).join(' '):'';
@@ -9686,8 +9686,8 @@ if(m.type==='edit-delivery'){
  const field=(key)=>esc(q.delivery_change_requested_at?(q['requested_'+key]||''):(q[key]||''));
  const isCourier=method==='courier';
  return wrap('수령방식·배송지 변경',`<div class="info">${['quoted','confirmed'].includes(q.status)||isBundle(q)?'기존 상품 견적은 사라지지 않아요. 수령방식과 배송비 변경은 관리자 승인 후 적용되고, 승인 전까지 기존 견적과 금액이 유지돼요. 픽업 완료·택배 발송 이후에는 변경할 수 없어요.':'견적 안내 전에는 수령방식과 배송지를 바로 변경할 수 있어요.'}</div>
- <p class="smallnote">고객 수령 배송비: 택배 3,000원 자동 적용 · 직접수령 0원 (묶음배송 추가 주문 제외)</p><form id="edit-delivery-form"><label class="label">수령방식<select name="delivery_method" id="deliveryMethodEdit" required><option value="pickup" ${method==='pickup'?'selected':''}>직접수령</option><option value="courier" ${isCourier?'selected':''}>택배수령 (+3,000원)</option></select></label>
- <div id="courierFieldsEdit" class="delivery-fields ${isCourier?'':'hidden'}"><label class="label">받는 사람<input name="recipient_name" maxlength="80" value="${field('recipient_name')}" data-courier-required ${isCourier?'required':'disabled'}></label><div class="address-tools"><button class="btn secondary" type="button" data-action="search-address">🔎 주소 검색</button><button class="textbutton address-manual" type="button" data-action="manual-address">주소 직접 입력</button></div><div class="postcode-search hidden" data-postcode-panel><div class="row between"><b>우편번호·주소 찾기</b><button type="button" class="btn sm neutral" data-action="close-address-search">닫기</button></div><div class="address-search-hint">도로명이나 건물 이름을 검색하고 주소를 선택해 주세요.</div><div class="postcode-mount" data-postcode-mount></div></div><label class="label">우편번호 (5자리)<input name="postal_code" readonly data-address-postal maxlength="5" inputmode="numeric" pattern="[0-9]{5}" value="${field('postal_code')}" data-courier-required ${isCourier?'required':'disabled'}></label><label class="label">주소<input name="address_line1" readonly data-address-primary maxlength="250" value="${field('address_line1')}" data-courier-required ${isCourier?'required':'disabled'}></label><label class="label">상세주소 (선택)<input name="address_line2" maxlength="250" value="${field('address_line2')}" ${isCourier?'':'disabled'}></label><label class="label">배송 요청사항 (선택)<input name="delivery_note" maxlength="200" value="${field('delivery_note')}" ${isCourier?'':'disabled'}></label></div><button type="submit" class="btn block">${['quoted','confirmed'].includes(q.status)||isBundle(q)?'변경 요청 보내기':'수령방식 수정 저장'}</button></form>`);
+ <p class="smallnote">${q.instant_purchase?'고객 수령 배송비: 택배 기본 3,500원 · 제주·도서산간 6,500원 · 직접수령 0원':'고객 수령 배송비: 택배 3,000원 자동 적용 · 직접수령 0원 (묶음배송 추가 주문 제외)'}</p><form id="edit-delivery-form"><label class="label">수령방식<select name="delivery_method" id="deliveryMethodEdit" required><option value="pickup" ${method==='pickup'?'selected':''}>직접수령</option><option value="courier" ${isCourier?'selected':''}>택배수령 ${q.instant_purchase?'(+3,500원 · 도서산간 +3,000원)':'(+3,000원)'}</option></select></label>
+ <div id="courierFieldsEdit" class="delivery-fields ${isCourier?'':'hidden'}"><label class="label">받는 사람<input name="recipient_name" maxlength="80" value="${field('recipient_name')}" data-courier-required ${isCourier?'required':'disabled'}></label><div class="address-tools"><button class="btn secondary" type="button" data-action="search-address">🔎 주소 검색</button><button class="textbutton address-manual" type="button" data-action="manual-address">주소 직접 입력</button></div><div class="postcode-search hidden" data-postcode-panel><div class="row between"><b>우편번호·주소 찾기</b><button type="button" class="btn sm neutral" data-action="close-address-search">닫기</button></div><div class="address-search-hint">도로명이나 건물 이름을 검색하고 주소를 선택해 주세요.</div><div class="postcode-mount" data-postcode-mount></div></div><label class="label">우편번호 (5자리)<input name="postal_code" readonly data-address-postal maxlength="5" inputmode="numeric" pattern="[0-9]{5}" value="${field('postal_code')}" data-courier-required ${isCourier?'required':'disabled'}></label><label class="label">주소<input name="address_line1" readonly data-address-primary maxlength="250" value="${field('address_line1')}" data-courier-required ${isCourier?'required':'disabled'}></label>${q.instant_purchase?`<label class="label">배송 지역<select id="instantRemoteAreaEdit" name="remote_area"><option value="normal" ${!(q.delivery_change_requested_at?q.requested_remote_area:q.remote_area)?'selected':''}>일반지역 · 3,500원</option><option value="remote" ${(q.delivery_change_requested_at?q.requested_remote_area:q.remote_area)?'selected':''}>제주·도서산간 · 6,500원</option></select></label><p class="smallnote">제주·울릉 주소 자동 선택 · 다른 도서산간 지역은 직접 선택해 주세요.</p>`:''}<label class="label">상세주소 (선택)<input name="address_line2" maxlength="250" value="${field('address_line2')}" ${isCourier?'':'disabled'}></label><label class="label">배송 요청사항 (선택)<input name="delivery_note" maxlength="200" value="${field('delivery_note')}" ${isCourier?'':'disabled'}></label></div><button type="submit" class="btn block">${['quoted','confirmed'].includes(q.status)||isBundle(q)?'변경 요청 보내기':'수령방식 수정 저장'}</button></form>`);
 }
 if(m.type==='suggest'){return wrap('상품 등록 신청',`
  <p class="suggest-intro">도매업체와 상품 정보를 보내주시면 확인 후 등록해요.</p>
@@ -10024,6 +10024,11 @@ function cartEstimateMarkup(){
   ${e.unpricedCount?`<div class="cart-estimate-unknown">가격 미등록 상품 ${e.unpricedCount}종은 합계에서 제외됐어요.</div>`:''}
   ${e.unavailableCount?`<div class="cart-estimate-unknown">주문 불가 상품 ${e.unavailableCount}종은 합계에서 제외됐어요.</div>`:''}
   <div class="cart-estimate-disclaimer">확인 가능한 상품의 예상가 합계예요. 배송비·추가비용은 제외되며 최종 금액은 견적 후 확정돼요.</div>`;
+}
+function instantRequestedCourierFee(q){
+ if(!q?.instant_purchase)return 3000;
+ const isRemote=!!q.requested_remote_area||instantIsKnownRemote(q.requested_postal_code,q.requested_address_line1);
+ return isRemote?6500:3500;
 }
 function instantIsKnownRemote(postal,address){
  return /^(63[0-6]|402)/.test(String(postal||'').trim())||/(제주특별자치도|제주시|서귀포시|울릉군)/.test(String(address||''));
@@ -10718,8 +10723,9 @@ async function updateBuyerDelivery(d){
  if(connected)await reloadTracking();
  if(!canChangeDelivery(state.tracking))throw Error('픽업이 완료되었거나 택배가 출발한 주문은 수령방식을 변경할 수 없어요.');
  const x=deliveryPayload(d),q=state.tracking;
+ x.remote_area=x.delivery_method==='courier'&&(String(d.get('remote_area')||'')==='remote'||instantIsKnownRemote(x.postal_code,x.address_line1));
  if(!connected){const row=demo.quotes.find(y=>y.id===state.trackId&&y.lookup_token===state.trackToken);if(!row)throw Error('주문을 찾을 수 없어요');const needsReview=['quoted','confirmed'].includes(row.status)||!!row.bundle_parent_id||demo.quotes.some(z=>z.bundle_parent_id===row.id&&z.status!=='cancelled');if(needsReview){Object.assign(row,{delivery_change_requested_at:now(),requested_delivery_method:x.delivery_method,...Object.fromEntries(['recipient_name','postal_code','address_line1','address_line2','delivery_note'].map(k=>['requested_'+k,x[k]])),delivery_change_rejected_at:null});}else{Object.assign(row,x,{shipping_fee:x.delivery_method==='courier'?3000:0,delivery_change_requested_at:null});}saveDemo();await reloadTracking();return needsReview;}
- const result=await rpc('gq_update_delivery_v11',{p_quote_id:state.trackId,p_lookup_token:state.trackToken,p_delivery_method:x.delivery_method,p_recipient_name:x.recipient_name,p_postal_code:x.postal_code,p_address_line1:x.address_line1,p_address_line2:x.address_line2,p_delivery_note:x.delivery_note});if(result==='pending')void miniNotifyAdminEvent('delivery_change_request');await reloadTracking();return result==='pending';
+ const result=await rpc(q?.instant_purchase?'gq_update_delivery_shipping_v113':'gq_update_delivery_v11',{p_quote_id:state.trackId,p_lookup_token:state.trackToken,p_delivery_method:x.delivery_method,p_recipient_name:x.recipient_name,p_postal_code:x.postal_code,p_address_line1:x.address_line1,p_address_line2:x.address_line2,p_delivery_note:x.delivery_note,...(q?.instant_purchase?{p_remote_area:x.remote_area}:{})});if(result==='pending')void miniNotifyAdminEvent('delivery_change_request');await reloadTracking();return result==='pending';
 }
 async function reviewBuyerDelivery(id,approve,fee){
  if(!connected){let q=demo.quotes.find(x=>x.id===id);if(!q||!q.delivery_change_requested_at)throw Error('변경 요청이 없어요');if(approve){for(const k of ['delivery_method','recipient_name','postal_code','address_line1','address_line2','delivery_note'])q[k]=q['requested_'+k];q.shipping_fee=q.delivery_method==='courier'?3000:0;q.amount_changed_at=now();}q.delivery_change_requested_at=null;q.delivery_change_rejected_at=approve?null:now();saveDemo();return;}
@@ -11061,10 +11067,10 @@ async function searchKoreanAddress(button){
     const detail=block.querySelector('input[name="address_line2"]');
     const address=(data.userSelectedType==='R'?data.roadAddress:data.jibunAddress)||data.roadAddress||data.jibunAddress||data.address||'';
     postal.value=String(data.zonecode||'');addr.value=String(address);
-    if(instantStorefront&&block.id==='courierFields'){
-     const region=block.querySelector('#instantRemoteArea');
+    if(instantStorefront&&['courierFields','courierFieldsEdit'].includes(block.id)){
+     const region=block.querySelector(block.id==='courierFields'?'#instantRemoteArea':'#instantRemoteAreaEdit');
      if(region)region.value=instantIsKnownRemote(postal.value,addr.value)?'remote':'normal';
-     instantCheckoutShowTotal('courier');
+     if(block.id==='courierFields')instantCheckoutShowTotal('courier');
     }
     postal.readOnly=true;addr.readOnly=true;
     pane.classList.add('hidden');mount.innerHTML='';
@@ -12157,7 +12163,7 @@ if(a==='edit-delivery'){
  const q=state.quotes.find(x=>x.id===id);if(!q?.delivery_change_requested_at)throw Error('수령방식 변경 요청이 없어요');
  const approve=a==='approve-delivery';let fee=null;
  if(approve){
-  fee=q.requested_delivery_method==='courier'?3000:0;
+  fee=q.requested_delivery_method==='courier'?instantRequestedCourierFee(q):0;
   const bundled=isBundle(q)||state.quotes.some(x=>x.bundle_parent_id===q.id&&x.status!=='cancelled');
   const effectiveFee=bundled?appliedShipping(q):fee;
   const diff=effectiveFee-appliedShipping(q);
@@ -12593,7 +12599,7 @@ else if(f.id==='bundle-form'){
 }else if(f.id==='suggest-form'){await submitSuggestion(data);clearSuggestPreviews();state.modal=null;state.page='shop';await loadPublic();notif('상품 사진과 등록 신청이 접수됐어요! 관리자가 검토 후 등록해요')}
 else if(f.id==='approve-form'){await approveSuggestion(data);clearAdminSelectedPhotos();state.modal=null;await loadAdmin();state.tab='requests';render();notif('선택한 사진만 등록하고 신청을 승인했어요')}
 else if(f.id==='edit-delivery-form'){
- const pending=await updateBuyerDelivery(data);state.modal=null;render();notif(pending?'관리자에게 수령방식 변경 요청을 보냈어요':'수령방식 수정이 저장됐어요. 택배 3,000원 / 직접수령 0원이 자동 적용돼요.');
+ const pending=await updateBuyerDelivery(data);state.modal=null;render();notif(pending?'관리자에게 수령방식 변경 요청을 보냈어요':state.tracking?.instant_purchase?'수령방식이 저장됐어요. 택배 기본 3,500원 · 제주·도서산간 6,500원 · 직접수령 0원이에요.':'수령방식 수정이 저장됐어요. 택배 3,000원 / 직접수령 0원이 자동 적용돼요.');
 }else if(f.id==='new-arrival-push-form'){await miniSendNewArrival(f);}
 else if(f.id==='pick'){const pr=selectedProd(state.modal.id);if(!pr||pr.is_sold_out||!pr.published||!state.stores.some(st=>st.id===pr.store_id&&st.active))throw Error('품절되었거나 판매가 종료된 상품이에요.');const color=data.get('color'),size=data.get('size'),quantity=Number(data.get('qty'));if(!pr?.options[color]?.includes(size)||quantity<1||quantity>20)throw Error('옵션을 다시 확인해 주세요');const same=state.cart.find(x=>x.product_id===pr.id&&x.color===color&&x.size===size);if(same)same.quantity+=quantity;else state.cart.push({product_id:pr.id,store_id:pr.store_id,product_name:pr.name,color,size,quantity});saveCart();state.modal=null;render();notif('장바구니에 담았어요')}
 else if(f.id==='request'){if(state.cart.some(c=>{const p=selectedProd(c.product_id);return !p||p.is_sold_out||!p.published||!state.stores.some(st=>st.id===p.store_id&&st.active)}))throw Error('품절되거나 전시가 종료된 상품이 장바구니에 있어요. 해당 상품을 삭제하고 다시 요청해 주세요.');const name=String(data.get('name')||'').trim(),baby=String(data.get('baby')||'').trim(),contact=String(data.get('contact')||'').trim(),email=normalizeCustomerEmail(data.get('email')),note=String(data.get('note')||'').trim();if(!name||!baby)throw Error('주문자 이름과 아기 이름(태명)을 모두 입력해 주세요');customerPhoneLocal(contact);const lookupPin=customerLookupPin(data.get('lookup_pin'));if(lookupPin!==String(data.get('lookup_pin_confirm')||''))throw Error('주문조회 비밀번호가 서로 달라요.');const method=String(data.get('delivery_method')||'');if(!['pickup','courier'].includes(method))throw Error('수령방식을 선택해 주세요');
@@ -12894,6 +12900,11 @@ function updateShopSearchResults(){
  if(count&&nextCount)count.textContent=nextCount.textContent;
 }
 function input(e){
+ if(instantStorefront&&e.target.closest?.('#request')&&['postal_code','address_line1'].includes(e.target.name)){
+  const form=e.target.closest('form'),region=form?.elements?.remote_area;
+  if(region&&instantIsKnownRemote(form.elements.postal_code?.value,form.elements.address_line1?.value))region.value='remote';
+  instantCheckoutShowTotal(form?.elements?.delivery_method?.value);
+ }
  if(e.target.closest?.('form[data-payment]')){
   updatePaymentSplitTotal(e.target.closest('form'));return;
  }

@@ -6234,6 +6234,7 @@ function renderAdminHome(){
  const preparing=all.filter(adminOrderNeedsPaymentOrProcurement).length;
  const shipping=all.filter(q=>isWholesaleCompleted(q)&&!isFinishedOrder(q)).length;
  const deliveryChanges=all.filter(q=>q.delivery_change_requested_at).length;
+ const dispatchRequests=all.filter(q=>q.dispatch_request_status==='pending').length;
  const cancellations=all.filter(q=>q.cancel_requested_at).length;
  const optionChanges=(state.optionRequests||[]).filter(r=>r.status==='pending').length;
  const requests=(state.requests||[]).filter(r=>r.status==='pending').length;
@@ -6261,10 +6262,11 @@ function renderAdminHome(){
    </details>`:''}
   </section>
   ${state.homePreparingOpen===true?renderAdminHomePreparingList(all.filter(q=>q.status==='confirmed'&&!isWholesaleCompleted(q)&&!isFinishedOrder(q))):''}
-  ${cancellations||optionChanges||deliveryChanges?`<div class="admin-home-attention">
+  ${cancellations||optionChanges||deliveryChanges||dispatchRequests?`<div class="admin-home-attention">
     <h3>확인 요청</h3>
     ${cancellations?`<button type="button" data-tab="quotes" data-nav-filter="cancel_requested"><span>취소 요청</span><strong>${cancellations}건</strong></button>`:''}
     ${deliveryChanges?`<button type="button" data-action="show-delivery-requests"><span>수령방식 변경 요청</span><strong>${deliveryChanges}건</strong></button>`:''}
+    ${dispatchRequests?`<button type="button" data-action="show-dispatch-requests"><span>전체·부분배송 요청</span><strong>${dispatchRequests}건</strong></button>`:''}
     ${optionChanges?`<button type="button" data-action="show-pending-item-options"><span>옵션 변경 요청</span><strong>${optionChanges}건</strong></button>`:''}
    </div>`:''}
   <div class="admin-home-shortcuts">
@@ -7580,6 +7582,36 @@ function compactQuoteNextTask(q){
  }
  return {text:'주문 내용 확인',label:'상세 보기',tool:'advanced'};
 }
+
+function renderAdminDispatchNotice(q){
+ if(q.dispatch_request_status!=='pending'||q.status==='cancelled')return '';
+ return `<div class="admin-dispatch-alert">
+  <strong>📦 ${esc(dispatchModeLabel(q.dispatch_request_mode))} 요청</strong>
+  <button type="button" class="btn sm secondary" data-action="review-dispatch" data-id="${esc(q.id)}">확인</button>
+ </div>`;
+}
+function renderAdminDispatchReview(q){
+ if(!q||q.dispatch_request_status!=='pending')return '<div class="empty">처리할 배송 요청이 없어요.</div>';
+ const active=(q.items||[]).filter(i=>i.fulfillment!=='sold_out');
+ const arrived=active.filter(i=>['received','delivered'].includes(i.fulfillment));
+ const linked=isBundle(q)||state.quotes.some(x=>x.bundle_parent_id===q.id&&x.status!=='cancelled');
+ return `<div class="admin-dispatch-review">
+  <h3>${esc(q.buyer_name)} · ${esc(dispatchModeLabel(q.dispatch_request_mode))}</h3>
+  <div class="smallnote">요청 시각 ${esc(fmtDate(q.dispatch_requested_at))} · ${esc(deliveryLabel(q))}</div>
+  <div class="smallnote">이 주문 ${active.length}종 중 입고완료 ${arrived.length}종</div>
+  ${active.map(i=>`<div class="compact-receipt-row"><span>${esc(i.store_name)} · ${esc(i.product_name)}<small>${esc(i.color)} / ${esc(i.size)}</small></span><b>${['received','delivered'].includes(i.fulfillment)?'입고완료':'입고대기'}</b></div>`).join('')}
+  ${linked?'<p>묶음배송 주문입니다. 다른 주문과 동일 송장인지 확인하고, 부분배송 필요 시 묶음배송 관리에서 별도로 처리해 주세요.</p>':''}
+  <p>요청을 확인해도 자동으로 출고·송장 등록·묶음해제·추가 배송비 청구가 진행되지 않아요. 부분배송이면 입고 상품과 추가 택배비를 확인하고 구매자에게 먼저 안내해 주세요.</p>
+  <div class="row wrap">
+   <button type="button" class="btn" data-action="ack-dispatch" data-id="${esc(q.id)}">요청 확인 완료</button>
+   <button type="button" class="btn neutral" data-action="reject-dispatch" data-id="${esc(q.id)}">처리 불가</button>
+  </div>
+ </div>`;
+}
+function renderAdminDispatchQueue(){
+ const pending=state.quotes.filter(q=>q.dispatch_request_status==='pending'&&q.status!=='cancelled');
+ return pending.length?`<div class="delivery-review-list">${pending.map(q=>`<div class="admin-dispatch-alert"><strong>${esc(q.buyer_name)} · ${esc(dispatchModeLabel(q.dispatch_request_mode))}</strong><button type="button" class="btn sm secondary" data-action="review-dispatch" data-id="${esc(q.id)}">확인</button></div>`).join('')}</div>`:'<div class="empty">대기 중인 배송 요청이 없어요.</div>';
+}
 function renderAdminQuoteCard(q){
  const qty=(q.items||[]).reduce((n,i)=>n+Number(i.quantity||0),0);
  const paid=(Number(q.amount_paid)||0)-(Number(q.amount_refunded)||0);
@@ -7587,11 +7619,12 @@ function renderAdminQuoteCard(q){
  const priced=readyQuote(q);
  const finalReady=priced&&(q.status==='confirmed'||q.status==='quoted'&&q.purchase_intent==='buy_now'&&adminFreightReady(q));
  const task=compactQuoteNextTask(q);
- const urgent=q.cancel_requested_at||q.delivery_change_requested_at||pendingItemOptionRequests(q).length;
+ const urgent=q.cancel_requested_at||q.delivery_change_requested_at||q.dispatch_request_status==='pending'||pendingItemOptionRequests(q).length;
  const active=(q.items||[]).filter(i=>i.fulfillment!=='sold_out');
  const command=task.filter?`data-filter="${esc(task.filter)}"`:task.action?`data-action="${esc(task.action)}" data-id="${esc(q.id)}" ${task.stage?`data-stage="${esc(task.stage)}"`:''}`:`data-action="compact-open-tool" data-id="${esc(q.id)}" data-tool="${esc(task.tool||'advanced')}"`;
  return `<div class="card ordercard compact-order-card" data-compact-order="${esc(q.id)}">
   <div class="compact-order-top"><strong>${(q.items||[]).length}종 · ${qty}개</strong><span>${esc(deliveryLabel(q))} · ${esc(buyerOrderPhase(q))}</span></div>
+  ${renderAdminDispatchNotice(q)}
   <div class="compact-order-products">${(q.items||[]).map(i=>`<div class="compact-order-product">
    <span><b>${adminOrderItemName(i)}</b><small>${esc(i.color)} / ${esc(i.size)} · ${Number(i.quantity)||0}개${i.fulfillment==='sold_out'?' · 품절':''}</small></span>
    <strong>${i.unit_price==null?'가격 미정':money(Number(i.unit_price)*(Number(i.quantity)||0))}</strong>
@@ -9543,6 +9576,11 @@ function modal(){const m=state.modal;if(!m)return '';const wrap=(title,body,stic
 if(m.type==='payment-save-success'&&state.admin)return wrap('입금 처리 완료','<div style="padding:12px 4px 22px"><p style="font-size:18px;font-weight:700;margin:0 0 12px">'+esc(m.buyer)+'</p><p style="font-size:22px;font-weight:800;margin:0 0 12px">'+money(m.amount)+' 입금 확인 완료</p><p class="smallnote">'+(m.confirmed?'주문도 자동 확정됐어요.':'입금 내역이 저장됐어요.')+'</p><button type="button" class="btn block" data-action="close">확인</button></div>');
 if(m.type==='entry-push')return wrap('신상·주문 알림 받기',renderEntryPushBody());
 if(m.type==='admin-delivery-queue'&&state.admin)return wrap('수령방식 변경 요청',renderAdminDeliveryQueue());
+if(m.type==='admin-dispatch-queue'&&state.admin)return wrap('전체·부분배송 요청',renderAdminDispatchQueue());
+if(m.type==='admin-dispatch-review'&&state.admin){
+ const q=state.quotes.find(q=>q.id===m.id);
+ return wrap('배송 요청 확인',renderAdminDispatchReview(q));
+}
 if(m.type==='admin-option-requests'&&state.admin&&state.page==='admin')return wrap('옵션 변경 요청',adminOptionRequestsModalBody(m));
  if(m.type==='admin-order-filters'&&state.admin&&state.page==='admin'&&state.tab==='quotes')return wrap('주문 상세 필터',renderAdminOrderFilterModal());
  if(m.type==='admin-wholesale-history'&&state.admin&&state.page==='admin'&&state.tab==='payments')
@@ -11059,6 +11097,39 @@ if(a==='request-dispatch'){
  b.disabled=true;
  try{await requestBuyerDispatchMode(mode);notif('배송 요청을 접수했어요. 관리자 확인 후 진행돼요.');}
  finally{if(b.isConnected)b.disabled=false;}
+ return;
+}
+
+if(a==='show-dispatch-requests'){
+ if(!state.admin||state.page!=='admin')throw Error('관리자 화면에서만 확인할 수 있어요.');
+ modalOpen('admin-dispatch-queue');return;
+}
+if(a==='review-dispatch'){
+ if(!state.admin||state.page!=='admin')throw Error('관리자 화면에서만 확인할 수 있어요.');
+ if(!state.quotes.some(q=>q.id===id&&q.dispatch_request_status==='pending'))throw Error('이미 처리된 요청이에요.');
+ modalOpen('admin-dispatch-review',id);return;
+}
+if(a==='ack-dispatch'||a==='reject-dispatch'){
+ if(!state.admin||state.page!=='admin')throw Error('관리자만 배송 요청을 처리할 수 있어요.');
+ const q=state.quotes.find(q=>q.id===id);
+ if(!q||q.dispatch_request_status!=='pending')throw Error('처리 대기 중인 요청을 다시 확인해 주세요.');
+ const approve=a==='ack-dispatch';
+ const message=approve
+  ?`${q.buyer_name}님의 ${dispatchModeLabel(q.dispatch_request_mode)} 요청을 확인 완료로 표시할까요?\n\n송장·출고 상태·배송비는 자동 변경되지 않아요. 추가 택배비가 있으면 고객에게 사전 안내해 주세요.`
+  :'이 배송 요청을 처리 불가로 표시할까요?';
+ if(!window.confirm(message))return;
+ if(!connected){
+  const row=demo.quotes.find(x=>x.id===id);
+  if(!row)throw Error('주문을 찾을 수 없어요.');
+  row.dispatch_request_status=approve?'acknowledged':'rejected';
+  row.dispatch_reviewed_at=now();saveDemo();syncDemo();state.modal=null;render();
+ }else{
+  const result=await rpc('gq_admin_review_dispatch_v111',{p_quote_id:id,p_acknowledge:approve},true);
+  if(!result?.ok)throw Error('처리 결과를 저장하지 못했어요.');
+  state.modal=null;
+  await loadAdmin();
+ }
+ notif(approve?'배송 요청을 확인 완료로 표시했어요.':'배송 요청을 처리 불가로 표시했어요.');
  return;
 }
 if(a==='payment-full-oneclick'){

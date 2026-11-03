@@ -4150,6 +4150,12 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
  -webkit-tap-highlight-color:transparent;
 }
 .mini-openchat-banner .mini-openchat-link.primary{background:#d97193;border-color:#d97193;color:#fff;}
+.mini-openchat-banner .mini-openchat-today{
+ grid-column:1/-1;justify-self:end;align-self:center;
+ border:0;background:transparent;color:#93677a;padding:2px 0;
+ min-height:25px;text-decoration:underline;text-underline-offset:3px;
+ font-size:11px;font-weight:660;line-height:1.2;white-space:nowrap;
+}
 .mini-openchat-banner .mini-openchat-close{
  position:absolute;right:11px;top:10px;display:grid;place-items:center;
  width:30px;height:30px;padding:0;border:0;border-radius:50%;
@@ -4388,15 +4394,19 @@ const githubStorefront=location.hostname.toLowerCase()==='nostaljian.github.io';
 const instantStorefront=location.hostname.toLowerCase()==='miniyena.pages.dev';
 
 const MINI_OPENCHAT_DISMISS_KEY='mini_openchat_banner_dismissed_v1';
+const MINI_OPENCHAT_TODAY_KEY='mini_openchat_banner_suppressed_date_v1';
+function miniOpenChatKstDay(){return new Date(Date.now()+9*60*60*1000).toISOString().slice(0,10);}
 function renderOpenChatBanner(){
  if(!githubStorefront||state.page!=='shop')return '';
  try{if(sessionStorage.getItem(MINI_OPENCHAT_DISMISS_KEY)==='1')return '';}catch(_){}
+try{if(localStorage.getItem(MINI_OPENCHAT_TODAY_KEY)===miniOpenChatKstDay())return '';}catch(_){}
  return `<aside class="mini-openchat-banner" aria-label="미니예나 오픈채팅 안내">
   <div class="mini-openchat-copy"><span class="mini-openchat-overline">🧸 미니예나 오픈채팅</span><strong>신상 소식과 아기옷 이야기 함께해요 ෆ</strong></div>
   <div class="mini-openchat-links">
    <a class="mini-openchat-link primary" href="https://open.kakao.com/o/gCxVTsVi" target="_blank" rel="noopener noreferrer" aria-label="미니예나 공지방 오픈채팅 입장">📢 공지방</a>
    <a class="mini-openchat-link" href="https://open.kakao.com/o/gDs8ntVi" target="_blank" rel="noopener noreferrer" aria-label="미니예나 소통방 오픈채팅 입장">💬 소통방</a>
   </div>
+  <button type="button" class="mini-openchat-today" data-action="hide-openchat-today" aria-label="오늘 더 이상 오픈채팅 배너 보지 않기">오늘 더 이상 보지 않기</button>
   <button type="button" class="mini-openchat-close" data-action="dismiss-openchat-banner" aria-label="오픈채팅 안내 배너 닫기" title="닫기">×</button>
  </aside>`;
 }
@@ -11170,6 +11180,12 @@ async function click(e){
  if(!e.target.closest?.('[data-product-store-picker]'))closeProductStoreSearch(app.querySelector('#product-form'));
  const pg=e.target.closest('[data-page]');if(pg){goto(pg.dataset.page);if(pg.classList.contains('brand-home'))window.scrollTo({top:0,behavior:'auto'});return}const b=e.target.closest('[data-action]');if(!b)return;const a=b.dataset.action,id=b.dataset.id;try{
 
+if(a==='hide-openchat-today'){
+ try{localStorage.setItem(MINI_OPENCHAT_TODAY_KEY,miniOpenChatKstDay());}catch(_){}
+ try{sessionStorage.setItem(MINI_OPENCHAT_DISMISS_KEY,'1');}catch(_){}
+ app.querySelector('.mini-openchat-banner')?.remove();
+ return;
+}
 if(a==='dismiss-openchat-banner'){
  try{sessionStorage.setItem(MINI_OPENCHAT_DISMISS_KEY,'1');}catch(_){}
  app.querySelector('.mini-openchat-banner')?.remove();

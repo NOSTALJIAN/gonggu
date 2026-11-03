@@ -4128,19 +4128,19 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 .mini-openchat-banner{
  position:fixed;z-index:34;
  left:50%;transform:translateX(-50%);
- bottom:calc(62px + env(safe-area-inset-bottom));
- width:min(100%,860px);
+ bottom:calc(68px + env(safe-area-inset-bottom));
+ width:min(calc(100% - 24px),820px);
  padding:11px 49px 11px 13px;
- border-top:1px solid #f4dbe4;border-left:1px solid #f4dbe4;border-right:1px solid #f4dbe4;
- border-radius:15px 15px 0 0;
+ border:1px solid #f4dbe4;
+ border-radius:15px;
  background:#fff7fa;
  box-shadow:0 -5px 24px rgba(72,36,48,.11);
  display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;
  font-family:var(--site-font);
 }
 .mini-openchat-banner .mini-openchat-copy{min-width:0;display:flex;flex-direction:column;gap:2px;}
-.mini-openchat-banner .mini-openchat-overline{font-size:10px;color:#a65f7b;font-weight:760;line-height:1.4;}
-.mini-openchat-banner .mini-openchat-copy strong{font-size:12px;line-height:1.5;color:#48303a;letter-spacing:-.035em;}
+.mini-openchat-banner .mini-openchat-overline{font-size:11px;color:#a65f7b;font-weight:760;line-height:1.4;}
+.mini-openchat-banner .mini-openchat-copy strong{font-size:13px;line-height:1.5;color:#48303a;letter-spacing:-.035em;}
 .mini-openchat-banner .mini-openchat-links{display:flex;gap:6px;flex-wrap:nowrap;}
 .mini-openchat-banner .mini-openchat-link{
  display:inline-flex;align-items:center;justify-content:center;
@@ -4167,14 +4167,14 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 body:has(.overlay) .mini-openchat-banner,
 body:has(#search:focus) .mini-openchat-banner{display:none!important;}
 @media(max-width:460px){
- .mini-openchat-banner{padding:9px 41px 9px 12px;gap:6px;grid-template-columns:minmax(0,1fr) auto;}
- .mini-openchat-banner .mini-openchat-copy strong{font-size:10.5px;}
+ .mini-openchat-banner{padding:11px 36px 10px 12px;gap:7px;grid-template-columns:minmax(0,1fr) auto;}
+ .mini-openchat-banner .mini-openchat-copy strong{font-size:12.5px;line-height:1.4;}
  .mini-openchat-banner .mini-openchat-link{padding:7px 9px;min-height:36px;font-size:11px;}
  .mini-openchat-banner .mini-openchat-links{gap:5px;}
  .mini-openchat-banner .mini-openchat-close{right:6px;top:7px;}
 }
 @media(max-width:360px){
- .mini-openchat-banner{grid-template-columns:minmax(0,1fr);gap:5px;padding-right:41px;}
+ .mini-openchat-banner{grid-template-columns:minmax(0,1fr);gap:5px;padding-right:36px;}
  .mini-openchat-banner .mini-openchat-links{justify-content:flex-start;}
 }
 </style>

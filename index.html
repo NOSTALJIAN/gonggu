@@ -1210,6 +1210,28 @@ body:has(.overlay) .floating-actions{opacity:0;visibility:hidden;pointer-events:
 .product-estimate-detail .product-estimate-label{display:block;margin-bottom:4px;font-size:12px}
 .product-estimate-detail strong{display:block;font-size:23px;color:#413126}
 .product-estimate-note{margin-top:7px;line-height:1.55;font-size:11px;color:#776d61}
+
+/* Instant storefront option picker: quiet, price-only display. */
+.product-estimate-detail.product-estimate-instant{
+ margin:8px 0 18px;
+ padding:12px 2px 16px;
+ background:transparent;
+ border:0;
+ border-bottom:1px solid #e7e7e7;
+ border-radius:0;
+}
+.product-estimate-detail.product-estimate-instant .product-estimate-label{
+ color:#777;
+ font-size:12px;
+ margin-bottom:5px;
+}
+.product-estimate-detail.product-estimate-instant strong{
+ color:#111;
+ font-size:26px;
+ font-weight:850;
+ letter-spacing:-.04em;
+}
+
 .estimate-unavailable{padding:11px 0;font-size:12px;color:#777}
 /* Supplier-specific size chart shown only inside product detail; never show private supplier names. */
 .product-size-chart{margin:16px 0;padding:14px 12px;border:1px solid #ddd;background:#fff}
@@ -5319,9 +5341,9 @@ function productPhotoUrls(p){
 function hasProductEstimate(p){return storeEstimate(p)!==null;}
 function estimatedProductPrice(p,detail=false){
  if(!hasProductEstimate(p))return detail?'<div class="estimate-unavailable">가격 확인이 필요한 상품이에요.</div>':'';
- return `<div class="product-estimate ${detail?'product-estimate-detail':'product-estimate-card'}">
+ return `<div class="product-estimate ${detail?'product-estimate-detail':'product-estimate-card'} ${detail&&instantStorefront?'product-estimate-instant':''}">
   <span class="product-estimate-label">${instantStorefront?'판매가':'예상가'}</span><strong>${instantStorefront?'':'약 '}${money(storeEstimate(p))}</strong>
-  ${detail?`<div class="product-estimate-note">${instantStorefront?'남대문 도매배송비가 포함된 확정가예요. 택배수령은 3,000원 추가돼요.':'참고용 예상 금액이에요. 실제 상품 가격과 배송비는 견적 확인 후 확정됩니다.'}</div>`:''}
+  ${detail&&!instantStorefront?'<div class="product-estimate-note">참고용 예상 금액이에요. 실제 상품 가격과 배송비는 견적 확인 후 확정됩니다.</div>':''}
  </div>`;
 }
 /* Product-specific public note, separate from the Namdaemun store's shared size chart. */
@@ -9660,7 +9682,7 @@ if(m.type==='pick'){
   <label class="label">수량<input type="number" name="qty" value="1" min="1" max="20" required></label>
   <button class="btn block" type="submit">장바구니 담기</button>
  </form>
- ${sizeGuide?`<details class="pick-size-details"><summary>사이즈 안내 보기 <span aria-hidden="true">⌄</span></summary>${sizeGuide}</details>`:''}`);
+ ${sizeGuide?`<details class="pick-size-details" open><summary>사이즈 안내 <span aria-hidden="true">⌄</span></summary>${sizeGuide}</details>`:''}`);
 }
 if(m.type==='product-photos'){
  const p=selectedProd(m.id);

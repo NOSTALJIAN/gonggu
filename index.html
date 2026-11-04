@@ -4228,6 +4228,28 @@ body:has(#search:focus) .mini-openchat-banner{display:none!important;}
 }
 .shell.is-admin-shell .floating-refresh svg{width:19px;height:19px;stroke-width:1.7}
 .shell.is-admin-shell .floating-refresh span{display:block}
+
+/* Buyer quote choices: primary purchase button and reachable cancellation. */
+.buyer-simple .buyer-purchase-prominent{background:#fff;border:1px solid #dadada;border-radius:15px;padding:17px 16px;margin:0 0 15px}
+.buyer-purchase-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 6px}
+.buyer-purchase-title h3{font-size:18px!important;letter-spacing:-.5px;margin:0!important;font-weight:850}
+.buyer-purchase-status{display:inline-block;flex-shrink:0;font-size:10px;font-weight:800;background:#f0f0f0;color:#555;border-radius:6px;padding:4px 7px}
+.buyer-purchase-status.is-needed{background:#fff0e9;color:#a14b2a}
+.buyer-purchase-prominent .buyer-hint{font-size:12px;line-height:1.6;margin:6px 0 10px}
+.buyer-purchase-subtotal{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;margin:11px 0;border-radius:9px;background:#f7f7f7}
+.buyer-purchase-subtotal span{font-size:11px;color:#777}
+.buyer-purchase-subtotal strong{font-size:14px;font-weight:850;color:#222;text-align:right}
+.buyer-simple .buyer-purchase-prominent .purchase-round-actions{display:grid;grid-template-columns:1fr;gap:9px;margin:12px 0 0}
+.buyer-simple .buyer-purchase-prominent .purchase-round-actions>button.purchase-round-primary{display:block;width:100%;min-height:58px;background:#151515;color:white;border:1px solid #151515;font-size:16px;font-weight:850;padding:13px 10px;line-height:1.35;white-space:normal;border-radius:10px}
+.buyer-simple .buyer-purchase-prominent .purchase-round-actions>button.purchase-round-primary.is-selected{background:#272727;color:#fff;border-color:#272727}
+.buyer-simple .buyer-purchase-prominent .purchase-round-secondary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.buyer-simple .buyer-purchase-prominent .purchase-round-secondary button{background:#fff;color:#555;min-height:43px;padding:9px 5px;font-size:12px;border:1px solid #ddd;white-space:normal;border-radius:9px}
+.buyer-simple .buyer-purchase-prominent .purchase-round-secondary button.is-selected{background:#eee;color:#111;border-color:#bbb}
+.buyer-simple .buyer-purchase-prominent .purchase-round-actions button:disabled{opacity:.48;cursor:default}
+.buyer-purchase-cancel{border-top:1px solid #eee;margin-top:12px;padding-top:9px;display:flex;align-items:center;justify-content:space-between;gap:9px}
+.buyer-purchase-cancel button,.buyer-cancel-confirmed button{border:0;background:transparent;color:#686868;font-size:12px;font-weight:720;text-decoration:underline;text-underline-offset:3px;padding:9px 1px;min-height:37px}
+.buyer-purchase-cancel small{font-size:10px;color:#999;text-align:right}
+.buyer-cancel-confirmed{border-top:1px solid #eee;margin-top:12px;padding:12px 2px;text-align:right}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -6038,19 +6060,23 @@ ${due===0?'이미 입금이 기록된 주문입니다. 중복 송금하지 마�
 function buyerRoundIntent(q){
  const ready=Boolean(q.supplier_shipping_ready)&&readyQuote(q);
  if(q.direct_1688){
-  return `<section class="buyer-purchase-simple" aria-label="1688 주문 확정">
+  return `<section class="buyer-purchase-simple buyer-purchase-prominent" aria-label="1688 주문 확정">
    <h3>주문 확정</h3>
    ${ready?`<button type="button" class="btn block" data-action="confirm-quote" ${q.cancel_requested_at||q.delivery_change_requested_at?'disabled':''}>주문 확정하기</button>`:'<p class="buyer-hint">최종 금액 확인 중</p>'}
+   ${canRequestCancel(q)?'<div class="buyer-purchase-cancel"><button type="button" data-action="request-cancel">구매 취소 요청</button><small>관리자 확인 후 취소돼요</small></div>':''}
   </section>`;
  }
  const intent=q.purchase_intent||'undecided';
- return `<section class="buyer-purchase-simple" aria-label="이번 회차 구매 신청">
-  <h3>이번 회차 구매 신청</h3>
-  <p class="buyer-hint">상품 견적을 확인한 뒤 구매할 회차를 선택해 주세요. 배송비까지 정해지면 한 번에 입금합니다.</p>
+ return `<section class="buyer-purchase-simple buyer-purchase-prominent" id="buyer-purchase-choice" aria-label="구매 여부 선택">
+  <div class="buyer-purchase-title"><h3>구매 여부를 선택해 주세요</h3><span class="buyer-purchase-status ${intent==='undecided'?'is-needed':''}">${intent==='undecided'?'선택 필요':'선택 완료'}</span></div>
+  <p class="buyer-hint">상품 견적을 확인한 뒤 구매할 회차를 선택해 주세요. 배송비는 추후 안내되며, 그때 한 번에 입금해요.</p>
+  <div class="buyer-purchase-subtotal"><span>상품 견적 합계 · 배송비 별도</span><strong>${unknown(q)?'가격 확인 중':money(previewOrderSum(q))}</strong></div>
   <div class="purchase-round-actions">
-   <button type="button" data-action="set-purchase-intent" data-intent="buy_now" class="${intent==='buy_now'?'is-selected':''}" aria-pressed="${intent==='buy_now'}">이번 회차 구매 신청</button>
-   <button type="button" data-action="set-purchase-intent" data-intent="next_round" class="${intent==='next_round'?'is-selected':''}" aria-pressed="${intent==='next_round'}" ${ready&&intent==='buy_now'?'disabled':''}>다음 회차</button>
-   <button type="button" data-action="set-purchase-intent" data-intent="on_hold" class="${intent==='on_hold'?'is-selected':''}" aria-pressed="${intent==='on_hold'}" ${ready&&intent==='buy_now'?'disabled':''}>구매 보류</button>
+   <button type="button" data-action="set-purchase-intent" data-intent="buy_now" class="purchase-round-primary ${intent==='buy_now'?'is-selected':''}" aria-pressed="${intent==='buy_now'}" ${q.cancel_requested_at?'disabled':''}>${intent==='buy_now'?'✓ 이번 회차 구매 신청 완료':'이번 회차 구매 신청하기 →'}</button>
+   <div class="purchase-round-secondary">
+    <button type="button" data-action="set-purchase-intent" data-intent="next_round" class="${intent==='next_round'?'is-selected':''}" aria-pressed="${intent==='next_round'}" ${ready&&intent==='buy_now'||q.cancel_requested_at?'disabled':''}>다음 회차 구매</button>
+    <button type="button" data-action="set-purchase-intent" data-intent="on_hold" class="${intent==='on_hold'?'is-selected':''}" aria-pressed="${intent==='on_hold'}" ${ready&&intent==='buy_now'||q.cancel_requested_at?'disabled':''}>구매 보류</button>
+   </div>
   </div>
   ${intent==='buy_now'
    ? ready
@@ -6058,6 +6084,7 @@ function buyerRoundIntent(q){
       : '<p class="buyer-hint">✓ 이번 회차 구매 신청 완료 · 배송비 계산 중. 최종 금액 안내 전에는 송금하지 마세요.</p>'
    : intent==='next_round'?'<p class="buyer-hint">다음 회차 구매로 접수했어요.</p>':intent==='on_hold'?'<p class="buyer-hint">구매가 보류됐어요.</p>':''}
   ${q.delivery_change_requested_at?'<p class="buyer-hint">수령방식 변경 승인 후 최종 금액을 안내해 드려요.</p>':''}
+  ${canRequestCancel(q)?'<div class="buyer-purchase-cancel"><button type="button" data-action="request-cancel">구매 취소 요청</button><small>관리자 확인 후 취소돼요</small></div>':''}
  </section>`;
 }
 function intentBadge(q){
@@ -6188,7 +6215,7 @@ function renderTrack(){
   return '<section class="content buyer-simple"><h1>내 주문조회</h1><div class="empty">견적 내역에서 주문을 선택해 주세요.</div></section>';
  if(!q)
   return '<section class="content buyer-simple"><h1>내 주문조회</h1><div class="card">주문을 불러오는 중이에요.<div class="space"></div><button class="btn secondary" data-action="load-track">다시 불러오기</button></div></section>';
- const status=buyerOrderPhase(q);
+ const status=q.status==='quoted'&&!q.direct_1688&&(!q.purchase_intent||q.purchase_intent==='undecided')?'구매 선택 필요':buyerOrderPhase(q);
  const itemMarkup=(q.items||[]).map(i=>`<article class="buyer-simple-item">
    <div class="buyer-simple-product"><b>${esc(i.store_name)} · ${esc(i.product_name)}</b><span>${Number(i.quantity)}개</span></div>
    <div class="buyer-simple-variant">${esc(i.color)} / ${esc(i.size)}</div>
@@ -6228,10 +6255,11 @@ function renderTrack(){
       <button class="btn block secondary" type="submit">비밀번호 저장</button>
      </form>
     </details>
-    ${canRequestCancel(q)?`<button type="button" class="textbutton buyer-cancel-link" data-action="request-cancel">취소 요청</button>`:''}
+    ${q.status==='requested'&&canRequestCancel(q)?`<button type="button" class="textbutton buyer-cancel-link" data-action="request-cancel">취소 요청</button>`:''}
    </details>`;
  return `<section class="content buyer-simple">
   <div class="buyer-simple-head"><div><h1>${esc(q.buyer_name)}님 ${q.instant_purchase?'주문':'견적'}</h1><div class="tiny">${esc(q.baby_name||'')} · ${esc(q.id.slice(0,8).toUpperCase())}</div></div><span class="buyer-simple-state">${esc(status)}</span></div>
+  ${q.status==='quoted'?buyerRoundIntent(q):''}
   <div class="buyer-simple-items">${itemMarkup||'<div class="buyer-hint">등록된 상품이 없어요.</div>'}</div>
   <div class="buyer-simple-totals">
    <div class="buyer-simple-sum"><span>상품 합계</span><b>${unknown(q)?'가격 확인 중':money(previewOrderSum(q))}</b></div>
@@ -6243,8 +6271,9 @@ function renderTrack(){
   ${renderBuyerDispatchPanel(q)}
   ${buyerSupplierPartialMarkup()}
   ${renderBuyerSupplierFreightRequest(q)}
-  ${q.status==='quoted'?buyerRoundIntent(q):q.status==='requested'?'<p class="buyer-hint">상품 가격 확인 중</p>':''}
+  ${q.status==='requested'?'<p class="buyer-hint">상품 가격 확인 중</p>':''}
   ${confirmedPaymentWidget(q)}
+  ${q.status==='confirmed'&&canRequestCancel(q)?'<div class="buyer-cancel-confirmed"><button type="button" data-action="request-cancel">구매 취소 요청</button></div>':''}
   ${buyerWholesaleStatus(q)}
   ${shipment}
   ${q.status==='cancelled'?'<p class="buyer-hint">취소된 견적입니다.</p>':''}

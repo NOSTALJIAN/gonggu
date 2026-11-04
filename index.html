@@ -4181,6 +4181,50 @@ body:has(#search:focus) .mini-openchat-banner{display:none!important;}
  .mini-openchat-banner{grid-template-columns:minmax(0,1fr);gap:5px;padding-right:36px;}
  .mini-openchat-banner .mini-openchat-links{justify-content:flex-start;}
 }
+
+/* Administrator toolbar: solid, crisp contrast on iOS instead of pale grey. */
+.shell.is-admin-shell .admin-reorganized .admin-manager-heading {
+  opacity:1!important;
+  filter:none!important;
+  -webkit-filter:none!important;
+  -webkit-backdrop-filter:none!important;
+  backdrop-filter:none!important;
+  color:#111;
+  background:#fff;
+  border-bottom-color:#dedede;
+}
+.shell.is-admin-shell .admin-reorganized .admin-manager-heading small {
+  color:#252525!important;
+  font-size:11px;
+  font-weight:850;
+  letter-spacing:.035em;
+  opacity:1!important;
+}
+.shell.is-admin-shell .admin-reorganized .admin-manager-heading h1 {
+  color:#101010!important;
+  font-weight:850;
+  opacity:1!important;
+}
+.shell.is-admin-shell .admin-reorganized .admin-manager-actions button {
+  color:#202020!important;
+  opacity:1!important;
+  filter:none!important;
+  -webkit-filter:none!important;
+}
+.shell.is-admin-shell .admin-reorganized .admin-manager-actions .admin-manager-shop-link {
+  color:#161616!important;
+  font-size:12px;
+  font-weight:780;
+}
+.shell.is-admin-shell .admin-reorganized .admin-manager-actions button:not(.admin-manager-shop-link) {
+  background:#fff!important;
+  border:1px solid #d5d5d5!important;
+  box-shadow:none!important;
+}
+.shell.is-admin-shell .admin-reorganized .admin-manager-actions button svg {
+  stroke:currentColor;
+  opacity:1!important;
+}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">

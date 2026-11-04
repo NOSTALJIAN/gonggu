@@ -3322,9 +3322,11 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 @media(max-width:360px){.admin-orders-filterbar{gap:3px}.admin-orders-filterbar button{font-size:10px}}
 
 
-.admin-request-photo-fold,.admin-request-email-fold,.admin-request-delete-fold{margin:10px 0 3px;border:1px solid #e7e7eb;border-radius:9px;padding:9px 11px;background:#fbfbfc}
-.admin-request-photo-fold>summary,.admin-request-email-fold>summary,.admin-request-delete-fold>summary{cursor:pointer;color:#62626d;font-weight:700;font-size:12px}
-.admin-request-photo-fold .request-photo-gallery{margin-top:12px}
+.admin-request-email-fold,.admin-request-delete-fold{margin:10px 0 3px;border:1px solid #e7e7eb;border-radius:9px;padding:9px 11px;background:#fbfbfc}
+.admin-request-email-fold>summary,.admin-request-delete-fold>summary{cursor:pointer;color:#62626d;font-weight:700;font-size:12px}
+/* Application photos are always shown; no extra disclosure or inner scroll. */
+.admin-request-photo-inline{margin:12px 0 14px}
+.admin-request-photo-inline .request-photo-gallery{margin:0;max-height:none;overflow:visible;padding:0}
 .admin-request-email-fold .admin-customer-email-editor{margin-top:10px}
 .admin-request-delete-fold .request-delete-btn{margin-top:9px}
 .admin-reorganized .request-card{border:1px solid #eaeaf0;border-radius:13px;box-shadow:none;padding:13px}
@@ -6866,7 +6868,7 @@ function renderAdminRequests(){
  </div>
  <div class="request-status-count" aria-live="polite">${statuses.find(st=>st.key===selected).label} · ${filtered.length}건</div>
  ${!filtered.length?`<div class="empty">${statuses.find(st=>st.key===selected).empty}</div>`:filtered.map(r=>`<div class="card request-card"><div class="row between"><div><span class="chip ${r.status==='pending'?'orange':r.status==='approved'?'green':'red'}">${r.status==='pending'?'검토 대기':r.status==='approved'?'상품 등록 완료':'반려'}</span><div class="tiny">${fmtDate(r.created_at)}</div></div><div class="tiny">${esc(r.customer_name||'신청자 미기재')}</div></div>
- <details class="admin-request-photo-fold"><summary>상품 사진 ${requestPhotoPaths(r).length}장 보기</summary>${requestPhotoGallery(r)}</details>
+ <div class="admin-request-photo-inline">${requestPhotoGallery(r)}</div>
  <details class="admin-request-email-fold"><summary>고객 이메일 설정</summary>${renderAdminEmailEditor('product_request',r)}</details>
  <div class="smallnote">남대문 도매업체</div><h3 style="margin:2px 0 9px">${esc(r.store_name)}</h3>${isUnknownRequestStoreName(r.store_name)?'<div class="request-store-pending">거래처 확인 필요 · 사진 확인 후 등록해 주세요.</div>':''}<div class="smallnote">상품명</div><b>${esc(r.product_name)}</b><div class="request-category-label">카테고리 · ${esc(categoryLabel(r))}</div>${r.note?`<p class="sub">요청 내용: ${esc(r.note)}</p>`:''}
  ${r.status==='rejected'?`<div class="request-rejection-summary"><b>반려 사유: ${esc(r.rejection_reason||'사유 미기록')}</b>${r.rejection_note?`<div>${esc(r.rejection_note)}</div>`:''}</div><div class="row wrap" style="margin-top:10px"><button class="btn sm secondary" data-action="copy-rejection-notice" data-id="${esc(r.id)}">반려 안내문 복사</button><button class="btn sm secondary request-delete-btn" type="button" data-action="delete-product-request" data-id="${esc(r.id)}">신청 삭제</button></div>`:''}

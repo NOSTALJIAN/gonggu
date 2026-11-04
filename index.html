@@ -4245,6 +4245,8 @@ body:has(#search:focus) .mini-openchat-banner{display:none!important;}
 .buyer-simple .buyer-purchase-prominent .purchase-round-secondary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .buyer-simple .buyer-purchase-prominent .purchase-round-secondary button{background:#fff;color:#555;min-height:43px;padding:9px 5px;font-size:12px;border:1px solid #ddd;white-space:normal;border-radius:9px}
 .buyer-simple .buyer-purchase-prominent .purchase-round-secondary button.is-selected{background:#eee;color:#111;border-color:#bbb}
+.buyer-simple .buyer-purchase-prominent .purchase-round-secondary button.purchase-round-cancel{background:#fff8f7;border-color:#ead9d6;color:#9c5049}
+.buyer-simple .buyer-purchase-prominent .purchase-round-secondary button.purchase-round-cancel:disabled{opacity:.55}
 .buyer-simple .buyer-purchase-prominent .purchase-round-actions button:disabled{opacity:.48;cursor:default}
 .buyer-purchase-cancel{border-top:1px solid #eee;margin-top:12px;padding-top:9px;display:flex;align-items:center;justify-content:space-between;gap:9px}
 .buyer-purchase-cancel button,.buyer-cancel-confirmed button{border:0;background:transparent;color:#686868;font-size:12px;font-weight:720;text-decoration:underline;text-underline-offset:3px;padding:9px 1px;min-height:37px}
@@ -6068,14 +6070,14 @@ function buyerRoundIntent(q){
  }
  const intent=q.purchase_intent||'undecided';
  return `<section class="buyer-purchase-simple buyer-purchase-prominent" id="buyer-purchase-choice" aria-label="구매 여부 선택">
-  <div class="buyer-purchase-title"><h3>구매 여부를 선택해 주세요</h3><span class="buyer-purchase-status ${intent==='undecided'?'is-needed':''}">${intent==='undecided'?'선택 필요':'선택 완료'}</span></div>
-  <p class="buyer-hint">상품 견적을 확인한 뒤 구매할 회차를 선택해 주세요. 배송비는 추후 안내되며, 그때 한 번에 입금해요.</p>
+  <div class="buyer-purchase-title"><h3>구매 여부를 선택해 주세요</h3><span class="buyer-purchase-status ${!q.cancel_requested_at&&intent==='undecided'?'is-needed':''}">${q.cancel_requested_at?'취소 요청 중':intent==='undecided'?'선택 필요':'선택 완료'}</span></div>
+  <p class="buyer-hint">견적 확인 후 이번 회차 구매, 다음 회차 구매 또는 취소를 선택해 주세요. 구매 신청 후 배송비가 안내되면 입금해요.</p>
   <div class="buyer-purchase-subtotal"><span>상품 견적 합계 · 배송비 별도</span><strong>${unknown(q)?'가격 확인 중':money(previewOrderSum(q))}</strong></div>
   <div class="purchase-round-actions">
    <button type="button" data-action="set-purchase-intent" data-intent="buy_now" class="purchase-round-primary ${intent==='buy_now'?'is-selected':''}" aria-pressed="${intent==='buy_now'}" ${q.cancel_requested_at?'disabled':''}>${intent==='buy_now'?'✓ 이번 회차 구매 신청 완료':'이번 회차 구매 신청하기 →'}</button>
    <div class="purchase-round-secondary">
     <button type="button" data-action="set-purchase-intent" data-intent="next_round" class="${intent==='next_round'?'is-selected':''}" aria-pressed="${intent==='next_round'}" ${ready&&intent==='buy_now'||q.cancel_requested_at?'disabled':''}>다음 회차 구매</button>
-    <button type="button" data-action="set-purchase-intent" data-intent="on_hold" class="${intent==='on_hold'?'is-selected':''}" aria-pressed="${intent==='on_hold'}" ${ready&&intent==='buy_now'||q.cancel_requested_at?'disabled':''}>구매 보류</button>
+    <button type="button" data-action="request-cancel" class="purchase-round-cancel" ${!canRequestCancel(q)?'disabled':''}>${q.cancel_requested_at?'취소 요청 중':'구매 취소'}</button>
    </div>
   </div>
   ${intent==='buy_now'
@@ -6084,7 +6086,7 @@ function buyerRoundIntent(q){
       : '<p class="buyer-hint">✓ 이번 회차 구매 신청 완료 · 배송비 계산 중. 최종 금액 안내 전에는 송금하지 마세요.</p>'
    : intent==='next_round'?'<p class="buyer-hint">다음 회차 구매로 접수했어요.</p>':intent==='on_hold'?'<p class="buyer-hint">구매가 보류됐어요.</p>':''}
   ${q.delivery_change_requested_at?'<p class="buyer-hint">수령방식 변경 승인 후 최종 금액을 안내해 드려요.</p>':''}
-  ${canRequestCancel(q)?'<div class="buyer-purchase-cancel"><button type="button" data-action="request-cancel">구매 취소 요청</button><small>관리자 확인 후 취소돼요</small></div>':''}
+  <p class="buyer-hint">구매 취소는 관리자 확인 후 처리돼요.</p>
  </section>`;
 }
 function intentBadge(q){
@@ -11272,7 +11274,7 @@ ${q.buyer_name||'고객'}님, 요청하신 상품 견적이 준비됐어요.
 배송비·최종 결제금액: 구매 의사 확인 후 산정
 
 아래 링크에서 상품 견적을 확인하고
-① 이번 회차 구매 ② 다음 회차 구매 ③ 구매 보류 중 선택해 주세요.
+① 이번 회차 구매 ② 다음 회차 구매 ③ 구매 취소 중 선택해 주세요.
 
 구매 의사를 모아 배송비를 계산한 뒤 최종 결제금액을 다시 안내해 드릴게요.
 배송비 안내 전에는 주문 확정이나 입금을 하지 말아 주세요.

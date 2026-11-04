@@ -19,6 +19,9 @@ ASSETS = (
     "icon-192.png",
     "icon-512.png",
     "apple-touch-icon.png",
+    "icon-gh-512.png",
+    "icon-shop-512.png",
+    "icon-admin-512.png",
     "OneSignalSDKWorker.js",
     "sw.js",
 )
@@ -56,28 +59,49 @@ if not IS_GITHUB:
         'placeholder="주문조회 링크를 붙여넣어 주세요"',
     )
 
+# Give every installable shortcut a genuinely different PNG, including iOS.
+# Use new asset filenames (not just query parameters) to avoid stale Apple icon caching.
+icon_name = "icon-gh-512.png" if IS_GITHUB else "icon-shop-512.png"
+icon_tag = '<link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png?v=exact-original-mini-logo-inverted-20261022">'
+touch_tag = '<link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=exact-original-mini-logo-inverted-20261022">'
+manifest_tag = '<link rel="manifest" href="./manifest.webmanifest?v=exact-original-mini-logo-inverted-20261022">'
+change_once(touch_tag, f'<link rel="apple-touch-icon" sizes="512x512" href="./{icon_name}?v=20261104-separate-icons">')
+change_once(icon_tag, f'<link rel="icon" type="image/png" sizes="512x512" href="./{icon_name}?v=20261104-separate-icons">')
+change_once(manifest_tag, '<link rel="manifest" href="./manifest.webmanifest?v=20261104-separate-icons">')
+change_once('<meta name="apple-mobile-web-app-title" content="미니예나">', f'<meta name="apple-mobile-web-app-title" content="{"미니예나 견적" if IS_GITHUB else "미니예나 쇼핑"}">')
+change_once('<meta name="application-name" content="MINIYENA">', f'<meta name="application-name" content="{"MINIYENA GH" if IS_GITHUB else "MINIYENA SHOP"}">')
+
+manifest = json.loads((OUTPUT / "manifest.webmanifest").read_text(encoding="utf-8"))
+manifest.update({
+    "id": "./" if IS_GITHUB else "/",
+    "name": "MINIYENA | 깃허브 견적" if IS_GITHUB else "MINIYENA | 쇼핑몰",
+    "short_name": "미니예나 견적" if IS_GITHUB else "미니예나 쇼핑",
+    "icons": [{"src": f"{icon_name}?v=20261104-separate-icons", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}],
+})
+(OUTPUT / "manifest.webmanifest").write_text(json.dumps(manifest, ensure_ascii=False, indent=2)+"\\n", encoding="utf-8")
 (OUTPUT / "index.html").write_text(page, encoding="utf-8")
 
 if not IS_GITHUB:
     # Real standalone HTML at /admin/, not an iframe or a customer-page query.
     # Set the base so all relative images and icons resolve from the site root.
     admin = page.replace("<head>\n", '<head>\n<base href="../">\n', 1)
+    admin = admin.replace("icon-shop-512.png?v=20261104-separate-icons", "icon-admin-512.png?v=20261104-separate-icons", 2)
     admin = admin.replace(
-        '<meta name="apple-mobile-web-app-title" content="미니예나">',
+        '<meta name="apple-mobile-web-app-title" content="미니예나 쇼핑">',
         '<meta name="apple-mobile-web-app-title" content="미니예나 관리자">',
         1,
     )
     admin = admin.replace(
-        '<meta name="application-name" content="MINIYENA">',
+        '<meta name="application-name" content="MINIYENA SHOP">',
         '<meta name="application-name" content="MINIYENA ADMIN">',
         1,
     )
-    manifest_tag = '<link rel="manifest" href="./manifest.webmanifest?v=exact-original-mini-logo-inverted-20261022">'
+    manifest_tag = '<link rel="manifest" href="./manifest.webmanifest?v=20261104-separate-icons">'
     if admin.count(manifest_tag) != 1:
         raise SystemExit("Cannot locate the storefront manifest reference.")
     admin = admin.replace(
         manifest_tag,
-        '<link rel="manifest" href="admin/manifest.webmanifest?v=separate-admin-20261104">',
+        '<link rel="manifest" href="admin/manifest.webmanifest?v=20261104-separate-icons">',
         1,
     )
     admin_folder = OUTPUT / "admin"
@@ -95,8 +119,7 @@ if not IS_GITHUB:
         "theme_color": "#ffffff",
         "lang": "ko",
         "icons": [
-            {"src": "../icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable"},
-            {"src": "../icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"},
+            {"src": "../icon-admin-512.png?v=20261104-separate-icons", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"},
         ],
     }
     (admin_folder / "manifest.webmanifest").write_text(

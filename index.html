@@ -4285,6 +4285,12 @@ body:has(#search:focus) .mini-openchat-banner{display:none!important;}
 .fixed-variant-price-note{display:block;font-size:10px;color:#777}
 .fixed-pick-price{margin:6px 0 13px;padding:11px 12px;border-radius:9px;background:#f7f7f7;display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#555}
 .fixed-pick-price strong{font-size:16px;color:#111}
+
+/* MINIYENA: discreet share link action for public GitHub product cards and detail sheets. */
+.mini-product-share-row{display:flex;justify-content:flex-end;margin:7px 0 0;}
+.mini-product-share-action{appearance:none;display:inline-flex;align-items:center;justify-content:center;min-height:31px;padding:5px 10px;border:1px solid #e3e3e3;border-radius:999px;background:#fff;color:#555;font:inherit;font-size:11px;font-weight:650;line-height:1.2;cursor:pointer;}
+.mini-product-share-action:active{background:#f6f6f6;}
+.mini-product-share-action:focus-visible{outline:2px solid #222;outline-offset:2px;}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -4789,6 +4795,24 @@ const errorText=e=>(e?.message||String(e)).replace(/^JSON object requested, mult
 const saveCart=()=>localStorage.setItem(CART,JSON.stringify(state.cart));
 const saveTracks=()=>localStorage.setItem(TRACK,JSON.stringify(state.receipts));
 const publicLink=()=>location.origin+STOREFRONT_PATH+'?page=shop';
+// Public product links are limited to the existing GitHub storefront.
+const miniProductLink=id=>location.origin+STOREFRONT_PATH+'?product='+encodeURIComponent(id);
+function miniProductShareButton(product){
+ if(!githubStorefront||!product?.id)return '';
+ return `<div class="mini-product-share-row"><button type="button" class="mini-product-share-action" data-action="share-product" data-id="${esc(product.id)}" aria-label="${esc(product.name)} 상품 링크 복사">🔗 상품 링크 복사</button></div>`;
+}
+function miniOpenLinkedProduct(){
+ if(!githubStorefront||state.page!=='shop')return;
+ const id=new URLSearchParams(location.search).get('product');
+ if(!id)return;
+ const product=state.products.find(item=>String(item.id)===id&&item.published&&state.stores.some(st=>st.id===item.store_id&&st.active));
+ if(!product){notif('공유된 상품을 찾을 수 없어요.');return;}
+ state.search='';
+ state.shopCategory='all';
+ state.shopStore='all';
+ state.modal={type:product.is_sold_out?'product-photos':'pick',id:product.id};
+ render();
+}
 const trackLink=(id,token)=>location.origin+STOREFRONT_PATH+'?page=track&id='+encodeURIComponent(id)+'&token='+encodeURIComponent(token);
 function parseOrderLookupLink(input){
  const raw=String(input||'').trim();
@@ -5392,7 +5416,7 @@ async function loadAdmin(){
   render();throw e;
  }
 }
-async function loadPublic(){await loadCatalog(false);render()}
+async function loadPublic(){await loadCatalog(false);render();miniOpenLinkedProduct()}
 async function uploadHeroGif(file){
  if(!connected||!state.admin)throw Error('관리자 로그인 후 GIF를 등록해 주세요.');
  if(file.type!=='image/gif'||!file.size||file.size>15*1024*1024)throw Error('15MB 이하 GIF 파일만 등록할 수 있어요.');
@@ -6028,7 +6052,7 @@ function renderShop(){
    ${state.stores.filter(st=>st.active&&catalogue.some(row=>row.store.id===st.id)).sort((a,b)=>String(a.name).localeCompare(String(b.name),'ko')).map(st=>`<option value="${esc(st.id)}" ${activeStore===st.id?'selected':''}>${esc(st.name)}</option>`).join('')}
   </select></label>
  </div>
- <div class="shoplist">${products.length?`<div class="shop-catalog-grid">${products.map(({p,store})=>`<article class="shop-catalog-card ${p.is_sold_out?'shop-soldout-card':''}">${catalogPhotoGallery(p)}${p.is_sold_out?'<span class="shop-soldout-label">품절</span>':''}<div class="shop-catalog-store">${esc(store.name)}</div><button class="producttitle catalog-title-link" type="button" data-action="${p.is_sold_out?'product-photos':'pick-product'}" data-id="${esc(p.id)}" aria-label="${esc(p.name)} ${p.is_sold_out?'상품 사진 보기':'상품 옵션 보기'}" title="${esc(p.name)}">${esc(p.name)}</button><div class="shop-catalog-colors">${Object.keys(p.options||{}).map(esc).join(' · ')||'색상 옵션 확인'}</div>${hasProductEstimate(p)?estimatedProductPrice(p):'<div class="product-estimate product-estimate-card shop-catalog-no-estimate"><span class="product-estimate-label">가격</span><strong>견적 문의</strong></div>'}</article>`).join('')}</div>`:'<div class="empty">조건에 맞는 상품이 없어요. 다른 카테고리나 검색어를 선택해 주세요.</div>'}</div>
+ <div class="shoplist">${products.length?`<div class="shop-catalog-grid">${products.map(({p,store})=>`<article class="shop-catalog-card ${p.is_sold_out?'shop-soldout-card':''}">${catalogPhotoGallery(p)}${p.is_sold_out?'<span class="shop-soldout-label">품절</span>':''}<div class="shop-catalog-store">${esc(store.name)}</div><button class="producttitle catalog-title-link" type="button" data-action="${p.is_sold_out?'product-photos':'pick-product'}" data-id="${esc(p.id)}" aria-label="${esc(p.name)} ${p.is_sold_out?'상품 사진 보기':'상품 옵션 보기'}" title="${esc(p.name)}">${esc(p.name)}</button><div class="shop-catalog-colors">${Object.keys(p.options||{}).map(esc).join(' · ')||'색상 옵션 확인'}</div>${hasProductEstimate(p)?estimatedProductPrice(p):'<div class="product-estimate product-estimate-card shop-catalog-no-estimate"><span class="product-estimate-label">가격</span><strong>견적 문의</strong></div>'}${miniProductShareButton(p)}</article>`).join('')}</div>`:'<div class="empty">조건에 맞는 상품이 없어요. 다른 카테고리나 검색어를 선택해 주세요.</div>'}</div>
  </section>`;
 }
 /* MINIYENA final-order bank transfer instructions (never pre-confirmation). */
@@ -10043,7 +10067,7 @@ if(m.type==='pick'){
  if(!p||p.is_sold_out||!p.published||!state.stores.some(st=>st.id===p.store_id&&st.active))return wrap('품절 또는 판매 종료','<div class="noticefail">이 상품은 현재 주문할 수 없어요. 다른 상품을 선택해 주세요.</div>');
  const colors=Object.keys(p.options||{}),color=colors.includes(m.color)?m.color:colors[0],sizes=p.options[color]||[];
  const sizeGuide=productSizeChart(p);
- return wrap('옵션 선택',`<div class="smallnote">${esc(storeName(p.store_id))}</div><h3>${esc(p.name)}</h3>${productGallery(p)}${estimatedProductPrice(p,true)}${publicProductNote(p)}
+ return wrap('옵션 선택',`<div class="smallnote">${esc(storeName(p.store_id))}</div><h3>${esc(p.name)}</h3>${miniProductShareButton(p)}${productGallery(p)}${estimatedProductPrice(p,true)}${publicProductNote(p)}
  <form id="pick">
   <label class="label">컬러<select name="color" id="pickColor">${colors.map(c=>`<option ${c===color?'selected':''}>${esc(c)}</option>`).join('')}</select></label>
   <label class="label">사이즈<select name="size" id="pickSize">${sizes.map(s=>`<option>${esc(s)}</option>`).join('')}</select></label>
@@ -10056,7 +10080,7 @@ if(m.type==='pick'){
 if(m.type==='product-photos'){
  const p=selectedProd(m.id);
  if(!p||!p.published||!state.stores.some(st=>st.id===p.store_id&&st.active))return '';
- return wrap('상품 사진',`<h3>${esc(p.name)}</h3>${productGallery(p)}${estimatedProductPrice(p,true)}${publicProductNote(p)}${productSizeChart(p)}${p.is_sold_out?'<div class="smallnote">현재 품절된 상품이에요.</div>':`<button type="button" class="btn block" data-action="pick-product" data-id="${esc(p.id)}">옵션 선택하기</button>`}`);
+ return wrap('상품 사진',`<h3>${esc(p.name)}</h3>${miniProductShareButton(p)}${productGallery(p)}${estimatedProductPrice(p,true)}${publicProductNote(p)}${productSizeChart(p)}${p.is_sold_out?'<div class="smallnote">현재 품절된 상품이에요.</div>':`<button type="button" class="btn block" data-action="pick-product" data-id="${esc(p.id)}">옵션 선택하기</button>`}`);
 }
 if(m.type==='cart'){return wrap(instantStorefront?'주문 장바구니':'견적 요청 장바구니',`<div class="cart-review-toolbar"><strong>담은 상품 <span id="cart-review-count">${cartCount()}</span>개</strong><button type="button" id="cart-review-clear" class="cart-review-clear ${state.cart.length?'':'hidden'}" data-action="cart-clear">전체 비우기</button></div><section class="cart-estimate-summary ${state.cart.length?'':'hidden'}" id="cart-estimate-summary" aria-label="장바구니 총 예상견적">${cartEstimateMarkup()}</section><div class="cart-review-list" id="cart-review-list">${state.cart.map(renderCartReviewItem).join('')}</div><div class="cart-review-undo hidden" id="cart-review-undo" role="status"><span data-cart-undo-text>상품을 삭제했어요.</span><button type="button" data-action="cart-undo">↶ 되돌리기</button></div><div id="cart-review-empty" class="cart-review-empty ${state.cart.length?'hidden':''}"><b>장바구니가 비었어요.</b><p>상품을 선택해서 장바구니에 담아 주세요.</p><button type="button" class="btn block secondary" data-action="cart-continue">상품 보러 가기</button></div>${state.cart.length?`<div id="cart-review-checkout"><button type="button" class="btn block cart-review-proceed" data-action="cart-checkout">${instantStorefront?'다음: 주문·수령 정보 입력하기 →':'다음: 견적 요청 정보 입력하기 →'}</button>
 <details class="cart-review-details" id="cart-review-details">
@@ -11507,6 +11531,17 @@ async function click(e){
  if(e.target.matches?.('[data-product-store-search]')){productStoreSearchResults(e.target,true);return;}
  if(!e.target.closest?.('[data-product-store-picker]'))closeProductStoreSearch(app.querySelector('#product-form'));
  const pg=e.target.closest('[data-page]');if(pg){goto(pg.dataset.page);if(pg.classList.contains('brand-home'))window.scrollTo({top:0,behavior:'auto'});return}const b=e.target.closest('[data-action]');if(!b)return;const a=b.dataset.action,id=b.dataset.id;try{
+if(a==='share-product'){
+ const product=state.products.find(row=>String(row.id)===String(id)&&row.published&&state.stores.some(st=>st.id===row.store_id&&st.active));
+ if(!githubStorefront||!product)throw Error('공유 가능한 상품이 아니에요.');
+ const link=miniProductLink(product.id);
+ try{
+  if(!navigator.clipboard?.writeText)throw Error('clipboard unavailable');
+  await navigator.clipboard.writeText(link);
+  notif('상품 링크를 복사했어요. 카톡에 붙여넣어 주세요.');
+ }catch(_){window.prompt('이 상품 링크를 복사해 주세요.',link);}
+ return;
+}
 
 if(a==='hide-openchat-today'){
  try{localStorage.setItem(MINI_OPENCHAT_TODAY_KEY,miniOpenChatKstDay());}catch(_){}
@@ -12700,7 +12735,7 @@ if(a==='edit-delivery'){
  b.disabled=true;
  try{await randomizeHeroPhoto();notif('랜덤 상품 사진으로 변경했어요. 고객 메인화면에도 적용돼요.')}
  finally{if(b.isConnected)b.disabled=false}
-}else if(a==='reset-hero-photo'){if(!window.confirm('기존 메인 사진을 지우고 자동 상품 사진으로 되돌릴까요?'))return;await resetHeroPhoto();notif('기존 상품 사진으로 되돌렸어요')}else if(a==='close'){if(state.modal?.type==='entry-push')postponeEntryPush();clearAdminSelectedPhotos();state.modal=null;render()}else if(a==='product-photos'){
+}else if(a==='reset-hero-photo'){if(!window.confirm('기존 메인 사진을 지우고 자동 상품 사진으로 되돌릴까요?'))return;await resetHeroPhoto();notif('기존 상품 사진으로 되돌렸어요')}else if(a==='close'){if(state.modal?.type==='entry-push')postponeEntryPush();if(githubStorefront&&['pick','product-photos'].includes(state.modal?.type)&&new URLSearchParams(location.search).has('product'))history.replaceState({},'',location.pathname+'?page=shop');clearAdminSelectedPhotos();state.modal=null;render()}else if(a==='product-photos'){
  const p=selectedProd(id);
  if(!p||!p.published||!state.stores.some(st=>st.id===p.store_id&&st.active))throw Error('현재 전시 중인 상품이 아니에요.');
  modalOpen('product-photos',id);
@@ -13620,7 +13655,7 @@ document.addEventListener('visibilitychange',()=>{
 setInterval(updateProcurementSchedule,60000);
 setInterval(checkAdminProductRequestUpdates,25000);
 setInterval(checkAdminQuoteUpdates,25000);
-window.addEventListener('popstate',()=>{const pp=new URLSearchParams(location.search);if(!dedicatedAdminPage&&pp.get('page')==='admin'){location.replace(ADMIN_HOME);return;}state.page=dedicatedAdminPage?'admin':pp.get('page')==='track'?'track':'shop';state.trackId=pp.get('id')||'';state.trackToken=pp.get('token')||'';state.modal=null;render();if(state.page==='track')reloadTracking().catch(e=>notif(errorText(e)));if(state.page==='admin'){state.adminLoading=Boolean(!state.admin&&session?.refresh_token);loadAdmin().catch(e=>notif(errorText(e)))}});
+window.addEventListener('popstate',()=>{const pp=new URLSearchParams(location.search);if(!dedicatedAdminPage&&pp.get('page')==='admin'){location.replace(ADMIN_HOME);return;}state.page=dedicatedAdminPage?'admin':pp.get('page')==='track'?'track':'shop';state.trackId=pp.get('id')||'';state.trackToken=pp.get('token')||'';state.modal=null;render();if(state.page==='shop')miniOpenLinkedProduct();if(state.page==='track')reloadTracking().catch(e=>notif(errorText(e)));if(state.page==='admin'){state.adminLoading=Boolean(!state.admin&&session?.refresh_token);loadAdmin().catch(e=>notif(errorText(e)))}});
 (async()=>{
  try{
   if(state.page==='admin'){render();await loadAdmin();}

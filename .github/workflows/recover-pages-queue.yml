@@ -1,4 +1,5 @@
 name: Recover blocked Pages queue (one-time)
+# Retrigger recovery after an old generated Pages run stayed in progress since Oct 30.
 on:
   push:
     paths:

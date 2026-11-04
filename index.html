@@ -1951,7 +1951,7 @@ details[open]>summary>.admin-quote-extra-chevron{transform:rotate(180deg)}
 .admin-workspace-content .admin-price-section{margin-top:11px}
 .admin-workspace-content .admin-price-section-title{margin-bottom:8px}
 .admin-workspace-content .admin-quote-price-fold{margin:15px 0 0}
-.is-admin-shell .floating-refresh{display:none!important}
+.is-admin-shell .floating-refresh{display:flex!important}
 .is-admin-shell .floating-actions{bottom:calc(23px + env(safe-area-inset-bottom));right:max(12px,calc((100vw - 860px)/2 + 14px))}
 .is-admin-shell .floating-actions .back-to-top{width:39px;height:39px;box-shadow:0 3px 12px rgba(0,0,0,.12);font-size:0}
 .is-admin-shell .floating-actions .back-to-top svg{width:20px;height:20px}
@@ -4185,30 +4185,25 @@ body:has(#search:focus) .mini-openchat-banner{display:none!important;}
  }
 }
 
-/* Compact administrator header: one unboxed overflow menu, not two toolbar tiles. */
+/* Admin: settings stays in masthead; refresh remains fixed on-screen. */
 .shell.is-admin-shell .admin-reorganized .admin-manager-heading{background:transparent}
-.shell.is-admin-shell .admin-reorganized .admin-manager-actions{position:relative}
-.shell.is-admin-shell .admin-reorganized .admin-top-tools{position:relative}
-.shell.is-admin-shell .admin-reorganized .admin-top-tools>summary{
-  display:grid;place-items:center;list-style:none;cursor:pointer;
-  width:34px;height:34px;min-height:34px;padding:0;
-  background:transparent;border:0;border-radius:8px;color:#555;
-  -webkit-tap-highlight-color:transparent;
+.shell.is-admin-shell .admin-reorganized .admin-manager-actions{align-items:center;display:flex}
+.shell.is-admin-shell .admin-reorganized .admin-manager-actions .admin-settings-link{
+ display:inline-flex;align-items:center;justify-content:center;
+ width:auto;min-width:44px;height:32px;min-height:32px;padding:0 4px;
+ background:transparent;border:0;box-shadow:none;border-radius:0;
+ color:#666;font-size:12px;font-weight:700;
 }
-.shell.is-admin-shell .admin-reorganized .admin-top-tools>summary::-webkit-details-marker{display:none}
-.shell.is-admin-shell .admin-reorganized .admin-top-tools[open]>summary{background:#f6f6f6}
-.shell.is-admin-shell .admin-reorganized .admin-tools-menu{
-  position:absolute;top:calc(100% + 4px);right:0;z-index:75;
-  min-width:146px;padding:6px;background:#fff;
-  border:1px solid #e8e8e8;border-radius:10px;
-  box-shadow:0 9px 28px rgba(0,0,0,.09);
+.shell.is-admin-shell .admin-reorganized .admin-manager-actions .admin-settings-link.active{color:#111;text-decoration:underline;text-underline-offset:6px}
+.shell.is-admin-shell .floating-refresh{
+ display:flex!important;width:46px;height:46px;
+ border:1px solid #e4e4e4;border-radius:50%;
+ box-shadow:0 2px 10px rgba(0,0,0,.1);
+ background:#fff;min-width:46px;min-height:46px;
+ font-size:9px;font-weight:650;gap:2px;
 }
-.shell.is-admin-shell .admin-reorganized .admin-manager-actions .admin-tools-menu button{
-  display:block;width:100%;height:auto;min-height:38px;
-  padding:8px 12px;border:0;background:transparent;border-radius:6px;
-  color:#222;font-size:13px;font-weight:650;text-align:left;box-shadow:none;
-}
-.shell.is-admin-shell .admin-reorganized .admin-tools-menu button:active{background:#f4f4f4}
+.shell.is-admin-shell .floating-refresh svg{width:19px;height:19px;stroke-width:1.7}
+.shell.is-admin-shell .floating-refresh span{display:block}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -6440,13 +6435,7 @@ function renderAdmin(){
   <header class="admin-manager-heading">
    <div><small>MINIYENA</small><h1>관리자</h1></div>
    <div class="admin-manager-actions">
-    <details class="admin-top-tools">
-     <summary aria-label="관리 메뉴 열기" title="관리 메뉴"><svg width="21" height="21" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></summary>
-     <div class="admin-tools-menu">
-      <button type="button" data-action="refresh">새로고침</button>
-      <button type="button" data-tab="settings">설정</button>
-     </div>
-    </details>
+    <button type="button" class="admin-settings-link ${page==='settings'?'active':''}" data-tab="settings" aria-label="관리자 설정">설정</button>
    </div>
   </header>
   <nav class="admin-manager-nav" aria-label="관리자 주요 메뉴">

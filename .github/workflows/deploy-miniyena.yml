@@ -21,8 +21,17 @@ jobs:
     steps:
       - name: Checkout website
         uses: actions/checkout@v4
+      - name: Verify standalone Cloudflare administrator page
+        run: |
+          python3 cloudflare_pages_build.py
+          test -s cloudflare-dist/admin/index.html
+          test -s cloudflare-dist/admin/manifest.webmanifest
+          grep -q 'admin/manifest.webmanifest' cloudflare-dist/admin/index.html
+          grep -q 'dedicatedAdminPage' cloudflare-dist/admin/index.html
       - name: Build public storefront without the Cloudflare admin page
-        run: python3 cloudflare_pages_build.py --github
+        run: |
+          python3 cloudflare_pages_build.py --github
+          test ! -d cloudflare-dist/admin
       - name: Set up GitHub Pages
         uses: actions/configure-pages@v5
       - name: Upload website

@@ -3715,6 +3715,15 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 .admin-price-popup-input-wrap input{width:100%;height:45px;min-height:45px;font-size:16px!important;border-radius:9px;padding:8px 39px 8px 12px;box-sizing:border-box;text-align:right;font-variant-numeric:tabular-nums}
 .admin-price-popup-input-wrap>span{position:absolute;right:13px;top:50%;transform:translateY(-50%);font-size:12px;color:#777;pointer-events:none}
 .admin-price-popup-save{min-height:46px!important;font-size:13px!important}
+.admin-price-popup-totals{border:1px solid #e8e8e8;border-radius:10px;background:#f8f8f8;padding:12px 13px;display:grid;gap:7px}
+.admin-price-popup-total-row{display:flex;align-items:baseline;justify-content:space-between;gap:12px;min-width:0;font-size:12px;color:#666}
+.admin-price-popup-total-row strong{color:#171717;font-size:16px;font-weight:820;text-align:right;font-variant-numeric:tabular-nums}
+.admin-price-popup-total-row.is-margin{padding-top:8px;border-top:1px solid #e2e2e2;color:#282828;font-weight:720}
+.admin-price-popup-totals>small{color:#858585;font-size:10px;line-height:1.5}
+.compact-order-cost-lines>.compact-order-margin{border-top:1px solid #e2e2e2;padding-top:10px;margin-top:10px;align-items:flex-start}
+.compact-order-margin span{display:flex;flex-direction:column;gap:1px;color:#333;font-weight:720}
+.compact-order-margin span small{font-size:10px;color:#8b8b8b;font-weight:500}
+.compact-order-cost-lines>.compact-order-margin b{font-size:13px;font-weight:830;color:#1e1e1e;text-align:right}
 
 
 
@@ -7156,10 +7165,33 @@ function adminEstimatedUnitPrice(item){
  const meta=state.productPrivate[item.product_id]||{};
  if(meta.source_type==='1688'){
   const yuan=meta.yuan_price==null?null:Number(meta.yuan_price);
-  return yuan!==null&&Number.isFinite(yuan)&&yuan>0?Math.round(yuan*(githubStorefront?500:600)):null;
+  return yuan!==null&&Number.isFinite(yuan)&&yuan>0?Math.round(yuan*(githubStorefront?550:650)):null;
  }
  const wholesale=meta.wholesale_price==null?null:Number(meta.wholesale_price);
  return wholesale!==null&&Number.isFinite(wholesale)&&wholesale>0?(githubStorefront?Math.round(wholesale*1.2):Math.round(wholesale*1.4/100)*100):null;
+}
+/* Admin-only preview: total item selling value minus registered sourcing cost.
+   Sold-out items and delivery charges are excluded, and missing values are never zeroed. */
+function adminQuoteGoodsMargin(q,readUnitPrice){
+ const result={total:0,cost:0,margin:null,missingPrice:0,missingCost:0,count:0};
+ if(!state.admin||state.page!=='admin'||!q)return result;
+ for(const item of q.items||[]){
+  if(item.fulfillment==='sold_out')continue;
+  const qty=Number(item.quantity);
+  if(!Number.isFinite(qty)||qty<=0)continue;
+  result.count++;
+  const rawPrice=readUnitPrice?readUnitPrice(item):item.unit_price;
+  const price=rawPrice===null||rawPrice===undefined||rawPrice===''?null:Number(rawPrice);
+  if(price===null||!Number.isSafeInteger(price)||price<0||price>100000000)result.missingPrice++;
+  else result.total+=price*qty;
+  const meta=state.productPrivateReady&&item.product_id?state.productPrivate?.[item.product_id]:null;
+  const rawCost=meta?.wholesale_price;
+  const cost=rawCost===undefined||rawCost===null||rawCost===''?null:Number(rawCost);
+  if(cost===null||!Number.isFinite(cost)||cost<0)result.missingCost++;
+  else result.cost+=cost*qty;
+ }
+ if(result.count&&result.missingPrice===0&&result.missingCost===0)result.margin=result.total-result.cost;
+ return result;
 }
 function adminPriceSummary(orders){
  const summary={estimate:0,actual:0,wholesale:0,missingEstimates:0,missingActual:0,missingWholesale:0,pricedCount:0,itemCount:0};
@@ -7726,6 +7758,7 @@ function renderAdminQuoteCard(q){
  const priced=readyQuote(q);
  const finalReady=priced&&(q.status==='confirmed'||q.status==='quoted'&&q.purchase_intent==='buy_now'&&adminFreightReady(q));
  const task=compactQuoteNextTask(q);
+ const goodsMargin=adminQuoteGoodsMargin(q);
  const urgent=q.cancel_requested_at||q.delivery_change_requested_at||q.dispatch_request_status==='pending'||pendingItemOptionRequests(q).length;
  const active=(q.items||[]).filter(i=>i.fulfillment!=='sold_out');
  const command=task.filter?`data-filter="${esc(task.filter)}"`:task.action?`data-action="${esc(task.action)}" data-id="${esc(q.id)}" ${task.stage?`data-stage="${esc(task.stage)}"`:''}`:`data-action="compact-open-tool" data-id="${esc(q.id)}" data-tool="${esc(task.tool||'advanced')}"`;
@@ -7741,6 +7774,7 @@ function renderAdminQuoteCard(q){
     <div><span>상품값</span><b>${money(previewOrderSum(q))}</b></div>
     ${q.delivery_method==='courier'||appliedShipping(q)>0?`<div><span>택배비${isBundle(q)?' · 합배송':''}</span><b>${money(appliedShipping(q))}</b></div>`:''}
     ${supplierShippingShare(q)>0?`<div><span>도매 배송비</span><b>${money(supplierShippingShare(q))}</b></div>${adminSupplierFeeBreakdown(q)}`:''}
+    <div class="compact-order-margin"><span>예상 상품마진<small>상품판매금액 − 등록 사입원가</small></span><b>${goodsMargin.margin===null?(goodsMargin.missingCost?'원가 확인 필요':'가격 확인 필요'):money(goodsMargin.margin)}</b></div>
    </div>`:''}
    <div><span>최종 결제금액</span><b>${finalReady?money(due):'배송비 배분 후 확정'}</b></div>
    <div><span>받은 금액</span><b>${money(paid)}</b></div>
@@ -9679,6 +9713,27 @@ function adminPricePopupEstimateRow(item){
   '<div class="admin-price-popup-estimate is-github"><span>GH 예상가</span><strong>'+priced(estimates.github)+'</strong></div>'+
   '</div></div>';
 }
+function updateAdminPricePopupTotals(form){
+ if(!state.admin||state.page!=='admin'||!form)return;
+ const q=state.quotes.find(row=>row.id===form.dataset.quoteId);
+ if(!q)return;
+ const summary=adminQuoteGoodsMargin(q,item=>{
+  const field=form.elements.namedItem('price_'+item.id);
+  return field?String(field.value??'').trim():null;
+ });
+ const totalNode=form.querySelector('[data-admin-price-total]');
+ const marginNode=form.querySelector('[data-admin-price-margin]');
+ const noteNode=form.querySelector('[data-admin-price-total-note]');
+ if(totalNode)totalNode.textContent=!summary.count?'—':
+  summary.missingPrice===summary.count?'가격 입력 대기':
+  money(summary.total)+(summary.missingPrice?' · 부분 합계':'');
+ if(marginNode)marginNode.textContent=summary.margin!==null?money(summary.margin):
+  summary.missingPrice?'가격 입력 후 계산':'원가 확인 필요';
+ if(noteNode)noteNode.textContent=summary.missingPrice?
+  '가격 미입력 '+summary.missingPrice+'종 · 모두 입력해야 총마진이 계산돼요.':
+  summary.missingCost?'사입원가 미등록 '+summary.missingCost+'종 · 원가를 확인해 주세요.':
+  '상품판매금액 − 등록 사입원가 · 배송비·기타 비용 제외';
+}
 function modal(){const m=state.modal;if(!m)return '';const wrap=(title,body,stickyProductSave=false)=>stickyProductSave?`<div class="overlay" id="overlay"><div class="sheet sheet-product-editor product-editor-clean swipe-dismiss-sheet" role="dialog" aria-modal="true"><div class="sheet-drag-handle" aria-hidden="true"></div><div class="sheethead"><h2>${title}</h2><button class="close" data-action="close">×</button></div><div class="sheet-product-scroll">${body}</div><div class="sheet-product-save"><button class="btn block" type="submit" form="product-form">상품 저장</button></div></div></div>`:`<div class="overlay" id="overlay"><div class="sheet${['myquotes','suggest','cart','pick','product-photos','approve'].includes(m.type)?' swipe-dismiss-sheet':''}${m.type==='myquotes'?' myquotes-swipe-sheet':''}${m.type==='suggest'?' suggest-sheet':''}${m.type==='cart'?' cart-swipe-sheet':''}${m.type==='approve'?' approve-sheet':''}" role="dialog" aria-modal="true">${['myquotes','suggest','cart','pick','product-photos','approve'].includes(m.type)?'<div class="sheet-drag-handle" aria-hidden="true"></div>':''}<div class="sheethead"><h2>${title}</h2><button class="close" data-action="close">×</button></div>${body}</div></div>`;
 if(m.type==='payment-save-success'&&state.admin)return wrap('입금 처리 완료','<div style="padding:12px 4px 22px"><p style="font-size:18px;font-weight:700;margin:0 0 12px">'+esc(m.buyer)+'</p><p style="font-size:22px;font-weight:800;margin:0 0 12px">'+money(m.amount)+' 입금 확인 완료</p><p class="smallnote">'+(m.confirmed?'주문도 자동 확정됐어요.':'입금 내역이 저장됐어요.')+'</p><button type="button" class="btn block" data-action="close">확인</button></div>');
 if(m.type==='entry-push')return wrap('신상·주문 알림 받기',renderEntryPushBody());
@@ -9718,12 +9773,18 @@ if(m.type==='admin-price-edit'){
  const items=(q.items||[]).filter(i=>i.fulfillment!=='sold_out');
  if(!items.length)return wrap('판매가 입력','<p class="smallnote">가격을 입력할 판매 상품이 없어요.</p>');
  const missing=items.filter(i=>i.unit_price==null).length;
+ const totals=adminQuoteGoodsMargin(q);
  return wrap('상품 가격 입력',`<div class="admin-price-popup-intro">
   <strong>${esc(q.buyer_name||'주문자')} ${q.baby_name?'· '+esc(q.baby_name):''}</strong>
   <small>상품 ${items.length}종 · 판매가 미입력 ${missing}종</small>
  </div>
  <form id="admin-price-popup-form" data-quote-id="${esc(q.id)}" class="admin-price-popup-form">
   <p class="admin-price-popup-help">상품별 <b>개당 판매가</b>를 입력해 주세요. 아직 모르는 가격은 빈칸으로 두고 나중에 저장할 수 있어요.</p>
+  <div class="admin-price-popup-totals" aria-label="관리자 견적 총액 및 마진" aria-live="polite">
+   <div class="admin-price-popup-total-row"><span>상품 총액</span><strong data-admin-price-total>${totals.missingPrice===totals.count?'가격 입력 대기':money(totals.total)+(totals.missingPrice?' · 부분 합계':'')}</strong></div>
+   <div class="admin-price-popup-total-row is-margin"><span>예상 총마진</span><strong data-admin-price-margin>${totals.margin!==null?money(totals.margin):totals.missingPrice?'가격 입력 후 계산':'원가 확인 필요'}</strong></div>
+   <small data-admin-price-total-note>${totals.missingPrice?'가격 미입력 '+totals.missingPrice+'종 · 모두 입력해야 총마진이 계산돼요.':totals.missingCost?'사입원가 미등록 '+totals.missingCost+'종 · 원가를 확인해 주세요.':'상품판매금액 − 등록 사입원가 · 배송비·기타 비용 제외'}</small>
+  </div>
   <div class="admin-price-popup-items">
    ${items.map((i,index)=>`<div class="admin-price-popup-item">
     <label for="admin-price-popup-input-${index}">
@@ -13021,6 +13082,9 @@ function updateShopSearchResults(){
  if(count&&nextCount)count.textContent=nextCount.textContent;
 }
 function input(e){
+ if(e.target.matches?.('#admin-price-popup-form [data-admin-price-item-id]')){
+  updateAdminPricePopupTotals(e.target.closest('form'));return;
+ }
  if(instantStorefront&&e.target.closest?.('#request')&&['postal_code','address_line1'].includes(e.target.name)){
   const form=e.target.closest('form'),region=form?.elements?.remote_area;
   if(region&&instantIsKnownRemote(form.elements.postal_code?.value,form.elements.address_line1?.value))region.value='remote';

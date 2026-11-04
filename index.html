@@ -3186,7 +3186,8 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 .admin-manager-nav{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:5px;margin:0 0 21px;padding:4px;border:1px solid #eaeaf0;border-radius:13px;background:#f4f4f7}
 .admin-manager-nav button{border:0;min-width:0;border-radius:9px;min-height:40px;background:transparent;font-size:12px;font-weight:730;color:#6a6a74;position:relative;white-space:nowrap;padding:6px 2px}
 .admin-manager-nav button.active{background:#fff;box-shadow:0 1px 5px #00000012;color:#222}
-.admin-nav-count{position:absolute;top:0;right:0;font-size:9px;background:#ededf8;color:#4b4583;border-radius:8px;min-width:13px;padding:0 3px}
+.admin-nav-count{display:inline-flex;position:static;inset:auto;align-items:center;justify-content:center;flex:0 0 auto;min-width:17px;height:17px;box-sizing:border-box;padding:0 4px;border-radius:999px;background:#f0f0f0;color:#666;font-size:10px;font-weight:750;line-height:1;font-variant-numeric:tabular-nums;vertical-align:middle}
+.admin-manager-nav button.active .admin-nav-count{background:#e9e9e9;color:#333}
 .admin-page-heading{display:flex;justify-content:space-between;align-items:baseline;margin:0 1px 12px;gap:10px}
 .admin-page-heading h2{font-size:19px;letter-spacing:-.5px;margin:0}
 .admin-page-heading>span{font-size:11px;color:#92929b}
@@ -3823,7 +3824,7 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
  .admin-reorganized .admin-manager-nav button{
   display:flex;align-items:center;justify-content:center;min-height:38px;height:38px;
   min-width:0;padding:7px 1px 8px;border:0;border-bottom:2px solid transparent;
-  border-radius:0;background:transparent;color:#777;box-shadow:none;font-size:12px;font-weight:720
+  border-radius:0;background:transparent;color:#777;box-shadow:none;font-size:12px;font-weight:720;gap:4px;white-space:nowrap
  }
  .admin-reorganized .admin-manager-nav button.active{
   background:transparent;color:#171717;border-bottom-color:#171717;box-shadow:none;font-weight:820

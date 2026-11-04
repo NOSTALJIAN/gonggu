@@ -3770,7 +3770,6 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 
 /* 2026-11-02: Lightweight mobile-only administrator layout.
    Preserve all functional controls and hide only redundant shop masthead. */
-.admin-manager-shop-link{display:none}
 .admin-orders-title-row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px 10px;margin:8px 2px 10px}
 .admin-orders-title-row .admin-orders-list-title{display:flex;align-items:baseline;gap:8px;margin:0}
 .admin-orders-title-row .admin-more-filters{margin:0;min-width:0}
@@ -3780,7 +3779,7 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 .admin-orders-title-row .admin-more-filter-items{margin:5px 0 7px;padding:9px 0;border-top:1px solid #efefef}
 @media(max-width:719px){
  .shell.is-admin-shell:has(.admin-reorganized) > .hero.is-admin-header{display:none!important}
- .shell.is-admin-shell .admin-reorganized{padding:calc(env(safe-area-inset-top) + 11px) 13px calc(env(safe-area-inset-bottom) + 22px)!important}
+ .shell.is-admin-shell .admin-reorganized{padding:calc(env(safe-area-inset-top) + 32px) 13px calc(env(safe-area-inset-bottom) + 22px)!important}
  .admin-reorganized .admin-manager-heading{
   min-height:35px;display:flex;align-items:center;justify-content:space-between;
   gap:9px;margin:0 0 13px;padding:0 1px 10px;border-bottom:1px solid #f0f0f0
@@ -3789,12 +3788,7 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
  .admin-reorganized .admin-manager-heading small{font-size:10px;letter-spacing:.65px;color:#959595}
  .admin-reorganized .admin-manager-heading h1{font-size:19px;line-height:1.3;margin:0;letter-spacing:-.5px}
  .admin-reorganized .admin-manager-actions{gap:4px;align-items:center;flex:0 0 auto}
- .admin-reorganized .admin-manager-actions .admin-manager-shop-link{
-  display:inline-flex;align-items:center;justify-content:center;width:auto;height:35px;
-  min-height:35px;padding:0 8px;border:0;background:transparent;border-radius:6px;
-  font-size:11px;font-weight:670;color:#666
- }
- .admin-reorganized .admin-manager-actions button:not(.admin-manager-shop-link){
+ .admin-reorganized .admin-manager-actions button{
   height:35px;min-height:35px;width:35px;padding:0;border-radius:9px;font-size:18px;
   display:inline-flex;align-items:center;justify-content:center
  }
@@ -4182,48 +4176,13 @@ body:has(#search:focus) .mini-openchat-banner{display:none!important;}
  .mini-openchat-banner .mini-openchat-links{justify-content:flex-start;}
 }
 
-/* Administrator toolbar: solid, crisp contrast on iOS instead of pale grey. */
-.shell.is-admin-shell .admin-reorganized .admin-manager-heading {
-  opacity:1!important;
-  filter:none!important;
-  -webkit-filter:none!important;
-  -webkit-backdrop-filter:none!important;
-  backdrop-filter:none!important;
-  color:#111;
-  background:#fff;
-  border-bottom-color:#dedede;
-}
-.shell.is-admin-shell .admin-reorganized .admin-manager-heading small {
-  color:#252525!important;
-  font-size:11px;
-  font-weight:850;
-  letter-spacing:.035em;
-  opacity:1!important;
-}
-.shell.is-admin-shell .admin-reorganized .admin-manager-heading h1 {
-  color:#101010!important;
-  font-weight:850;
-  opacity:1!important;
-}
-.shell.is-admin-shell .admin-reorganized .admin-manager-actions button {
-  color:#202020!important;
-  opacity:1!important;
-  filter:none!important;
-  -webkit-filter:none!important;
-}
-.shell.is-admin-shell .admin-reorganized .admin-manager-actions .admin-manager-shop-link {
-  color:#161616!important;
-  font-size:12px;
-  font-weight:780;
-}
-.shell.is-admin-shell .admin-reorganized .admin-manager-actions button:not(.admin-manager-shop-link) {
-  background:#fff!important;
-  border:1px solid #d5d5d5!important;
-  box-shadow:none!important;
-}
-.shell.is-admin-shell .admin-reorganized .admin-manager-actions button svg {
-  stroke:currentColor;
-  opacity:1!important;
+
+/* One administrator-only masthead, spaced below iPhone's system blur zone. */
+@media(max-width:719px){
+ .shell.is-admin-shell .admin-login-screen,
+ .shell.is-admin-shell .admin-auth-loading{
+   padding-top:calc(env(safe-area-inset-top) + 32px)!important;
+ }
 }
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
@@ -5568,6 +5527,8 @@ const img=(p,cls='product-cover')=>p?.image_url?`<img class="${cls}" src="${esc(
 async function showRequestImages(){if(!connected||!state.admin)return;const nodes=[...document.querySelectorAll('[data-request-photo]')];if(!nodes.length)return;const token=await getToken();for(const el of nodes){const path=el.dataset.requestPhoto;if(!path)continue;if(requestImageCache.has(path)){const saved=await requestImageCache.get(path);if(el.isConnected&&saved)el.src=saved;continue}const task=(async()=>{try{const resp=await fetch(url+'/storage/v1/object/authenticated/'+PHOTO_PRIVATE+'/'+path.split('/').map(encodeURIComponent).join('/'),{headers:{apikey:key,Authorization:'Bearer '+token}});if(!resp.ok)throw Error('사진 조회 실패');return URL.createObjectURL(await resp.blob())}catch(e){console.error('신청 사진 표시 오류',e);return null}})();requestImageCache.set(path,task);const value=await task;if(el.isConnected&&value)el.src=value;}}
 function header(){
  const admin=state.page==='admin';
+ // The dedicated admin page has its own compact management header.
+ if(admin)return '';
  return `<header class="hero ${admin?'is-admin-header':'is-shop-header'}"><div class="headrow">
  <div class="brand-lockup"><div class="brand-text"><button class="logo brand-home" type="button" data-page="shop" aria-label="미니예나 첫 화면으로 이동">MINIYENA</button></div></div>
  <div class="header-actions">${admin?'<button class="heroaction" data-page="shop" type="button"><span>쇼핑몰</span></button>':''}</div></div>
@@ -6454,7 +6415,6 @@ function renderAdmin(){
   <header class="admin-manager-heading">
    <div><small>MINIYENA</small><h1>관리자</h1></div>
    <div class="admin-manager-actions">
-    <button type="button" data-page="shop" class="admin-manager-shop-link">쇼핑몰</button>
     <button type="button" data-action="refresh" aria-label="새로고침" title="새로고침">⟳</button>
     <button type="button" data-tab="settings" class="${page==='settings'?'active':''}" aria-label="설정" title="설정"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3M4.9 4.9l2.2 2.2m9.8 9.8 2.2 2.2M19.1 4.9l-2.2 2.2M7.1 16.9l-2.2 2.2"/></svg></button>
    </div>

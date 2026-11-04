@@ -4253,6 +4253,18 @@ body:has(#search:focus) .mini-openchat-banner{display:none!important;}
 .buyer-purchase-cancel button,.buyer-cancel-confirmed button{border:0;background:transparent;color:#686868;font-size:12px;font-weight:720;text-decoration:underline;text-underline-offset:3px;padding:9px 1px;min-height:37px}
 .buyer-purchase-cancel small{font-size:10px;color:#999;text-align:right}
 .buyer-cancel-confirmed{border-top:1px solid #eee;margin-top:12px;padding:12px 2px;text-align:right}
+
+/* Admin blank-scroll tail fix: floating refresh is fixed, not a bottom dock. */
+.shell.is-admin-shell:has(.admin-reorganized){
+ min-height:100dvh;
+ padding-bottom:0;
+}
+/* Keep enough room to tap the fixed refresh control without a long empty tail. */
+@media(max-width:719px){
+ .shell.is-admin-shell .admin-reorganized{
+  padding-bottom:calc(66px + env(safe-area-inset-bottom))!important;
+ }
+}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">

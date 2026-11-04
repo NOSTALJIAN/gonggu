@@ -4814,12 +4814,12 @@ async function savePrivateProduct(productId,info){
  const answer=await rpc('gq_save_product_sourcing_v59',{p_product_id:productId,...info},true);
  if(answer!==true)throw Error('사입 가격 정보를 저장하지 못했어요.');
  const yuan=info.p_source_type==='1688'?info.p_yuan_price:null;
- const wholesale=yuan!==null?Math.round(yuan*350):info.p_wholesale_price;
+ const wholesale=yuan!==null?Math.round(yuan*450):info.p_wholesale_price;
  state.productPrivate[productId]={supplier_name:info.p_supplier_name,source_type:info.p_source_type,yuan_price:yuan,wholesale_price:wholesale};
  const product=state.products.find(x=>x.id===productId);
  if(product){
- product.estimated_price=yuan!==null?Math.round(yuan*600):wholesale>0?Math.round(wholesale*1.4/100)*100:null;
- product.github_estimated_price=yuan!==null?Math.round(yuan*500):wholesale>0?Math.round(wholesale*1.2):null;
+ product.estimated_price=yuan!==null?Math.round(yuan*650):wholesale>0?Math.round(wholesale*1.4/100)*100:null;
+ product.github_estimated_price=yuan!==null?Math.round(yuan*550):wholesale>0?Math.round(wholesale*1.2):null;
  }
 }
 // Admin-only comparison across both storefronts; never change customer-facing price rules.
@@ -4835,8 +4835,8 @@ function adminDualEstimates(product,privateMeta){
  if(meta?.source_type==='1688'){
   const yuan=n(meta.yuan_price);
   if(yuan!==null){
-   if(regular===null)regular=Math.round(Number(meta.yuan_price)*600);
-   if(github===null)github=Math.round(Number(meta.yuan_price)*500);
+   if(regular===null)regular=Math.round(Number(meta.yuan_price)*650);
+   if(github===null)github=Math.round(Number(meta.yuan_price)*550);
   }
  }else if(meta?.source_type==='namdaemun'){
   const cost=n(meta.wholesale_price);
@@ -4852,7 +4852,7 @@ function sourcingPreviewText(source,rawDomestic,rawYuan){
  if(source==='1688'){
   const yuan=Number(rawYuan);
   if(!String(rawYuan).trim()||!Number.isFinite(yuan)||yuan<=0)return '위안(¥) 가격을 입력하면 예상 사입원가와 고객 예상가를 계산해요.';
-  return '1688 ¥'+yuan.toLocaleString('ko-KR')+' · 예상 사입원가 약 '+money(Math.round(yuan*350))+' (×350) · 일반 예상가 약 '+money(Math.round(yuan*600))+' (×600) · 깃허브 예상가 약 '+money(Math.round(yuan*500))+' (×500)';
+  return '1688 ¥'+yuan.toLocaleString('ko-KR')+' · 예상 사입원가 약 '+money(Math.round(yuan*450))+' (×450) · 일반 예상가 약 '+money(Math.round(yuan*650))+' (×650) · 깃허브 예상가 약 '+money(Math.round(yuan*550))+' (×550)';
  }
  const wholesale=Number(rawDomestic);
  if(!String(rawDomestic).trim()||!Number.isFinite(wholesale)||wholesale<=0)return '도매가를 입력하면 고객 예상가를 계산해요.';
@@ -4947,7 +4947,7 @@ function privateProductFields(existingId,compact=false){
   </div>
   <div data-sourcing-1688 class="${source==='1688'?'':'hidden'}">
    <label class="label">1688 상품 가격 (위안 ¥ · 비공개)<input name="private_yuan" type="number" inputmode="decimal" min="0.01" max="100000" step="0.01" value="${yuan}" placeholder="예: 12.5"></label>
-   <div class="smallnote">예상 사입원가 = 위안 × 350원 (운송·수수료 포함 대략치) · 고객 예상가 = 위안 × 600원. 실제 사입비는 별도 정산해야 해요.</div>
+   <div class="smallnote">예상 사입원가 = 위안 × 450원 (운송·수수료 포함 대략치) · 고객 예상가 = 위안 × 650원. 실제 사입비는 별도 정산해야 해요.</div>
   </div>
   <div class="private-sourcing-preview" data-sourcing-preview>${esc(sourcingPreviewText(source,source==='namdaemun'?domestic:'',yuan))}</div>
   <div class="smallnote">예상가는 참고용이며 고객 실제 결제금액은 견적에서 확정해요. 사이즈표는 공개 가게별로 관리해요.</div>
@@ -6326,7 +6326,7 @@ function renderAdminFinanceTotals(){
     <div><span>고객 택배비 청구 (마진 계산 제외)</span><b>${price(f.courierCharged)}</b></div>
     <p>추정 마진 = 상품판매금액 − 상품원가 + 고객 도매배송비 − 거래처 배송비 실비. 실제 순이익이 아닌 <strong>예상 매출총이익</strong>이에요.</p>
     <p>실제 택배 발송비·택배비 수입, 국제배송·통관, 세금, 수수료, 포장비 등은 반영하지 않았어요. 거래처 배송비는 배분 기록이 있는 금액만 계산했고, 상품원가는 현재 등록된 값을 사용해요.</p>
-    ${f.chinaRows?`<p class="finance-warning">1688 상품 ${f.chinaRows}종은 등록된 추정 원화 원가(위안 × 350)를 사용했어요.</p>`:''}
+    ${f.chinaRows?`<p class="finance-warning">1688 상품 ${f.chinaRows}종은 등록된 추정 원화 원가(위안 × 450)를 사용했어요.</p>`:''}
     ${f.missing||f.missingPrices?`<p class="finance-warning">원가 미확인 ${f.missing}종, 판매가 미확인 ${f.missingPrices}종이 있어 마진을 미산정으로 표시해요.</p>`:''}
     ${f.cancelledRefundPending?`<p class="finance-warning">취소 주문의 잔여 입금 ${price(f.cancelledRefundPending)}이 있어 환불 여부 확인이 필요해요.</p>`:''}
     <p>견적이나 중복 선입금 요청은 매출로 집계하지 않아요.</p>

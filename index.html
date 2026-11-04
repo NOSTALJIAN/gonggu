@@ -10045,6 +10045,7 @@ if(m.type==='pick'){
  <form id="pick">
   <label class="label">컬러<select name="color" id="pickColor">${colors.map(c=>`<option ${c===color?'selected':''}>${esc(c)}</option>`).join('')}</select></label>
   <label class="label">사이즈<select name="size" id="pickSize">${sizes.map(s=>`<option>${esc(s)}</option>`).join('')}</select></label>
+  ${instantStorefront&&p.pricing_mode==='fixed_options'?'<div class="fixed-pick-price" data-pick-option-price>선택한 옵션 판매가 <strong>'+money(productOptionSalePrice(p,color,sizes[0]))+'</strong></div>':''}
   <label class="label">수량<input type="number" name="qty" value="1" min="1" max="20" required></label>
   <button class="btn block" type="submit">장바구니 담기</button>
  </form>
@@ -10220,7 +10221,7 @@ function renderCartReviewItem(c,i){
     <div class="cart-review-store">${esc(storeName(c.store_id))}</div>
     <b class="cart-review-name">${esc(c.product_name)}</b>
     <div class="cart-review-option">${esc(c.color)} / ${esc(c.size)} · ${Math.max(1,Number(c.quantity)||1)}개</div>
-    <div class="cart-review-item-price">${!unavailable&&hasProductEstimate(p)?(instantStorefront?'':'예상 ')+money(storeEstimate(p)*Math.max(1,Math.floor(Number(c.quantity)||1))):(instantStorefront?'판매가 확인 필요':'예상가 확인 필요')}</div>
+    <div class="cart-review-item-price">${!unavailable&&productOptionSalePrice(p,c.color,c.size)!==null?(instantStorefront?'':'예상 ')+money(productOptionSalePrice(p,c.color,c.size)*Math.max(1,Math.floor(Number(c.quantity)||1))):(instantStorefront?'판매가 확인 필요':'예상가 확인 필요')}</div>
     ${!unavailable?'<button type="button" class="cart-review-option-edit" data-action="cart-option-edit" aria-label="'+esc(c.product_name)+' 옵션 변경">옵션 변경</button>':''}
    </div>
    <button type="button" class="cart-review-remove" data-action="cart-remove" data-i="${i}" aria-label="${esc(c.product_name)} ${esc(c.color)} ${esc(c.size)} 장바구니에서 삭제" title="상품 삭제">
@@ -10298,8 +10299,9 @@ function cartEstimateTotals(){
   const p=selectedProd(item.product_id);
   const active=!!(p&&p.published&&!p.is_sold_out&&state.stores.some(st=>st.id===p.store_id&&st.active));
   if(!active){unavailableCount++;continue}
-  if(!hasProductEstimate(p)){unpricedCount++;continue}
-  knownTotal+=storeEstimate(p)*Math.max(1,Math.floor(Number(item.quantity)||1));
+  const optionPrice=productOptionSalePrice(p,item.color,item.size);
+  if(optionPrice===null){unpricedCount++;continue}
+  knownTotal+=optionPrice*Math.max(1,Math.floor(Number(item.quantity)||1));
  }
  return {knownTotal,unpricedCount,unavailableCount};
 }
@@ -10326,6 +10328,14 @@ function instantIsRemoteCheckout(){
  const form=app.querySelector('#request');
  return instantIsKnownRemote(form?.elements?.postal_code?.value,form?.elements?.address_line1?.value)||
   form?.elements?.remote_area?.value==='remote';
+}
+function updatePickOptionPrice(){
+ if(!instantStorefront||state.modal?.type!=='pick')return;
+ const p=selectedProd(state.modal.id),form=app.querySelector('#pick'),field=form?.querySelector('[data-pick-option-price]');
+ if(!field)return;
+ const price=productOptionSalePrice(p,form.querySelector('#pickColor')?.value,form.querySelector('#pickSize')?.value);
+ const strong=field.querySelector('strong');
+ if(strong)strong.textContent=price===null?'판매가 확인 필요':money(price);
 }
 function instantCheckoutShowTotal(method){
  if(!instantStorefront)return;

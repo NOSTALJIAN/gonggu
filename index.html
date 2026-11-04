@@ -3779,10 +3779,10 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 .admin-orders-title-row .admin-more-filter-items{margin:5px 0 7px;padding:9px 0;border-top:1px solid #efefef}
 @media(max-width:719px){
  .shell.is-admin-shell:has(.admin-reorganized) > .hero.is-admin-header{display:none!important}
- .shell.is-admin-shell .admin-reorganized{padding:calc(env(safe-area-inset-top) + 32px) 13px calc(env(safe-area-inset-bottom) + 22px)!important}
+ .shell.is-admin-shell .admin-reorganized{padding:calc(env(safe-area-inset-top) + 13px) 13px calc(env(safe-area-inset-bottom) + 22px)!important}
  .admin-reorganized .admin-manager-heading{
   min-height:35px;display:flex;align-items:center;justify-content:space-between;
-  gap:9px;margin:0 0 13px;padding:0 1px 10px;border-bottom:1px solid #f0f0f0
+  gap:9px;margin:0 0 3px;padding:0 1px 5px;border-bottom:1px solid #f0f0f0
  }
  .admin-reorganized .admin-manager-heading>div:first-child{display:flex;align-items:baseline;gap:7px;min-width:0}
  .admin-reorganized .admin-manager-heading small{font-size:10px;letter-spacing:.65px;color:#959595}
@@ -3793,11 +3793,11 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
   display:inline-flex;align-items:center;justify-content:center
  }
  .admin-reorganized .admin-manager-nav{
-  display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:0;margin:0 0 14px;padding:0;
+  display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:0;margin:0 0 7px;padding:0;
   background:transparent;border:0;border-bottom:1px solid #eaeaea;border-radius:0
  }
  .admin-reorganized .admin-manager-nav button{
-  display:flex;align-items:center;justify-content:center;min-height:43px;height:43px;
+  display:flex;align-items:center;justify-content:center;min-height:38px;height:38px;
   min-width:0;padding:7px 1px 8px;border:0;border-bottom:2px solid transparent;
   border-radius:0;background:transparent;color:#777;box-shadow:none;font-size:12px;font-weight:720
  }
@@ -4184,6 +4184,31 @@ body:has(#search:focus) .mini-openchat-banner{display:none!important;}
    padding-top:calc(env(safe-area-inset-top) + 32px)!important;
  }
 }
+
+/* Compact administrator header: one unboxed overflow menu, not two toolbar tiles. */
+.shell.is-admin-shell .admin-reorganized .admin-manager-heading{background:transparent}
+.shell.is-admin-shell .admin-reorganized .admin-manager-actions{position:relative}
+.shell.is-admin-shell .admin-reorganized .admin-top-tools{position:relative}
+.shell.is-admin-shell .admin-reorganized .admin-top-tools>summary{
+  display:grid;place-items:center;list-style:none;cursor:pointer;
+  width:34px;height:34px;min-height:34px;padding:0;
+  background:transparent;border:0;border-radius:8px;color:#555;
+  -webkit-tap-highlight-color:transparent;
+}
+.shell.is-admin-shell .admin-reorganized .admin-top-tools>summary::-webkit-details-marker{display:none}
+.shell.is-admin-shell .admin-reorganized .admin-top-tools[open]>summary{background:#f6f6f6}
+.shell.is-admin-shell .admin-reorganized .admin-tools-menu{
+  position:absolute;top:calc(100% + 4px);right:0;z-index:75;
+  min-width:146px;padding:6px;background:#fff;
+  border:1px solid #e8e8e8;border-radius:10px;
+  box-shadow:0 9px 28px rgba(0,0,0,.09);
+}
+.shell.is-admin-shell .admin-reorganized .admin-manager-actions .admin-tools-menu button{
+  display:block;width:100%;height:auto;min-height:38px;
+  padding:8px 12px;border:0;background:transparent;border-radius:6px;
+  color:#222;font-size:13px;font-weight:650;text-align:left;box-shadow:none;
+}
+.shell.is-admin-shell .admin-reorganized .admin-tools-menu button:active{background:#f4f4f4}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -6415,8 +6440,13 @@ function renderAdmin(){
   <header class="admin-manager-heading">
    <div><small>MINIYENA</small><h1>관리자</h1></div>
    <div class="admin-manager-actions">
-    <button type="button" data-action="refresh" aria-label="새로고침" title="새로고침">⟳</button>
-    <button type="button" data-tab="settings" class="${page==='settings'?'active':''}" aria-label="설정" title="설정"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3M4.9 4.9l2.2 2.2m9.8 9.8 2.2 2.2M19.1 4.9l-2.2 2.2M7.1 16.9l-2.2 2.2"/></svg></button>
+    <details class="admin-top-tools">
+     <summary aria-label="관리 메뉴 열기" title="관리 메뉴"><svg width="21" height="21" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></summary>
+     <div class="admin-tools-menu">
+      <button type="button" data-action="refresh">새로고침</button>
+      <button type="button" data-tab="settings">설정</button>
+     </div>
+    </details>
    </div>
   </header>
   <nav class="admin-manager-nav" aria-label="관리자 주요 메뉴">

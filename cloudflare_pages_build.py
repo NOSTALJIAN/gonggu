@@ -23,6 +23,7 @@ ASSETS = (
     "icon-shop-512.png",
     "icon-admin-512.png",
     "icon-admin-white-512.png",
+    "icon-babyshop-96.png",
     "OneSignalSDKWorker.js",
     "sw.js",
 )
@@ -62,11 +63,11 @@ if not IS_GITHUB:
 
 # Give every installable shortcut a genuinely different PNG, including iOS.
 # Use new asset filenames (not just query parameters) to avoid stale Apple icon caching.
-icon_name = "icon-512.png" if IS_GITHUB else "icon-shop-512.png"
+icon_name = "icon-512.png" if IS_GITHUB else "icon-babyshop-96.png"
 touch_icon = "apple-touch-icon.png" if IS_GITHUB else icon_name
 favicon_icon = "icon-192.png" if IS_GITHUB else icon_name
-touch_size = "180x180" if IS_GITHUB else "512x512"
-favicon_size = "192x192" if IS_GITHUB else "512x512"
+touch_size = "180x180" if IS_GITHUB else "96x96"
+favicon_size = "192x192" if IS_GITHUB else "96x96"
 icon_tag = '<link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png?v=exact-original-mini-logo-inverted-20261022">'
 touch_tag = '<link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=exact-original-mini-logo-inverted-20261022">'
 manifest_tag = '<link rel="manifest" href="./manifest.webmanifest?v=exact-original-mini-logo-inverted-20261022">'
@@ -81,7 +82,7 @@ manifest.update({
     "id": "./" if IS_GITHUB else "/",
     "name": "MINIYENA | 깃허브 견적" if IS_GITHUB else "MINIYENA | 쇼핑몰",
     "short_name": "미니예나 견적" if IS_GITHUB else "미니예나 쇼핑",
-    "icons": [{"src": f"{icon_name}?v=20261104-icon-style-v2", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}],
+    "icons": [{"src": f"{icon_name}?v=20261104-babyshop-v3", "sizes": "512x512" if IS_GITHUB else "96x96", "type": "image/png", "purpose": "any maskable"}],
 })
 (OUTPUT / "manifest.webmanifest").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
 (OUTPUT / "index.html").write_text(page, encoding="utf-8")
@@ -90,7 +91,7 @@ if not IS_GITHUB:
     # Real standalone HTML at /admin/, not an iframe or a customer-page query.
     # Set the base so all relative images and icons resolve from the site root.
     admin = page.replace("<head>\n", '<head>\n<base href="../">\n', 1)
-    admin = admin.replace("icon-shop-512.png?v=20261104-icon-style-v2", "icon-admin-white-512.png?v=20261104-icon-style-v2", 2)
+    admin = admin.replace("icon-babyshop-96.png?v=20261104-icon-style-v2", "icon-admin-white-512.png?v=20261104-icon-style-v2", 2)
     admin = admin.replace(
         '<meta name="apple-mobile-web-app-title" content="미니예나 쇼핑">',
         '<meta name="apple-mobile-web-app-title" content="미니예나 관리자">',

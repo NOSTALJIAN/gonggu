@@ -78,7 +78,7 @@ manifest.update({
     "short_name": "미니예나 견적" if IS_GITHUB else "미니예나 쇼핑",
     "icons": [{"src": f"{icon_name}?v=20261104-separate-icons", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}],
 })
-(OUTPUT / "manifest.webmanifest").write_text(json.dumps(manifest, ensure_ascii=False, indent=2)+"\\n", encoding="utf-8")
+(OUTPUT / "manifest.webmanifest").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
 (OUTPUT / "index.html").write_text(page, encoding="utf-8")
 
 if not IS_GITHUB:

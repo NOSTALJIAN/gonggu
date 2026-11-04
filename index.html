@@ -4267,6 +4267,24 @@ body:has(#search:focus) .mini-openchat-banner{display:none!important;}
   padding-bottom:calc(66px + env(safe-area-inset-bottom))!important;
  }
 }
+
+/* Retail price settings per color/size; iPhone-safe fields. */
+.fixed-option-pricing{padding:14px 12px;border:1px solid #e3e3e3;border-radius:12px;background:#fff;display:grid;gap:10px}
+.fixed-option-pricing>.label{margin:0!important}
+.fixed-option-pricing select{width:100%;font-size:15px;min-height:42px;margin-top:6px}
+.fixed-price-panel{border-top:1px solid #ededed;padding-top:12px}
+.fixed-price-heading{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.fixed-price-heading strong{font-size:13px}
+.fixed-price-heading span{font-size:10px;color:#777}
+.fixed-price-panel>.smallnote{font-size:11px;line-height:1.55;margin:7px 0 11px;color:#777}
+.fixed-price-rows{display:grid;gap:7px}
+.fixed-price-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(115px,42%);gap:10px;align-items:center;border-bottom:1px solid #f1f1f1;padding:5px 0;font-size:12px;font-weight:700;color:#353535}
+.fixed-price-row:last-child{border-bottom:0}
+.fixed-price-row span{overflow-wrap:anywhere}
+.fixed-price-row input{width:100%;min-width:0;min-height:42px;font-size:16px!important;box-sizing:border-box;border:1px solid #ddd;border-radius:8px;background:white;padding:7px 9px;text-align:right;color:#111}
+.fixed-variant-price-note{display:block;font-size:10px;color:#777}
+.fixed-pick-price{margin:6px 0 13px;padding:11px 12px;border-radius:9px;background:#f7f7f7;display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#555}
+.fixed-pick-price strong{font-size:16px;color:#111}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -4503,7 +4521,7 @@ try{if(localStorage.getItem(MINI_OPENCHAT_TODAY_KEY)===miniOpenChatKstDay())retu
  </aside>`;
 }
 
-function storeEstimate(p){const raw=githubStorefront?p?.github_estimated_price:p?.estimated_price;return Number.isInteger(raw)&&raw>0?raw:null;}
+function storeEstimate(p){if(instantStorefront&&p?.pricing_mode==='fixed_options')return fixedProductPriceMinimum(p);const raw=githubStorefront?p?.github_estimated_price:p?.estimated_price;return Number.isInteger(raw)&&raw>0?raw:null;}
 const app=$('#app');
 const fmtDate=x=>x?new Date(x).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):'';
 const previewOrderSum=o=>(o.items||[]).filter(i=>i.fulfillment!=='sold_out').reduce((s,i)=>s+(i.unit_price??0)*i.quantity,0);
@@ -5526,8 +5544,10 @@ function productPhotoUrls(p){
 function hasProductEstimate(p){return storeEstimate(p)!==null;}
 function estimatedProductPrice(p,detail=false){
  if(!hasProductEstimate(p))return detail?'<div class="estimate-unavailable">가격 확인이 필요한 상품이에요.</div>':'';
+ const range=instantStorefront&&p?.pricing_mode==='fixed_options'?fixedProductPriceRange(p):null;
  return `<div class="product-estimate ${detail?'product-estimate-detail':'product-estimate-card'} ${detail&&instantStorefront?'product-estimate-instant':''}">
-  <span class="product-estimate-label">${instantStorefront?'판매가':'예상가'}</span><strong>${instantStorefront?'':'약 '}${money(storeEstimate(p))}</strong>
+  <span class="product-estimate-label">${instantStorefront?'판매가':'예상가'}</span><strong>${instantStorefront?'':'약 '}${money(storeEstimate(p))}${range&&range.max>range.min?'부터':''}</strong>
+  ${range&&range.max>range.min?'<span class="fixed-variant-price-note">색상·사이즈별 가격 상이</span>':''}
  </div>`;
 }
 /* Product-specific public note, separate from the Namdaemun store's shared size chart. */
@@ -10688,6 +10708,96 @@ function bulkOptionsBuilder(storeId=null,compact=false){
  </div>`;
 }
 function parseOptions(t){const result={};for(let line of t.split(/\n/)){if(!line.trim())continue;const j=line.indexOf(':');if(j<1)throw Error('옵션을 "크림: BS, BM" 형태로 입력해 주세요');const color=line.slice(0,j).trim(),ss=[...new Set(line.slice(j+1).split(/[,，]/).map(x=>x.trim()).filter(Boolean))];if(!ss.length)throw Error(color+' 컬러에 사이즈가 없어요');if(result[color])throw Error(color+' 컬러가 두 번 입력됐어요');if(color.length>50||ss.some(s=>s.length>30))throw Error('옵션 이름이 너무 길어요');result[color]=ss}if(!Object.keys(result).length||Object.keys(result).length>30)throw Error('컬러 1~30개를 등록해 주세요');return result}
+
+/* Fixed retail prices are independent from supplier-based estimates. */
+function fixedProductOptionPrice(p,color,size){
+ if(p?.pricing_mode!=='fixed_options')return null;
+ const value=p.option_prices?.[color]?.[size];
+ return Number.isInteger(value)&&value>0&&value<=100000000?value:null;
+}
+function fixedProductPriceRange(p){
+ const values=[];
+ for(const [color,sizes] of Object.entries(p?.options||{})){
+  for(const size of sizes||[]){
+   const n=fixedProductOptionPrice(p,color,size);
+   if(n===null)return null;
+   values.push(n);
+  }
+ }
+ return values.length?{min:Math.min(...values),max:Math.max(...values)}:null;
+}
+function fixedProductPriceMinimum(p){return fixedProductPriceRange(p)?.min??null;}
+function productOptionSalePrice(p,color,size){
+ if(!p)return null;
+ return instantStorefront&&p.pricing_mode==='fixed_options'?fixedProductOptionPrice(p,color,size):storeEstimate(p);
+}
+function fixedPricingRows(options,prices,enabled){
+ const rows=[];
+ for(const [color,sizes] of Object.entries(options||{})){
+  for(const size of sizes||[]){
+   const val=prices?.[color]?.[size];
+   const value=Number.isInteger(val)&&val>0?String(val):'';
+   rows.push('<label class="fixed-price-row"><span>'+esc(color)+' / '+esc(size)+'</span><input type="number" inputmode="numeric" step="1" min="1" max="100000000" data-fixed-color="'+esc(color)+'" data-fixed-size="'+esc(size)+'" aria-label="'+esc(color+' '+size+' 판매가')+'" value="'+value+'" placeholder="판매가" '+(enabled?'required':'disabled')+'></label>');
+  }
+ }
+ return rows.join('')||'<p class="smallnote">색상·사이즈를 먼저 입력하고 적용해 주세요.</p>';
+}
+function fixedOptionPriceEditor(product){
+ const fixed=product?.pricing_mode==='fixed_options';
+ return '<section class="fixed-option-pricing" data-fixed-option-pricing>'+
+  '<label class="label">판매가 설정 방식<select name="pricing_mode" data-pricing-mode>'+
+  '<option value="estimated" '+(fixed?'':'selected')+'>기존 방식 · 도매가 기준 자동 계산</option>'+
+  '<option value="fixed_options" '+(fixed?'selected':'')+'>직접 설정 · 색상/사이즈별 판매가</option>'+
+  '</select></label>'+
+  '<div class="fixed-price-panel '+(fixed?'':'hidden')+'" data-fixed-option-panel>'+
+  '<div class="fixed-price-heading"><strong>옵션별 판매가 (원)</strong><span>새 미니예나 바로 주문</span></div>'+
+  '<p class="smallnote" data-fixed-option-hint>색상·사이즈별로 금액을 입력해 주세요. 도매배송비 포함 판매가예요.</p>'+
+  '<div class="fixed-price-rows" data-fixed-option-rows>'+fixedPricingRows(product?.options,product?.option_prices,fixed)+'</div>'+
+  '</div></section>';
+}
+function syncFixedOptionEditor(form){
+ if(!form||!['product-form','approve-form'].includes(form.id))return;
+ const fixed=form.querySelector('[data-pricing-mode]')?.value==='fixed_options';
+ const pane=form.querySelector('[data-fixed-option-panel]'),grid=form.querySelector('[data-fixed-option-rows]');
+ if(!pane||!grid)return;
+ pane.classList.toggle('hidden',!fixed);
+ const saved=Object.create(null);
+ grid.querySelectorAll('[data-fixed-color]').forEach(field=>{
+  const color=field.dataset.fixedColor,size=field.dataset.fixedSize,raw=String(field.value||'').trim();
+  if(!Object.prototype.hasOwnProperty.call(saved,color))saved[color]=Object.create(null);
+  saved[color][size]=/^[1-9][0-9]{0,8}$/.test(raw)?Number(raw):null;
+ });
+ let options;
+ try{options=parseOptions(form.querySelector('textarea[name="options"]')?.value||'');}
+ catch(_){
+  const hint=form.querySelector('[data-fixed-option-hint]');
+  if(hint&&fixed)hint.textContent='색상·사이즈를 올바르게 입력한 후 적용해 주세요.';
+  grid.querySelectorAll('input').forEach(field=>{field.disabled=!fixed;field.required=fixed});
+  return;
+ }
+ grid.innerHTML=fixedPricingRows(options,saved,fixed);
+ const hint=form.querySelector('[data-fixed-option-hint]');
+ if(hint)hint.textContent='각 색상·사이즈 조합의 판매가를 입력해 주세요. 도매배송비는 판매가에 포함돼요.';
+}
+function parseFixedProductPricing(form,options){
+ const mode=form?.querySelector('[data-pricing-mode]')?.value||'estimated';
+ if(mode!=='fixed_options')return {pricing_mode:'estimated',option_prices:{}};
+ syncFixedOptionEditor(form);
+ const fields=[...form.querySelectorAll('[data-fixed-option-rows] [data-fixed-color]')];
+ const prices=Object.create(null);
+ for(const [color,sizes] of Object.entries(options||{})){
+  prices[color]=Object.create(null);
+  for(const size of sizes){
+   const field=fields.find(x=>x.dataset.fixedColor===color&&x.dataset.fixedSize===size);
+   const raw=String(field?.value||'').trim();
+   if(!/^[1-9][0-9]{0,8}$/.test(raw)||Number(raw)>100000000)
+    throw Error(color+' / '+size+' 판매가를 숫자로 입력해 주세요 (1~1억원).');
+   prices[color][size]=Number(raw);
+  }
+ }
+ return {pricing_mode:'fixed_options',option_prices:prices};
+}
+
 async function putStore(s,id){if(!connected){if(id)Object.assign(demo.stores.find(x=>x.id===id),s);else demo.stores.push({...s,id:uuid()});saveDemo();return}const path='/rest/v1/gq_stores'+(id?'?id=eq.'+id:'');await api(path,{method:id?'PATCH':'POST',body:s,admin:true})}
 async function putProduct(o,id){
  if(!connected)throw Error('온라인 연결 후 상품과 비공개 도매 정보를 등록할 수 있어요.');

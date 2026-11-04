@@ -10612,9 +10612,9 @@ function customerRequestFiles(d){
  if(files.some(f=>!f.type?.startsWith('image/')||f.size>35*1024*1024))throw Error('각 사진은 35MB 이하의 이미지여야 해요.');
  return files;
 }
-async const UNKNOWN_REQUEST_STORE='가게 이름 모름';
+const UNKNOWN_REQUEST_STORE='가게 이름 모름';
 function isUnknownRequestStoreName(value){return String(value||'').trim()===UNKNOWN_REQUEST_STORE;}
-function submitSuggestion(d){
+async function submitSuggestion(d){
  const store=d.has('store_unknown')?UNKNOWN_REQUEST_STORE:String(d.get('store')||'').trim(),name=String(d.get('name')||'').trim(),customer=String(d.get('customer')||'').trim(),note=String(d.get('note')||'').trim(),category=validateProductCategory(d.get('category')),email=normalizeCustomerEmail(d.get('email'));
  if(!store)throw Error('도매업체명을 입력하거나 가게 이름을 몰라요를 선택해 주세요.');
  if(!name)throw Error('상품명을 입력해 주세요.');

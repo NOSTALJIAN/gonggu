@@ -4477,7 +4477,8 @@ const p=new URLSearchParams(location.search);
 // Admin uses a dedicated Cloudflare page. Public storefronts never render admin.
 // Existing ?page=admin bookmarks forward to the new administrator URL.
 const ADMIN_HOME='https://miniyena.pages.dev/admin/';
-const STOREFRONT_PATH=location.hostname.toLowerCase()==='nostaljian.github.io'?'/gonggu/':'/';
+const CDN_SHARE_HOST=/^(?:rawcdn|raw)\.githack\.com$/i.test(location.hostname);
+const STOREFRONT_PATH=location.hostname.toLowerCase()==='nostaljian.github.io'?'/gonggu/':CDN_SHARE_HOST?location.pathname:'/';
 const dedicatedAdminPage=location.hostname.toLowerCase()==='miniyena.pages.dev'&&/^\/admin(?:\/index\.html|\/)?$/i.test(location.pathname);
 if(!dedicatedAdminPage&&p.get('page')==='admin')location.replace(ADMIN_HOME);
 const state={page:dedicatedAdminPage?'admin':p.get('page')==='track'?'track':'shop',tab:'home',adminOrderSearch:'',stores:[],products:[],requests:[],quotes:[],cart:read(CART,[]),modal:null,search:'',shopCategory:'all',shopSort:'newest',shopStore:'all',shopFiltersOpen:false,adminCategory:'all',trackId:p.get('id')||'',trackToken:p.get('token')||'',tracking:null,receipts:read(TRACK,[]),notice:'',filter:'pricing',orderViewFilter:null,admin:false,heroPhotoUrl:null,heroStoreId:null,dateGroupsOpen:{},orderCardsOpen:{},supplierBulkSelected:new Set(),supplierBulkStoreId:'',supplierBatches:[],supplierBatchesReady:false,supplierBatchesError:'',supplierPartialInvoices:[],trackSupplierPartial:[],lowerPriceReports:[],optionRequests:[],optionRequestsReady:false,optionRequestsError:'',requestStatusFilter:'pending',adminCatalogView:'products',adminCatalogFilter:'all',adminProductSort:'newest',adminProductSearch:'',productPrivate:{},productPrivateReady:false,emailSettings:null,emailSettingsReady:false,emailSettingsError:'',supplierFreightNotify:{},supplierFreightNotifyReady:false,adminPinIds:new Set(),phoneLookupReady:null,pinLookupNotice:''};
@@ -4506,7 +4507,7 @@ function matchesCategory(p,key){
  return key==='all'||(key==='uncategorized'?!validProductCategory(p.category):p.category===key);
 }
 // Public site pricing: Cloudflare keeps current estimates; only the GitHub storefront uses alternate estimates.
-const githubStorefront=location.hostname.toLowerCase()==='nostaljian.github.io';
+const githubStorefront=location.hostname.toLowerCase()==='nostaljian.github.io'||CDN_SHARE_HOST;
 const instantStorefront=location.hostname.toLowerCase()==='miniyena.pages.dev';
 
 const MINI_OPENCHAT_DISMISS_KEY='mini_openchat_banner_dismissed_v1';

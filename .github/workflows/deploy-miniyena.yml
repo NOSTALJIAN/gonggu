@@ -21,12 +21,14 @@ jobs:
     steps:
       - name: Checkout website
         uses: actions/checkout@v4
+      - name: Build public storefront without the Cloudflare admin page
+        run: python3 cloudflare_pages_build.py --github
       - name: Set up GitHub Pages
         uses: actions/configure-pages@v5
       - name: Upload website
         uses: actions/upload-pages-artifact@v4
         with:
-          path: .
+          path: cloudflare-dist
       - name: Publish website
         id: deployment
         uses: actions/deploy-pages@v4

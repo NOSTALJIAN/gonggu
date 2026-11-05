@@ -6444,6 +6444,9 @@ function renderAdminHomePreparingList(quotes){
 
 
 /* Admin-only all-time finance report. Revenue reflects recorded orders, not estimates. */
+function isGuerrillaItem(item){
+ return String(item?.store_name||'').trim()==='게릴라';
+}
 function adminFinanceTotals(){
  const qs=state.quotes||[],confirmed=qs.filter(q=>q.status==='confirmed');
  const total=(items,f)=>items.reduce((sum,x)=>sum+f(x),0);
@@ -6451,17 +6454,17 @@ function adminFinanceTotals(){
  const refunds=total(qs,q=>Math.max(0,Number(q.amount_refunded)||0));
  const due=total(confirmed,q=>totalDue(q));
  const unpaid=total(confirmed,q=>Math.max(0,totalDue(q)-Number(q.amount_paid||0)+Number(q.amount_refunded||0)-paymentWaiver(q)));
- const supplierCharged=total(confirmed,q=>supplierShippingShare(q));
  const courierCharged=total(confirmed,q=>appliedShipping(q));
  const ready=state.productPrivateReady&&state.supplierBatchesReady;
- let sales=0,cost=0,chinaRows=0,missing=0,missingPrices=0,supplierCost=0;
+ let sales=0,cost=0,chinaRows=0,missing=0,missingPrices=0,supplierCost=0,excludedGuerrilla=0;
+ const marginItemIds=new Set();
  if(ready){
-  const ids=new Set();
   for(const q of confirmed)for(const item of q.items||[]){
    if(item.fulfillment==='sold_out')continue;
    const qty=Math.max(0,Number(item.quantity)||0);
    if(!qty)continue;
-   ids.add(item.id);
+   if(isGuerrillaItem(item)){excludedGuerrilla+=qty;continue;}
+   marginItemIds.add(item.id);
    const price=item.unit_price==null?null:Number(item.unit_price);
    if(price===null||!Number.isFinite(price)||price<0){missingPrices++;continue;}
    sales+=price*qty;
@@ -6472,11 +6475,25 @@ function adminFinanceTotals(){
    if(privateCost.source_type==='1688')chinaRows++;
   }
   for(const batch of state.supplierBatches||[])
-   if((batch.item_ids||[]).some(id=>ids.has(id)))supplierCost+=Math.max(0,Number(batch.total)||0);
+   if((batch.item_ids||[]).some(id=>marginItemIds.has(id)))supplierCost+=Math.max(0,Number(batch.total)||0);
  }
+ // Retain all real sales/receipts in payment totals; only the estimated margin excludes 게릴라.
+ // For mixed-store orders, count allocated freight only for non-guerrilla supplier batches.
+ const supplierCharged=total(confirmed,q=>{
+  const active=(q.items||[]).filter(i=>i.fulfillment!=='sold_out'&&Number(i.quantity||0)>0);
+  const eligible=active.filter(i=>!isGuerrillaItem(i));
+  if(!eligible.length)return 0;
+  if(!active.some(isGuerrillaItem))return supplierShippingShare(q);
+  const ids=new Set(eligible.map(i=>i.id));
+  const allocated=(state.supplierBatches||[]).reduce((sum,b)=>
+    sum+((b.item_ids||[]).some(id=>ids.has(id))?
+      (b.payers||[]).filter(p=>p.charged_quote_id===q.id)
+        .reduce((s,p)=>s+Math.max(0,Number(p.amount)||0),0):0),0);
+  return Math.min(supplierShippingShare(q),allocated);
+ });
  const margin=sales-cost+supplierCharged-supplierCost;
  return {paid,refunds,received:paid-refunds,due,unpaid,supplierCharged,courierCharged,
-  ready,sales,cost,supplierCost,margin,chinaRows,missing,missingPrices,orders:confirmed.length,
+  ready,sales,cost,supplierCost,margin,chinaRows,missing,missingPrices,excludedGuerrilla,orders:confirmed.length,
   cancelledRefundPending:total(qs.filter(q=>q.status==='cancelled'),
    q=>Math.max(0,Number(q.amount_paid||0)-Number(q.amount_refunded||0)))};
 }
@@ -6499,13 +6516,13 @@ function renderAdminFinanceTotals(){
    <div class="admin-finance-breakdown">
     <div><span>누적 입금</span><b>${price(f.paid)}</b></div>
     <div><span>누적 환불</span><b>− ${price(f.refunds)}</b></div>
-    <div><span>확정 상품 판매금액</span><b>${price(f.sales,f.ready)}</b></div>
-    <div><span>현재 도매가 기준 상품원가</span><b>− ${price(f.cost,f.ready)}</b></div>
+    <div><span>마진 대상 상품 판매금액 (게릴라 제외)</span><b>${price(f.sales,f.ready)}</b></div>
+    <div><span>마진 대상 상품원가 (게릴라 제외)</span><b>− ${price(f.cost,f.ready)}</b></div>
     <div><span>도매배송비 고객 청구</span><b>+ ${price(f.supplierCharged)}</b></div>
     <div><span>배분 기록상 도매배송 실비</span><b>− ${price(f.supplierCost,f.ready)}</b></div>
     <div class="result"><span>추정 마진</span><strong>${price(f.margin,canMargin)}</strong></div>
     <div><span>고객 택배비 청구 (마진 계산 제외)</span><b>${price(f.courierCharged)}</b></div>
-    <p>추정 마진 = 상품판매금액 − 상품원가 + 고객 도매배송비 − 거래처 배송비 실비. 실제 순이익이 아닌 <strong>예상 매출총이익</strong>이에요.</p>
+    <p>추정 마진 = 게릴라를 제외한 상품판매금액 − 상품원가 + 해당 도매배송비 수입 − 실비. 게릴라 주문의 판매금액과 입금액은 매출·입금 합계에 그대로 포함하지만 마진에는 포함하지 않아요.</p>
     <p>실제 택배 발송비·택배비 수입, 국제배송·통관, 세금, 수수료, 포장비 등은 반영하지 않았어요. 거래처 배송비는 배분 기록이 있는 금액만 계산했고, 상품원가는 현재 등록된 값을 사용해요.</p>
     ${f.chinaRows?`<p class="finance-warning">1688 상품 ${f.chinaRows}종은 등록된 추정 원화 원가(위안 × 450)를 사용했어요.</p>`:''}
     ${f.missing||f.missingPrices?`<p class="finance-warning">원가 미확인 ${f.missing}종, 판매가 미확인 ${f.missingPrices}종이 있어 마진을 미산정으로 표시해요.</p>`:''}
@@ -7459,8 +7476,9 @@ function adminEstimatedUnitPrice(item){
 /* Admin-only preview: total item selling value minus registered sourcing cost.
    Sold-out items and delivery charges are excluded, and missing values are never zeroed. */
 function adminQuoteGoodsMargin(q,readUnitPrice){
- const result={total:0,cost:0,margin:null,missingPrice:0,missingCost:0,count:0};
+ const result={total:0,cost:0,margin:null,missingPrice:0,missingCost:0,count:0,marginCount:0};
  if(!state.admin||state.page!=='admin'||!q)return result;
+ let marginSales=0,marginCost=0,marginMissingPrice=0;
  for(const item of q.items||[]){
   if(item.fulfillment==='sold_out')continue;
   const qty=Number(item.quantity);
@@ -7468,15 +7486,22 @@ function adminQuoteGoodsMargin(q,readUnitPrice){
   result.count++;
   const rawPrice=readUnitPrice?readUnitPrice(item):item.unit_price;
   const price=rawPrice===null||rawPrice===undefined||rawPrice===''?null:Number(rawPrice);
-  if(price===null||!Number.isSafeInteger(price)||price<0||price>100000000)result.missingPrice++;
+  const validPrice=price!==null&&Number.isSafeInteger(price)&&price>=0&&price<=100000000;
+  if(!validPrice)result.missingPrice++;
   else result.total+=price*qty;
+  if(isGuerrillaItem(item))continue;
+  result.marginCount++;
+  if(!validPrice)marginMissingPrice++;
+  else marginSales+=price*qty;
   const meta=state.productPrivateReady&&item.product_id?state.productPrivate?.[item.product_id]:null;
   const rawCost=meta?.wholesale_price;
   const cost=rawCost===undefined||rawCost===null||rawCost===''?null:Number(rawCost);
   if(cost===null||!Number.isFinite(cost)||cost<0)result.missingCost++;
-  else result.cost+=cost*qty;
+  else{result.cost+=cost*qty;marginCost+=cost*qty;}
  }
- if(result.count&&result.missingPrice===0&&result.missingCost===0)result.margin=result.total-result.cost;
+ if(result.count&&result.marginCount===0)result.margin=0;
+ else if(result.marginCount&&marginMissingPrice===0&&result.missingCost===0)
+  result.margin=marginSales-marginCost;
  return result;
 }
 function adminPriceSummary(orders){
@@ -7599,6 +7624,20 @@ function renderBundleLedger(q,idx,root){
 }
 /* A combined round is not a shipping bundle: do not show shipment-sync controls
    or imply delivery fees have already been waived. */
+function adminRoundPaymentOrders(q){
+ if(!q)return [];
+ const active=(state.quotes||[]).filter(isActiveRoundEntry);
+ const group=roundGroupForOrder(q,active);
+ return group.filter(row=>
+  row.customer_key&&row.customer_key===q.customer_key&&
+  normKey(row.buyer_name)===normKey(q.buyer_name)&&
+  ['quoted','confirmed'].includes(row.status)&&
+  !row.cancel_requested_at&&!row.delivery_change_requested_at&&
+  readyQuote(row)&&
+  (row.status==='confirmed'||row.purchase_intent==='buy_now'&&adminFreightReady(row))&&
+  balanceDue(row)>0
+ );
+}
 function roundGroupTask(group){
  const opts=group.flatMap(q=>pendingItemOptionRequests(q));
  if(opts.length)return {title:'옵션 변경 요청 '+opts.length+'건 확인',hint:'고객 요청을 먼저 확인하세요.',action:'show-pending-item-options',label:'요청 확인'};
@@ -7617,11 +7656,13 @@ function roundGroupTask(group){
   const unallocated=pending.find(q=>!adminFreightReady(q));
   if(unallocated)return {title:'배송비 배분 대기 · 구매 신청 '+pending.length+'건',hint:'구매자 모집 후 거래처별 배송비를 배분하고 최종 금액을 한 번만 청구하세요.',filter:'buy_now',label:'배송비 배분'};
   const toPay=pending.find(q=>balanceDue(q)>0);
-  if(toPay)return {title:'최종 금액 입금 요청 · '+pending.length+'건',hint:'상품값·도매 배송비·택배비를 한 번에 안내한 뒤 실제 입금액을 기록하세요.',action:'send-final-payment-request',id:toPay.id,label:'입금 요청 자동발송'};
+  if(toPay)return {title:'최종 금액 입금 요청 · '+group.filter(q=>balanceDue(q)>0).length+'건',hint:'같은 구매자의 미입금 주문을 합산해 한 번만 자동 안내합니다.',action:'send-final-payment-request',id:toPay.id,label:'합산 입금 요청 자동발송'};
   return {title:'입금 확인 · '+pending.length+'건',hint:'실제 입금액 기록 후 자동 주문확정 여부를 확인하세요.',action:'round-open-orders',label:'입금 내역'};
  }
  const undecided=group.filter(q=>q.status==='quoted');
  if(undecided.length)return {title:'구매자 선택 '+undecided.length+'건 대기',hint:'각 주문을 펼쳐 필요한 구매자에게만 재안내할 수 있어요.',action:'copy-customer-link',id:undecided[0].id,label:'선택 링크 복사'};
+ const confirmedToPay=group.filter(q=>q.status==='confirmed'&&readyQuote(q)&&balanceDue(q)>0&&!q.cancel_requested_at&&!q.delivery_change_requested_at);
+ if(confirmedToPay.length)return {title:'최종 금액 입금 요청 · '+confirmedToPay.length+'건',hint:'같은 구매자 주문의 미입금액 합계를 이메일과 앱 알림으로 한 번만 보냅니다.',action:'send-final-payment-request',id:confirmedToPay[0].id,label:'합산 입금 요청 자동발송'};
  const total=group.reduce((n,q)=>n+totalDue(q),0),paid=group.reduce((n,q)=>n+(Number(q.amount_paid)||0)-(Number(q.amount_refunded)||0),0);
  if(paid+group.reduce((n,q)=>n+paymentWaiver(q),0)<total)return {title:'입금 '+money(total-paid-group.reduce((n,q)=>n+paymentWaiver(q),0))+' 확인 필요',hint:'받은 금액을 주문별로 입력하세요.',action:'round-open-orders',label:'입금 수정'};
  return {title:'입금 완료 · 도매 발주 확인',hint:'거래처별 입금·발주에서 발주 상태를 확인하세요.',filter:'supplier_payments',label:'거래처 발주 보기'};
@@ -8070,6 +8111,8 @@ function renderAdminQuoteCard(q){
  const priced=readyQuote(q);
  const finalReady=priced&&(q.status==='confirmed'||q.status==='quoted'&&q.purchase_intent==='buy_now'&&adminFreightReady(q));
  const task=compactQuoteNextTask(q);
+ const paymentGroup=finalReady?adminRoundPaymentOrders(q):[];
+ const paymentRequestAmount=paymentGroup.reduce((sum,part)=>sum+balanceDue(part),0);
  const goodsMargin=adminQuoteGoodsMargin(q);
  const urgent=q.cancel_requested_at||q.delivery_change_requested_at||q.dispatch_request_status==='pending'||pendingItemOptionRequests(q).length;
  const active=(q.items||[]).filter(i=>i.fulfillment!=='sold_out');
@@ -8086,7 +8129,7 @@ function renderAdminQuoteCard(q){
     <div><span>상품값</span><b>${money(previewOrderSum(q))}</b></div>
     ${q.delivery_method==='courier'||appliedShipping(q)>0?`<div><span>택배비${isBundle(q)?' · 합배송':''}</span><b>${money(appliedShipping(q))}</b></div>`:''}
     ${supplierShippingShare(q)>0?`<div><span>도매 배송비</span><b>${money(supplierShippingShare(q))}</b></div>${adminSupplierFeeBreakdown(q)}`:''}
-    <div class="compact-order-margin"><span>예상 상품마진<small>상품판매금액 − 등록 사입원가</small></span><b>${goodsMargin.margin===null?(goodsMargin.missingCost?'원가 확인 필요':'가격 확인 필요'):money(goodsMargin.margin)}</b></div>
+    <div class="compact-order-margin"><span>예상 상품마진<small>게릴라 제외 · 상품판매금액 − 사입원가</small></span><b>${goodsMargin.margin===null?(goodsMargin.missingCost?'원가 확인 필요':'가격 확인 필요'):money(goodsMargin.margin)}</b></div>
    </div>`:''}
    <div><span>최종 결제금액</span><b>${finalReady?money(due):'배송비 배분 후 확정'}</b></div>
    <div><span>받은 금액</span><b>${money(paid)}</b></div>
@@ -8096,7 +8139,7 @@ function renderAdminQuoteCard(q){
    ${priced&&paid>due?`<p class="compact-order-warning">초과 입금 ${money(paid-due)} · 환불 여부 확인</p>`:''}
   </div>
   <div class="compact-order-next ${urgent?'is-urgent':''}">
-   ${finalReady&&balanceDue(q)>0&&!q.cancel_requested_at&&!q.delivery_change_requested_at?`<div class="compact-payment-request-row"><span class="compact-payment-request-caption">미입금 <b>${money(balanceDue(q))}</b></span><button type="button" class="compact-payment-request-btn" data-action="send-final-payment-request" data-id="${esc(q.id)}">입금 요청 보내기 <span aria-hidden="true">→</span></button></div>`:`<strong>${esc(task.text)}</strong>${task.action==='copy-final-payment-notice'||task.action==='send-final-payment-request'?'':`<button type="button" class="compact-order-next-btn" ${command}>${esc(task.label)} →</button>`}`}
+   ${finalReady&&balanceDue(q)>0&&!q.cancel_requested_at&&!q.delivery_change_requested_at?`<div class="compact-payment-request-row"><span class="compact-payment-request-caption">미입금 <b>${money(balanceDue(q))}</b></span><button type="button" class="compact-payment-request-btn" data-action="send-final-payment-request" data-id="${esc(q.id)}">${paymentGroup.length>1?"합산 "+money(paymentRequestAmount)+" 입금 요청":"입금 요청 보내기"} <span aria-hidden="true">→</span></button></div>`:`<strong>${esc(task.text)}</strong>${task.action==='copy-final-payment-notice'||task.action==='send-final-payment-request'?'':`<button type="button" class="compact-order-next-btn" ${command}>${esc(task.label)} →</button>`}`}
    ${purchaseChoicePending(q)&&!purchaseChoiceReminderRecent(q)?`<button type="button" class="compact-choice-link" data-action="copy-customer-link" data-id="${esc(q.id)}">고객 확인 링크 복사</button>`:''}
    ${renderCompactInlinePayment(q,finalReady)}
    ${supplierFreightOnlyDue(q)>0?renderSupplierFreightRequestControl(q):''}
@@ -10056,7 +10099,7 @@ function updateAdminPricePopupTotals(form){
  if(noteNode)noteNode.textContent=summary.missingPrice?
   '가격 미입력 '+summary.missingPrice+'종 · 모두 입력해야 총마진이 계산돼요.':
   summary.missingCost?'사입원가 미등록 '+summary.missingCost+'종 · 원가를 확인해 주세요.':
-  '상품판매금액 − 등록 사입원가 · 배송비·기타 비용 제외';
+  '게릴라 제외 · 상품판매금액 − 등록 사입원가 · 배송비·기타 비용 제외';
 }
 function modal(){const m=state.modal;if(!m)return '';const wrap=(title,body,stickyProductSave=false)=>stickyProductSave?`<div class="overlay" id="overlay"><div class="sheet sheet-product-editor product-editor-clean swipe-dismiss-sheet" role="dialog" aria-modal="true"><div class="sheet-drag-handle" aria-hidden="true"></div><div class="sheethead"><h2>${title}</h2><button class="close" data-action="close">×</button></div><div class="sheet-product-scroll">${body}</div><div class="sheet-product-save"><button class="btn block" type="submit" form="product-form">상품 저장</button></div></div></div>`:`<div class="overlay" id="overlay"><div class="sheet${['myquotes','suggest','cart','pick','product-photos','approve'].includes(m.type)?' swipe-dismiss-sheet':''}${m.type==='myquotes'?' myquotes-swipe-sheet':''}${m.type==='suggest'?' suggest-sheet':''}${m.type==='cart'?' cart-swipe-sheet':''}${m.type==='approve'?' approve-sheet':''}" role="dialog" aria-modal="true">${['myquotes','suggest','cart','pick','product-photos','approve'].includes(m.type)?'<div class="sheet-drag-handle" aria-hidden="true"></div>':''}<div class="sheethead"><h2>${title}</h2><button class="close" data-action="close">×</button></div>${body}</div></div>`;
 if(m.type==='payment-save-success'&&state.admin)return wrap('입금 처리 완료','<div style="padding:12px 4px 22px"><p style="font-size:18px;font-weight:700;margin:0 0 12px">'+esc(m.buyer)+'</p><p style="font-size:22px;font-weight:800;margin:0 0 12px">'+money(m.amount)+' 입금 확인 완료</p><p class="smallnote">'+(m.confirmed?'주문도 자동 확정됐어요.':'입금 내역이 저장됐어요.')+'</p><button type="button" class="btn block" data-action="close">확인</button></div>');
@@ -12634,9 +12677,15 @@ if(a==='send-final-payment-request'){
  if(!state.admin||state.page!=='admin')throw Error('관리자만 입금 요청을 보낼 수 있어요.');
  const q=state.quotes.find(row=>row.id===id);
  if(!q||balanceDue(q)<=0)throw Error('미입금 주문을 찾지 못했어요.');
- if(!window.confirm(esc(q.buyer_name||'구매자')+'님에게 '+money(balanceDue(q))+' 입금 요청을 이메일과 앱 알림으로 보낼까요?'))return;
- const result=await rpc('gq_admin_request_final_payment_v110',{p_quote_id:id},true);
- notif((result.queued_email?'이메일 발송 대기 등록':'이메일 미등록')+' · '+(result.queued_push?'앱 알림 발송 대기 등록':'앱 알림 연결 정보 없음')+' · 실제 도착 여부는 수신 환경에 따라 달라요.');
+ const group=adminRoundPaymentOrders(q);
+ if(!group.some(row=>row.id===q.id))throw Error('발송할 주문의 결제금액과 배송비를 먼저 확정해 주세요.');
+ const total=group.reduce((sum,row)=>sum+balanceDue(row),0);
+ if(!window.confirm((q.buyer_name||'구매자')+'님에게 주문 '+group.length+'건의 미입금 합계 '+money(total)+'을 이메일과 앱 알림으로 한 번만 보낼까요?\n\n'+group.map((row,i)=>(i+1)+'번째 주문 '+money(balanceDue(row))).join('\n')))return;
+ const result=group.length>1?
+  await rpc('gq_admin_request_final_payment_group_v117',{p_quote_ids:group.map(row=>row.id)},true):
+  await rpc('gq_admin_request_final_payment_v110',{p_quote_id:q.id},true);
+ if(Number(result.amount)!==total)throw Error('안내 금액이 화면과 달라요. 발송 기록을 확인해 주세요.');
+ notif(group.length+'건 합산 '+money(total)+' 안내 · '+(result.queued_email?'이메일 발송 대기':'이메일 미등록')+' · '+(result.queued_push?'앱 알림 대기':'앱 알림 미연결')+' · 실제 수신 여부는 고객 환경에 따라 달라요.');
  return;
 }
 if(a==='copy-final-payment-notice'){

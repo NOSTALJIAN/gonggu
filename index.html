@@ -9297,7 +9297,7 @@ function formatWholesaleOrderCopy(rows,groupBySupplier=true,groupTitle='도매�
   const size=String(r.item?.size||'사이즈 미등록').trim();
   const unit=r.unit===null||r.unit===undefined||!Number.isFinite(Number(r.unit))?null:Number(r.unit);
   const key=JSON.stringify([brand,name,color,size,unit]);
-  if(!details.has(key))details.set(key,{brand,name,color,size,unit,qty:0});
+  if(!details.has(key))details.set(key,{brand,name,color,size,product_id:r.item?.product_id||'',unit,qty:0});
   details.get(key).qty+=Number(r.qty)||0;
  }
  const output=[];
@@ -9310,7 +9310,7 @@ function formatWholesaleOrderCopy(rows,groupBySupplier=true,groupTitle='도매�
   const normalizeStoreName=value=>String(value||'').normalize('NFKC').replace(/\s+/g,'').toLocaleLowerCase('ko');
   const includeBrand=[...records.values()].some(row=>normalizeStoreName(row.brand)!==normalizeStoreName(supplier));
   output.push((includeBrand?'브랜드 | ':'')+'품명 | 색상 | 사이즈 | 수량 | 단가');
-  const lines=[...records.values()].sort((a,b)=>a.brand.localeCompare(b.brand,'ko')||a.name.localeCompare(b.name,'ko')||a.color.localeCompare(b.color,'ko')||a.size.localeCompare(b.size,'ko')||(a.unit??0)-(b.unit??0));
+  const lines=[...records.values()].sort((a,b)=>supplierOptionCompare(a,b)||(a.unit??0)-(b.unit??0));
   for(const row of lines){
    const brandDiffers=normalizeStoreName(row.brand)!==normalizeStoreName(supplier);
    const values=[row.name,row.color,row.size,row.qty+'개',row.unit===null?'단가 미등록':money(row.unit)];
@@ -9482,13 +9482,47 @@ function isOtherRoundQuote(q){
 /* Both the visible supplier list and clipboard use the same items: purchase-confirmation
    waiting (quoted + buy_now + priced) or confirmed orders. Payment is NOT required.
    Exclude earlier quote/selection stages, cancelled, sold-out or already ordered items. */
+/* Sort wholesale worklists in the registered product option order, not by order arrival.
+   Repeat customers with the same color/size are adjacent; do not change actual allocations. */
+function supplierOptionCompare(a,b){
+ const left=a||{},right=b||{};
+ const txt=value=>String(value??'').trim();
+ const natural=(x,y)=>txt(x).localeCompare(txt(y),'ko',{numeric:true});
+ const brandA=left.store_name||left.brand||left.store||'';
+ const brandB=right.store_name||right.brand||right.store||'';
+ const nameA=left.product_name||left.name||'';
+ const nameB=right.product_name||right.name||'';
+ let cmp=natural(brandA,brandB)||natural(nameA,nameB);
+ if(cmp)return cmp;
+ const ranks=item=>{
+  const product=(state.products||[]).find(p=>String(p.id)===String(item.product_id||''));
+  const opts=product&&product.options&&typeof product.options==='object'?product.options:{};
+  const colors=Object.keys(opts);
+  const color=txt(item.color),size=txt(item.size);
+  const sizes=Array.isArray(opts[color])?opts[color]:[];
+  return {color:colors.indexOf(color),size:sizes.indexOf(size)};
+ };
+ const la=ranks(left),rb=ranks(right);
+ const rankCmp=(x,y)=>x===y?0:x<0?1:y<0?-1:x-y;
+ cmp=rankCmp(la.color,rb.color)||natural(left.color,right.color);
+ if(cmp)return cmp;
+ cmp=rankCmp(la.size,rb.size)||natural(left.size,right.size);
+ if(cmp)return cmp;
+ return natural(left.product_id,right.product_id);
+}
+function sortSupplierOptionRows(rows){
+ return [...rows].sort((a,b)=>
+  supplierOptionCompare(a.item,b.item)||
+  String(a.q?.created_at||'').localeCompare(String(b.q?.created_at||''))||
+  String(a.item?.id||'').localeCompare(String(b.item?.id||'')));
+}
 function supplierPendingBatchItems(batch){
  const byId=new Map(state.quotes.flatMap(q=>(q.items||[]).map(item=>[item.id,{q,item}])));
- return (batch?.item_ids||[]).map(id=>byId.get(id))
+ return sortSupplierOptionRows((batch?.item_ids||[]).map(id=>byId.get(id))
   .filter(row=>row&&(row.q.status==='confirmed'||
    (row.q.status==='quoted'&&row.q.purchase_intent==='buy_now'&&!quoteNeedsPriceInput(row.q)))&&
    !['sold_out','received','delivered'].includes(row.item.fulfillment)&&
-   !row.item.supplier_ordered_at&&!row.q.supplier_ordered_at);
+   !row.item.supplier_ordered_at&&!row.q.supplier_ordered_at));
 }
 function supplierOrderPaidForCopy(q){
  return !!(q&&q.status==='confirmed'&&readyQuote(q)&&
@@ -9602,7 +9636,8 @@ function instantDomesticPendingGroups(){
   if(!grouped.has(row.supplier))grouped.set(row.supplier,[]);
   grouped.get(row.supplier).push(row);
  }
- return [...grouped].sort(([a],[b])=>a.localeCompare(b,'ko')).map(([supplier,items])=>{
+ return [...grouped].sort(([a],[b])=>a.localeCompare(b,'ko')).map(([supplier,rows])=>{
+  const items=sortSupplierOptionRows(rows);
   const ready=items.filter(instantDomesticEligible);
   return {supplier,items,ready,qty:items.reduce((n,r)=>n+Number(r.item.quantity||0),0)};
  });

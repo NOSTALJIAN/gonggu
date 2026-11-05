@@ -4346,6 +4346,13 @@ body:has(#search:focus) .mini-openchat-banner{display:none!important;}
 .receipt-empty,.receipt-search-empty{padding:32px 10px;color:#999;font-size:12px;text-align:center}
 .receipt-label{color:#999;font-size:11px}
 @media(max-width:380px){.admin-reorganized .admin-manager-nav button{font-size:10px}.receipt-person{padding:10px 9px}.receipt-check{min-width:70px;font-size:10px}}
+
+/* Keep distinct order confirmation actions legible in same-buyer and bundle views. */
+.round-confirm-item,.bundle-confirm-item{padding:10px 0;border-top:1px solid #eeeeef;display:grid;gap:5px}
+.round-confirm-item>small,.bundle-confirm-item>small{font-size:11px;color:#767676;font-weight:700}
+.bundle-confirm-shortcut{padding:12px;border-top:1px solid #eee;display:grid;gap:8px}
+.bundle-confirm-shortcut>strong{font-size:12px;font-weight:800}
+.round-shipping-consolidation-button{min-height:42px}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -7714,8 +7721,7 @@ function renderSameRoundCard(group){
  const courier=group.filter(q=>q.delivery_method==='courier');
  const courierFees=courier.reduce((n,q)=>n+appliedShipping(q),0);
  const warn=courier.length>1&&!courier.every(q=>isBundle(q))&&courierFees>3000;
- const mergeEligible=warn&&group.some(q=>shippingMergeEligible(q)&&shippingMergeCandidates(q).length>1);
- const mergePrimary=mergeEligible?group.find(q=>shippingMergeEligible(q)&&shippingMergeCandidates(q).length>1):null;
+ const mergePrimary=warn?group.find(q=>shippingMergeEligible(q)&&shippingMergeCandidates(q).length>1):null;
  const capturedDelivery=group.reduce((sum,q)=>sum+Math.max(0,Number(q.paid_delivery_amount||0)),0);
  const expectedBundleDelivery=courier.length>0?Math.max(...courier.map(q=>appliedShipping(q))):0;
  const excessDelivery=Math.max(0,capturedDelivery-expectedBundleDelivery);
@@ -7735,14 +7741,14 @@ function renderSameRoundCard(group){
   <div class="round-simple-next">
    <span>다음 할 일</span><strong>${esc(task.title)}</strong><p>${esc(task.hint)}</p>
    <button type="button" class="round-simple-next-button" ${task.action?'data-action="'+esc(task.action)+'"':'data-filter="'+esc(task.filter)+'"'} ${task.id?'data-id="'+esc(task.id)+'"':''}>${esc(task.label)} →</button>
-   ${group.filter(q=>q.status==='quoted').map(q=>adminConfirmButton(q)).filter(Boolean).join('')}
+   ${group.filter(q=>q.status==='quoted').map((q,index)=>`<div class="round-confirm-item"><small>${index+1}번째 주문 · ${esc(fmtDate(q.created_at))}</small>${adminConfirmButton(q)}</div>`).join('')}
   </div>
   ${warn?`<div class="round-shipping-consolidation" role="note">
    <strong>택배비가 주문마다 따로 계산돼 있어요</strong>
    <div class="round-shipping-consolidation-line"><span>현재 주문 ${courier.length}건 배송비</span><b>${money(courierFees)}</b></div>
    <div class="round-shipping-consolidation-line"><span>한 번에 보내면</span><b>${money(expectedBundleDelivery)} (1회)</b></div>
    <small>이 목록은 같은 구매자 주문을 모아 보여주는 것뿐, 아직 실제 합배송 설정은 되지 않았어요.</small>
-   ${mergePrimary?`<button class="round-shipping-consolidation-button" type="button" data-action="merge-shipping" data-id="${esc(mergePrimary.id)}">택배 한 번으로 묶기</button>`:''}
+   ${mergePrimary?`<button class="round-shipping-consolidation-button" type="button" data-action="merge-shipping" data-id="${esc(mergePrimary.id)}">합배송 설정 · 택배비 1회로</button>`:'<small>합배송 버튼이 없다면 동일 구매자 연락처·주문 상태를 확인해 주세요.</small>'}
    ${excessDelivery>0?`<small class="round-shipping-consolidation-refund">이미 받은 택배비 중 ${money(excessDelivery)}은 중복일 수 있어요. 합배송 후 환불 또는 다른 미입금 항목과의 정산을 확인해 주세요. 실제 입금·환불 기록은 자동 변경되지 않아요.</small>`:
     '<small>이미 택배비를 받았다면 합배송 후 초과 입금 여부를 확인해 주세요. 금액은 자동 환불되지 않아요.</small>'}
   </div>`:''}
@@ -7790,6 +7796,7 @@ function renderBundleCard(group){
   </div>
   ${alertCount?`<div class="bundle-compact-alert">확인할 요청 ${alertCount}건 · <button type="button" data-action="admin-bundle-manage" data-id="${esc(root.id)}">요청 확인</button></div>`:''}
   <div class="bundle-compact-stats"><span>발주 완료 <b>${ordered}종</b></span><span>입고 완료 <b>${received}종</b></span>${pending?`<span>발주·확정 대기 <b>${pending}종</b></span>`:''}</div>
+  ${group.some(q=>q.status==='quoted')?`<div class="bundle-confirm-shortcut"><strong>합배송 설정 완료 · 주문확정은 개별 처리</strong>${group.filter(q=>q.status==='quoted').map((q,index)=>`<div class="bundle-confirm-item"><small>${index+1}번째 주문 · ${esc(fmtDate(q.created_at))}</small>${adminConfirmButton(q)}</div>`).join('')}</div>`:''}
   <div class="bundle-compact-items">
     ${items.map(({q,i})=>{
       const status=adminBundleItemStatus(q,i);
@@ -8233,14 +8240,22 @@ function sameShippingCustomer(a,b){
   normKey(a.baby_name)===normKey(b.baby_name)&&!!normKey(a.baby_name);
 }
 function shippingMergeEligible(q){
- return !!q&&q.status==='confirmed'&&!q.cancel_requested_at&&!q.delivery_change_requested_at&&
+ const quotedCourier=q?.status==='quoted'&&q.delivery_method==='courier'&&
+  hasShipping(q)&&!['next_round','on_hold'].includes(q.purchase_intent);
+ return !!q&&(q.status==='confirmed'||quotedCourier)&&
+  !q.cancel_requested_at&&!q.delivery_change_requested_at&&
   ['new','preparing','pickup_ready'].includes(workflowStage(q))&&
   !String(q.tracking_number||'').trim()&&
   !(q.items||[]).some(i=>i.fulfillment==='delivered');
 }
 function shippingMergeCandidates(q){
  if(!state.admin||!q)return [];
- return state.quotes.filter(x=>shippingMergeEligible(x)&&sameShippingCustomer(x,q));
+ const candidates=state.quotes.filter(x=>shippingMergeEligible(x)&&sameShippingCustomer(x,q));
+ // A not-yet-confirmed order can only be combined with other courier orders.
+ // Existing confirmed-only pickup/courier merging still uses the established workflow.
+ return candidates.some(x=>x.status==='quoted')
+  ?candidates.filter(x=>x.delivery_method==='courier'&&hasShipping(x))
+  :candidates;
 }
 function shippingMergeRoot(orders,chosen){
  const byId=new Map(orders.map(q=>[q.id,q]));
@@ -8274,7 +8289,7 @@ function renderMergeShippingBody(m){
  const val=k=>esc(addressOrder[k]||'');
  return `<div class="shipping-merge-modal">
  <div class="shipping-merge-heading"><strong>${esc(root.buyer_name)}님의 발송 전 주문</strong>
- <span>택배 한 번으로 보내기 · 주문은 각각 유지</span></div>
+ <span>택배 한 번으로 보내기 · 주문확정·구매 선택·입금 기록은 각각 유지</span></div>
  <form id="merge-shipping-form">
   <input type="hidden" name="root_id" value="${esc(root.id)}">
   <div class="shipping-merge-orders">
@@ -8295,7 +8310,7 @@ function renderMergeShippingBody(m){
    <label class="label">상세주소<input name="address_line2" maxlength="250" value="${val('address_line2')}"></label>
    <label class="label">배송 메모<input name="delivery_note" maxlength="200" value="${val('delivery_note')}"></label>
   </div>
-  <p class="shipping-merge-warning">선택한 주문을 택배수령으로 통일하고 배송비는 기준 주문에 한 번만 계산해요. 기존 입금 기록은 그대로 유지돼요. 중복 입금된 택배비가 있다면 실제 환불 후 따로 기록해 주세요.</p>
+  <p class="shipping-merge-warning">${eligible.some(q=>q.status==='quoted')?'주문확정 전에도 합배송을 설정할 수 있어요. 견적과 구매 선택은 그대로 유지돼요. ':''}배송비는 기준 주문에서 한 번만 계산해요. 실제 입금액은 수정하지 않아요. 중복 입금된 배송비가 있다면 환불 후 따로 기록해 주세요.</p>
   <button type="submit" class="btn block" ${options.length?'':'disabled'}>합배송 설정 저장</button>
  </form></div>`;
 }
@@ -8310,10 +8325,11 @@ async function handleMergeShippingSubmit(f,data){
  const value=k=>String(data.get(k)||'').trim();
  const recipient=value('recipient_name'),postal=value('postal_code'),address=value('address_line1');
  if(!recipient||!/^[0-9]{5}$/.test(postal)||address.length<4)throw Error('받는 사람·우편번호·주소를 입력해 주세요.');
- if(!window.confirm('같은 구매자의 주문 '+(ids.length+1)+'건을 한 택배로 묶을까요?\n배송지는 한 곳으로 통일돼요.\n택배비는 한 번만 계산하고, 기존 입금액은 그대로 유지해요.'))return;
+ const pendingConfirmation=eligible.some(q=>q.status==='quoted');
+ if(!window.confirm('같은 구매자의 주문 '+(ids.length+1)+'건을 한 택배로 묶을까요?\n배송지는 한 곳으로 통일돼요.\n택배비는 한 번만 계산하고, 주문확정·구매 선택·실제 입금액은 변경하지 않아요.'))return;
  let result;
  if(connected){
-  result=await rpc('gq_admin_merge_shipping_v100',{
+  result=await rpc(pendingConfirmation?'gq_admin_merge_shipping_quoted_v101':'gq_admin_merge_shipping_v100',{
    p_root_id:rootId,p_additional_ids:ids,
    p_recipient_name:recipient,p_postal_code:postal,p_address_line1:address,
    p_address_line2:value('address_line2'),p_delivery_note:value('delivery_note')

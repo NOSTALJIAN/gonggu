@@ -7633,11 +7633,19 @@ function adminConfirmEligible(q){
   pendingItemOptionRequests(q).length===0);
 }
 function adminConfirmButton(q){
- return adminConfirmEligible(q)?
-  `<details class="admin-override-confirm"><summary>예외 처리 · 관리자가 직접 주문 확정</summary>
-  <p class="smallnote">일반 공동구매는 배송비 배분 후 실제 입금액을 기록하면 자동 확정돼요. 이 기능은 예외 상황에서만 사용해 주세요.</p>
-  <button type="button" class="admin-manual-confirm-action" data-action="admin-confirm-order" data-id="${esc(q.id)}">예외: 관리자 직접 주문 확정</button>
-  </details>`:'';
+ if(!adminConfirmEligible(q))return '';
+ const buyerSelected=q.purchase_intent==='buy_now';
+ const freightPending=!q.supplier_shipping_manual_confirmed_at&&unallocatedDomesticItems(q).length>0;
+ const label=freightPending?'주문 확정 · 도매배송비 배분으로':'관리자 주문 확정';
+ const button=`<button type="button" class="admin-manual-confirm-action" data-action="admin-confirm-order" data-id="${esc(q.id)}">${label}</button>`;
+ const help=freightPending?
+  '관리자가 주문을 확정한 뒤 도매배송비를 배분해요. 이 버튼은 입금 확인이나 고객 입금 요청을 하지 않아요.':
+  '관리자 주문 확정과 입금 확인은 별개예요. 기록된 입금액은 변경되지 않아요.';
+ if(buyerSelected)return `<div class="admin-order-confirm-ready">${button}<p class="smallnote">${help}</p></div>`;
+ return `<details class="admin-override-confirm"><summary>구매 선택 전 · 관리자 주문 확정</summary>
+  <p class="smallnote">구매자가 이번 회차 구매 의사를 별도로 확인했을 때만 진행해 주세요. ${help}</p>
+  ${button}
+ </details>`;
 }
 /* Hide payment entry after the full amount is recorded; allow manual corrections in a popup. */
 function adminPaymentSettled(q){
@@ -11894,18 +11902,24 @@ if(a==='admin-confirm-order'){
  if(busy)return;
  const q=state.quotes.find(q=>q.id===id);
  if(!adminConfirmEligible(q))throw Error('이 주문은 아직 관리자 확정 조건을 충족하지 못했어요. 금액·도매배송비·요청사항을 확인해 주세요.');
- const total=totalDue(q),recorded=Number(q.amount_paid||0)-Number(q.amount_refunded||0);
- const unrecorded=Math.max(0,total-recorded);
+ const recorded=Number(q.amount_paid||0)-Number(q.amount_refunded||0);
  const freightPending=!q.supplier_shipping_manual_confirmed_at&&
   unallocatedDomesticItems(q).length>0;
- const notice=q.buyer_name+'님 · '+fmtDate(q.created_at)+' 주문\n'+
-  '최종 결제금액: '+money(total)+'\n'+
-  '앱에 기록된 입금액: '+money(recorded)+'\n'+
-  (unrecorded?'기록상 남은 금액: '+money(unrecorded)+'\n':'')+
-  (freightPending?'⚠️ 일부 상품은 도매배송비 배분 전입니다. 추후 결제금액이 달라질 수 있어요.\n':'')+
-  '\n구매자가 이번 회차 구매에 동의했고, 실제 입금 내역을 직접 확인했나요?'+
-  '\n\n[확인]을 누르면 구매자 대신 최종 주문을 확정합니다.'+
-  '\n입금 기록은 변경되지 않으며 실제 입금을 확인하지 않았다면 진행하지 마세요.';
+ const buyerChoicePending=!q.purchase_intent||q.purchase_intent==='undecided';
+ const notice=[
+  q.buyer_name+'님 · '+fmtDate(q.created_at)+' 주문',
+  '상품금액: '+money(previewOrderSum(q)),
+  '고객 배송비: '+money(appliedShipping(q)),
+  freightPending?'도매배송비: 주문 확정 후 배분':'도매배송비: '+money(supplierShippingShare(q)),
+  freightPending?'최종 결제금액: 도매배송비 배분 후 결정':'현재 결제금액: '+money(totalDue(q)),
+  '입금 기록: '+money(recorded)+' (변경 없음)',
+  '',
+  ...(buyerChoicePending?['⚠️ 구매자가 사이트에서 이번 회차 구매를 아직 선택하지 않았어요.',
+      '별도로 구매 의사를 확인한 경우에만 진행해 주세요.','']:[]),
+  '관리자가 이 주문을 확정할까요?',
+  freightPending?'확정 후 도매배송비를 배분할 수 있어요.':'입금 기록은 그대로 유지돼요.',
+  '※ 이 작업은 입금확인·결제완료·입금 요청을 하지 않아요.'
+ ].join('\n');
  if(!window.confirm(notice))return;
  const group=b.closest('.admin-order-fold');
  if(group?.dataset.adminOrderId)state.orderCardsOpen[group.dataset.adminOrderId]=true;
@@ -11916,7 +11930,7 @@ if(a==='admin-confirm-order'){
   if(saved!==true)throw Error('관리자 주문확정 처리 결과를 확인하지 못했어요.');
   await loadAdmin();
   window.scrollTo({top:y,behavior:'instant'});
-  notif('관리자 주문확정 완료 · 입금 기록은 그대로예요.');
+  notif('주문확정 완료 · 도매배송비 배분을 진행해 주세요. 입금 기록은 그대로예요.');
  }finally{busy=false;b.disabled=false;}
  return;
 }

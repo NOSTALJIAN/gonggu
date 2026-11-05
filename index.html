@@ -6017,6 +6017,7 @@ function render(){
  });
  adminScrollPositions.forEach(([selector,left])=>{const el=app.querySelector(selector);if(el)el.scrollLeft=left;});
  if(state.page==='admin'&&state.tab==='quotes')updateAdminOrderSearch();
+ if(state.page==='admin'&&state.tab==='receipts')updateReceiptSearch();
  const categoryList=app.querySelector('.shop-category-list');
  if(categoryList)categoryList.scrollLeft=categoryScrollBefore;
  syncModalPageLock();
@@ -7307,14 +7308,7 @@ function adminWorkflow(q){
   ready&&stage==='preparing'&&q.delivery_method==='pickup'?'모든 상품이 입고됐어요. 픽업 대기 상태로 자동 변경 중이에요.':ready&&stage==='preparing'?'모든 판매 가능 상품이 입고됐어요. 다음 단계를 진행해 주세요.':'준비·입고·전달 여부를 관리하는 단계예요.';
  return `<section class="workflow-card"><div class="workflow-head"><b>📦 주문 진행관리</b><span class="workflow-stage">${workflowLabel(q)}</span></div>
  <div class="workflow-help">${note}</div>
- ${stage==='preparing'&&saleItems(q).length?`<div class="workflow-receipt-checklist" style="margin:12px 0;padding:12px;border:1px solid #dedee8;border-radius:12px">
-  <b>📦 상품별 입고완료 체크</b>
-  <div class="smallnote">${q.delivery_method==='pickup'?'마지막 상품까지 입고완료 체크하면 픽업 대기 중으로 자동 전환되고 구매자에게 알림이 가요.':'실제로 입고된 상품만 체크해 주세요. 택배 배송 상태는 별도로 관리돼요.'}</div>
-  ${saleItems(q).map(i=>`<div class="row between wrap" style="gap:8px;padding-top:10px;margin-top:9px;border-top:1px solid #ebebef">
-   <span style="flex:1;min-width:135px"><b>${esc(i.product_name)}</b><div class="tiny">${esc(i.color)} / ${esc(i.size)} · ${Number(i.quantity)}개</div></span>
-   ${['received','delivered'].includes(i.fulfillment)?'<span class="workflow-stage">✓ 입고완료</span>':`<button type="button" class="btn sm secondary" data-action="mark-item-received" data-id="${esc(i.id)}">입고완료 체크</button>`}
-  </div>`).join('')}
- </div>`:''}
+  ${stage==='preparing'&&saleItems(q).length?`<div class="receipt-order-shortcut"><span>입고할 상품을 한 화면에서 확인할 수 있어요.</span><button type="button" class="btn sm secondary" data-tab="receipts">📦 입고 체크</button></div>`:''}
  ${renderShipment(q)}
  ${actions.length?`<div class="workflow-actions">${actions.join('')}</div>`:''}
  ${q.items.some(i=>i.fulfillment==='sold_out')?`<div class="workflow-settlement"><b>품절 정산</b><div>품절 상품금액은 고객 결제금액에서 자동 제외돼요.${sold?' 모든 상품이 품절되어 배송비도 제외돼요.':''}</div><div>고객 결제금액: <b>${money(totalDue(q))}</b> · 실제 환불 추가 필요: <b>${money(payback)}</b></div><div>직접 환불 후 아래 '환불해 준 총액'에 누적 금액을 입력·저장해 주세요. 저장 자체로 송금되지는 않아요.</div></div>`:''}
@@ -8117,10 +8111,7 @@ function renderAdminQuoteCard(q){
    <details class="compact-order-tool" data-compact-tool="shipping">
     <summary>입고·배송</summary>
     <div class="compact-tool-content">
-     ${q.status==='confirmed'?`<div class="compact-receipts">
-      ${active.map(i=>`<div class="compact-receipt-row"><span><b>${adminOrderItemName(i)}</b><small>${esc(i.color)} / ${esc(i.size)} · ${i.quantity}개</small></span>
-       <span>${itemFulfillmentControl(q,i)}</span></div>`).join('')}
-     </div>${adminWorkflow(q)}`:'<p class="smallnote">주문 확정 후 입고·배송을 관리할 수 있어요.</p>'}
+     ${q.status==='confirmed'?`${adminWorkflow(q)}`:'<p class="smallnote">주문 확정 후 입고·배송을 관리할 수 있어요.</p>'}
     </div>
    </details>
    <details class="compact-order-tool" data-compact-tool="advanced">

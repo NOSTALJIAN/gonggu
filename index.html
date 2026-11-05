@@ -4369,6 +4369,21 @@ body:has(#search:focus) .mini-openchat-banner{display:none!important;}
 .admin-order-fold-amounts .is-due strong{color:#121212}
 @media(max-width:380px){.admin-preproc-totals{padding:10px 5px}.admin-preproc-totals>div{padding:0 5px}.admin-preproc-totals strong{font-size:15px}.admin-order-fold-amounts{gap:2px 7px}}
 
+
+/* A supplier option is a single purchase line with a visible summed quantity. */
+.supplier-order-option-group{border-top:1px solid #e9e9e9;padding:13px 0 12px}
+.supplier-order-option-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.supplier-order-option-desc{display:grid;gap:4px;min-width:0}
+.supplier-order-option-desc b{font-size:13px;line-height:1.4;overflow-wrap:anywhere}
+.supplier-order-option-desc small{font-size:12px;color:#666;line-height:1.4;overflow-wrap:anywhere}
+.supplier-order-option-total{flex:0 0 auto;color:#191919;background:#f1f2f2;border-radius:6px;padding:6px 9px;font-size:13px;font-weight:850;white-space:nowrap;font-variant-numeric:tabular-nums}
+.supplier-order-option-buyers{display:grid;gap:7px;margin-top:9px}
+.supplier-order-option-buyer{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:start;gap:8px;font-size:12px;line-height:1.5}
+.supplier-order-option-buyer-name{min-width:0;color:#5a5a5a;overflow-wrap:anywhere}
+.supplier-order-option-buyer-qty{font-weight:800;white-space:nowrap}
+.supplier-order-option-buyer-status{font-size:11px;text-align:right;white-space:nowrap;color:#a0784b}
+.supplier-order-option-buyer-status.is-ready{color:#477658}
+
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -9516,6 +9531,26 @@ function sortSupplierOptionRows(rows){
   String(a.q?.created_at||'').localeCompare(String(b.q?.created_at||''))||
   String(a.item?.id||'').localeCompare(String(b.item?.id||'')));
 }
+/* Group same-option wholesale rows for accurate at-a-glance purchasing totals.
+   A group is one product + exact color + exact size, not a customer/order. */
+function supplierOptionGroups(rows){
+ const groups=[];
+ const keys=new Map();
+ for(const row of sortSupplierOptionRows(rows)){
+  const {item}=row;
+  const productKey=item.product_id||JSON.stringify([item.store_name,item.product_name]);
+  const key=JSON.stringify([productKey,String(item.color||''),String(item.size||'')]);
+  let group=keys.get(key);
+  if(!group){
+   group={item,rows:[],qty:0};
+   keys.set(key,group);
+   groups.push(group);
+  }
+  group.rows.push(row);
+  group.qty+=Math.max(0,Number(item.quantity)||0);
+ }
+ return groups;
+}
 function supplierPendingBatchItems(batch){
  const byId=new Map(state.quotes.flatMap(q=>(q.items||[]).map(item=>[item.id,{q,item}])));
  return sortSupplierOptionRows((batch?.item_ids||[]).map(id=>byId.get(id))
@@ -9689,10 +9724,11 @@ function renderSupplierPaymentCenter(){
   </details>`).join('')}</div>`:''}
   ${instant.length?'<div class="supplier-order-clean-head"><strong>남대문 · 새 주소 즉시구매</strong><span>미발주 '+instant.length+'곳</span></div>':''}
   ${instant.length?`<div class="supplier-order-clean-list">${instant.map(g=>`<details class="supplier-order-clean-card" data-fold-key="instant-domestic-${esc(g.supplier)}">
-   <summary><span><b>${esc(g.supplier)} · 배송비 포함 판매가</b><small>${g.items.length}종 · ${g.qty}개 · 발주 가능 ${g.ready.length}종</small></span><span class="supplier-order-clean-progress">미발주　⌄</span></summary>
+   <summary><span><b>${esc(g.supplier)} · 배송비 포함 판매가</b><small>${supplierOptionGroups(g.items).length}옵션 · ${g.qty}개 · 발주 가능 ${g.ready.length}건</small></span><span class="supplier-order-clean-progress">미발주　⌄</span></summary>
    <div class="supplier-order-clean-body">
     <p class="supplier-order-clean-note">새 주소 주문 · 구매자 도매배송비 추가 청구 없음</p>
-    ${g.items.map(({q,item})=>`<div class="supplier-order-clean-item"><span><b>${esc(item.store_name)} · ${esc(item.product_name)}</b><small>${esc(item.color||'-')} / ${esc(item.size||'-')} · ${esc(q.buyer_name||'구매자')}</small></span><div class="supplier-order-clean-right"><strong>×${Number(item.quantity||0)}</strong><small class="${instantDomesticEligible({q,item})?'is-ready':'is-pending'}">${instantDomesticEligible({q,item})?'입금 확인':'입금·변경 확인'}</small></div></div>`).join('')}
+    ${supplierOptionGroups(g.items).map(group=>`<div class="supplier-order-option-group"><div class="supplier-order-option-head"><span class="supplier-order-option-desc"><b>${esc(group.item.store_name||'가게명 미입력')} · ${esc(group.item.product_name||'상품')}</b><small>${esc(group.item.color||'-')} / ${esc(group.item.size||'-')}</small></span><strong class="supplier-order-option-total">총 ${group.qty}개</strong></div>
+    <div class="supplier-order-option-buyers">${group.rows.map(({q,item})=>`<div class="supplier-order-option-buyer"><span class="supplier-order-option-buyer-name">${esc(q.buyer_name||'구매자')}</span><b class="supplier-order-option-buyer-qty">×${Number(item.quantity||0)}</b><small class="supplier-order-option-buyer-status ${instantDomesticEligible({q,item})?'is-ready':'is-pending'}">${instantDomesticEligible({q,item})?'입금 확인':'입금·변경 확인'}</small></div>`).join('')}</div></div>`).join('')}
     <div class="supplier-order-clean-actions">
      <button type="button" class="btn supplier-order-clean-copy" data-action="copy-instant-procurement" data-supplier="${esc(g.supplier)}">발주서 복사</button>
      <button type="button" class="btn supplier-order-clean-finish" data-action="complete-instant-procurement" data-supplier="${esc(g.supplier)}" ${g.ready.length?'':'disabled'}>입금확인 ${g.ready.length}종 발주 완료</button>
@@ -9703,15 +9739,18 @@ function renderSupplierPaymentCenter(){
   ${domestic.length?'<div class="supplier-order-clean-head"><strong>남대문 발주할 거래처</strong><span>'+domestic.length+'곳</span></div>':''}
   ${!state.supplierBatchesReady?'<p class="noticefail">남대문 배송비 배분 내역을 불러오지 못했어요. 새로고침해 주세요.</p>':''}
   ${domestic.length?`<div class="supplier-order-clean-list">${domestic.map(({b,items,eligible,qty,buyers,ready,canOrder})=>`<details class="supplier-order-clean-card" data-fold-key="supplier-order-clean-${esc(b.id)}">
-  <summary><span><b>${esc(b.supplier||'거래처')}</b><small>${items.length}종 · ${qty}개 · 주문 ${buyers}건</small></span><span class="supplier-order-clean-progress">${ready}/${buyers}건 입금확인　⌄</span></summary>
+  <summary><span><b>${esc(b.supplier||'거래처')}</b><small>${supplierOptionGroups(items).length}옵션 · ${qty}개 · 주문 ${buyers}건</small></span><span class="supplier-order-clean-progress">${ready}/${buyers}건 입금확인　⌄</span></summary>
   <div class="supplier-order-clean-body">
    <p class="supplier-order-clean-note">입금 확인 ${eligible.length}종 · 확인 대기 ${items.length-eligible.length}종</p>
-   ${items.map(({q,item})=>`<div class="supplier-order-clean-item"><span><b>${esc(item.store_name||'가게명 미입력')} · ${esc(item.product_name||'상품')}</b><small>${esc(item.color||'-')} / ${esc(item.size||'-')} · ${esc(q.buyer_name||'구매자')}</small></span><div class="supplier-order-clean-right"><strong>×${Number(item.quantity||1)}</strong><small class="${supplierOrderPaidForCopy(q)?'is-ready':'is-pending'}">${esc(supplierOrderRowStatus(q))}</small></div></div>`).join('')}
+   ${supplierOptionGroups(items).map(group=>`<div class="supplier-order-option-group">
+    <div class="supplier-order-option-head"><span class="supplier-order-option-desc"><b>${esc(group.item.store_name||'가게명 미입력')} · ${esc(group.item.product_name||'상품')}</b><small>${esc(group.item.color||'-')} / ${esc(group.item.size||'-')}</small></span><strong class="supplier-order-option-total">총 ${group.qty}개</strong></div>
+    <div class="supplier-order-option-buyers">${group.rows.map(({q,item})=>`<div class="supplier-order-option-buyer"><span class="supplier-order-option-buyer-name">${esc(q.buyer_name||'구매자')}</span><b class="supplier-order-option-buyer-qty">×${Number(item.quantity||0)}</b><small class="supplier-order-option-buyer-status ${supplierOrderPaidForCopy(q)?'is-ready':'is-pending'}">${esc(supplierOrderRowStatus(q))}</small></div>`).join('')}</div>
+   </div>`).join('')}
    <div class="supplier-order-clean-actions">
     <button type="button" class="btn supplier-order-clean-copy" data-action="copy-supplier-pending-procurement" data-id="${esc(b.id)}" ${items.length&&state.productPrivateReady?'':'disabled'}>발주서 복사</button>
     <button type="button" class="btn supplier-order-clean-finish" data-action="supplier-bulk-ordered" data-id="${esc(b.id)}" ${canOrder?'':'disabled'}>발주 완료</button>
    </div>
-   <p class="supplier-order-clean-hint">발주서에는 확정 대기 이후의 미발주 상품 ${items.length}종 · ${qty}개가 모두 포함돼요. 입금 여부는 상관없어요.</p>
+   <p class="supplier-order-clean-hint">발주서에는 확정 대기 이후의 미발주 상품 ${supplierOptionGroups(items).length}옵션 · ${qty}개가 모두 포함돼요. 입금 여부는 상관없어요.</p>
    ${!canOrder?'<p class="supplier-order-clean-finish-note">발주 완료 처리는 해당 거래처의 주문 확정과 상품대금 입금 확인이 모두 끝나야 활성화돼요.</p>':''}
   </div>
   </details>`).join('')}</div>`:''}

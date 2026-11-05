@@ -4353,6 +4353,22 @@ body:has(#search:focus) .mini-openchat-banner{display:none!important;}
 .bundle-confirm-shortcut{padding:12px;border-top:1px solid #eee;display:grid;gap:8px}
 .bundle-confirm-shortcut>strong{font-size:12px;font-weight:800}
 .round-shipping-consolidation-button{min-height:42px}
+
+/* Admin payment/procurement: compact total and buyer balance visibility. */
+.admin-preproc-totals{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;margin:7px 0 12px;padding:12px 10px;border:1px solid #e5e6e6;border-radius:13px;background:#fff}
+.admin-preproc-totals>div{min-width:0;padding:0 8px;display:flex;flex-direction:column;gap:5px}
+.admin-preproc-totals>div+div{border-left:1px solid #ebecec}
+.admin-preproc-totals span{font-size:11px;font-weight:650;line-height:1.4;color:#6f7374}
+.admin-preproc-totals strong{font-size:17px;line-height:1.4;letter-spacing:-.055em;font-weight:850;color:#191919;white-space:nowrap;font-variant-numeric:tabular-nums}
+.admin-preproc-totals .is-due strong{color:#151515}
+.admin-preproc-totals-note{grid-column:1/-1;margin:8px 8px 0;font-size:11px;line-height:1.45;color:#8c6a36}
+.admin-order-fold-amounts{display:flex;flex-wrap:wrap;gap:2px 10px;align-items:baseline;font-size:11px;line-height:1.55;font-weight:650;color:#777}
+.admin-order-fold-amounts>span{white-space:nowrap}
+.admin-order-fold-amounts b,.admin-order-fold-amounts strong{font-size:12px;color:#2c2c2c;font-weight:850;font-variant-numeric:tabular-nums}
+.admin-order-fold-amounts .is-due{color:#4e4e4e}
+.admin-order-fold-amounts .is-due strong{color:#121212}
+@media(max-width:380px){.admin-preproc-totals{padding:10px 5px}.admin-preproc-totals>div{padding:0 5px}.admin-preproc-totals strong{font-size:15px}.admin-order-fold-amounts{gap:2px 7px}}
+
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -8674,11 +8690,14 @@ function renderCollapsibleAdminOrder(group,section){
  const onePart=confirmedOrders.length===1&&canSumPayments?orderPaymentParts(confirmedOrders[0]):null;
  const paymentMark=confirmedOrders.some(q=>paymentWaiver(q)>0)&&canSumPayments&&confirmedPaid+confirmedOrders.reduce((n,q)=>n+paymentWaiver(q),0)>=confirmedDue?'차액 인정 · 정산 완료':onePart&&onePart.goodsMissing===0&&onePart.shippingMissing>0?'상품 입금 완료 · 택배비 별도':
   !canSumPayments?'':confirmedDue>0&&confirmedPaid>=confirmedDue?'입금 확인':confirmedPaid>0?'부분 입금':'미입금';
+ const showPaymentSummary=state.filter==='preparing_orders'&&confirmedOrders.length>0;
+ const paymentSummary=showPaymentSummary?`<span class="admin-order-fold-amounts"><span>총 결제 <b>${canSumPayments?money(confirmedDue):'확인 중'}</b></span><span>입금 <b>${money(confirmedPaid)}</b></span><span class="is-due">미입금 <strong>${canSumPayments?money(confirmedOrders.reduce((sum,q)=>sum+balanceDue(q),0)):'확인 중'}</strong></span></span>`:'';
  return `<details class="admin-order-fold ${urgent?'has-pending':''}" data-admin-order-id="${esc(key)}" ${open?'open':''}>
   <summary class="admin-order-fold-heading">
    <span class="admin-order-fold-left">
     <strong>${esc(root.buyer_name||'주문자 미입력')} ${adminGithubGroupIcon(group)} <span class="admin-order-fold-baby">아기: ${esc(babies.join(' · ')||'미입력')}</span></strong>
     <span class="admin-order-fold-meta">${group.length>1?(group.every(q=>bundleRootId(q)===bundleRootId(group[0]))?'묶음배송 '+group.length+'건 · ':'주문 '+group.length+'건 함께 보기 · '):''}상품 ${count}종 · ${qty}개 · ${fmtDate(root.created_at)}${paymentMark?` <b class="admin-order-payment-chip ${paymentMark==='입금 확인'?'paid':''}">${paymentMark}</b>`:''}</span>
+    ${paymentSummary}
    </span>
    <span class="admin-order-fold-right"><span class="admin-order-fold-next ${urgent?'is-urgent':''}">${esc(next)}</span></span>
    <span class="admin-order-fold-chevron" aria-hidden="true"></span>
@@ -9772,6 +9791,11 @@ function renderAdminQuotes(){
   filter.startsWith('flow_')?q.status==='confirmed'&&workflowStage(q)===filter.slice(5):q.status===filter);
  const groups=['all_history','finished','wholesale_completed'].includes(filter)?
   bundledQuoteGroups(qq,['all_history','finished'].includes(filter)):sameRoundGroups(qq);
+ const preparingRows=filter==='preparing_orders'?qq.filter(readyQuote):[];
+ const preparingMissing=filter==='preparing_orders'?qq.length-preparingRows.length:0;
+ const preparingTotal=preparingRows.reduce((sum,row)=>sum+totalDue(row),0);
+ const preparingPaid=preparingRows.reduce((sum,row)=>sum+Math.max(0,Number(row.amount_paid||0)-Number(row.amount_refunded||0)),0);
+ const preparingBalance=preparingRows.reduce((sum,row)=>sum+balanceDue(row),0);
  const waiting=groups.filter(g=>g.some(q=>q.status==='requested'||quoteNeedsPriceInput(q)));
  const priced=groups.filter(g=>!waiting.includes(g));
  const tabs=[['pricing','견적',nPrice],['waiting_buyer','구매 선택',nWaiting],['final_confirmation','확정 대기',nFinalWaiting],['preparing_orders','입금·발주',nPaymentProcurement],['wholesale_completed','입고·배송',nDelivery],['all_history','전체',all.length]];
@@ -9800,6 +9824,12 @@ function renderAdminQuotes(){
     ${advancedSelected?'선택 중 · '+esc(title):'상세 필터'} <span aria-hidden="true">☷</span>
    </button>
   </div>
+  ${filter==='preparing_orders'?`<div class="admin-preproc-totals" aria-label="입금 및 발주 대기 금액">
+   <div><span>총 결제금액</span><strong>${preparingMissing?'확인 중':money(preparingTotal)}</strong></div>
+   <div><span>입금 확인액</span><strong>${money(preparingPaid)}</strong></div>
+   <div class="is-due"><span>남은 입금액</span><strong>${preparingMissing?'확인 중':money(preparingBalance)}</strong></div>
+   ${preparingMissing?`<p class="admin-preproc-totals-note">금액 미확정 ${preparingMissing}건은 총액에서 제외했어요. 확정 후 합산돼요.</p>`:''}
+  </div>`:''}
   ${filter==='preparing_orders'?'<p class="admin-preproc-note">입금 확인 후 발주하면 ‘입고·배송’으로 이동해요.</p>':''}
   ${qq.length?filter==='all'?renderAdminQuoteFlatSection(waiting,'가격 확인','pending')+renderAdminQuoteFlatSection(priced,'구매 선택 대기'):
       renderAdminQuoteFlatSection(groups,'',filter==='pricing'?'pending':'saved'):

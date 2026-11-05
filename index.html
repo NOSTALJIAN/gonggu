@@ -4390,7 +4390,7 @@ body:has(#search:focus) .mini-openchat-banner{display:none!important;}
 .round-group-payment-confirm small{font-size:11px;line-height:1.45;color:#777}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
-<meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
+<meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 표시된 판매가로 바로 주문하세요.">
 <!-- OneSignal Web SDK v16. App ID는 공개용 식별자이며 발송용 REST API 키는 절대 이 파일에 저장하지 마세요. -->
 <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
 <script>
@@ -4605,7 +4605,7 @@ function matchesCategory(p,key){
 }
 // Public site pricing: Cloudflare keeps current estimates; only the GitHub storefront uses alternate estimates.
 const githubStorefront=location.hostname.toLowerCase()==='nostaljian.github.io'||CDN_SHARE_HOST;
-const instantStorefront=location.hostname.toLowerCase()==='miniyena.pages.dev';
+const instantStorefront=location.hostname.toLowerCase()==='miniyena.pages.dev'||githubStorefront;
 
 const MINI_OPENCHAT_DISMISS_KEY='mini_openchat_banner_dismissed_v1';
 const MINI_OPENCHAT_TODAY_KEY='mini_openchat_banner_suppressed_date_v1';
@@ -5036,7 +5036,7 @@ async function savePrivateProduct(productId,info){
  const product=state.products.find(x=>x.id===productId);
  if(product){
  product.estimated_price=yuan!==null?Math.round(yuan*650):wholesale>0?Math.round(wholesale*1.4/100)*100:null;
- product.github_estimated_price=yuan!==null?Math.round(yuan*550):wholesale>0?Math.round(wholesale*1.2):null;
+ product.github_estimated_price=yuan!==null?Math.round(yuan*550):wholesale>0?Math.round(wholesale*1.3):null;
  }
 }
 // Admin-only comparison across both storefronts; never change customer-facing price rules.
@@ -5059,12 +5059,12 @@ function adminDualEstimates(product,privateMeta){
   const cost=n(meta.wholesale_price);
   if(cost!==null){
    if(regular===null)regular=Math.round(cost*1.4/100)*100;
-   if(github===null)github=Math.round(cost*1.2);
+   if(github===null)github=Math.round(cost*1.3);
   }
  }
  return {regular,github};
 }
-const adminEstimateText=value=>value===null?'미등록':'약 '+money(value);
+const adminEstimateText=value=>value===null?'미등록':money(value);
 function sourcingPreviewText(source,rawDomestic,rawYuan){
  if(source==='1688'){
   const yuan=Number(rawYuan);
@@ -5073,7 +5073,7 @@ function sourcingPreviewText(source,rawDomestic,rawYuan){
  }
  const wholesale=Number(rawDomestic);
  if(!String(rawDomestic).trim()||!Number.isFinite(wholesale)||wholesale<=0)return '도매가를 입력하면 고객 예상가를 계산해요.';
- return '도매가 '+money(wholesale)+' · 일반 예상가 약 '+money(Math.round(wholesale*1.4/100)*100)+' (×1.4, 100원 반올림) · 깃허브 예상가 약 '+money(Math.round(wholesale*1.2))+' (×1.2)';
+ return '도매가 '+money(wholesale)+' · 일반 예상가 약 '+money(Math.round(wholesale*1.4/100)*100)+' (×1.4, 100원 반올림) · 깃허브 예상가 약 '+money(Math.round(wholesale*1.3))+' (×1.3)';
 }
 function privateSupplierStoreName(existingId){
  const product=state.products.find(p=>p.id===existingId);
@@ -5160,14 +5160,14 @@ function privateProductFields(existingId,compact=false){
   ${privateSupplierFields(existingId)}
   <div data-sourcing-domestic class="${source==='1688'?'hidden':''}">
    <label class="label">남대문 도매가 (원 · 비공개)<input name="private_cost" type="number" inputmode="numeric" min="0" max="100000000" step="1" value="${source==='namdaemun'?domestic:''}" placeholder="예: 12500"></label>
-   <div class="smallnote">남대문: 도매가 × 1.4, 100원 단위 반올림한 판매가를 새 주소에 표시해요. 기존 깃허브 예상가는 × 1.2예요.</div>
+   <div class="smallnote">남대문: 도매가 × 1.4, 100원 단위 반올림한 판매가를 새 주소에 표시해요. 깃허브 판매가는 × 1.3이에요. 남대문 도매배송비는 판매가에 포함돼요.</div>
   </div>
   <div data-sourcing-1688 class="${source==='1688'?'':'hidden'}">
    <label class="label">1688 상품 가격 (위안 ¥ · 비공개)<input name="private_yuan" type="number" inputmode="decimal" min="0.01" max="100000" step="0.01" value="${yuan}" placeholder="예: 12.5"></label>
    <div class="smallnote">예상 사입원가 = 위안 × 450원 (운송·수수료 포함 대략치) · 고객 예상가 = 위안 × 650원. 실제 사입비는 별도 정산해야 해요.</div>
   </div>
   <div class="private-sourcing-preview" data-sourcing-preview>${esc(sourcingPreviewText(source,source==='namdaemun'?domestic:'',yuan))}</div>
-  <div class="smallnote">예상가는 참고용이며 고객 실제 결제금액은 견적에서 확정해요. 사이즈표는 공개 가게별로 관리해요.</div>
+  <div class="smallnote">공개 판매가는 주문할 때 확정돼요. 기존 견적 주문의 가격과 배송비는 변경되지 않아요. 사이즈표는 공개 가게별로 관리해요.</div>
  </section>`;
 }
 // Administrator-only cost information. Never include in buyer-facing quote payloads,
@@ -5192,7 +5192,7 @@ function privateQuoteItemInfo(item){
    ${is1688?`<span>1688 상품 가격 <b>${yuan===null?'미입력':'¥'+esc(yuan.toLocaleString('ko-KR'))}</b></span>`:''}
    <span>${is1688?'예상 사입원가':'도매가'} <b>${privatePrice} / 개</b></span>
    <span class="admin-order-estimate">일반 예상가 <b>${adminEstimateText(prices.regular)} / 개</b></span>
-   <span class="admin-order-estimate">깃허브 예상가 <b>${adminEstimateText(prices.github)} / 개</b></span>`;
+   <span class="admin-order-estimate">깃허브 판매가 <b>${adminEstimateText(prices.github)} / 개</b></span>`;
  }
  return `<div class="admin-order-private-meta" aria-label="관리자 전용 사입 정보">
   <div class="admin-order-private-meta-head">🔒 관리자 전용 · 비공개 사입 정보</div>
@@ -5608,14 +5608,14 @@ const buyerLabel=q=>String(q.buyer_name||'이름 미입력')+' · '+(q.baby_name
    Keep the recorded technical price_channel unchanged; this is a display label. */
 function adminGithubOrderIcon(q){
  if(!state.admin||!q)return '';
- if(q.instant_purchase)return '<span class="admin-order-direct-badge" title="새 주소 · 확정가 즉시구매">바로구매</span>';
+ if(q.instant_purchase)return '<span class="admin-order-direct-badge" title="확정가 즉시구매">바로구매</span>';
  if(q.price_channel==='github')return '<span class="admin-order-gh-badge" title="기존 깃허브 구매 링크">맘❤️</span>';
  return '';
 }
 function adminGithubGroupIcon(quotes){
  if(!state.admin||!Array.isArray(quotes)||!quotes.length)return '';
  const direct=quotes.some(q=>q.instant_purchase),github=quotes.some(q=>q.price_channel==='github');
- return (direct?'<span class="admin-order-direct-badge" title="새 주소 · 확정가 즉시구매">바로구매</span>':'')+
+ return (direct?'<span class="admin-order-direct-badge" title="확정가 즉시구매">바로구매</span>':'')+
   (github?'<span class="admin-order-gh-badge" title="기존 깃허브 구매 링크">맘❤️</span>':'');
 }
 
@@ -5685,7 +5685,7 @@ function estimatedProductPrice(p,detail=false){
  return `<div class="product-estimate ${detail?'product-estimate-detail':'product-estimate-card'} ${detail&&instantStorefront?'product-estimate-instant':''}">
   <span class="product-estimate-label">${fixed?'확정가':instantStorefront?'판매가':'예상가'}</span><strong>${fixed||instantStorefront?'':'약 '}${money(storeEstimate(p))}${range&&range.max>range.min?'부터':''}</strong>
   ${range&&range.max>range.min?'<span class="fixed-variant-price-note">색상·사이즈별 확정가 상이</span>':''}
-  ${githubStorefront&&fixed?'<span class="fixed-variant-price-note">도매배송비는 추후 별도 추가 안내</span>':''}
+  ${githubStorefront&&fixed?'<span class="fixed-variant-price-note">도매배송비 포함 · 별도 청구 없음</span>':''}
  </div>`;
 }
 /* Product-specific public note, separate from the Namdaemun store's shared size chart. */
@@ -6142,7 +6142,7 @@ function renderShop(){
  <div class="shop-editorial"><div class="shop-editorial-visual ${banner?'has-photo':''}">${banner?`<img src="${esc(banner)}" alt="미니예나 메인 사진" loading="eager">`:'<div class="shop-editorial-art" aria-hidden="true"></div>'}</div>
  <div class="shop-editorial-copy"><h1>남대문 · 수입<br>아동복 공동구매</h1>${instantStorefront?'':'<p>견적 요청 후 주문 가능한 공동구매몰이에요.</p>'}</div></div>
  <div class="shop-catalog-anchor" id="catalog"></div>
- <div class="shop-actions"><button type="button" data-action="entry-push-open">🔔 알림 받기</button><button type="button" data-action="suggest-product">+ 상품 등록 신청</button><button type="button" data-action="my-quotes">내 견적 · 주문조회 ↗</button></div>
+ <div class="shop-actions"><button type="button" data-action="entry-push-open">🔔 알림 받기</button><button type="button" data-action="suggest-product">+ 상품 등록 신청</button><button type="button" data-action="my-quotes">내 주문 · 이전 견적 조회 ↗</button></div>
  <div class="shop-notification-row"><button type="button" class="shop-notification-link" data-action="entry-push-open">알림 설정</button></div>
  <div class="shop-category-carousel" aria-label="상품 카테고리"><div class="shop-category-list" role="group" aria-label="상품 카테고리별 보기">
  ${categoryFilterKeys.filter(k=>k==='all'||categoryCounts[k]>0||k===activeCategory).map(k=>`<button type="button" class="shop-category-tab ${activeCategory===k?'active':''}" data-action="shop-category" data-category="${k}" aria-pressed="${activeCategory===k}">${k==='all'?'전체':k==='uncategorized'?'미분류':k}<span>${categoryCounts[k]}</span></button>`).join('')}
@@ -6165,7 +6165,7 @@ function renderShop(){
    ${state.stores.filter(st=>st.active&&catalogue.some(row=>row.store.id===st.id)).sort((a,b)=>String(a.name).localeCompare(String(b.name),'ko')).map(st=>`<option value="${esc(st.id)}" ${activeStore===st.id?'selected':''}>${esc(st.name)}</option>`).join('')}
   </select></label>
  </div>
- <div class="shoplist">${products.length?`<div class="shop-catalog-grid">${products.map(({p,store})=>`<article class="shop-catalog-card ${p.is_sold_out?'shop-soldout-card':''}">${catalogPhotoGallery(p)}${p.is_sold_out?'<span class="shop-soldout-label">품절</span>':''}<div class="shop-catalog-store">${esc(store.name)}</div><button class="producttitle catalog-title-link" type="button" data-action="${p.is_sold_out?'product-photos':'pick-product'}" data-id="${esc(p.id)}" aria-label="${esc(p.name)} ${p.is_sold_out?'상품 사진 보기':'상품 옵션 보기'}" title="${esc(p.name)}">${esc(p.name)}</button><div class="shop-catalog-colors">${Object.keys(p.options||{}).map(esc).join(' · ')||'색상 옵션 확인'}</div>${hasProductEstimate(p)?estimatedProductPrice(p):'<div class="product-estimate product-estimate-card shop-catalog-no-estimate"><span class="product-estimate-label">가격</span><strong>견적 문의</strong></div>'}</article>`).join('')}</div>`:'<div class="empty">조건에 맞는 상품이 없어요. 다른 카테고리나 검색어를 선택해 주세요.</div>'}</div>
+ <div class="shoplist">${products.length?`<div class="shop-catalog-grid">${products.map(({p,store})=>`<article class="shop-catalog-card ${p.is_sold_out?'shop-soldout-card':''}">${catalogPhotoGallery(p)}${p.is_sold_out?'<span class="shop-soldout-label">품절</span>':''}<div class="shop-catalog-store">${esc(store.name)}</div><button class="producttitle catalog-title-link" type="button" data-action="${p.is_sold_out?'product-photos':'pick-product'}" data-id="${esc(p.id)}" aria-label="${esc(p.name)} ${p.is_sold_out?'상품 사진 보기':'상품 옵션 보기'}" title="${esc(p.name)}">${esc(p.name)}</button><div class="shop-catalog-colors">${Object.keys(p.options||{}).map(esc).join(' · ')||'색상 옵션 확인'}</div>${hasProductEstimate(p)?estimatedProductPrice(p):'<div class="product-estimate product-estimate-card shop-catalog-no-estimate"><span class="product-estimate-label">가격</span><strong>판매가 준비 중</strong></div>'}</article>`).join('')}</div>`:'<div class="empty">조건에 맞는 상품이 없어요. 다른 카테고리나 검색어를 선택해 주세요.</div>'}</div>
  </section>`;
 }
 /* MINIYENA final-order bank transfer instructions (never pre-confirmation). */
@@ -7326,7 +7326,7 @@ function renderAdminProducts(){
         <div class="admin-product-brief">
          <span class="admin-product-cost">🔒 ${source==='1688'?'사입원가':'도매가'} ${cost===null?'미입력':money(cost)}</span>
          ${p.pricing_mode==='fixed_options'?`<span class="admin-product-sale-price">확정가 <b>${fixedProductPriceRange(p)?money(fixedProductPriceRange(p).min)+(fixedProductPriceRange(p).max>fixedProductPriceRange(p).min?'부터':''):'옵션별 가격 확인 필요'}</b></span>`:`<span class="admin-product-sale-price">일반 예상가 <b>${adminEstimateText(prices.regular)}</b></span>
-         <span class="admin-product-sale-price admin-product-github-price">깃허브 예상가 <b>${adminEstimateText(prices.github)}</b></span>`}
+         <span class="admin-product-sale-price admin-product-github-price">깃허브 판매가 <b>${adminEstimateText(prices.github)}</b></span>`}
          <span class="admin-product-status ${visibleToCustomer?'is-shown':'is-hidden'}">${visibleToCustomer?'전시 중':!p.published?'판매 중지':!storeActive?'가게 숨김':'링크 전용'}</span>
          <span class="admin-product-status ${p.is_sold_out?'is-soldout':'is-on-sale'}">${p.is_sold_out?'품절':'판매 가능'}</span>
         </div>
@@ -7519,7 +7519,7 @@ function adminEstimatedUnitPrice(item){
   return yuan!==null&&Number.isFinite(yuan)&&yuan>0?Math.round(yuan*(githubStorefront?550:650)):null;
  }
  const wholesale=meta.wholesale_price==null?null:Number(meta.wholesale_price);
- return wholesale!==null&&Number.isFinite(wholesale)&&wholesale>0?(githubStorefront?Math.round(wholesale*1.2):Math.round(wholesale*1.4/100)*100):null;
+ return wholesale!==null&&Number.isFinite(wholesale)&&wholesale>0?(githubStorefront?Math.round(wholesale*1.3):Math.round(wholesale*1.4/100)*100):null;
 }
 /* Admin-only preview: total item selling value minus registered sourcing cost.
    Sold-out items and delivery charges are excluded, and missing values are never zeroed. */
@@ -10198,7 +10198,7 @@ function adminPricePopupEstimateRow(item){
   '<div class="admin-price-popup-wholesale"><span>'+costLabel+' <small>관리자 전용</small></span><strong>'+esc(costText)+'</strong></div>'+
   '<div class="admin-price-popup-estimates">'+
   '<div class="admin-price-popup-estimate"><span>일반 예상가</span><strong>'+priced(estimates.regular)+'</strong></div>'+
-  '<div class="admin-price-popup-estimate is-github"><span>GH 예상가</span><strong>'+priced(estimates.github)+'</strong></div>'+
+  '<div class="admin-price-popup-estimate is-github"><span>GH 판매가</span><strong>'+priced(estimates.github)+'</strong></div>'+
   '</div></div>';
 }
 function updateAdminPricePopupTotals(form){
@@ -11371,7 +11371,7 @@ async function approveSuggestion(d){
 }
 async function setBundle(id,parentId){if(!connected){const q=demo.quotes.find(x=>x.id===id);if(!q)throw Error('주문을 찾지 못했어요');q.bundle_parent_id=parentId||null;saveDemo();return true;}return rpc('gq_set_bundle',{p_quote_id:id,p_parent_id:parentId||null},true)}
 async function requestQuote(name,baby,contact,note,delivery,lookupPin,email){const items=state.cart.map(c=>({product_id:c.product_id,color:c.color,size:c.size,quantity:c.quantity,...(instantStorefront?{expected_price:productOptionSalePrice(selectedProd(c.product_id),c.color,c.size)}:{})}));if(instantStorefront&&!connected)throw Error('즉시구매는 주문 서버 연결이 필요해요. 연결 상태를 확인하고 다시 시도해 주세요.');if(!items.length)throw Error('상품을 먼저 담아 주세요');if(!connected){const id=uuid(),token=uuid(),q={id,lookup_token:token,buyer_name:name,baby_name:baby,customer_key:customerKey,contact,note,customer_email:email,lookup_pin:lookupPin,status:'requested',amount_paid:0,amount_refunded:0,created_at:now()};Object.assign(q,delivery,{shipping_fee:delivery.delivery_method==='courier'?3000:0,bundle_parent_id:null});demo.quotes.unshift(q);for(const c of state.cart)demo.items.push({id:uuid(),quote_id:id,store_name:storeName(c.store_id),product_name:c.product_name,color:c.color,size:c.size,quantity:c.quantity,unit_price:null,fulfillment:'ordered',created_at:now()});saveDemo();return{id,token}}
-return rpc(instantStorefront?'gq_instant_purchase_shipping_v112':githubStorefront?'gq_request_quote_github_v82':'gq_request_quote_v45',{p_lookup_pin:lookupPin,p_name:name,p_baby_name:baby,p_contact:contact,p_note:note,p_items:items,p_customer_key:customerKey,p_delivery_method:delivery.delivery_method,p_recipient_name:delivery.recipient_name,p_postal_code:delivery.postal_code,p_address_line1:delivery.address_line1,p_address_line2:delivery.address_line2,p_delivery_note:delivery.delivery_note,p_email:email,...(instantStorefront?{p_remote_area:delivery.remote_area===true}:{})})}
+return rpc(instantStorefront?(githubStorefront?'gq_instant_purchase_github_v114':'gq_instant_purchase_shipping_v112'):'gq_request_quote_v45',{p_lookup_pin:lookupPin,p_name:name,p_baby_name:baby,p_contact:contact,p_note:note,p_items:items,p_customer_key:customerKey,p_delivery_method:delivery.delivery_method,p_recipient_name:delivery.recipient_name,p_postal_code:delivery.postal_code,p_address_line1:delivery.address_line1,p_address_line2:delivery.address_line2,p_delivery_note:delivery.delivery_note,p_email:email,...(instantStorefront?{p_remote_area:delivery.remote_area===true}:{})})}
 // Refresh the app document itself, not just the tracking JSON.
 // Avoid stale iOS Home Screen JS after a new MINIYENA release.
 function refreshFullOrderPage(){
@@ -11381,7 +11381,7 @@ function refreshFullOrderPage(){
 }
 async function openTracking(id,token){if(dedicatedAdminPage){location.assign(trackLink(id,token));return;}state.trackId=id;state.trackToken=token;state.page='track';state.modal=null;history.pushState({},'',location.pathname+'?page=track&id='+encodeURIComponent(id)+'&token='+encodeURIComponent(token));state.tracking=null;render();try{await reloadTracking()}catch(e){notif(errorText(e));render()}}
 async function reloadTracking(){if(!state.trackId||!state.trackToken)return;let q;if(!connected){q=demo.quotes.find(x=>x.id===state.trackId&&x.lookup_token===state.trackToken);q=q?{...clone(q),bundle_applied:!!q.bundle_parent_id&&demo.quotes.some(x=>x.id===q.bundle_parent_id&&x.status!=='cancelled'),items:clone(demo.items.filter(i=>i.quote_id===q.id)).map(i=>({...i,unit_price:q.status==='requested'?null:i.unit_price,fulfillment:q.status==='confirmed'?i.fulfillment:'ordered'}))}:null}else q=await Promise.race([
- rpc(instantStorefront?'gq_read_quote_instant_v104':'gq_read_quote',{p_quote_id:state.trackId,p_lookup_token:state.trackToken}),
+ rpc('gq_read_quote_instant_v104',{p_quote_id:state.trackId,p_lookup_token:state.trackToken}),
  new Promise((_,reject)=>setTimeout(()=>reject(Error('주문조회 서버 응답이 늦어지고 있어요. 아래 새로고침을 눌러 다시 시도해 주세요.')),14000))
 ]);if(!q)throw Error('견적을 찾을 수 없어요');state.tracking=q;
  state.trackSupplierPartial=connected?await rpc('gq_read_supplier_partial_v88',{p_quote_id:state.trackId,p_lookup_token:state.trackToken}).catch(error=>{console.warn('선입금 안내 조회 실패',error);return []}):[];

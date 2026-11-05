@@ -4,7 +4,7 @@
  * The OneSignal push worker uses a different scope and is untouched.
  */
 'use strict';
-const CACHE = 'gonggunote-cache-7';
+const CACHE = 'gonggunote-cache-8';
 const PREFIX = 'gonggunote-cache-';
 const APP_SCOPE = '/gonggu/';
 const SHELL = ['./index.html','./manifest.webmanifest','./icon-192.png','./icon-512.png','./apple-touch-icon.png'];

@@ -4384,6 +4384,10 @@ body:has(#search:focus) .mini-openchat-banner{display:none!important;}
 .supplier-order-option-buyer-status{font-size:11px;text-align:right;white-space:nowrap;color:#a0784b}
 .supplier-order-option-buyer-status.is-ready{color:#477658}
 
+.round-group-payment-confirm{display:grid;gap:7px;margin-top:12px}
+.round-group-payment-paid-btn{display:block;width:100%;min-height:45px;border:1px solid #252525;border-radius:8px;background:#fff;color:#1a1a1a;font-size:14px;font-weight:820;letter-spacing:-.03em;padding:10px 12px}
+.round-group-payment-paid-btn:disabled{opacity:.55}
+.round-group-payment-confirm small{font-size:11px;line-height:1.45;color:#777}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -7801,6 +7805,12 @@ function renderSameRoundCard(group){
  const received=group.reduce((n,q)=>n+(Number(q.amount_paid)||0)-(Number(q.amount_refunded)||0),0);
  const complete=group.every(q=>readyQuote(q)&&(q.status!=='quoted'||q.purchase_intent==='buy_now'&&adminFreightReady(q)));
  const task=roundGroupTask(group);
+ const groupOutstanding=group.reduce((sum,q)=>sum+balanceDue(q),0);
+ const groupAllConfirmed=group.length>1&&complete&&group.every(q=>
+  q.status==='confirmed'&&!!q.customer_key&&
+  q.customer_key===group[0].customer_key&&
+  normKey(q.buyer_name)===normKey(group[0].buyer_name)&&
+  !q.cancel_requested_at&&!q.delivery_change_requested_at);
  const courier=group.filter(q=>q.delivery_method==='courier');
  const courierFees=courier.reduce((n,q)=>n+appliedShipping(q),0);
  const warn=courier.length>1&&!courier.every(q=>isBundle(q))&&courierFees>3000;
@@ -7824,6 +7834,10 @@ function renderSameRoundCard(group){
   <div class="round-simple-next">
    <span>다음 할 일</span><strong>${esc(task.title)}</strong><p>${esc(task.hint)}</p>
    <button type="button" class="round-simple-next-button" ${task.action?'data-action="'+esc(task.action)+'"':'data-filter="'+esc(task.filter)+'"'} ${task.id?'data-id="'+esc(task.id)+'"':''}>${esc(task.label)} →</button>
+   ${groupAllConfirmed&&groupOutstanding>0?`<div class="round-group-payment-confirm">
+    <button type="button" class="round-group-payment-paid-btn" data-action="mark-round-group-paid" data-quote-ids="${group.map(q=>esc(q.id)).join(',')}" data-expected-due="${groupOutstanding}">✓ ${money(groupOutstanding)} 입금 완료 처리</button>
+    <small>실제 계좌 입금을 확인한 후 눌러 주세요. 주문 ${group.length}건에 나눠 기록해요.</small>
+   </div>`:''}
    ${group.filter(q=>q.status==='quoted').map((q,index)=>`<div class="round-confirm-item"><small>${index+1}번째 주문 · ${esc(fmtDate(q.created_at))}</small>${adminConfirmButton(q)}</div>`).join('')}
   </div>
   ${warn?`<div class="round-shipping-consolidation" role="note">
@@ -12629,7 +12643,38 @@ if(a==='mark-order-payment-part'){
   }finally{busy=false;b.disabled=false;}
   return;
  }
- if(a==='mark-deposit-paid'){
+ if(a==='mark-round-group-paid'){
+ if(!state.admin||state.page!=='admin'||state.tab!=='quotes')
+  throw Error('관리자 주문관리 화면에서만 입금 확인할 수 있어요.');
+ if(busy)return;
+ const ids=String(b.dataset.quoteIds||'').split(',').filter(Boolean);
+ if(ids.length<2||ids.length>20||new Set(ids).size!==ids.length)
+  throw Error('묶인 주문 정보를 찾지 못했어요. 새로고침해 주세요.');
+ const group=ids.map(quoteId=>state.quotes.find(q=>q.id===quoteId));
+ if(group.some(q=>!q||q.status!=='confirmed'||!readyQuote(q)||q.cancel_requested_at||q.delivery_change_requested_at))
+  throw Error('주문 가격이나 진행 상태가 변경됐어요. 새로고침해 주세요.');
+ if(!group[0].customer_key||group.some(q=>
+  q.customer_key!==group[0].customer_key||normKey(q.buyer_name)!==normKey(group[0].buyer_name)))
+  throw Error('서로 다른 구매자의 입금은 합산할 수 없어요.');
+ const due=group.reduce((sum,q)=>sum+balanceDue(q),0);
+ if(!Number.isSafeInteger(due)||due<=0||due!==Number(b.dataset.expectedDue))
+  throw Error('입금 예정액이 변경됐어요. 새로고침해 주세요.');
+ const lines=group.map((q,i)=>(i+1)+'번째 주문 · '+money(balanceDue(q))).join('\n');
+ if(!window.confirm(group[0].buyer_name+'님에게 실제로 '+money(due)+' 입금받았나요?\n\n'+lines+'\n\n확인 시 주문별 입금액에 나누어 기록돼요. 아직 입금받지 않았다면 취소해 주세요.'))return;
+ busy=true;b.disabled=true;
+ try{
+  const oldY=window.scrollY;
+  const result=await rpc('gq_admin_mark_group_paid_v118',{p_quote_ids:ids,p_expected_due:due},true);
+  if(result?.updated!==true||Number(result.amount)!==due||Number(result.order_count)!==group.length)
+   throw Error('서버 입금 기록을 확인해 주세요.');
+  state.orderCardsOpen[group[0].id]=true;
+  await loadAdmin();
+  window.scrollTo({top:oldY,behavior:'instant'});
+  notif(group[0].buyer_name+'님 주문 '+group.length+'건 · '+money(due)+' 입금 확인 완료');
+ }finally{busy=false;if(b.isConnected)b.disabled=false;}
+ return;
+}
+if(a==='mark-deposit-paid'){
  if(!state.admin||state.page!=='admin')throw Error('관리자만 입금 확인할 수 있어요.');
  if(busy)return;
  const q=state.quotes.find(q=>q.id===id);

@@ -75,14 +75,14 @@ manifest_tag = '<link rel="manifest" href="./manifest.webmanifest?v=exact-origin
 change_once(touch_tag, f'<link rel="apple-touch-icon" sizes="{touch_size}" href="./{touch_icon}?v=20261104-shop-readable-v4">')
 change_once(icon_tag, f'<link rel="icon" type="image/png" sizes="{favicon_size}" href="./{favicon_icon}?v=20261104-shop-readable-v4">')
 change_once(manifest_tag, '<link rel="manifest" href="./manifest.webmanifest?v=20261104-shop-readable-v4">')
-change_once('<meta name="apple-mobile-web-app-title" content="미니예나">', f'<meta name="apple-mobile-web-app-title" content="{"미니예나 견적" if IS_GITHUB else "미니예나"}">')
+change_once('<meta name="apple-mobile-web-app-title" content="미니예나">', f'<meta name="apple-mobile-web-app-title" content="{"미니예나 맘" if IS_GITHUB else "미니예나"}">')
 change_once('<meta name="application-name" content="MINIYENA">', f'<meta name="application-name" content="{"MINIYENA GH" if IS_GITHUB else "MINIYENA SHOP"}">')
 
 manifest = json.loads((OUTPUT / "manifest.webmanifest").read_text(encoding="utf-8"))
 manifest.update({
     "id": "./" if IS_GITHUB else "/",
-    "name": "MINIYENA | 깃허브 견적" if IS_GITHUB else "미니예나",
-    "short_name": "미니예나 견적" if IS_GITHUB else "미니예나",
+    "name": "MINIYENA | 맘혜택" if IS_GITHUB else "미니예나",
+    "short_name": "미니예나 맘" if IS_GITHUB else "미니예나",
     "icons": [{"src": f"{icon_name}?v=20261104-shop-readable-v4", "sizes": "512x512" if IS_GITHUB else "192x192", "type": "image/png", "purpose": "any maskable" if IS_GITHUB else "any"}],
 })
 (OUTPUT / "manifest.webmanifest").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")

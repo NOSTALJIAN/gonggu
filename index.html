@@ -4980,14 +4980,27 @@ async function loadAdminProductPrivate(){
   state.productPrivate={};state.productPrivateReady=false;return;
  }
  try{
-  const rows=await api('/rest/v1/gq_product_private_costs_v32?select=product_id,supplier_name,wholesale_price,source_type,yuan_price',{admin:true});
+  const rows=await api('/rest/v1/gq_product_private_costs_v32?select=product_id,supplier_name,wholesale_price,source_type,yuan_price,option_wholesale_prices',{admin:true});
   if(!Array.isArray(rows))throw Error('비공개 도매 정보를 확인하지 못했어요.');
-  state.productPrivate=Object.fromEntries(rows.map(r=>[r.product_id,{supplier_name:r.supplier_name||'',wholesale_price:r.wholesale_price,source_type:r.source_type||'namdaemun',yuan_price:r.yuan_price}]));
+  state.productPrivate=Object.fromEntries(rows.map(r=>[r.product_id,{supplier_name:r.supplier_name||'',wholesale_price:r.wholesale_price,source_type:r.source_type||'namdaemun',yuan_price:r.yuan_price,option_wholesale_prices:r.option_wholesale_prices||{}}]));
   state.productPrivateReady=true;
  }catch(error){
   state.productPrivate={};state.productPrivateReady=false;
   console.warn('관리자 전용 도매 정보 불러오기 실패',error);
  }
+}
+/* Admin-only real wholesale cost: a product with option overrides requires
+   an explicitly registered cost for each variant; never silently use the base. */
+function adminWholesaleUnitCost(item,privateMeta=null){
+ if(!state.admin||!state.productPrivateReady||!item?.product_id)return null;
+ const meta=privateMeta||state.productPrivate?.[item.product_id];
+ if(!meta)return null;
+ const override=meta.option_wholesale_prices;
+ const byOption=override&&typeof override==='object'&&!Array.isArray(override)&&Object.keys(override).length>0;
+ const raw=byOption?override[String(item.color||'')]?.[String(item.size||'')]:meta.wholesale_price;
+ if(raw===null||raw===undefined||raw==='')return null;
+ const n=Number(raw);
+ return Number.isSafeInteger(n)&&n>=0&&n<=100000000?n:null;
 }
 function parsePrivateProductInputs(data,publicStoreName){
  const base=String(publicStoreName||'').trim();
@@ -5015,7 +5028,7 @@ async function savePrivateProduct(productId,info){
  if(answer!==true)throw Error('사입 가격 정보를 저장하지 못했어요.');
  const yuan=info.p_source_type==='1688'?info.p_yuan_price:null;
  const wholesale=yuan!==null?Math.round(yuan*450):info.p_wholesale_price;
- state.productPrivate[productId]={supplier_name:info.p_supplier_name,source_type:info.p_source_type,yuan_price:yuan,wholesale_price:wholesale};
+ state.productPrivate[productId]={...state.productPrivate[productId],supplier_name:info.p_supplier_name,source_type:info.p_source_type,yuan_price:yuan,wholesale_price:wholesale};
  const product=state.products.find(x=>x.id===productId);
  if(product){
  product.estimated_price=yuan!==null?Math.round(yuan*650):wholesale>0?Math.round(wholesale*1.4/100)*100:null;
@@ -5165,7 +5178,7 @@ function privateQuoteItemInfo(item){
  }else{
   const meta=state.productPrivate[item.product_id]||{};
   const supplier=String(meta.supplier_name||'').trim();
-  const wholesale=meta.wholesale_price==null?null:Number(meta.wholesale_price);
+  const wholesale=adminWholesaleUnitCost(item,meta);
   const is1688=meta.source_type==='1688';
   const yuan=meta.yuan_price==null?null:Number(meta.yuan_price);
   const prices=adminDualEstimates(state.products.find(p=>p.id===item.product_id),meta);
@@ -6500,7 +6513,7 @@ function adminFinanceTotals(){
    if(price===null||!Number.isFinite(price)||price<0){missingPrices++;continue;}
    sales+=price*qty;
    const privateCost=state.productPrivate[item.product_id];
-   const unit=privateCost?.wholesale_price==null?null:Number(privateCost.wholesale_price);
+   const unit=adminWholesaleUnitCost(item,privateCost);
    if(unit===null||!Number.isFinite(unit)||unit<0){missing++;continue;}
    cost+=unit*qty;
    if(privateCost.source_type==='1688')chinaRows++;
@@ -7525,9 +7538,8 @@ function adminQuoteGoodsMargin(q,readUnitPrice){
   if(!validPrice)marginMissingPrice++;
   else marginSales+=price*qty;
   const meta=state.productPrivateReady&&item.product_id?state.productPrivate?.[item.product_id]:null;
-  const rawCost=meta?.wholesale_price;
-  const cost=rawCost===undefined||rawCost===null||rawCost===''?null:Number(rawCost);
-  if(cost===null||!Number.isFinite(cost)||cost<0)result.missingCost++;
+  const cost=adminWholesaleUnitCost(item,meta);
+  if(cost===null)result.missingCost++;
   else{result.cost+=cost*qty;marginCost+=cost*qty;}
  }
  if(result.count&&result.marginCount===0)result.margin=0;
@@ -7545,9 +7557,8 @@ function adminPriceSummary(orders){
    summary.itemCount++;
    // 도매 단가는 관리자 전용 데이터에서만 읽으며, 상품 수량을 곱해 합산합니다.
    const privateCost=item.product_id&&state.productPrivateReady?state.productPrivate?.[item.product_id]:null;
-   const rawWholesale=privateCost?.wholesale_price;
-   const wholesale=rawWholesale===null||rawWholesale===undefined||rawWholesale===''?null:Number(rawWholesale);
-   if(!state.productPrivateReady||wholesale===null||!Number.isFinite(wholesale)||wholesale<0)summary.missingWholesale++;
+   const wholesale=adminWholesaleUnitCost(item,privateCost);
+   if(wholesale===null)summary.missingWholesale++;
    else summary.wholesale+=wholesale*qty;
    const price=adminEstimatedUnitPrice(item);
    if(price==null)summary.missingEstimates++;
@@ -9247,9 +9258,7 @@ function procurementRows(){
    const batch=supplierItemBatch(item.id);
    if(q.supplier_ordered_at||item.supplier_ordered_at||batch?.ordered_at)continue;
    const info=state.productPrivateReady?state.productPrivate[item.product_id]:null;
-   const raw=info?.wholesale_price;
-   const n=raw===undefined||raw===null||raw===''?null:Number(raw);
-   const unit=n!==null&&Number.isFinite(n)&&n>=0?n:null;
+   const unit=adminWholesaleUnitCost(item,info);
    const vendor=String(info?.supplier_name||'').trim()||'실제 도매업체 미등록';
    const issues=[];
    if(!state.productPrivateReady)issues.push('도매정보 로딩 전');
@@ -9360,10 +9369,7 @@ function supplierBatchProcurementRows(batch){
   if(!entry)throw Error('발주서의 주문 품목이 일부 누락됐어요. 관리자 새로고침 후 확인해 주세요.');
   const {q,item}=entry;
   const privateMeta=state.productPrivate[item.product_id]||{};
-  const raw=privateMeta.wholesale_price;
-  const unit=raw===null||raw===undefined||raw===''?null:Number(raw);
-  if(unit!==null&&(!Number.isFinite(unit)||unit<0))
-   throw Error('도매 단가가 올바르지 않은 상품이 있어요. 상품 관리에서 확인해 주세요.');
+  const unit=adminWholesaleUnitCost(item,privateMeta);
   return {q,item,vendor:String(batch.supplier||'').trim(),qty:Number(item.quantity)||0,unit};
  });
  if(rows.some(row=>row.qty<=0))throw Error('수량이 올바르지 않은 상품이 있어요. 주문을 확인해 주세요.');
@@ -9456,13 +9462,11 @@ function completedProcurementRows(){
    const qty=Number(item.quantity)||0;
    if(qty<=0)continue;
    const meta=state.productPrivateReady?state.productPrivate[item.product_id]:null;
-   const raw=meta?.wholesale_price;
-   const n=raw===null||raw===undefined||raw===''?null:Number(raw);
+   const unit=adminWholesaleUnitCost(item,meta);
    // Completed order sheets are grouped by the customer-visible brand, not the private supplier.
    const brand=String(item.store_name||state.stores.find(st=>st.id===item.store_id)?.name||'브랜드 미등록').trim()||'브랜드 미등록';
    rows.push({q,item,qty,vendor:brand,
-    unit:n!==null&&Number.isFinite(n)&&n>=0?n:null,
-    retail:item.unit_price===null||item.unit_price===undefined?null:Number(item.unit_price),
+    unit,retail:item.unit_price===null||item.unit_price===undefined?null:Number(item.unit_price),
     issues:[]});
   }
  }
@@ -10172,9 +10176,8 @@ function adminPricePopupEstimateRow(item){
  const estimates=adminDualEstimates(product,meta);
  const priced=value=>esc(adminEstimateText(value));
  const isChina=meta?.source_type==='1688';
- const rawCost=meta?.wholesale_price;
- const cost=rawCost===undefined||rawCost===null||rawCost===''?null:Number(rawCost);
- const validCost=cost!==null&&Number.isFinite(cost)&&cost>=0;
+ const cost=adminWholesaleUnitCost(item,meta);
+ const validCost=cost!==null;
  const costLabel=isChina?'예상 사입원가':'도매가';
  const costText=!state.productPrivateReady?'정보 확인 중':!meta||!validCost?'미등록':money(cost);
  return '<div class="admin-price-popup-reference" aria-label="관리자 전용 가격 참고정보">'+

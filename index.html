@@ -4805,6 +4805,7 @@ const saveTracks=()=>localStorage.setItem(TRACK,JSON.stringify(state.receipts));
 const publicLink=()=>location.origin+STOREFRONT_PATH+'?page=shop';
 // Public product links are limited to the existing GitHub storefront.
 const miniProductLink=id=>location.origin+STOREFRONT_PATH+'?product='+encodeURIComponent(id);
+const miniGithubProductLink=id=>'https://nostaljian.github.io/gonggu/?product='+encodeURIComponent(id);
 function miniProductShareButton(product){
  if(!githubStorefront||!product?.id)return '';
  return `<div class="mini-product-share-row"><button type="button" class="mini-product-share-action" data-action="share-product" data-id="${esc(product.id)}" aria-label="${esc(product.name)} 상품 링크 복사">🔗 상품 링크 복사</button></div>`;
@@ -5455,7 +5456,7 @@ async function saveHeroPhoto(file){
    Persist the chosen existing public cover, never touch a product record. */
 function defaultHeroPhotoUrl(){
  const featured=state.stores.filter(st=>st.active)
-  .flatMap(st=>state.products.filter(p=>p.published&&p.store_id===st.id));
+  .flatMap(st=>state.products.filter(p=>p.published&&!p.catalog_hidden&&p.store_id===st.id));
  return featured.find(p=>p.image_url&&!p.is_sold_out)?.image_url
   ||featured.find(p=>p.image_url)?.image_url||'';
 }
@@ -5465,7 +5466,7 @@ async function randomizeHeroPhoto(){
  const activeStoreIds=new Set(state.stores.filter(st=>st.active).map(st=>st.id));
  const publicPrefix=publicPhotoUrl('');
  const candidates=[...new Set(state.products
-  .filter(p=>p.published&&!p.is_sold_out&&activeStoreIds.has(p.store_id))
+  .filter(p=>p.published&&!p.catalog_hidden&&!p.is_sold_out&&activeStoreIds.has(p.store_id))
   .map(p=>{
    const photo=String(p.image_url||'');
    const path=photo.startsWith(publicPrefix)?photo.slice(publicPrefix.length):'';
@@ -6005,8 +6006,8 @@ function updateProcurementSchedule(){
  document.querySelectorAll('[data-order-countdown]').forEach(el=>el.textContent=scheduleRemaining(order,now));
 }
 function renderShop(){
- // No inferred categories, prices, stock levels or rankings: only active, published items.
- const catalogue=state.stores.filter(st=>st.active).flatMap(st=>state.products.filter(p=>p.published&&p.store_id===st.id).map(p=>({p,store:st})));
+ // Only active, published, catalogue-visible products appear in browse/search. Link-only items can still be opened by product URL.
+ const catalogue=state.stores.filter(st=>st.active).flatMap(st=>state.products.filter(p=>p.published&&!p.catalog_hidden&&p.store_id===st.id).map(p=>({p,store:st})));
  const activeCategory=categoryFilterKeys.includes(state.shopCategory)?state.shopCategory:'all';
  // Sort only using public product information, never private wholesale pricing.
  const activeStore=state.stores.some(st=>st.active&&st.id===state.shopStore)?state.shopStore:'all';
@@ -6973,15 +6974,15 @@ function updateAdminProductSearch(){
 
 function renderAdminProducts(){
  const all=state.products;
- const isVisible=p=>Boolean(p.published&&state.stores.some(st=>st.id===p.store_id&&st.active));
+ const isVisible=p=>Boolean(p.published&&!p.catalog_hidden&&state.stores.some(st=>st.id===p.store_id&&st.active));
  const visibleCount=all.filter(isVisible).length, hiddenCount=all.length-visibleCount;
  const soldCount=all.filter(p=>p.is_sold_out).length;
  const filters=[
   {key:'all',label:'전체',count:all.length},
   {key:'shown',label:'전시 중',count:visibleCount},
-  {key:'hidden',label:'미전시',count:hiddenCount},
+  {key:'hidden',label:'목록 숨김',count:hiddenCount},
   {key:'soldout',label:'품절',count:soldCount},
-  {key:'available',label:'판매 가능',count:all.length-soldCount}
+  {key:'available',label:'판매 가능',count:all.filter(p=>p.published&&!p.is_sold_out&&state.stores.some(st=>st.id===p.store_id&&st.active)).length}
  ];
  const activeFilter=filters.some(f=>f.key===state.adminCatalogFilter)?state.adminCatalogFilter:'all';
  const activeCategory=categoryFilterKeys.includes(state.adminCategory)?state.adminCategory:'all';
@@ -6995,7 +6996,7 @@ function renderAdminProducts(){
   const n=Number(raw);
   return Number.isFinite(n)&&n>0?n:null;
  };
- const shown=all.filter(p=>matchesCategory(p,activeCategory)&&(activeFilter==='all'||(activeFilter==='shown'&&isVisible(p))||(activeFilter==='hidden'&&!isVisible(p))||(activeFilter==='soldout'&&p.is_sold_out)||(activeFilter==='available'&&!p.is_sold_out)))
+ const shown=all.filter(p=>matchesCategory(p,activeCategory)&&(activeFilter==='all'||(activeFilter==='shown'&&isVisible(p))||(activeFilter==='hidden'&&!isVisible(p))||(activeFilter==='soldout'&&p.is_sold_out)||(activeFilter==='available'&&p.published&&!p.is_sold_out&&state.stores.some(st=>st.id===p.store_id&&st.active))))
   .sort((a,b)=>{
    if(sortKey==='newest')return newestFirst(a,b);
    if(sortKey==='oldest')return -newestFirst(a,b);
@@ -7067,7 +7068,7 @@ function renderAdminProducts(){
    </div>
    ${shown.map(p=>{
     const storeActive=state.stores.some(st=>st.id===p.store_id&&st.active);
-    const visibleToCustomer=p.published&&storeActive;
+    const visibleToCustomer=p.published&&!p.catalog_hidden&&storeActive;
     const cost=wholesalePrice(p);
     const prices=adminDualEstimates(p);
     const source=state.productPrivate?.[p.id]?.source_type;
@@ -7083,7 +7084,7 @@ function renderAdminProducts(){
          <span class="admin-product-cost">🔒 ${source==='1688'?'사입원가':'도매가'} ${cost===null?'미입력':money(cost)}</span>
          ${p.pricing_mode==='fixed_options'?`<span class="admin-product-sale-price">확정가 <b>${fixedProductPriceRange(p)?money(fixedProductPriceRange(p).min)+(fixedProductPriceRange(p).max>fixedProductPriceRange(p).min?'부터':''):'옵션별 가격 확인 필요'}</b></span>`:`<span class="admin-product-sale-price">일반 예상가 <b>${adminEstimateText(prices.regular)}</b></span>
          <span class="admin-product-sale-price admin-product-github-price">깃허브 예상가 <b>${adminEstimateText(prices.github)}</b></span>`}
-         <span class="admin-product-status ${visibleToCustomer?'is-shown':'is-hidden'}">${visibleToCustomer?'전시 중':p.published?'가게 숨김':'미전시'}</span>
+         <span class="admin-product-status ${visibleToCustomer?'is-shown':'is-hidden'}">${visibleToCustomer?'전시 중':!p.published?'판매 중지':!storeActive?'가게 숨김':'링크 전용'}</span>
          <span class="admin-product-status ${p.is_sold_out?'is-soldout':'is-on-sale'}">${p.is_sold_out?'품절':'판매 가능'}</span>
         </div>
        </div>
@@ -7097,11 +7098,11 @@ function renderAdminProducts(){
         ${privateProductSummary(p.id)}
         <div class="admin-product-detail-actions">
          <button type="button" class="btn sm ${p.is_sold_out?'secondary':'outline'}" data-action="toggle-product-soldout" data-id="${esc(p.id)}">${p.is_sold_out?'품절 해제':'품절 표시'}</button>
-         <button type="button" class="btn sm ${p.published?'secondary':'outline'}" data-action="toggle-product-display" data-id="${esc(p.id)}">${p.published?'전시 숨기기':'전시하기'}</button>
+         <button type="button" class="btn sm ${p.published?'secondary':'outline'}" data-action="toggle-product-display" data-id="${esc(p.id)}">${!p.published?'링크 판매 켜기':p.catalog_hidden?'전시하기':'전시 숨기기'}</button>
         </div>
-        ${p.published&&!storeActive?'<p class="admin-product-detail-warning">가게가 숨김 상태라 고객에게 보이지 않아요.</p>':''}
+        ${p.published&&!storeActive?'<p class="admin-product-detail-warning">가게가 숨김 상태라 링크 주문도 할 수 없어요.</p>':p.published&&p.catalog_hidden?'<p class="admin-product-detail-warning">상품 목록에 표시되지 않지만 링크로는 주문할 수 있어요.</p>':''}
         <div class="admin-product-more-actions">
-         ${visibleToCustomer&&!p.is_sold_out?`<button type="button" class="btn sm secondary" data-action="copy-product-notice" data-id="${esc(p.id)}">📣 안내문 복사</button>`:'<span></span>'}
+         ${p.published&&p.catalog_hidden&&storeActive&&!p.is_sold_out?`<button type="button" class="btn sm secondary" data-action="copy-link-only-product" data-id="${esc(p.id)}">🔗 상품 링크 복사</button>`:visibleToCustomer&&!p.is_sold_out?`<button type="button" class="btn sm secondary" data-action="copy-product-notice" data-id="${esc(p.id)}">📣 안내문 복사</button>`:'<span></span>'}
          <button type="button" class="btn sm admin-product-delete" data-action="delete-product" data-id="${esc(p.id)}" aria-label="${esc(p.name)} 상품 삭제">상품 삭제</button>
         </div>
        </div>
@@ -10124,8 +10125,8 @@ if(m.type==='product'){
     <div class="approval-optional-body">${productNoteField(pr?.product_note)}</div>
    </details>
    <div class="approval-publish-options">
-    <label class="stageradio approve-publish-label"><input type="checkbox" name="published" ${pr?.published===false?'':'checked'}> 주문자 화면에 공개</label>
-    <label class="stageradio approve-publish-label"><input type="checkbox" name="is_sold_out" ${pr?.is_sold_out?'checked':''}> 품절 표시</label>
+    <label class="stageradio approve-publish-label"><input type="checkbox" name="published" ${pr?.published===false?'':'checked'}> 판매 허용 (목록·링크 구매)</label>
+    <label class="stageradio approve-publish-label"><input type="checkbox" name="catalog_hidden" ${pr?.catalog_hidden?'checked':''}> 목록 숨기기 (링크로만 주문)</label><label class="stageradio approve-publish-label"><input type="checkbox" name="is_sold_out" ${pr?.is_sold_out?'checked':''}> 품절 표시</label>
    </div>
   </form>`,true);
 }
@@ -10931,16 +10932,26 @@ async function quickProductState(id,kind){
  if(!state.admin)throw Error('관리자 로그인 후 상품 상태를 변경해 주세요.');
  const p=selectedProd(id);
  if(!p)throw Error('해당 상품을 찾지 못했어요.');
- const field=kind==='soldout'?'is_sold_out':kind==='display'?'published':null;
- if(!field)throw Error('변경할 상품 상태가 올바르지 않아요.');
- const next=!Boolean(p[field]);
- if(!connected){const row=demo.products.find(x=>x.id===id);if(!row)throw Error('상품을 찾지 못했어요.');row[field]=next;saveDemo();}
- else{
-  const rows=await api('/rest/v1/gq_products?id=eq.'+encodeURIComponent(id),{method:'PATCH',body:{[field]:next},admin:true});
-  if(!Array.isArray(rows)||rows.length!==1||Boolean(rows[0][field])!==next)throw Error('상품 상태 변경 결과를 확인하지 못했어요. 관리자 화면을 새로고침해 주세요.');
+ let patch,mode;
+ if(kind==='soldout'){
+  patch={is_sold_out:!Boolean(p.is_sold_out)};
+  mode=patch.is_sold_out?'soldout':'available';
+ }else if(kind==='display'){
+  // Paused products resume as link-only, not public catalogue items.
+  if(!p.published){patch={published:true,catalog_hidden:true};mode='link_only';}
+  else if(p.catalog_hidden){patch={catalog_hidden:false};mode='shown';}
+  else{patch={catalog_hidden:true};mode='link_only';}
+ }else throw Error('변경할 상품 상태가 올바르지 않아요.');
+ if(!connected){
+  const row=demo.products.find(x=>x.id===id);if(!row)throw Error('상품을 찾지 못했어요.');
+  Object.assign(row,patch);saveDemo();
+ }else{
+  const rows=await api('/rest/v1/gq_products?id=eq.'+encodeURIComponent(id),{method:'PATCH',body:patch,admin:true});
+  if(!Array.isArray(rows)||rows.length!==1||Object.entries(patch).some(([key,val])=>Boolean(rows[0][key])!==val))
+   throw Error('상품 상태 변경 결과를 확인하지 못했어요. 관리자 화면을 새로고침해 주세요.');
  }
  await loadAdmin();
- return {field,next};
+ return {mode};
 }
 function imageExtension(_file){return 'jpg'}
 async function toJpeg(input){if(!input||!input.type.startsWith('image/'))throw Error('이미지 파일을 선택해 주세요');if(input.size>35*1024*1024)throw Error('사진이 너무 커요. 다른 사진을 선택해 주세요');const objectURL=URL.createObjectURL(input),bitmap=new Image();try{await new Promise((resolve,reject)=>{bitmap.onload=resolve;bitmap.onerror=()=>reject(Error('사진을 읽을 수 없어요'));bitmap.src=objectURL});let w=bitmap.naturalWidth,h=bitmap.naturalHeight;if(!w||!h)throw Error('사진 크기를 확인할 수 없어요');const scale=Math.min(1,1600/Math.max(w,h));w=Math.max(1,Math.round(w*scale));h=Math.max(1,Math.round(h*scale));const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;const ctx=canvas.getContext('2d');if(!ctx)throw Error('사진 처리 오류');ctx.drawImage(bitmap,0,0,w,h);let blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',.78));if(!blob)throw Error('사진을 변환할 수 없어요');if(blob.size>5*1024*1024)throw Error('압축 후에도 사진이 너무 커요');return blob}finally{URL.revokeObjectURL(objectURL)}}
@@ -11539,6 +11550,16 @@ async function click(e){
  if(e.target.matches?.('[data-product-store-search]')){productStoreSearchResults(e.target,true);return;}
  if(!e.target.closest?.('[data-product-store-picker]'))closeProductStoreSearch(app.querySelector('#product-form'));
  const pg=e.target.closest('[data-page]');if(pg){goto(pg.dataset.page);if(pg.classList.contains('brand-home'))window.scrollTo({top:0,behavior:'auto'});return}const b=e.target.closest('[data-action]');if(!b)return;const a=b.dataset.action,id=b.dataset.id;try{
+if(a==='copy-link-only-product'){
+ if(!state.admin)throw Error('관리자 로그인이 필요해요.');
+ const product=selectedProd(id);
+ if(!product||!product.published||product.is_sold_out||!state.stores.some(st=>st.id===product.store_id&&st.active))
+  throw Error('현재 공유 판매할 수 없는 상품이에요.');
+ const link=miniGithubProductLink(product.id);
+ try{if(!navigator.clipboard?.writeText)throw Error('clipboard unavailable');await navigator.clipboard.writeText(link);notif('링크 전용 상품 주소를 복사했어요.');}
+ catch(_){window.prompt('이 상품 링크를 복사해 주세요.',link);}
+ return;
+}
 if(a==='share-product'){
  const product=state.products.find(row=>String(row.id)===String(id)&&row.published&&state.stores.some(st=>st.id===row.store_id&&st.active));
  if(!githubStorefront||!product)throw Error('공유 가능한 상품이 아니에요.');
@@ -12605,7 +12626,7 @@ if(a==='delete-product'){
 if(a==='toggle-product-soldout'||a==='toggle-product-display'){
  const kind=a==='toggle-product-soldout'?'soldout':'display';
  const changed=await quickProductState(id,kind);
- notif(changed.field==='is_sold_out'?(changed.next?'품절 표시하고 새 주문을 막았어요.':'품절 표시를 해제했어요.'):(changed.next?'상품 전시 상태로 변경했어요.':'상품을 고객 화면에서 숨겼어요.'));
+ notif(changed.mode==='soldout'?'품절 표시하고 새 주문을 막았어요.':changed.mode==='available'?'품절 표시를 해제했어요.':changed.mode==='shown'?'상품을 목록에 다시 전시했어요.':'상품 목록에서 숨겼어요. 링크로는 주문할 수 있어요.');
  return;
 }
 if(a==='enable-buyer-push'){await miniEnableBuyerPush();notif('이 기기의 주문 알림이 활성화됐어요.');return;}
@@ -13129,7 +13150,7 @@ else if(f.id==='product-form'){
  const sourceStoreName=storeSelection==='__new_store__'
   ?String(data.get('new_store_name')||'').trim():String(selectedStore?.name||'').trim();
  const privateData=parsePrivateProductInputs(data,sourceStoreName);
- const product={store_id:storeSelection==='__new_store__'?'':storeSelection,name:String(data.get('name')).trim(),category:validateProductCategory(data.get('category'),Boolean(old&&!old.category)),options:parseOptions(String(data.get('options'))),product_note:parseProductNote(data.get('product_note')),published:data.has('published'),is_sold_out:data.has('is_sold_out')};
+ const product={store_id:storeSelection==='__new_store__'?'':storeSelection,name:String(data.get('name')).trim(),category:validateProductCategory(data.get('category'),Boolean(old&&!old.category)),options:parseOptions(String(data.get('options'))),product_note:parseProductNote(data.get('product_note')),published:data.has('published'),catalog_hidden:data.has('catalog_hidden'),is_sold_out:data.has('is_sold_out')};
  Object.assign(product,parseFixedProductPricing(f,product.options));
  if(!product.name)throw Error('상품명을 입력해 주세요.');
  if(storeSelection==='__new_store__'){

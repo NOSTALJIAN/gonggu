@@ -4298,6 +4298,54 @@ body:has(#search:focus) .mini-openchat-banner{display:none!important;}
 .mini-product-detail-head>h3{flex:1 1 auto;min-width:0;margin:0;font-size:18px;line-height:1.35;font-weight:800}
 .mini-product-detail-head>.mini-product-share-row{flex:0 0 auto;margin:0}
 .mini-product-detail-head+.product-gallery{margin-top:4px}
+
+/* Focused receipt workflow: compare supplier deliveries to individual buyers. */
+.admin-reorganized .admin-manager-nav button{font-size:11px;letter-spacing:-.04em}
+.receipt-page{padding-bottom:42px;color:#222}
+.receipt-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:12px 0}
+.receipt-stats>div{padding:12px 9px;border:1px solid #ededed;border-radius:10px;background:#f7f7f7;display:grid;gap:4px;min-width:0}
+.receipt-stats small{font-size:11px;color:#666}
+.receipt-stats strong{font-size:27px;line-height:1.2;letter-spacing:-1px}
+.receipt-stats strong em{font-size:12px;font-style:normal;font-weight:600;margin-left:2px}
+.receipt-stats span{font-size:10px;color:#8b8b8b}
+.receipt-hint{background:#faf9f7;border:1px solid #f1efec;padding:11px 12px;border-radius:10px;color:#6c6c6c;font-size:11px;line-height:1.65;margin:12px 0}
+.receipt-tools{display:grid;gap:10px;margin:13px 0}
+.receipt-tools label{display:grid;gap:5px;min-width:0;font-weight:750;font-size:11px;color:#666}
+.receipt-tools input,.receipt-tools select{box-sizing:border-box;background:white;border:1px solid #ddd;border-radius:8px;color:#111;width:100%;height:43px;min-height:43px;padding:8px 9px;font-size:13px;font-weight:500}
+.receipt-tool-selects{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.receipt-filter-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:13px 0}
+.receipt-filter-tabs button{background:white;border:1px solid #ddd;padding:10px 4px;border-radius:8px;font-size:12px;font-weight:750;color:#555}
+.receipt-filter-tabs button.active{background:#222;border-color:#222;color:white}
+.receipt-count{color:#888;font-size:11px;margin:12px 0}
+.receipt-group{border:1px solid #e5e5e5;border-radius:11px;background:#fff;overflow:visible;margin:0 0 12px}
+.receipt-group-head{display:flex;align-items:center;gap:12px;justify-content:space-between;background:#fafafa;border-radius:11px 11px 0 0;padding:12px;border-bottom:1px solid #eee}
+.receipt-group-head>div{flex:1;min-width:0}
+.receipt-group-head small{display:block;color:#999;font-size:10px}
+.receipt-group-head h3{margin:4px 0!important;font-size:15px;line-height:1.4;font-weight:800;overflow-wrap:anywhere}
+.receipt-group-head p{margin:0;font-size:11px;color:#777;line-height:1.5}
+.receipt-bulk{min-width:72px;min-height:37px;background:white;border:1px solid #ccc;border-radius:8px;padding:8px;color:#222;font-size:11px;font-weight:800;flex-shrink:0}
+.receipt-person{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:12px 11px;border-bottom:1px solid #f2f2f2}
+.receipt-person:last-child{border-bottom:none}
+.receipt-person-text{flex:1;min-width:0;display:grid;gap:5px;overflow-wrap:anywhere}
+.receipt-person-text strong{font-size:13px;font-weight:800;line-height:1.4}
+.receipt-person-text span{font-size:11px;color:#777;line-height:1.5}
+.receipt-person-text small{font-size:10px;color:#999}
+.receipt-person-buttons{display:flex;align-items:center;gap:5px;flex-shrink:0}
+.receipt-check{min-width:82px;min-height:40px;padding:8px;border:1px solid #222;border-radius:8px;background:#222;color:white;font-size:11px;font-weight:750}
+.receipt-check.is-done{background:#eef5ef;color:#4d7756;border-color:#d3e3d6}
+.receipt-stepper{display:flex;align-items:center;border:1px solid #ddd;border-radius:8px;overflow:hidden}
+.receipt-stepper button{border:none;background:#f6f6f6;min-width:31px;height:40px;font-size:19px}
+.receipt-stepper button:disabled{opacity:.25}
+.receipt-stepper strong{font-size:13px;min-width:34px;text-align:center}
+.receipt-stepper strong small{font-size:10px;color:#888}
+.receipt-other{position:relative}
+.receipt-other>summary{display:grid;place-items:center;min-height:40px;min-width:26px;padding:0;border:1px solid #ddd;border-radius:8px;list-style:none;font-size:18px;cursor:pointer}
+.receipt-other>summary::-webkit-details-marker{display:none}
+.receipt-other[open]>div{position:absolute;right:0;top:41px;background:white;border:1px solid #ddd;border-radius:9px;padding:5px;box-shadow:0 4px 15px #0002;z-index:25;width:115px}
+.receipt-other[open] button{font-size:11px;width:100%;display:block;text-align:left;background:white;border:0;padding:10px 5px}
+.receipt-empty,.receipt-search-empty{padding:32px 10px;color:#999;font-size:12px;text-align:center}
+.receipt-label{color:#999;font-size:11px}
+@media(max-width:380px){.admin-reorganized .admin-manager-nav button{font-size:10px}.receipt-person{padding:10px 9px}.receipt-check{min-width:70px;font-size:10px}}
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 견적 확인 후 주문하세요.">
@@ -11672,6 +11720,51 @@ async function click(e){
  if(e.target.matches?.('[data-product-store-search]')){productStoreSearchResults(e.target,true);return;}
  if(!e.target.closest?.('[data-product-store-picker]'))closeProductStoreSearch(app.querySelector('#product-form'));
  const pg=e.target.closest('[data-page]');if(pg){goto(pg.dataset.page);if(pg.classList.contains('brand-home'))window.scrollTo({top:0,behavior:'auto'});return}const b=e.target.closest('[data-action]');if(!b)return;const a=b.dataset.action,id=b.dataset.id;try{
+
+if(a==='receipt-view'){
+ if(!state.admin||state.tab!=='receipts')return;
+ const view=b.dataset.view;
+ if(!['pending','received','all'].includes(view))throw Error('입고 상태 필터가 올바르지 않아요.');
+ state.receiptView=view;const position=window.scrollY;render();window.scrollTo({top:position,behavior:'instant'});updateReceiptSearch();return;
+}
+if(a==='receipt-set'||a==='receipt-bulk'||a==='receipt-delay'||a==='receipt-soldout'){
+ if(!state.admin||state.tab!=='receipts')throw Error('관리자 입고 화면에서만 변경할 수 있어요.');
+ const anchor=receiptAnchor(b),all=receiptRows();
+ if(a==='receipt-bulk'){
+  const key=b.dataset.group||'';
+  const term=String(state.receiptSearch||'').trim().toLocaleLowerCase('ko-KR');
+  const items=all.filter(x=>receiptKey(x)===key&&x.pending>0&&x.i.fulfillment!=='sold_out'&&(!term||x.search.includes(term)));
+  if(items.length<1)throw Error('입고 대기 품목이 없어요.');
+  const buyers=[...new Set(items.map(x=>x.q.buyer_name+'('+x.q.baby_name+')'))];
+  const count=items.reduce((n,x)=>n+x.pending,0);
+  if(!window.confirm('이 품목 '+items.length+'건 · 남은 '+count+'개가 모두 도착했나요?\n\n'+buyers.slice(0,7).join(' · ')+(buyers.length>7?' 외 '+(buyers.length-7)+'명':'')+'\n\n확인한 주문만 한꺼번에 입고완료 처리해요.'))return;
+  b.disabled=true;
+  try{await rpc('gq_admin_receive_items_bulk_v1',{p_items:items.map(x=>({id:x.i.id,expected:x.received}))},true);}
+  finally{if(b.isConnected)b.disabled=false;}
+  await receiptRefresh(anchor);notif(items.length+'건 · '+count+'개 입고완료 처리했어요.');return;
+ }
+ const x=all.find(x=>x.i.id===id);
+ if(!x)throw Error('입고할 주문 상품을 다시 확인해 주세요.');
+ if(a==='receipt-set'){
+  const next=Number(b.dataset.qty);
+  if(!Number.isInteger(next)||next<0||next>x.qty||next===x.received)return;
+  if(next<x.received&&!window.confirm('입고수량을 '+x.received+'개에서 '+next+'개로 되돌릴까요?'+(workflowStage(x.q)==='pickup_ready'?'\n이미 픽업 대기 안내가 나갔을 수 있어요. 주문을 상품 준비 중으로 되돌립니다.':'')))return;
+  b.disabled=true;
+  try{await rpc('gq_admin_set_received_qty_v1',{p_item_id:id,p_qty:next,p_expected:x.received},true);}
+  finally{if(b.isConnected)b.disabled=false;}
+  await receiptRefresh(anchor);notif(next===x.qty?'입고완료 처리했어요.':next===0?'입고 체크를 되돌렸어요.':'부분 입고 '+next+'/'+x.qty+'개로 저장했어요.');return;
+ }
+ if(workflowStage(x.q)!=='preparing')throw Error('상품 준비 중 주문만 미송·품절 처리할 수 있어요.');
+ if(a==='receipt-delay'){
+  if(x.received>0)throw Error('일부 입고된 상품은 수량부터 확인해 주세요.');
+  await adminFulfillment(id,x.i.fulfillment==='delayed'?'ordered':'delayed');
+  await receiptRefresh(anchor);notif(x.i.fulfillment==='delayed'?'미송 표시를 해제했어요.':'미송으로 표시했어요.');return;
+ }
+ if(x.received>0)throw Error('입고된 수량이 있는 상품은 바로 품절 처리할 수 없어요.');
+ if(!window.confirm(x.q.buyer_name+'님의 '+x.i.product_name+' '+x.i.color+' / '+x.i.size+'를 품절 처리할까요?\n이미 입금했다면 별도로 실제 환불액을 확인해야 해요.'))return;
+ await adminFulfillment(id,'sold_out');await receiptRefresh(anchor);notif('품절 표시했어요. 환불 여부도 확인해 주세요.');return;
+}
+
 if(a==='copy-link-only-product'){
  if(!state.admin)throw Error('관리자 로그인이 필요해요.');
  const product=selectedProd(id);
@@ -13407,6 +13500,11 @@ else if(f.dataset.payment){
  busy=false;
 }}
 async function change(e){const x=e.target;
+if(state.page==='admin'&&state.admin&&state.tab==='receipts'&&(x.id==='receipt-store'||x.id==='receipt-group-by')){
+ if(x.id==='receipt-store')state.receiptStore=x.value;
+ else state.receiptGroupBy=x.value==='buyer'?'buyer':'product';
+ const previous=window.scrollY;render();window.scrollTo({top:previous,behavior:'instant'});updateReceiptSearch();return;
+}
 if(x.matches?.('[data-pricing-mode]')){syncFixedOptionEditor(x.closest('form'));return;}
 if(x.id==='pickColor'){
  const form=x.closest('#pick'),p=selectedProd(state.modal?.id);
@@ -13549,6 +13647,9 @@ function updateShopSearchResults(){
  if(count&&nextCount)count.textContent=nextCount.textContent;
 }
 function input(e){
+ if(e.target.id==='receipt-search'&&state.admin&&state.tab==='receipts'){
+  state.receiptSearch=e.target.value;updateReceiptSearch();return;
+ }
  if(e.target.matches?.('#product-form textarea[name="options"],#approve-form textarea[name="options"]')){
   syncFixedOptionEditor(e.target.closest('form'));return;
  }

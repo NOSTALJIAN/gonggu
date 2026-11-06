@@ -10054,20 +10054,34 @@ function renderAdminQuotes(){
  const priced=groups.filter(g=>!waiting.includes(g));
  const tabs=[['pricing','견적',nPrice],['waiting_buyer','구매 선택',nWaiting],['final_confirmation','확정 대기',nFinalWaiting],['preparing_orders','입금·발주',nPaymentProcurement],['wholesale_completed','입고·배송',nDelivery],['all_history','전체',all.length]];
  const extras=adminOrderAdvancedFilterEntries();
- const visibleTabs=tabs; // All six tabs remain in the same positions.
+ const orderMode=['wholesale_completed','delivery_shipped','delivery_completed'].includes(filter)?'shipping':filter==='preparing_orders'?'procurement':'orders';
+ const visibleTabs=orderMode==='orders'?tabs.filter(([key])=>['pricing','waiting_buyer','final_confirmation','all_history'].includes(key)):[];
+ const dispatchBatch=filter==='wholesale_completed'&&state.adminShippingMethod==='courier'?adminNuvoCandidates():null;
+ const dispatchReadyIds=new Set(dispatchBatch?dispatchBatch.ready.flatMap(r=>r.group.map(q=>q.id)):[]);
+ const dispatchWaitingGroups=dispatchBatch?bundledQuoteGroups(qq.filter(q=>!dispatchReadyIds.has(q.id)),true):[];
  const advancedSelected=!tabs.some(([key])=>key===filter)&&!['delivery_shipped','delivery_completed'].includes(filter);
  const title=filter==='delivery_shipped'?'배송 중':filter==='delivery_completed'?'배송 완료':[...tabs,...extras].find(([key])=>key===filter)?.[1]||(
    filter.startsWith('flow_')?workflowLabels[filter.slice(5)]:statusLabel[filter]||'주문');
  return `<section class="admin-quote-workspace admin-orders-page">
   <div class="admin-quote-anchor" id="admin-quote-results"></div>
   <div class="admin-page-heading"><h2>주문 관리</h2><span>전체 ${all.length}건</span></div>
+  <nav class="admin-order-modes" aria-label="업무별 주문 관리">
+   <button type="button" data-action="admin-order-mode" data-mode="orders" class="${orderMode==='orders'?'active':''}" aria-pressed="${orderMode==='orders'}">전체 주문 내역</button>
+   <button type="button" data-action="admin-order-mode" data-mode="procurement" class="${orderMode==='procurement'?'active':''}" aria-pressed="${orderMode==='procurement'}">발주 관리</button>
+   <button type="button" data-action="admin-order-mode" data-mode="shipping" class="${orderMode==='shipping'?'active':''}" aria-pressed="${orderMode==='shipping'}">발송 관리</button>
+  </nav>
   <div class="admin-orders-search">
-   <input type="search" id="admin-order-search" aria-label="주문 검색" autocomplete="off" placeholder="주문자 · 아기 이름 · 상품 검색" value="${esc(state.adminOrderSearch||'')}">
+   <label for="admin-order-search-mode" class="admin-order-search-type">
+    <select id="admin-order-search-mode" aria-label="검색 항목">
+     ${[['all','전체'],['buyer','주문자'],['baby','아기 이름'],['product','상품명'],['contact','연락처'],['order','주문번호']].map(([key,label])=>`<option value="${key}" ${state.adminOrderSearchMode===key?'selected':''}>${label}</option>`).join('')}
+    </select>
+   </label>
+   <input type="search" id="admin-order-search" aria-label="주문 검색" autocomplete="off" placeholder="검색어 입력" value="${esc(state.adminOrderSearch||'')}">
    <button type="button" data-action="clear-admin-order-search" class="${state.adminOrderSearch?'':'hidden'}" aria-label="검색어 지우기">×</button>
   </div>
-  <div class="admin-orders-filterbar" role="group" aria-label="주문 상태">
-   ${visibleTabs.map(([key,label,num])=>`<button type="button" data-filter="${key}" class="${filter===key||(key==='wholesale_completed'&&['delivery_shipped','delivery_completed'].includes(filter))?'active':''}" aria-pressed="${filter===key||(key==='wholesale_completed'&&['delivery_shipped','delivery_completed'].includes(filter))}"><span>${label}</span><b>${num}</b></button>`).join('')}
-  </div>
+  ${visibleTabs.length?`<div class="admin-orders-filterbar" role="group" aria-label="주문 진행단계">
+   ${visibleTabs.map(([key,label,num])=>`<button type="button" data-filter="${key}" class="${filter===key?'active':''}" aria-pressed="${filter===key}"><span>${label}</span><b>${num}</b></button>`).join('')}
+  </div>`:''}
   ${filter==='waiting_buyer'&&nWaiting?`<div class="admin-choice-bulk-bar">
    <span>개별 발송은 각 주문에서 · 전체 대상 <b>${reminderTargets.length}건</b></span>
    <button type="button" data-action="open-purchase-remind-all" ${reminderTargets.length?'':'disabled'}>전체 보내기</button>
@@ -10084,7 +10098,7 @@ function renderAdminQuotes(){
    <div class="is-due"><span>남은 입금액</span><strong>${preparingMissing?'확인 중':money(preparingBalance)}</strong></div>
    ${preparingMissing?`<p class="admin-preproc-totals-note">금액 미확정 ${preparingMissing}건은 총액에서 제외했어요. 확정 후 합산돼요.</p>`:''}
   </div>`:''}
-  ${filter==='preparing_orders'?'<p class="admin-preproc-note">입금 확인 후 발주하면 ‘입고·배송’으로 이동해요.</p>':''}
+  ${filter==='preparing_orders'?'<div class="admin-preproc-quick"><span>입금 확인 → 거래처별 발주 → 입고 체크</span><button type="button" data-action="admin-open-wholesale">거래처별 발주 관리</button></div>':''}
   ${['wholesale_completed','delivery_shipped','delivery_completed'].includes(filter)?`<div class="admin-delivery-tabs" role="group" aria-label="배송 단계별 보기">
    <button type="button" data-filter="wholesale_completed" class="${filter==='wholesale_completed'?'active':''}" aria-pressed="${filter==='wholesale_completed'}">입고·발송 <b>${nDelivery}</b></button>
    <button type="button" data-filter="delivery_shipped" class="${filter==='delivery_shipped'?'active':''}" aria-pressed="${filter==='delivery_shipped'}">배송 중 <b>${nCourierShipped}</b></button>
@@ -10098,9 +10112,9 @@ function renderAdminQuotes(){
    </div>
    <button type="button" class="admin-nuvo-shortcut" data-action="nuvo-open" title="누보 택배 일괄등록 엑셀 만들기" aria-label="누보 택배 일괄등록 엑셀 만들기">📄 엑셀</button>
   </div>`:''}
-  ${qq.length?filter==='all'?renderAdminQuoteFlatSection(waiting,'가격 확인','pending')+renderAdminQuoteFlatSection(priced,'구매 선택 대기'):
-      renderAdminQuoteFlatSection(groups,'',filter==='pricing'?'pending':'saved'):
-      '<div class="empty">해당 주문이 없어요.</div>'}
+  ${dispatchBatch?renderAdminDispatchQueue(dispatchBatch,dispatchWaitingGroups):qq.length?filter==='all'?renderAdminQuoteFlatSection(waiting,'가격 확인','pending')+renderAdminQuoteFlatSection(priced,'구매 선택 대기'):
+   renderAdminQuoteFlatSection(groups,'',filter==='pricing'?'pending':'saved'):
+   '<div class="empty">해당 주문이 없어요.</div>'}
   <div id="admin-order-search-empty" class="empty hidden">검색 결과가 없어요.</div>
   <div id="admin-order-search-match" class="admin-orders-match" role="status"></div>
  </section>`;

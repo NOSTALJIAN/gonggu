@@ -135,9 +135,9 @@
 .admin-ready-courier-actions strong{font-size:12px;display:block;margin-bottom:8px}
 .admin-ready-courier-actions button{margin:6px 0 0;font-size:12px;min-height:41px}
 </style>
-<script src="./nuvo_shipping.js?v=20261106-b1-miniyena-name" defer></script>
+<script src="./nuvo_shipping.js?v=20261107-v126-receipt-consent" defer></script>
 <script src="./nuvo_import.js?v=20261106-b1-miniyena-name" defer></script>
-<script src="./partial_shipping.js?v=20261107-v125-admin-shipping-focus" defer></script>
+<script src="./partial_shipping.js?v=20261107-v126-receipt-consent" defer></script>
 <!-- Release 439f3d34: remove only the retired MINIYENA offline cache.
      Never unregister OneSignal's separate push notification worker. -->
 <script>
@@ -6611,22 +6611,23 @@ function renderAdminLowerPriceReports(q){
 }
 
 
-const dispatchModeLabel=mode=>mode==='ship_ready'?'입고된 상품 먼저 배송(부분배송)':mode==='wait_all'?'전체 입고 후 배송':'미선택';
+const dispatchModeLabel=(mode,method='courier')=>mode==='ship_ready'?(method==='pickup'?'입고된 상품 먼저 픽업':'입고된 상품 먼저 배송(부분배송)'):mode==='wait_all'?(method==='pickup'?'전체 입고 후 픽업':'전체 입고 후 배송'):'미선택';
 function renderBuyerDispatchPanel(q){
- if(q.status!=='confirmed'||q.delivery_method!=='courier')return '';
+ if(q.status!=='confirmed'||!['courier','pickup'].includes(q.delivery_method))return '';
  const active=(q.items||[]).filter(i=>i.fulfillment!=='sold_out');
  const arrived=active.filter(i=>['received','delivered'].includes(i.fulfillment)).length;
- const hasShipment=['shipped','completed'].includes(workflowStage(q))||!!q.tracking_number||!!q.partial_parcels?.length;
+ const hasShipment=['shipped','completed'].includes(workflowStage(q))||!!q.tracking_number||!!q.partial_parcels?.length||(q.items||[]).some(i=>i.fulfillment==='delivered');
  if(!active.length||hasShipment||(!arrived&&q.dispatch_request_status!=='pending'))return '';
  const mode=q.dispatch_request_mode||'';
+ const pickup=q.delivery_method==='pickup';
  const pending=q.dispatch_request_status==='pending';
  return '<details class="buyer-compact-dispatch"'+(pending?' open':'')+'>'+
-  '<summary>배송 요청 변경'+(pending?' · 관리자 확인 중':'')+'</summary>'+
+  '<summary>'+(pickup?'픽업 방법 선택':'배송 요청 변경')+(pending?' · 관리자 확인 중':'')+'</summary>'+
   '<div class="buyer-compact-dispatch-inner"><p>입고 완료 '+arrived+'종 / '+active.length+'종</p>'+
   '<div class="buyer-dispatch-choices">'+
-   '<button type="button" class="'+(mode==='wait_all'?'selected':'')+'" data-action="request-dispatch" data-mode="wait_all">한 번에 배송</button>'+
-   '<button type="button" class="'+(mode==='ship_ready'?'selected':'')+'" data-action="request-dispatch" data-mode="ship_ready" '+(!arrived?'disabled':'')+'>입고된 상품 먼저 배송 요청</button></div>'+
-  '<p class="buyer-dispatch-note">부분배송 여부와 추가 비용은 관리자 확인 후 안내돼요.</p></div></details>';
+   '<button type="button" class="'+(mode==='wait_all'?'selected':'')+'" data-action="request-dispatch" data-mode="wait_all">'+(pickup?'모두 입고 후 픽업':'한 번에 배송')+'</button>'+
+   '<button type="button" class="'+(mode==='ship_ready'?'selected':'')+'" data-action="request-dispatch" data-mode="ship_ready" '+(!arrived?'disabled':'')+'>'+(pickup?'입고된 상품 먼저 픽업 요청':'입고된 상품 먼저 배송 요청')+'</button></div>'+
+  '<p class="buyer-dispatch-note">'+(pickup?'별도 픽업은 관리자 확인 후 가능해요. 선택하지 않으면 모두 입고 후 함께 전달돼요.':'부분배송 여부와 추가 비용은 관리자 확인 후 안내돼요.')+'</p></div></details>';
 }
 function buyerTrackItemLabel(q,i){
  if(q.status!=='confirmed')return '';
@@ -7615,10 +7616,10 @@ function adminWorkflow(q){
  if(stage==='new')actions.push(`<button class="btn" data-action="set-workflow" data-id="${q.id}" data-stage="preparing">상품 준비 시작</button>`);
  else if(stage==='preparing'){
   if(sold){actions.push(`<button class="btn" data-action="set-workflow" data-id="${q.id}" data-stage="soldout_closed" ${payback>0?'disabled':''}>품절·환불 정산 완료</button>`)}
-  else if(ready&&q.delivery_method==='pickup')actions.push('<span class="workflow-stage">전체 입고 완료 · 픽업 대기 자동 전환 중</span>');
-  else if(q.delivery_method==='courier'&&saleItems(q).length>0&&ready&&!(state.partialParcels||[]).some(p=>(p.items||[]).some(i=>i.quote_id===q.id)))actions.push(`<form class="workflow-ship" data-ship="${q.id}"><label class="label">택배사<input required name="carrier" placeholder="롯데택배" maxlength="60" value="${esc(q.tracking_carrier||'롯데택배')}"></label><label class="label">송장번호<input required name="tracking" placeholder="롯데택배 운송장번호" maxlength="80" inputmode="numeric" value="${esc(q.tracking_number||'')}"></label><button class="btn" type="submit">송장 등록 · 배송 중</button><div class="lotte-tip">🚚 롯데택배 송장 등록 시 자동 배송조회 대상이 됩니다. 추적 서버 설치·인증이 끝나 있어야 자동으로 배송 완료 처리돼요. 그 외 택배사는 수동으로 완료해 주세요.</div></form>`);
+  else if(ready&&q.delivery_method==='pickup'&&adminCanReleaseGroup(q))actions.push('<span class="workflow-stage">전체 입고 완료 · 픽업 대기 자동 전환 중</span>');
+  else if(q.delivery_method==='courier'&&saleItems(q).length>0&&ready&&adminCanReleaseGroup(q)&&!(state.partialParcels||[]).some(p=>(p.items||[]).some(i=>i.quote_id===q.id)))actions.push(`<form class="workflow-ship" data-ship="${q.id}"><label class="label">택배사<input required name="carrier" placeholder="롯데택배" maxlength="60" value="${esc(q.tracking_carrier||'롯데택배')}"></label><label class="label">송장번호<input required name="tracking" placeholder="롯데택배 운송장번호" maxlength="80" inputmode="numeric" value="${esc(q.tracking_number||'')}"></label><button class="btn" type="submit">송장 등록 · 배송 중</button><div class="lotte-tip">🚚 롯데택배 송장 등록 시 자동 배송조회 대상이 됩니다. 추적 서버 설치·인증이 끝나 있어야 자동으로 배송 완료 처리돼요. 그 외 택배사는 수동으로 완료해 주세요.</div></form>`);
  }
- if(stage==='pickup_ready')actions.push(`<button class="btn" data-action="set-workflow" data-id="${q.id}" data-stage="completed">픽업 완료</button>`);
+ if(stage==='pickup_ready'&&adminCanReleaseGroup(q))actions.push(`<button class="btn" data-action="set-workflow" data-id="${q.id}" data-stage="completed">픽업 완료</button>`);
  if(stage==='shipped')actions.push(`<button class="btn" data-action="set-workflow" data-id="${q.id}" data-stage="completed">배송 완료</button>`);
  if(stage!=='new')actions.push(`<button class="btn sm outline" data-action="set-workflow" data-id="${q.id}" data-stage="preparing">상품 준비 중으로 되돌리기</button>`);
  const note=sold?(payback>0?'입금액과 실제 환불액을 정산한 뒤 완료 처리할 수 있어요.':'전부 품절되었어요. 실제 환불할 돈이 남지 않았다면 정산 완료하세요.'):
@@ -7630,7 +7631,7 @@ function adminWorkflow(q){
  <div class="workflow-help">${note}</div>
   ${stage==='preparing'&&saleItems(q).length?`<div class="receipt-order-shortcut"><span>입고할 상품을 한 화면에서 확인할 수 있어요.</span><button type="button" class="btn sm secondary" data-tab="receipts">📦 입고 체크</button></div>`:''}
  ${renderShipment(q)}
- ${window.MiniPartialShipping?window.MiniPartialShipping.adminBlock(q,state.partialParcels||[],ready,stage):''}
+ ${window.MiniPartialShipping?window.MiniPartialShipping.adminBlock(q,state.partialParcels||[],ready,stage,adminCanReleaseGroup(q)):''}
  ${actions.length?`<div class="workflow-actions">${actions.join('')}</div>`:''}
  ${q.items.some(i=>i.fulfillment==='sold_out')?`<div class="workflow-settlement"><b>품절 정산</b><div>품절 상품금액은 고객 결제금액에서 자동 제외돼요.${sold?' 모든 상품이 품절되어 배송비도 제외돼요.':''}</div><div>고객 결제금액: <b>${money(totalDue(q))}</b> · 실제 환불 추가 필요: <b>${money(payback)}</b></div><div>직접 환불 후 아래 '환불해 준 총액'에 누적 금액을 입력·저장해 주세요. 저장 자체로 송금되지는 않아요.</div></div>`:''}
  <button class="btn sm neutral" data-action="copy-workflow-notice" data-id="${q.id}" style="margin-top:12px">진행 안내문 복사</button>
@@ -8143,7 +8144,7 @@ function renderBundleCard(group){
   </div>
   ${alertCount?`<div class="bundle-compact-alert">확인할 요청 ${alertCount}건 · <button type="button" data-action="admin-bundle-manage" data-id="${esc(root.id)}">요청 확인</button></div>`:''}
   <div class="bundle-compact-stats"><span>발주 완료 <b>${ordered}종</b></span><span>입고 완료 <b>${received}종</b></span>${pending?`<span>발주·확정 대기 <b>${pending}종</b></span>`:''}</div>
-  ${window.MiniPartialShipping?window.MiniPartialShipping.bundleBlock(group,state.partialParcels||[]):''}
+  ${window.MiniPartialShipping?window.MiniPartialShipping.bundleBlock(group,state.partialParcels||[],group.some(adminCanReleaseGroup)):''}
   ${group.some(q=>q.status==='quoted')?`<div class="bundle-confirm-shortcut"><strong>합배송 설정 완료 · 주문확정은 개별 처리</strong>${group.filter(q=>q.status==='quoted').map((q,index)=>`<div class="bundle-confirm-item"><small>${index+1}번째 주문 · ${esc(fmtDate(q.created_at))}</small>${adminConfirmButton(q)}</div>`).join('')}</div>`:''}
   <div class="bundle-compact-items">
     ${items.map(({q,i})=>{
@@ -8372,10 +8373,11 @@ function compactQuoteNextTask(q){
   if(!supplierDone)return {text:'입금 완료 · 발주 준비',label:'거래처 발주 화면',filter:'supplier_payments'};
   if(stage==='new')return {text:'발주 완료 · 상품 준비 시작',label:'상품 준비 시작',action:'set-workflow',stage:'preparing'};
   if(stage==='preparing'){
+   if(!adminCanReleaseGroup(q)&&allReceived(q))return {text:'다른 주문 입고 대기 · 함께 전달 예정',label:'입고 관리',tool:'shipping'};
    const waiting=active.filter(i=>!['received','delivered'].includes(i.fulfillment)).length;
    return waiting?{text:'발주 완료 · 입고 대기 '+waiting+'종',label:'입고 체크',tool:'shipping'}:{text:'입고 완료 · 배송 상태 확인',label:'배송 상태 관리',tool:'shipping'};
   }
-  if(stage==='pickup_ready')return {text:'픽업 대기 중',label:'픽업 완료 처리',action:'set-workflow',stage:'completed'};
+  if(stage==='pickup_ready')return adminCanReleaseGroup(q)?{text:'픽업 대기 중',label:'픽업 완료 처리',action:'set-workflow',stage:'completed'}:{text:'다른 주문 입고 대기 · 함께 픽업',label:'입고 관리',tool:'shipping'};
   if(stage==='shipped')return {text:'배송 중',label:'배송 상태 확인',tool:'shipping'};
   if(stage==='completed')return {text:'주문 완료',label:'내역 보기',tool:'advanced'};
  }
@@ -8385,7 +8387,7 @@ function compactQuoteNextTask(q){
 function renderAdminDispatchNotice(q){
  if(q.dispatch_request_status!=='pending'||q.status==='cancelled')return '';
  return `<div class="admin-dispatch-alert">
-  <strong>📦 ${esc(dispatchModeLabel(q.dispatch_request_mode))} 요청</strong>
+  <strong>📦 ${esc(dispatchModeLabel(q.dispatch_request_mode,q.delivery_method))} 요청</strong>
   <button type="button" class="btn sm secondary" data-action="review-dispatch" data-id="${esc(q.id)}">확인</button>
  </div>`;
 }
@@ -8395,12 +8397,12 @@ function renderAdminDispatchReview(q){
  const arrived=active.filter(i=>['received','delivered'].includes(i.fulfillment));
  const linked=isBundle(q)||state.quotes.some(x=>x.bundle_parent_id===q.id&&x.status!=='cancelled');
  return `<div class="admin-dispatch-review">
-  <h3>${esc(q.buyer_name)} · ${esc(dispatchModeLabel(q.dispatch_request_mode))}</h3>
+  <h3>${esc(q.buyer_name)} · ${esc(dispatchModeLabel(q.dispatch_request_mode,q.delivery_method))}</h3>
   <div class="smallnote">요청 시각 ${esc(fmtDate(q.dispatch_requested_at))} · ${esc(deliveryLabel(q))}</div>
   <div class="smallnote">이 주문 ${active.length}종 중 입고완료 ${arrived.length}종</div>
   ${active.map(i=>`<div class="compact-receipt-row"><span>${esc(i.store_name)} · ${esc(i.product_name)}<small>${esc(i.color)} / ${esc(i.size)}</small></span><b>${['received','delivered'].includes(i.fulfillment)?'입고완료':'입고대기'}</b></div>`).join('')}
   ${linked?'<p>묶음배송 주문입니다. 다른 주문과 동일 송장인지 확인하고, 부분배송 필요 시 묶음배송 관리에서 별도로 처리해 주세요.</p>':''}
-  <p>요청을 확인해도 자동으로 출고·송장 등록·묶음해제·추가 배송비 청구가 진행되지 않아요. 부분배송이면 입고 상품과 추가 택배비를 확인하고 구매자에게 먼저 안내해 주세요.</p>
+  <p>${q.delivery_method==='pickup'?'요청을 승인해도 자동으로 픽업 완료 처리되지 않아요. 실제로 전달할 상품을 확인한 후 픽업 처리해 주세요.':'요청을 확인해도 자동으로 출고·송장 등록·묶음해제·추가 배송비 청구가 진행되지 않아요. 부분배송이면 입고 상품과 추가 택배비를 확인하고 구매자에게 먼저 안내해 주세요.'}</p>
   <div class="row wrap">
    <button type="button" class="btn" data-action="ack-dispatch" data-id="${esc(q.id)}">요청 확인 완료</button>
    <button type="button" class="btn neutral" data-action="reject-dispatch" data-id="${esc(q.id)}">처리 불가</button>
@@ -8409,7 +8411,7 @@ function renderAdminDispatchReview(q){
 }
 function renderAdminDispatchQueue(){
  const pending=state.quotes.filter(q=>q.dispatch_request_status==='pending'&&q.status!=='cancelled');
- return pending.length?`<div class="delivery-review-list">${pending.map(q=>`<div class="admin-dispatch-alert"><strong>${esc(q.buyer_name)} · ${esc(dispatchModeLabel(q.dispatch_request_mode))}</strong><button type="button" class="btn sm secondary" data-action="review-dispatch" data-id="${esc(q.id)}">확인</button></div>`).join('')}</div>`:'<div class="empty">대기 중인 배송 요청이 없어요.</div>';
+ return pending.length?`<div class="delivery-review-list">${pending.map(q=>`<div class="admin-dispatch-alert"><strong>${esc(q.buyer_name)} · ${esc(dispatchModeLabel(q.dispatch_request_mode,q.delivery_method))}</strong><button type="button" class="btn sm secondary" data-action="review-dispatch" data-id="${esc(q.id)}">확인</button></div>`).join('')}</div>`:'<div class="empty">대기 중인 배송 요청이 없어요.</div>';
 }
 
 function adminPartialParcels(q){
@@ -8469,7 +8471,7 @@ function renderAdminPartShipmentCard(q){
 function adminPickupEligible(q,i){
  return !!state.admin&&!!q&&q.status==='confirmed'&&q.delivery_method==='pickup'&&
   !q.cancel_requested_at&&!q.delivery_change_requested_at&&
-  ['preparing','pickup_ready'].includes(workflowStage(q))&&
+  ['preparing','pickup_ready'].includes(workflowStage(q))&&adminCanReleaseGroup(q)&&
   !!i&&i.fulfillment==='received'&&Number(i.received_qty||0)>=Number(i.quantity||0);
 }
 function adminPickupForm(orders){
@@ -8477,7 +8479,8 @@ function adminPickupForm(orders){
  // follows its normal pickup-ready / pickup-complete workflow instead.
  const partiallyReceived=orders.filter(q=>{
   const active=(q.items||[]).filter(i=>i.fulfillment!=='sold_out');
-  return active.length>0&&active.some(i=>!['received','delivered'].includes(i.fulfillment));
+  return adminCanReleaseGroup(q)&&active.length>0&&
+   (!adminBuyerGroupAllReceived(q)||active.some(i=>!['received','delivered'].includes(i.fulfillment)));
  });
  const rows=partiallyReceived.flatMap(q=>(q.items||[]).filter(i=>adminPickupEligible(q,i)).map(i=>({q,i})));
  if(!rows.length)return '';
@@ -8542,7 +8545,7 @@ function renderAdminPickupProductSection(q){
   adminPickupForm([q]);
 }
 function adminReadyCourierActions(group){
- const qs=(Array.isArray(group)?group:[group]).filter(q=>q.status==='confirmed'&&
+ const qs=(Array.isArray(group)?group:[group]).filter(q=>q.status==='confirmed'&&adminCanReleaseGroup(q)&&
   q.delivery_method==='courier'&&!q.cancel_requested_at&&!q.delivery_change_requested_at&&
   ['new','preparing'].includes(workflowStage(q))&&
   (q.items||[]).some(i=>i.fulfillment==='received'&&
@@ -8783,6 +8786,28 @@ function adminOrderGroupKey(q){
  if(name&&phone.length>=10)return name+'|phone:'+phone;
  if(name&&q?.customer_key)return name+'|customer:'+String(q.customer_key);
  return name+'|baby:'+normKey(q?.baby_name);
+}
+// Keep active orders for the same purchaser in one delivery decision.
+// Arrival of only one order never constitutes approval to deliver separately.
+function adminBuyerPendingGroup(q){
+ if(!q||!['courier','pickup'].includes(q.delivery_method))return q?[q]:[];
+ const key=adminOrderGroupKey(q);
+ return state.quotes.filter(x=>x.status==='confirmed'&&!x.cancel_requested_at&&
+  x.delivery_method===q.delivery_method&&!isFinishedOrder(x)&&
+  !['shipped','completed','soldout_closed'].includes(workflowStage(x))&&
+  adminOrderGroupKey(x)===key);
+}
+function adminBuyerGroupAllReceived(q){
+ const group=adminBuyerPendingGroup(q);
+ return group.length>0&&group.every(allReceived);
+}
+function adminSeparateReceiptApproved(q){
+ return adminBuyerPendingGroup(q).some(x=>
+  x.dispatch_request_mode==='ship_ready'&&x.dispatch_request_status==='acknowledged');
+}
+function adminCanReleaseGroup(q){
+ return !!q&&q.status==='confirmed'&&
+  (adminBuyerGroupAllReceived(q)||adminSeparateReceiptApproved(q));
 }
 function adminViewCanCombine(q){
  return !!q&&q.status==='confirmed'&&!q.cancel_requested_at&&
@@ -9220,7 +9245,7 @@ function renderCollapsibleAdminOrder(group,section){
  if(group.length===1&&adminPartialParcels(group[0]).length&&['delivery_shipped','delivery_completed'].includes(state.filter)&&['new','preparing'].includes(workflowStage(group[0])))next=state.filter==='delivery_completed'?'✓ 부분발송분 배송 완료':'🚚 먼저 발송한 상품 배송 중';
  // An actual complete receipt takes precedence over the earlier supplier-order
  // or payment stages; in particular this fixes pickup-ready grouped orders.
- const groupAllReceived=group.length>0&&group.every(q=>q.status==='confirmed'&&allReceived(q));
+ const groupAllReceived=group.length>0&&group.every(q=>q.status==='confirmed'&&allReceived(q))&&adminBuyerGroupAllReceived(group[0]);
  const groupAlreadySent=group.some(q=>q.delivery_method==='courier'&&['shipped','completed'].includes(workflowStage(q)))||
   group.some(q=>q.delivery_method==='pickup'&&workflowStage(q)==='completed');
  if(groupAllReceived&&!groupAlreadySent&&!cancel&&!options&&!delivery&&!missing){
@@ -10322,6 +10347,7 @@ function renderAdminQuoteFlatSection(groups,title,section='saved'){
 function adminNuvoContext(extra){
  return Object.assign({quotes:state.quotes,partialHistory:state.partialParcels||[],
   bundleRootId,allReceived,balanceDue,workflowStage,normalizeBuyerPhone,saleItems,
+  canReleaseGroup:adminCanReleaseGroup,
   rpc,reload:loadAdmin,notify:notif,isAdmin:state.admin},extra||{});
 }
 function adminNuvoCandidates(){
@@ -10454,14 +10480,14 @@ function adminOrderJourneyStep(q){
  if(q.status!=='confirmed'||!readyQuote(q))return 'journey_review';
  const stage=workflowStage(q),active=saleItems(q);
  if(q.delivery_method==='courier'&&stage==='shipped')return 'journey_shipping';
- if(stage==='pickup_ready')return 'journey_dispatch';
  if(q.delivery_method==='courier'&&active.length>0&&
    active.every(i=>adminSentCount(i)>=Math.max(0,Number(i.quantity)||0)))return 'journey_shipping';
- if(allReceived(q))return 'journey_dispatch';
+ const arrived=active.some(i=>['received','delivered'].includes(i.fulfillment));
+ if((stage==='pickup_ready'||allReceived(q)||arrived)&&adminCanReleaseGroup(q))return 'journey_dispatch';
  const ordered=!!q.supplier_ordered_at||active.some(i=>!!i.supplier_ordered_at||
   ['received','delivered'].includes(i.fulfillment)||!!supplierItemBatch(i.id)?.ordered_at);
  if(ordered)return 'journey_receiving';
- if(!readyQuote(q)||balanceDue(q)>0)return 'journey_payment';
+ if(balanceDue(q)>0)return 'journey_payment';
  return 'journey_procurement';
 }
 function preferredAdminOrderFilter(){
@@ -12163,8 +12189,8 @@ const deliveryPayload=(d)=>{
 };
 
 async function requestBuyerDispatchMode(mode){
- if(!state.tracking||!state.trackId||!state.trackToken||state.tracking.status!=='confirmed'||state.tracking.delivery_method!=='courier')
-  throw Error('확정된 택배 주문에서만 배송 방식을 요청할 수 있어요.');
+ if(!state.tracking||!state.trackId||!state.trackToken||state.tracking.status!=='confirmed'||!['courier','pickup'].includes(state.tracking.delivery_method))
+  throw Error('확정된 주문에서만 수령 방법을 요청할 수 있어요.');
  if(!['wait_all','ship_ready'].includes(mode))throw Error('배송 요청 방법을 선택해 주세요.');
  if(!connected){
   const q=demo.quotes.find(q=>q.id===state.trackId&&q.lookup_token===state.trackToken);
@@ -12383,6 +12409,8 @@ async function adminFulfillment(id,s){
 async function adminWorkflowStage(id,stage,carrier='',tracking=''){
  const q=state.quotes.find(x=>x.id===id);
  if(!q||q.status!=='confirmed')throw Error('최종 주문에 대해서만 진행 상태를 변경할 수 있어요.');
+ if((stage==='shipped'||stage==='pickup_ready'||stage==='completed'&&q.delivery_method==='pickup')&&
+  !adminCanReleaseGroup(q))throw Error('같은 구매자의 다른 주문이 아직 미입고예요. 별도 수령 요청 승인 또는 전체 입고가 필요해요.');
  if(!connected){
   const old=demo.quotes.find(x=>x.id===id);if(!old)throw Error('주문을 찾지 못했어요.');
   if(stage==='pickup_ready'&&(old.delivery_method!=='pickup'||!allReceived(q)))throw Error('직접수령이며 모든 상품이 입고된 주문만 픽업 대기로 변경할 수 있어요.');
@@ -12569,7 +12597,8 @@ async function click(e){
   if(!state.admin||state.page!=='admin'||!window.MiniPartialShipping)throw Error('관리자 부분배송 기능을 새로고침해 주세요.');
   const quote=state.quotes.find(q=>q.id===id);
   if(!quote)throw Error('주문을 찾지 못했어요.');
-  await window.MiniPartialShipping.open({quote,quotes:state.quotes,isAdmin:state.admin,bundleRootId,rpc,reload:loadAdmin,notify:notif,openBulk:()=>window.MiniNuvoShipping.open({quotes:state.quotes,partialHistory:state.partialParcels||[],bundleRootId,allReceived,balanceDue,workflowStage,normalizeBuyerPhone,saleItems,rpc,reload:loadAdmin,notify:notif,isAdmin:state.admin})});
+  if(!adminCanReleaseGroup(quote))throw Error('구매자의 모든 주문이 입고되거나 별도 수령 요청이 승인된 뒤에만 선발송할 수 있어요.');
+  await window.MiniPartialShipping.open({quote,quotes:state.quotes,isAdmin:state.admin,canReleaseGroup:adminCanReleaseGroup,bundleRootId,rpc,reload:loadAdmin,notify:notif,openBulk:()=>window.MiniNuvoShipping.open(adminNuvoContext())});
   return;
  }
  if(a==='admin-shipping-method'){
@@ -12693,9 +12722,10 @@ if(a==='dismiss-openchat-banner'){
 if(a==='request-dispatch'){
  if(state.page!=='track'||!state.tracking)throw Error('내 주문조회에서만 요청할 수 있어요.');
  const mode=String(b.dataset.mode||'');
+ const pickup=state.tracking.delivery_method==='pickup';
  const prompt=mode==='ship_ready'
-  ?'입고된 상품부터 부분배송을 요청할까요? 상품이 준비된 뒤 관리자 확인이 필요하며, 추가 택배비가 발생하면 발송 전에 안내드려요. 요청만으로 추가 결제되지 않아요.'
-  :'전체 상품이 입고되면 한 번에 배송해 달라고 요청할까요?';
+  ?pickup?'입고된 상품부터 먼저 픽업을 요청할까요? 관리자 확인 후 별도로 전달해요.':'입고된 상품부터 부분배송을 요청할까요? 상품이 준비된 뒤 관리자 확인이 필요하며, 추가 택배비가 발생하면 발송 전에 안내드려요. 요청만으로 추가 결제되지 않아요.'
+  :pickup?'모든 상품이 입고된 뒤 한 번에 픽업할까요?':'전체 상품이 입고되면 한 번에 배송해 달라고 요청할까요?';
  if(!window.confirm(prompt))return;
  b.disabled=true;
  try{await requestBuyerDispatchMode(mode);notif('배송 요청을 접수했어요. 관리자 확인 후 진행돼요.');}
@@ -12718,7 +12748,7 @@ if(a==='ack-dispatch'||a==='reject-dispatch'){
  if(!q||q.dispatch_request_status!=='pending')throw Error('처리 대기 중인 요청을 다시 확인해 주세요.');
  const approve=a==='ack-dispatch';
  const message=approve
-  ?`${q.buyer_name}님의 ${dispatchModeLabel(q.dispatch_request_mode)} 요청을 확인 완료로 표시할까요?\n\n송장·출고 상태·배송비는 자동 변경되지 않아요. 추가 택배비가 있으면 고객에게 사전 안내해 주세요.`
+  ?`${q.buyer_name}님의 ${dispatchModeLabel(q.dispatch_request_mode,q.delivery_method)} 요청을 확인 완료로 표시할까요?\n\n송장·출고 상태·배송비는 자동 변경되지 않아요. 추가 택배비가 있으면 고객에게 사전 안내해 주세요.`
   :'이 배송 요청을 처리 불가로 표시할까요?';
  if(!window.confirm(message))return;
  if(!connected){
@@ -13815,6 +13845,7 @@ if(a==='mark-item-received'){
 }
 if(a==='set-workflow'){
  const q=state.quotes.find(x=>x.id===id),stage=b.dataset.stage;if(!q||!stage)return;
+ if(stage==='completed'&&q.delivery_method==='pickup'&&!adminCanReleaseGroup(q))throw Error('다른 주문이 아직 미입고예요. 구매자 별도 수령 요청이 승인되지 않으면 전부 입고 후 함께 픽업해 주세요.');
  const question=stage==='completed'?(q.delivery_method==='pickup'?'구매자에게 상품을 직접 전달했고 픽업 완료로 처리할까요?':'택배 배송이 완료된 것을 확인했나요?'):
  stage==='soldout_closed'?'모든 품절 상품에 대한 실제 환불 정산이 끝났나요? 이 버튼은 실제 송금 기능이 아닙니다.':
  stage==='preparing'&&workflowStage(q)!=='new'?'진행상태를 상품 준비 중으로 되돌릴까요? 기존 송장번호는 비워집니다.':

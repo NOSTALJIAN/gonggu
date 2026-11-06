@@ -154,22 +154,22 @@ function buyerItemStatus(q,item){
  const total=Math.max(0,Number(item.quantity)||0);
  return '<div class="tiny partial-item-tag">📦 '+n+'개 먼저 발송'+(n<total?' · '+(total-n)+'개 남음':'')+'</div>';
 }
-function adminBlock(q,history,ready,stage){
+function adminBlock(q,history,ready,stage,releaseAllowed=false){
  if(!q||q.status!=='confirmed'||q.delivery_method!=='courier')return '';
  const hist=forOrder(q,history),sent=hist.length>0;
  const eligible=(q.items||[]).filter(i=>i.fulfillment!=='sold_out'&&i.fulfillment!=='delivered')
   .reduce((n,i)=>n+Math.max(0,arrivedQty(i)-sentQty(i.id,history)),0);
- const open=['new','preparing'].includes(stage);
+ const open=releaseAllowed&&eligible>0&&['new','preparing'].includes(stage);
  return '<div class="partial-admin-entry">'+
   (open?'<button type="button" class="btn block partial-open" data-action="open-partial-shipping" data-id="'+escapeHtml(q.id)+'">'+
   '📦 입고된 상품 먼저 발송'+(eligible?' · '+eligible+'개 가능':'')+'</button>'+
   '<p class="smallnote">지금 입고된 상품만 1차 송장에 등록하고, 나머지는 입고대기로 남겨요. 판매가·기존 배송비는 변경하지 않아요.</p>':'')+
   (sent?parcelHistory(q,history):'')+'</div>';
 }
-function bundleBlock(group,history){
+function bundleBlock(group,history,releaseAllowed=false){
  if(!Array.isArray(group)||group.length<2)return '';
  if(group.some(q=>q.status!=='confirmed'))return '';
- const eligible=group.some(q=>q.delivery_method==='courier'&&['new','preparing'].includes(q.workflow_stage||'new')&&
+ const eligible=releaseAllowed&&group.some(q=>q.delivery_method==='courier'&&['new','preparing'].includes(q.workflow_stage||'new')&&
   (q.items||[]).some(i=>arrivedQty(i)>sentQty(i.id,history)));
  const entries=group.map(q=>parcelHistory(q,history)).filter(Boolean).join('');
  return '<div class="partial-bundle-entry">'+(eligible?'<button type="button" class="btn block secondary" data-action="open-partial-shipping" data-id="'+escapeHtml(group[0].id)+'">📦 입고된 상품 먼저 부분발송</button>':'')+
@@ -218,6 +218,7 @@ function style(){
 function close(){overlay?.remove();overlay=null;active=null;}
 async function open(ctx){
  if(!ctx||!ctx.isAdmin||!ctx.rpc||!ctx.quote)throw Error('관리자 전용 부분배송 기능이에요.');
+ if(!ctx.canReleaseGroup?.(ctx.quote))throw Error('전량 입고 또는 구매자의 별도 수령 요청 승인이 필요해요.');
  close();style();
  overlay=document.createElement('div');overlay.className='ps-mask';
  overlay.innerHTML='<section class="ps-dialog" role="dialog" aria-modal="true" aria-label="입고된 상품 먼저 발송"><div class="ps-head"><h2>📦 입고된 상품 먼저 발송</h2><button class="ps-close" aria-label="닫기">×</button></div><div class="ps-content ps-loading">발송 가능한 입고 상품 확인 중…</div></section>';

@@ -17,6 +17,9 @@ function shipments(ctx){
   const group=quotes.filter(q=>q.status!=='cancelled'&&bundleRootId(q)===id);
   const root=group.find(q=>q.id===id)||group[0];if(!root)continue;
   const issues=[];
+  // A partially received buyer group must not silently become an invoice-export candidate.
+  // Separate receipt needs an explicit customer request acknowledged by the admin.
+  if(group.some(q=>!ctx.canReleaseGroup?.(q)))issues.push('다른 상품 입고 대기 · 별도 수령 미승인');
   if(group.some(q=>q.status!=='confirmed'))issues.push('확정 전 주문 포함');
   if(group.some(q=>q.delivery_method!=='courier'))issues.push('수령방식 불일치');
   if(group.some(q=>!['new','preparing'].includes(workflowStage(q))||String(q.tracking_number||'').trim()))issues.push('이미 발송·송장 등록됨');

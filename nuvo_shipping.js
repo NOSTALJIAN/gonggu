@@ -38,7 +38,23 @@ function shipments(ctx){
   (issues.length?blocked:ready).push({id,root,group,items,qty,waiting:Math.max(0,waiting),issues});
  }
  const sort=(a,b)=>String(a.root.recipient_name||a.root.buyer_name||'').localeCompare(String(b.root.recipient_name||b.root.buyer_name||''),'ko');
- ready.sort(sort);blocked.sort(sort);return {ready,blocked};
+ ready.sort(sort);blocked.sort(sort);
+ // Physical delivery label: one row for a matching recipient/contact/exact destination.
+ // The original quote/bundle groups remain independent for invoicing and tracking updates.
+ const merged=new Map(),normalize=x=>String(x||'').normalize('NFKC').trim().replace(/\s+/g,' ');
+ for(const part of ready){
+  const x=part.root;
+  const phone=String(normalizeBuyerPhone(x.contact)||'').replace(/[^0-9]/g,'');
+  const key=[normalize(x.recipient_name),phone,normalize(x.postal_code),
+   normalize(x.address_line1),normalize(x.address_line2),normalize(x.delivery_note)].join('|');
+  if(!merged.has(key))merged.set(key,{...part,parts:[part],group:[...part.group],items:[...part.items]});
+  else{
+   const target=merged.get(key);
+   target.parts.push(part);target.group.push(...part.group);target.items.push(...part.items);
+   target.qty+=part.qty;target.waiting+=part.waiting;
+  }
+ }
+ return {ready:[...merged.values()].sort(sort),blocked};
 }
 function writeZip(files){
  const enc=new TextEncoder(),parts=[],central=[];let offset=0;
@@ -108,17 +124,17 @@ function close(){
 function open(ctx){
  if(!ctx||!Array.isArray(ctx.quotes)||typeof ctx.bundleRootId!=='function')throw Error('관리자 주문 데이터를 불러오지 못했어요.');
  close();context=ctx;ensureStyles();const batch=shipments(ctx);
- selected=new Set(batch.ready.map(x=>x.id));previousOverflow=document.body.style.overflow;
+ selected=new Set();previousOverflow=document.body.style.overflow;
  layer=document.createElement('div');layer.className='nuvo-mask';layer.setAttribute('role','presentation');
  layer.innerHTML='<section class="nuvo-dialog" role="dialog" aria-modal="true" aria-label="누보 택배 일괄등록">'+
   '<div class="nuvo-title"><h2>누보 택배 일괄등록</h2><button type="button" class="nuvo-close" data-nuvo-close aria-label="닫기">×</button></div>'+
-  '<p>입고된 상품만 <b>누보 A타입(일반) 엑셀</b>에 담아요. 미입고 상품은 제외하고 묶음배송은 한 줄로 합쳐요.</p>'+
-  '<div class="nuvo-stats"><strong>발송 가능 '+batch.ready.length+'건</strong><span>확인 필요 '+batch.blocked.length+'건</span></div>'+
-  '<div class="nuvo-controls"><button type="button" data-nuvo-all>전체 선택</button><button type="button" data-nuvo-none>모두 해제</button></div>'+
+  '<p><b>기본 선택은 0건</b>이에요. 이번에 실제 택배 보낼 수령인만 직접 체크해 주세요. 입고만 된 주문은 자동 포함하지 않아요. 같은 수령인·연락처·주소의 주문은 한 장으로 합쳐요.</p>'+
+  '<div class="nuvo-stats"><strong>출고 후보 '+batch.ready.length+'곳</strong><span>확인 필요 '+batch.blocked.length+'건</span></div>'+
+  '<div class="nuvo-controls"><button type="button" data-nuvo-all>후보 전체 선택</button><button type="button" data-nuvo-none>선택 초기화</button></div>'+
   '<div class="nuvo-list">'+(batch.ready.length?batch.ready.map(r=>
-  '<label class="nuvo-entry"><input type="checkbox" data-nuvo-id="'+h(r.id)+'" checked><span><b>'+h(r.root.recipient_name||r.root.buyer_name)+'</b><small>'+h(r.root.buyer_name||'')+' · '+r.group.length+'건 묶음 · 입고 '+r.qty+'개'+(r.waiting?' · 미입고 '+r.waiting+'개 제외':'')+' · '+h(r.root.postal_code||'')+'</small></span></label>'
+  '<label class="nuvo-entry"><input type="checkbox" data-nuvo-id="'+h(r.id)+'"><span><b>'+h(r.root.recipient_name||r.root.buyer_name)+'</b><small>'+h([...new Set(r.group.map(q=>q.buyer_name||'주문자'))].join(', '))+' · 원주문 '+r.group.length+'건'+(r.parts.length>1?' · 합배송 '+r.parts.length+'묶음':'')+' · 이번 발송 '+r.qty+'개'+(r.waiting?' · 미발송 '+r.waiting+'개':'' )+'</small><small>'+h(r.items.map(i=>(i.product_name||'상품')+' '+[i.color,i.size].filter(Boolean).join('/')+' ×'+i.quantity).join(' · '))+'</small></span></label>'
   ).join(''):'<p style="padding:18px 0">지금 발송 가능한 택배 주문이 없어요.</p>')+'</div>'+
-  '<button type="button" class="nuvo-download" data-nuvo-download><span data-nuvo-count>'+selected.size+'건 선택</span> · 엑셀 다운로드</button>'+
+  '<button type="button" class="nuvo-download" data-nuvo-download><span data-nuvo-count>'+selected.size+'건 선택</span> · 누보 엑셀 만들기</button>'+
   '<p>주문번호·수령자·주소·상품정보·수량만 자동 입력해요. 운임구분·운임·운송장번호는 누보에서 확인하세요. 송장을 부여받은 뒤 아래에서 엑셀을 다시 업로드해 미니예나에 일괄 반영할 수 있어요.</p>'+
   (batch.blocked.length?'<details class="nuvo-skipped"><summary>제외 '+batch.blocked.length+'건 · 사유 보기</summary>'+
   batch.blocked.map(r=>'<div><b>'+h(r.root.buyer_name||r.root.recipient_name)+'</b><small>'+h(r.issues.join(' · '))+'</small></div>').join('')+'</details>':'')+
@@ -127,12 +143,15 @@ function open(ctx){
  if(window.MiniNuvoImport)window.MiniNuvoImport.attach(layer,batch,ctx);
  layer.addEventListener('click',e=>{
   if(e.target===layer||e.target.closest('[data-nuvo-close]')){close();return;}
-  if(e.target.closest('[data-nuvo-all]')){selected=new Set(batch.ready.map(r=>r.id));layer.querySelectorAll('[data-nuvo-id]').forEach(x=>x.checked=true);updateCount();return;}
+  if(e.target.closest('[data-nuvo-all]')){if(!confirm('출고 후보 '+batch.ready.length+'곳을 모두 선택할까요? 이번에 보내지 않는 주문도 포함될 수 있어요.'))return;selected=new Set(batch.ready.map(r=>r.id));layer.querySelectorAll('[data-nuvo-id]').forEach(x=>x.checked=true);updateCount();return;}
   if(e.target.closest('[data-nuvo-none]')){selected.clear();layer.querySelectorAll('[data-nuvo-id]').forEach(x=>x.checked=false);updateCount();return;}
   if(e.target.closest('[data-nuvo-download]')){
    const chosen=batch.ready.filter(r=>selected.has(r.id));
    if(!chosen.length)return;
    if(chosen.length>1000){alert('한 번에 최대 1,000건까지 내보낼 수 있어요.');return;}
+   const parcels=chosen.length,units=chosen.reduce((n,r)=>n+r.qty,0);
+   const names=chosen.slice(0,18).map((r,i)=>(i+1)+'. '+(r.root.recipient_name||r.root.buyer_name)+' / '+r.qty+'개'+(r.parts.length>1?' / 합배송 '+r.parts.length+'묶음':'')).join('\n');
+   if(!window.confirm('이번에 실제로 발송할 택배 '+parcels+'건 · 상품 '+units+'개가 맞나요?\n\n'+names+(parcels>18?'\n외 '+(parcels-18)+'건':'')+'\n\n확인하면 이 대상만 누보 엑셀 한 시트에 담아요.'))return;
    const file=workbook(chosen.map(dataRow)),url=URL.createObjectURL(file),a=document.createElement('a');
    a.href=url;a.download='미니예나_누보_A-type_일반_'+new Date(Date.now()+9*3600000).toISOString().slice(0,10).replace(/-/g,'')+'.xlsx';
    document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),3000);return;

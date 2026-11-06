@@ -46,7 +46,7 @@
 .admin-ship-candidate{border:1px solid #e5e5e5;border-radius:12px;background:#fff;padding:12px 13px;margin:8px 0}
 .admin-ship-pick{display:flex;align-items:flex-start;gap:11px;cursor:pointer}
 .admin-ship-pick input{width:20px;height:20px;flex:0 0 auto;margin:3px 0 0;accent-color:#181818}
-.admin-ship-pick span{min-width:0;flex:1}.admin-ship-pick strong{display:block;font-size:14px;color:#222}
+.admin-ship-pick span{min-width:0;flex:1}.admin-ship-pick strong{display:block;font-size:14px;color:#222}.admin-ship-candidate>.shipping-merge-entry{margin:8px 0 0 30px}.admin-ship-candidate>.shipping-merge-entry button{background:#fff;border:1px solid #222;color:#222;font-size:12px;font-weight:800;border-radius:8px;padding:8px 11px}.shipping-merge-address>summary{cursor:pointer;font-size:13px;font-weight:800;padding:12px 0}
 .admin-ship-pick small{display:block;font-size:11px;color:#777;line-height:1.5;margin-top:3px;overflow-wrap:anywhere}
 .admin-ship-candidate-details{border-top:1px solid #eee;margin-top:11px;padding-top:9px}
 .admin-ship-candidate-details>summary{font-size:11px;font-weight:750;color:#555;cursor:pointer}
@@ -8492,7 +8492,7 @@ function renderShippingMergeButton(group){
  if(options.length<2)return '';
  const roots=new Set(options.map(q=>q.bundle_parent_id||q.id));
  if(roots.size<2)return '';
- return `<div class="shipping-merge-entry"><button type="button" class="btn sm secondary" data-action="merge-shipping" data-id="${esc(first.id)}">같은 구매자 합배송 · ${options.length}건</button></div>`;
+ return `<div class="shipping-merge-entry"><button type="button" class="btn sm secondary" data-action="merge-shipping" data-id="${esc(first.id)}">주문 합치기 · ${options.length}건</button></div>`;
 }
 function renderMergeShippingBody(m){
  const opened=state.quotes.find(q=>q.id===m.id);
@@ -8506,7 +8506,7 @@ function renderMergeShippingBody(m){
  const val=k=>esc(addressOrder[k]||'');
  return `<div class="shipping-merge-modal">
  <div class="shipping-merge-heading"><strong>${esc(root.buyer_name)}님의 발송 전 주문</strong>
- <span>택배 한 번으로 보내기 · 주문확정·구매 선택·입금 기록은 각각 유지</span></div>
+ <span>합칠 주문만 체크하세요. 상품·입금 기록은 그대로 유지돼요.</span></div>
  <form id="merge-shipping-form">
   <input type="hidden" name="root_id" value="${esc(root.id)}">
   <div class="shipping-merge-orders">
@@ -8517,8 +8517,8 @@ function renderMergeShippingBody(m){
     <span><b>${esc(fmtDate(q.created_at))} · 상품 ${q.items.length}종</b><small>${esc(deliveryLabel(q))} · ${money(totalDue(q))} / 입금 ${money(Number(q.amount_paid||0)-Number(q.amount_refunded||0))}</small></span>
    </label>`).join('')}
   </div>
-  <div class="shipping-merge-address">
-   <strong>함께 받을 택배 주소</strong>
+  <details class="shipping-merge-address" ${!addressOrder.recipient_name||!addressOrder.postal_code||!addressOrder.address_line1?'open':''}>
+   <summary><strong>받는 사람 · 배송지 확인 / 변경</strong></summary>
    <label class="label">받는 사람<input name="recipient_name" required maxlength="80" value="${val('recipient_name')||esc(root.buyer_name||'')}"></label>
    <div class="address-tools"><button type="button" class="btn secondary" data-action="search-address">주소 검색</button><button type="button" class="textbutton address-manual" data-action="manual-address">직접 입력</button></div>
    <div class="postcode-search hidden" data-postcode-panel><div class="row between"><b>우편번호·주소 찾기</b><button type="button" class="btn sm neutral" data-action="close-address-search">닫기</button></div><div class="postcode-mount" data-postcode-mount></div></div>
@@ -8526,9 +8526,9 @@ function renderMergeShippingBody(m){
    <label class="label">주소<input name="address_line1" data-address-primary required maxlength="250" value="${val('address_line1')}"></label>
    <label class="label">상세주소<input name="address_line2" maxlength="250" value="${val('address_line2')}"></label>
    <label class="label">배송 메모<input name="delivery_note" maxlength="200" value="${val('delivery_note')}"></label>
-  </div>
+  </details>
   <p class="shipping-merge-warning">${eligible.some(q=>q.status==='quoted')?'주문확정 전에도 합배송을 설정할 수 있어요. 견적과 구매 선택은 그대로 유지돼요. ':''}배송비는 기준 주문에서 한 번만 계산해요. 실제 입금액은 수정하지 않아요. 중복 입금된 배송비가 있다면 환불 후 따로 기록해 주세요.</p>
-  <button type="submit" class="btn block" ${options.length?'':'disabled'}>합배송 설정 저장</button>
+  <button type="submit" class="btn block" ${options.length?'':'disabled'}>선택한 주문 합치기</button>
  </form></div>`;
 }
 async function handleMergeShippingSubmit(f,data){
@@ -9949,12 +9949,15 @@ function renderAdminDispatchQueue(batch,waitingGroups){
   const products=r.items.map(i=>(i.product_name||'상품')+' '+[i.color,i.size].filter(Boolean).join('/')+' ×'+i.quantity).join(' · ');
   const address=[r.root.postal_code,r.root.address_line1,r.root.address_line2].filter(Boolean).join(' ');
   const checked=state.adminDispatchSelection.has(r.id);
+  // Manual order consolidation: expose the existing server-backed merge workflow
+  // directly on the dispatch card; do not merge merely because addresses match.
+  const mergeAction=renderShippingMergeButton(r.group);
   return '<article class="admin-ship-candidate"'+adminOrderSearchAttrs(r.group)+'>'+
    '<label class="admin-ship-pick"><input type="checkbox" data-admin-dispatch-pick="'+esc(r.id)+'"'+(checked?' checked':'')+' aria-label="'+esc(r.root.recipient_name||r.root.buyer_name||'수령인')+' 발송 선택">'+
-   '<span><strong>'+esc(r.root.recipient_name||r.root.buyer_name||'수령인 미입력')+'</strong><small>'+esc(buyer)+(babies?' · 아기 '+esc(babies):'')+'</small><small>상품 '+r.qty+'개 · 주문 '+r.group.length+'건'+(r.parts.length>1?' · 합배송':'')+(r.waiting?' · 미입고 제외 '+r.waiting+'개':'')+'</small></span></label>'+
+   '<span><strong>'+esc(r.root.recipient_name||r.root.buyer_name||'수령인 미입력')+'</strong><small>'+esc(buyer)+(babies?' · 아기 '+esc(babies):'')+'</small><small>상품 '+r.qty+'개 · 주문 '+r.group.length+'건'+(r.parts.length>1?' · 합배송':'')+(r.waiting?' · 미입고 제외 '+r.waiting+'개':'')+'</small></span></label>'+mergeAction+
    '<details class="admin-ship-candidate-details"><summary>상품·주소·주문관리 보기</summary><div class="admin-ship-summary-address"><strong>배송지</strong><p>'+esc(address)+'</p></div>'+
    '<div class="admin-ship-summary-products">'+esc(products)+'</div>'+
-   r.group.map(q=>'<details class="admin-ship-original-order"><summary>'+esc(q.buyer_name||'구매자')+' · '+esc(String(q.id).slice(0,8).toUpperCase())+' · 주문관리</summary>'+renderAdminQuoteCard(q)+'</details>').join('')+
+   '<details class="admin-ship-original-order"><summary>기존 주문 '+r.group.length+'건 · 개별 수정</summary>'+r.group.map(q=>'<details class="admin-ship-original-order"><summary>'+esc(q.buyer_name||'구매자')+' · '+esc(String(q.id).slice(0,8).toUpperCase())+'</summary>'+renderAdminQuoteCard(q)+'</details>').join('')+'</details>'+
    '</details></article>';
  }).join('');
  const other=waitingGroups.length?'<details class="admin-ship-waiting"><summary>입고·배송 확인이 더 필요한 주문 <b>'+waitingGroups.length+'묶음</b></summary>'+

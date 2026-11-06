@@ -59,6 +59,16 @@
 .admin-ship-waiting>summary{font-size:12px;font-weight:770;cursor:pointer}
 .admin-ship-waiting .admin-price-section{margin-top:13px}
 @media(max-width:370px){.admin-order-modes button{font-size:11px}.admin-ship-toolbar{gap:5px}.admin-ship-export{padding:10px 7px;font-size:11px}}
+
+.admin-order-header-links{display:flex;align-items:center;gap:5px}
+.admin-order-header-links button{border:0;background:transparent;color:#777;padding:6px 4px;font-size:11px;font-weight:700;white-space:nowrap}
+.admin-order-header-links button.active{color:#111;text-decoration:underline;text-underline-offset:4px}
+.admin-order-list-actions{display:flex;align-items:center;gap:6px;margin-left:auto}
+.admin-order-merge-launch{border:1px solid #222;border-radius:8px;background:#fff;color:#222;font-size:11px;font-weight:800;padding:9px 10px;white-space:nowrap}
+.admin-merge-order-picker{display:flex;flex-direction:column;gap:9px}
+.admin-merge-picker-row{display:flex;flex-direction:column;text-align:left;gap:3px;width:100%;background:white;border:1px solid #e0e0e0;border-radius:10px;padding:12px 13px;color:#222}
+.admin-merge-picker-row strong{font-size:14px}.admin-merge-picker-row span{font-size:11px;color:#777}.admin-merge-picker-row span b{float:right;color:#222}
+@media(max-width:390px){.admin-order-header-links button{font-size:10px}.admin-order-merge-launch{padding:8px;font-size:10px}.admin-order-list-actions .admin-clean-utility{font-size:10px;padding:7px}}
 </style>
 <script src="./nuvo_shipping.js?v=20261106-b1-miniyena-name" defer></script>
 <script src="./nuvo_import.js?v=20261106-b1-miniyena-name" defer></script>
@@ -8494,6 +8504,25 @@ function renderShippingMergeButton(group){
  if(roots.size<2)return '';
  return `<div class="shipping-merge-entry"><button type="button" class="btn sm secondary" data-action="merge-shipping" data-id="${esc(first.id)}">주문 합치기 · ${options.length}건</button></div>`;
 }
+function renderAdminOrderMergePicker(){
+ const groups=[],seen=new Set();
+ for(const q of state.quotes||[]){
+  if(!shippingMergeEligible(q))continue;
+  const eligible=shippingMergeCandidates(q);
+  if(new Set(eligible.map(x=>x.bundle_parent_id||x.id)).size<2)continue;
+  const key=eligible.map(x=>x.id).sort().join('|');
+  if(seen.has(key))continue;
+  seen.add(key);
+  const root=shippingMergeRoot(eligible,q);
+  if(root)groups.push({root,eligible});
+ }
+ groups.sort((a,b)=>String(a.root.buyer_name||'').localeCompare(String(b.root.buyer_name||''),'ko'));
+ return '<div class="admin-merge-order-picker">'+
+  '<p class="smallnote">합칠 구매자를 선택하고, 다음 화면에서 주문을 체크하세요. 기존 주문 상품·입금 내역은 그대로 남아요.</p>'+
+  (groups.length?groups.map(({root,eligible})=>'<button type="button" class="admin-merge-picker-row" data-action="merge-shipping" data-id="'+esc(root.id)+'"><strong>'+esc(root.buyer_name||'주문자')+'</strong><span>아기 '+esc(root.baby_name||'미입력')+' · 합칠 수 있는 주문 '+eligible.length+'건 <b>선택 ›</b></span></button>').join(''):
+  '<div class="empty">현재 합칠 수 있는 발송 전 주문이 없어요. 같은 구매자의 주문인지, 이미 발송한 주문인지 확인해 주세요.</div>')+
+  '</div>';
+}
 function renderMergeShippingBody(m){
  const opened=state.quotes.find(q=>q.id===m.id);
  const eligible=shippingMergeCandidates(opened);
@@ -8871,8 +8900,7 @@ function renderCollapsibleAdminOrder(group,section){
       <summary>📍 배송지 보기 · ${esc((group.find(q=>q.delivery_method==='courier')||root).recipient_name||root.buyer_name||'수령인')}</summary>
       ${group.filter(q=>q.delivery_method==='courier').filter((q,i,rows)=>rows.findIndex(x=>String(x.postal_code||'')+'|'+String(x.address_line1||'')+'|'+String(x.address_line2||'')===String(q.postal_code||'')+'|'+String(q.address_line1||'')+'|'+String(q.address_line2||''))===i).map(q=>`<div class="admin-courier-address-info"><strong>${esc(q.recipient_name||q.buyer_name||'받는 사람 미입력')}</strong><span>${esc(q.contact||'연락처 미입력')}</span><p>${esc(q.postal_code||'우편번호 미입력')} · ${esc([q.address_line1,q.address_line2].filter(Boolean).join(' ')||'주소 미입력')}</p>${q.delivery_note?`<small>배송 요청사항 · ${esc(q.delivery_note)}</small>`:''}</div>`).join('')}
      </details>`:''}
-   ${group.length>1&&group.filter(q=>q.delivery_method==='courier').length>1&&
-     group.reduce((n,q)=>n+appliedShipping(q),0)>3000?'':renderShippingMergeButton(group)}
+   ${['active_orders','all_history','needs_review'].includes(state.filter)?renderShippingMergeButton(group):''}
    ${group.length===1&&['delivery_shipped','delivery_completed'].includes(state.filter)&&['new','preparing'].includes(workflowStage(group[0]))&&adminPartialParcels(group[0]).length?renderAdminPartShipmentCard(group[0]):group.length>1?(group.every(q=>bundleRootId(q)===bundleRootId(group[0]))?renderBundleCard(group):renderSameRoundCard(group)):renderAdminQuoteCard(group[0])}
   </div>
  </details>`;
@@ -9951,7 +9979,7 @@ function renderAdminDispatchQueue(batch,waitingGroups){
   const checked=state.adminDispatchSelection.has(r.id);
   // Manual order consolidation: expose the existing server-backed merge workflow
   // directly on the dispatch card; do not merge merely because addresses match.
-  const mergeAction=renderShippingMergeButton(r.group);
+  const mergeAction='';
   return '<article class="admin-ship-candidate"'+adminOrderSearchAttrs(r.group)+'>'+
    '<label class="admin-ship-pick"><input type="checkbox" data-admin-dispatch-pick="'+esc(r.id)+'"'+(checked?' checked':'')+' aria-label="'+esc(r.root.recipient_name||r.root.buyer_name||'수령인')+' 발송 선택">'+
    '<span><strong>'+esc(r.root.recipient_name||r.root.buyer_name||'수령인 미입력')+'</strong><small>'+esc(buyer)+(babies?' · 아기 '+esc(babies):'')+'</small><small>상품 '+r.qty+'개 · 주문 '+r.group.length+'건'+(r.parts.length>1?' · 합배송':'')+(r.waiting?' · 미입고 제외 '+r.waiting+'개':'')+'</small></span></label>'+mergeAction+
@@ -10033,7 +10061,7 @@ function renderAdminOrderFilterModal(){
 }
 /* Main Orders opens the earliest active queue on first visit. */
 function preferredAdminOrderFilter(){
- return 'all_history';
+ return 'active_orders';
 }
 function renderAdminQuotes(){
  const all=state.quotes;
@@ -10052,9 +10080,11 @@ function renderAdminQuotes(){
  const nCourierCompleted=count(q=>adminDeliveryListed(q,'delivery_completed'));
  const nCancel=count(q=>q.cancel_requested_at&&q.status!=='cancelled');
  const nOther=count(q=>q.status==='quoted'&&['next_round','on_hold'].includes(q.purchase_intent));
- if(['all','waiting_buyer','final_confirmation'].includes(state.filter))state.filter='all_history';
+ if(['all','waiting_buyer','final_confirmation'].includes(state.filter))state.filter='active_orders';
  const filter=state.filter;
- const qq=all.filter(q=>filter==='needs_review'?q.status==='requested'||q.status==='quoted':
+ const qq=all.filter(q=>filter==='active_orders'?q.status!=='cancelled'&&!q.cancel_requested_at&&!isFinishedOrder(q):
+  filter==='cancellation_orders'?q.status==='cancelled'||!!q.cancel_requested_at:
+  filter==='needs_review'?(q.status==='requested'||q.status==='quoted')&&!q.cancel_requested_at:
   filter==='all'?isPre(q):
   filter==='pricing'?isPricing(q):
   filter==='waiting_buyer'?isWaiting(q):
@@ -10073,8 +10103,8 @@ function renderAdminQuotes(){
   filter==='cancel_requested'?!!q.cancel_requested_at&&q.status!=='cancelled':
   filter.startsWith('flow_')?q.status==='confirmed'&&workflowStage(q)===filter.slice(5):q.status===filter)
  .filter(q=>filter!=='wholesale_completed'||!state.adminShippingMethod||state.adminShippingMethod==='all'||q.delivery_method===state.adminShippingMethod);
- const groups=['delivery_shipped','delivery_completed'].includes(filter)?qq.map(q=>[q]):['all_history','finished','wholesale_completed'].includes(filter)?
-  bundledQuoteGroups(qq,['all_history','finished'].includes(filter)):sameRoundGroups(qq);
+ const groups=['delivery_shipped','delivery_completed'].includes(filter)?qq.map(q=>[q]):['active_orders','cancellation_orders','all_history','finished','wholesale_completed'].includes(filter)?
+  bundledQuoteGroups(qq,['active_orders','cancellation_orders','all_history','finished'].includes(filter)):sameRoundGroups(qq);
  const preparingRows=filter==='preparing_orders'?qq.filter(readyQuote):[];
  const preparingMissing=filter==='preparing_orders'?qq.length-preparingRows.length:0;
  const preparingTotal=preparingRows.reduce((sum,row)=>sum+totalDue(row),0);
@@ -10082,7 +10112,7 @@ function renderAdminQuotes(){
  const preparingBalance=preparingRows.reduce((sum,row)=>sum+balanceDue(row),0);
  const waiting=groups.filter(g=>g.some(q=>q.status==='requested'||quoteNeedsPriceInput(q)));
  const priced=groups.filter(g=>!waiting.includes(g));
- const tabs=[['pricing','견적',nPrice],['waiting_buyer','구매 선택',nWaiting],['final_confirmation','확정 대기',nFinalWaiting],['preparing_orders','입금·발주',nPaymentProcurement],['wholesale_completed','입고·배송',nDelivery],['all_history','전체',all.length]];
+ const tabs=[['active_orders','진행 주문',count(q=>q.status!=='cancelled'&&!q.cancel_requested_at&&!isFinishedOrder(q))],['cancellation_orders','취소 주문',count(q=>q.status==='cancelled'||!!q.cancel_requested_at)],['pricing','가격 확인',nPrice],['preparing_orders','입금·발주',nPaymentProcurement],['wholesale_completed','입고·배송',nDelivery],['all_history','전체 기록',all.length]];
  const extras=adminOrderAdvancedFilterEntries();
  const orderMode=['wholesale_completed','delivery_shipped','delivery_completed'].includes(filter)?'shipping':filter==='preparing_orders'?'procurement':'orders';
 
@@ -10094,9 +10124,14 @@ function renderAdminQuotes(){
    filter.startsWith('flow_')?workflowLabels[filter.slice(5)]:statusLabel[filter]||'주문');
  return `<section class="admin-quote-workspace admin-orders-page">
   <div class="admin-quote-anchor" id="admin-quote-results"></div>
-  <div class="admin-page-heading"><h2>주문 관리</h2></div>
+  <div class="admin-page-heading"><h2>주문 관리</h2>
+   <div class="admin-order-header-links">
+    <button type="button" data-filter="cancellation_orders" class="${filter==='cancellation_orders'?'active':''}">취소 ${count(q=>q.status==='cancelled'||!!q.cancel_requested_at)}</button>
+    <button type="button" data-filter="all_history" class="${filter==='all_history'?'active':''}">전체 기록</button>
+   </div>
+  </div>
   <nav class="admin-order-modes" aria-label="업무별 주문 관리">
-   <button type="button" data-action="admin-order-mode" data-mode="orders" class="${orderMode==='orders'?'active':''}" aria-pressed="${orderMode==='orders'}">전체 주문</button>
+   <button type="button" data-action="admin-order-mode" data-mode="orders" class="${orderMode==='orders'?'active':''}" aria-pressed="${orderMode==='orders'}">진행 주문</button>
    <button type="button" data-action="admin-order-mode" data-mode="procurement" class="${orderMode==='procurement'?'active':''}" aria-pressed="${orderMode==='procurement'}">발주</button>
    <button type="button" data-action="admin-order-mode" data-mode="shipping" class="${orderMode==='shipping'?'active':''}" aria-pressed="${orderMode==='shipping'}">발송</button>
   </nav>
@@ -10106,9 +10141,12 @@ function renderAdminQuotes(){
   </div>
   <div class="admin-orders-title-row">
    <div class="admin-orders-list-title"><strong>${esc(title)}</strong><span>${['delivery_shipped','delivery_completed'].includes(filter)?groups.length+'건 · 주문별로 표시':qq.length+'건'}</span></div>
-   <button type="button" class="admin-clean-utility" data-action="open-admin-order-filters" aria-label="주문 상세 필터 열기">
+   <div class="admin-order-list-actions">
+    ${['active_orders','all_history','needs_review'].includes(filter)?'<button type="button" class="admin-order-merge-launch" data-action="open-admin-order-merge-picker">주문 합치기</button>':''}
+    <button type="button" class="admin-clean-utility" data-action="open-admin-order-filters" aria-label="주문 상세 필터 열기">
     ${advancedSelected?'선택 중 · '+esc(title):'필터'} <span aria-hidden="true">☷</span>
-   </button>
+    </button>
+   </div>
   </div>
   ${filter==='preparing_orders'?`<div class="admin-preproc-totals" aria-label="입금 및 발주 대기 금액">
    <div><span>총 결제금액</span><strong>${preparingMissing?'확인 중':money(preparingTotal)}</strong></div>
@@ -10451,6 +10489,7 @@ if(m.type==='admin-purchase-remind-bulk'&&state.admin&&state.page==='admin'){
  </div>`);
 }
 if(m.type==='admin-option-requests'&&state.admin&&state.page==='admin')return wrap('옵션 변경 요청',adminOptionRequestsModalBody(m));
+ if(m.type==='admin-order-merge-picker'&&state.admin&&state.page==='admin'&&state.tab==='quotes')return wrap('주문 합치기',renderAdminOrderMergePicker());
  if(m.type==='admin-order-filters'&&state.admin&&state.page==='admin'&&state.tab==='quotes')return wrap('주문 상세 필터',renderAdminOrderFilterModal());
  if(m.type==='admin-wholesale-history'&&state.admin&&state.page==='admin'&&state.tab==='payments')
   return wrap('진행 중 배분·입금 관리',`<div class="admin-history-modal">
@@ -12125,7 +12164,7 @@ async function click(e){
  }
  if(a==='admin-order-mode'){
   if(!state.admin||state.tab!=='quotes')throw Error('관리자 주문 화면에서만 사용할 수 있어요.');
-  const next={orders:'all_history',procurement:'preparing_orders',shipping:'wholesale_completed'}[b.dataset.mode];
+  const next={orders:'active_orders',procurement:'preparing_orders',shipping:'wholesale_completed'}[b.dataset.mode];
   if(!next)return;
   state.filter=next;state.orderViewFilter=next;
   if(b.dataset.mode==='shipping')state.adminShippingMethod='courier';
@@ -12449,6 +12488,10 @@ if(a==='set-purchase-intent'){
  await setBuyerPurchaseIntent(next);
  notif(next==='buy_now'?'구매 의사가 전달됐어요. 배송비 계산 후 최종 금액을 안내받아요.':next==='next_round'?'다음 회차 구매로 저장했어요.':'구매 보류로 저장했어요.');
  return;
+}
+if(a==='open-admin-order-merge-picker'){
+ if(!state.admin||state.page!=='admin'||state.tab!=='quotes')throw Error('관리자 주문 화면에서 주문을 합쳐 주세요.');
+ modalOpen('admin-order-merge-picker');return;
 }
 if(a==='open-admin-order-filters'){
  if(!state.admin||state.page!=='admin'||state.tab!=='quotes')throw Error('관리자 주문 화면에서 상세 필터를 열어 주세요.');

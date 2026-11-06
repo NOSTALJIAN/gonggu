@@ -60,8 +60,8 @@
 .admin-ship-waiting .admin-price-section{margin-top:13px}
 @media(max-width:370px){.admin-order-modes button{font-size:11px}.admin-ship-toolbar{gap:5px}.admin-ship-export{padding:10px 7px;font-size:11px}}
 </style>
-<script src="./nuvo_shipping.js?v=20261106-a6-recipient-notes-merge" defer></script>
-<script src="./nuvo_import.js?v=20261106-a3-one-label-merged" defer></script>
+<script src="./nuvo_shipping.js?v=20261106-b1-miniyena-name" defer></script>
+<script src="./nuvo_import.js?v=20261106-b1-miniyena-name" defer></script>
 <script src="./partial_shipping.js?v=20261106-v120-tracking-status" defer></script>
 <!-- Release 439f3d34: remove only the retired MINIYENA offline cache.
      Never unregister OneSignal's separate push notification worker. -->
@@ -6658,9 +6658,7 @@ function renderAdminHome(){
  const workRow=(label,count,attrs,unit='건')=>`<button type="button" class="admin-home-work-row" ${attrs}>
   <span>${label}</span><strong>${count}<small>${unit}</small></strong><span class="admin-home-work-arrow" aria-hidden="true">›</span></button>`;
  const stages=[
-  {name:'견적 대기',count:requested,attrs:'data-tab="quotes" data-nav-filter="pricing"'},
-  {name:'구매 선택 대기',count:pendingBuyers,attrs:'data-tab="quotes" data-nav-filter="waiting_buyer"'},
-  {name:'확정 대기',count:pendingFinal,attrs:'data-tab="quotes" data-nav-filter="final_confirmation"'},
+  {name:'확인 필요한 주문',count:all.filter(q=>q.status==='requested'||q.status==='quoted').length,attrs:'data-tab="quotes" data-nav-filter="needs_review"'},
   {name:'입금·발주 대기',count:preparing,attrs:`data-action="home-preparing-toggle" aria-expanded="${state.homePreparingOpen===true}" aria-controls="admin-home-preparing-list"`},
   {name:'입고 체크',count:receiptTotals().pendingRows,attrs:'data-tab="receipts"'},
   {name:'입고·배송',count:shipping,attrs:'data-tab="quotes" data-nav-filter="wholesale_completed"'},
@@ -9944,7 +9942,7 @@ function renderAdminDispatchQueue(batch,waitingGroups){
  const allowed=new Set(batch.ready.map(r=>r.id));
  for(const id of Array.from(state.adminDispatchSelection||[]))if(!allowed.has(id))state.adminDispatchSelection.delete(id);
  const chosen=batch.ready.filter(r=>state.adminDispatchSelection.has(r.id));
- const button='<button type="button" class="admin-ship-export" data-action="nuvo-open-selected"'+(chosen.length?'':' disabled')+'>선택 '+chosen.length+'건 · 누보 엑셀</button>';
+ const button='<button type="button" class="admin-ship-export" data-action="nuvo-open-selected"'+(chosen.length?'':' disabled')+'>선택 '+chosen.length+'건 · 송장 엑셀</button>';
  const rows=batch.ready.map(r=>{
   const buyer=[...new Set(r.group.map(q=>String(q.buyer_name||'').trim()).filter(Boolean))].join(' · ');
   const babies=[...new Set(r.group.map(q=>String(q.baby_name||'').trim()).filter(Boolean))].join(' · ');
@@ -9974,12 +9972,12 @@ function updateAdminDispatchSelection(){
  const counter=app.querySelector('[data-admin-dispatch-count]');
  if(counter)counter.textContent=count+'건 선택';
  const btn=app.querySelector('[data-action="nuvo-open-selected"]');
- if(btn){btn.disabled=!count;btn.textContent='선택 '+count+'건 · 누보 엑셀';}
+ if(btn){btn.disabled=!count;btn.textContent='선택 '+count+'건 · 송장 엑셀';}
 }
 
 function updateAdminOrderSearch(){
  const query=String(state.adminOrderSearch||'').trim().toLocaleLowerCase('ko-KR');
- const mode=['buyer','baby','product','contact','order'].includes(state.adminOrderSearchMode)?state.adminOrderSearchMode:'all';
+ const mode='all';
  let shown=0;
  app.querySelectorAll('.admin-order-fold,.admin-ship-candidate').forEach(card=>{
   const raw=card.getAttribute('data-admin-search-'+mode)||card.textContent||'';
@@ -10002,19 +10000,13 @@ function adminOrderNeedsPaymentOrProcurement(q){
 }
 /* Less common status filters are available in an on-demand dialog. */
 function adminOrderAdvancedFilterEntries(){
- const all=state.quotes||[],count=predicate=>all.filter(predicate).length;
+ const all=state.quotes||[],count=fn=>all.filter(fn).length;
  return [
-  ['all','견적·선택',count(q=>q.status==='requested'||(q.status==='quoted'&&(!q.purchase_intent||q.purchase_intent==='undecided')))],
-  ['buy_now','구매 진행',count(q=>isRoundBuyer(q)&&!isFinishedOrder(q))],
+  ['needs_review','확인 필요한 주문',count(q=>q.status==='requested'||q.status==='quoted')],
+  ['pricing','가격 확인 필요',count(q=>q.status==='requested'||(q.status==='quoted'&&quoteNeedsPriceInput(q)))],
   ['finished','완료',count(isFinishedOrder)],
-  ['other','보류·다음 회차',count(q=>q.status==='quoted'&&['next_round','on_hold'].includes(q.purchase_intent))],
   ['cancel_requested','취소 요청',count(q=>q.cancel_requested_at&&q.status!=='cancelled')],
-  ['requested','견적 요청',count(q=>q.status==='requested')],
-  ['quoted','견적 안내',count(q=>q.status==='quoted')],
-  ['confirmed','주문 확정',count(q=>q.status==='confirmed')],
-  ['next_round','다음 회차',count(q=>q.status==='quoted'&&q.purchase_intent==='next_round')],
-  ['on_hold','보류',count(q=>q.status==='quoted'&&q.purchase_intent==='on_hold')],
-  ['undecided','회차 미선택',count(q=>q.status==='quoted'&&(!q.purchase_intent||q.purchase_intent==='undecided'))]
+  ['cancelled','취소됨',count(q=>q.status==='cancelled')]
  ];
 }
 function renderAdminOrderFilterModal(){
@@ -10038,13 +10030,6 @@ function renderAdminOrderFilterModal(){
 }
 /* Main Orders opens the earliest active queue on first visit. */
 function preferredAdminOrderFilter(){
- const rows=state.quotes||[];
- const count=fn=>rows.filter(fn).length;
- if(count(q=>q.status==='requested'||(q.status==='quoted'&&quoteNeedsPriceInput(q))))return 'pricing';
- if(count(q=>q.status==='quoted'&&(!q.purchase_intent||q.purchase_intent==='undecided')&&!quoteNeedsPriceInput(q)))return 'waiting_buyer';
- if(count(q=>q.status==='quoted'&&q.purchase_intent==='buy_now'&&!quoteNeedsPriceInput(q)))return 'final_confirmation';
- if(count(adminOrderNeedsPaymentOrProcurement))return 'preparing_orders';
- if(count(q=>isWholesaleCompleted(q)&&!isFinishedOrder(q)))return 'wholesale_completed';
  return 'all_history';
 }
 function renderAdminQuotes(){
@@ -10064,9 +10049,10 @@ function renderAdminQuotes(){
  const nCourierCompleted=count(q=>adminDeliveryListed(q,'delivery_completed'));
  const nCancel=count(q=>q.cancel_requested_at&&q.status!=='cancelled');
  const nOther=count(q=>q.status==='quoted'&&['next_round','on_hold'].includes(q.purchase_intent));
+ if(['all','waiting_buyer','final_confirmation'].includes(state.filter))state.filter='all_history';
  const filter=state.filter;
- const reminderTargets=purchaseChoiceReminderTargets();
- const qq=all.filter(q=>filter==='all'?isPre(q):
+ const qq=all.filter(q=>filter==='needs_review'?q.status==='requested'||q.status==='quoted':
+  filter==='all'?isPre(q):
   filter==='pricing'?isPricing(q):
   filter==='waiting_buyer'?isWaiting(q):
   filter==='final_confirmation'?isFinalWaiting(q):
@@ -10096,7 +10082,7 @@ function renderAdminQuotes(){
  const tabs=[['pricing','견적',nPrice],['waiting_buyer','구매 선택',nWaiting],['final_confirmation','확정 대기',nFinalWaiting],['preparing_orders','입금·발주',nPaymentProcurement],['wholesale_completed','입고·배송',nDelivery],['all_history','전체',all.length]];
  const extras=adminOrderAdvancedFilterEntries();
  const orderMode=['wholesale_completed','delivery_shipped','delivery_completed'].includes(filter)?'shipping':filter==='preparing_orders'?'procurement':'orders';
- const visibleTabs=orderMode==='orders'?tabs.filter(([key])=>['pricing','waiting_buyer','final_confirmation','all_history'].includes(key)):[];
+
  const dispatchBatch=filter==='wholesale_completed'&&state.adminShippingMethod==='courier'?adminNuvoCandidates():null;
  const dispatchReadyIds=new Set(dispatchBatch?dispatchBatch.ready.flatMap(r=>r.group.map(q=>q.id)):[]);
  const dispatchWaitingGroups=dispatchBatch?bundledQuoteGroups(qq.filter(q=>!dispatchReadyIds.has(q.id)),true):[];
@@ -10105,32 +10091,20 @@ function renderAdminQuotes(){
    filter.startsWith('flow_')?workflowLabels[filter.slice(5)]:statusLabel[filter]||'주문');
  return `<section class="admin-quote-workspace admin-orders-page">
   <div class="admin-quote-anchor" id="admin-quote-results"></div>
-  <div class="admin-page-heading"><h2>주문 관리</h2><span>전체 ${all.length}건</span></div>
+  <div class="admin-page-heading"><h2>주문 관리</h2></div>
   <nav class="admin-order-modes" aria-label="업무별 주문 관리">
-   <button type="button" data-action="admin-order-mode" data-mode="orders" class="${orderMode==='orders'?'active':''}" aria-pressed="${orderMode==='orders'}">전체 주문 내역</button>
-   <button type="button" data-action="admin-order-mode" data-mode="procurement" class="${orderMode==='procurement'?'active':''}" aria-pressed="${orderMode==='procurement'}">발주 관리</button>
-   <button type="button" data-action="admin-order-mode" data-mode="shipping" class="${orderMode==='shipping'?'active':''}" aria-pressed="${orderMode==='shipping'}">발송 관리</button>
+   <button type="button" data-action="admin-order-mode" data-mode="orders" class="${orderMode==='orders'?'active':''}" aria-pressed="${orderMode==='orders'}">전체 주문</button>
+   <button type="button" data-action="admin-order-mode" data-mode="procurement" class="${orderMode==='procurement'?'active':''}" aria-pressed="${orderMode==='procurement'}">발주</button>
+   <button type="button" data-action="admin-order-mode" data-mode="shipping" class="${orderMode==='shipping'?'active':''}" aria-pressed="${orderMode==='shipping'}">발송</button>
   </nav>
   <div class="admin-orders-search">
-   <label for="admin-order-search-mode" class="admin-order-search-type">
-    <select id="admin-order-search-mode" aria-label="검색 항목">
-     ${[['all','전체'],['buyer','주문자'],['baby','아기 이름'],['product','상품명'],['contact','연락처'],['order','주문번호']].map(([key,label])=>`<option value="${key}" ${state.adminOrderSearchMode===key?'selected':''}>${label}</option>`).join('')}
-    </select>
-   </label>
-   <input type="search" id="admin-order-search" aria-label="주문 검색" autocomplete="off" placeholder="검색어 입력" value="${esc(state.adminOrderSearch||'')}">
+   <input type="search" id="admin-order-search" aria-label="주문 검색" autocomplete="off" placeholder="주문자·아기·상품명 검색" value="${esc(state.adminOrderSearch||'')}">
    <button type="button" data-action="clear-admin-order-search" class="${state.adminOrderSearch?'':'hidden'}" aria-label="검색어 지우기">×</button>
   </div>
-  ${visibleTabs.length?`<div class="admin-orders-filterbar" role="group" aria-label="주문 진행단계">
-   ${visibleTabs.map(([key,label,num])=>`<button type="button" data-filter="${key}" class="${filter===key?'active':''}" aria-pressed="${filter===key}"><span>${label}</span><b>${num}</b></button>`).join('')}
-  </div>`:''}
-  ${filter==='waiting_buyer'&&nWaiting?`<div class="admin-choice-bulk-bar">
-   <span>개별 발송은 각 주문에서 · 전체 대상 <b>${reminderTargets.length}건</b></span>
-   <button type="button" data-action="open-purchase-remind-all" ${reminderTargets.length?'':'disabled'}>전체 보내기</button>
-  </div>`:''}
   <div class="admin-orders-title-row">
    <div class="admin-orders-list-title"><strong>${esc(title)}</strong><span>${['delivery_shipped','delivery_completed'].includes(filter)?groups.length+'건 · 주문별로 표시':qq.length+'건'}</span></div>
    <button type="button" class="admin-clean-utility" data-action="open-admin-order-filters" aria-label="주문 상세 필터 열기">
-    ${advancedSelected?'선택 중 · '+esc(title):'상세 필터'} <span aria-hidden="true">☷</span>
+    ${advancedSelected?'선택 중 · '+esc(title):'필터'} <span aria-hidden="true">☷</span>
    </button>
   </div>
   ${filter==='preparing_orders'?`<div class="admin-preproc-totals" aria-label="입금 및 발주 대기 금액">
@@ -10151,9 +10125,9 @@ function renderAdminQuotes(){
     <button type="button" data-action="admin-shipping-method" data-method="courier" class="${state.adminShippingMethod==='courier'?'active':''}" aria-pressed="${state.adminShippingMethod==='courier'}">택배 <b>${nCourierDelivery}</b></button>
     <button type="button" data-action="admin-shipping-method" data-method="pickup" class="${state.adminShippingMethod==='pickup'?'active':''}" aria-pressed="${state.adminShippingMethod==='pickup'}">직접수령 <b>${nPickupDelivery}</b></button>
    </div>
-   ${(!state.adminShippingMethod||state.adminShippingMethod==='all')?'<button type="button" class="admin-nuvo-shortcut" data-action="nuvo-open" title="누보 택배 일괄등록 엑셀 만들기" aria-label="누보 택배 일괄등록 엑셀 만들기">📄 엑셀</button>':''}
+   ${(!state.adminShippingMethod||state.adminShippingMethod==='all')?'<button type="button" class="admin-nuvo-shortcut" data-action="nuvo-open" title="미니예나 택배 송장 엑셀 만들기" aria-label="미니예나 택배 송장 엑셀 만들기">📄 송장 엑셀</button>':''}
   </div>`:''}
-  ${dispatchBatch?renderAdminDispatchQueue(dispatchBatch,dispatchWaitingGroups):qq.length?filter==='all'?renderAdminQuoteFlatSection(waiting,'가격 확인','pending')+renderAdminQuoteFlatSection(priced,'구매 선택 대기'):
+  ${dispatchBatch?renderAdminDispatchQueue(dispatchBatch,dispatchWaitingGroups):qq.length?filter==='all'?renderAdminQuoteFlatSection(waiting,'가격 확인','pending')+renderAdminQuoteFlatSection(priced,'이전 주문'):
    renderAdminQuoteFlatSection(groups,'',filter==='pricing'?'pending':'saved'):
    '<div class="empty">해당 주문이 없어요.</div>'}
   <div id="admin-order-search-empty" class="empty hidden">검색 결과가 없어요.</div>

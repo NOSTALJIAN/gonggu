@@ -9272,28 +9272,20 @@ function renderCollapsibleAdminOrder(group,section){
  .replace('취소 요청 확인','취소 요청')
  .replace('판매가 입력 필요','가격 입력');
  const urgent=!!(cancel||options||delivery||missing);
- const deliveryTag=group.every(q=>q.status==='confirmed'&&q.delivery_method==='courier'&&workflowStage(q)==='completed')?'✓ 배송 완료':group.some(q=>q.status==='confirmed'&&q.delivery_method==='courier'&&workflowStage(q)==='shipped')?'🚚 배송 중':group.some(q=>q.status==='confirmed'&&(state.partialParcels||[]).some(p=>(p.items||[]).some(i=>i.quote_id===q.id)))?'📦 일부 배송 중':'';
  const confirmedOrders=group.filter(q=>q.status==='confirmed');
  const canSumPayments=confirmedOrders.length>0&&confirmedOrders.every(readyQuote);
  const confirmedDue=canSumPayments?confirmedOrders.reduce((sum,q)=>sum+totalDue(q),0):0;
  const confirmedPaid=confirmedOrders.reduce((sum,q)=>sum+Math.max(0,Number(q.amount_paid||0)-Number(q.amount_refunded||0)),0);
- const onePart=confirmedOrders.length===1&&canSumPayments?orderPaymentParts(confirmedOrders[0]):null;
- const paymentMark=confirmedOrders.some(q=>paymentWaiver(q)>0)&&canSumPayments&&confirmedPaid+confirmedOrders.reduce((n,q)=>n+paymentWaiver(q),0)>=confirmedDue?'차액 인정 · 정산 완료':onePart&&onePart.goodsMissing===0&&onePart.shippingMissing>0?'상품 입금 완료 · 택배비 별도':
-  !canSumPayments?'':confirmedDue>0&&confirmedPaid>=confirmedDue?'입금 확인':confirmedPaid>0?'부분 입금':'미입금';
- // Once an order is shipping (including partial shipment), its status already
- // implies checkout is done. Avoid a duplicate "입금 확인" chip in the list.
  const shippingFocus=group.length===1&&group[0].status==='confirmed'&&group[0].delivery_method==='courier'&&(
   adminOrderJourneyStep(group[0])==='journey_shipping'||
   state.filter==='delivery_shipped'&&adminDeliveryListed(group[0],'delivery_shipped'));
- const listPaymentMark=shippingFocus?'':groupAllReceived&&!groupAlreadySent&&paymentMark==='입금 확인'?'입고 완료':
-  paymentMark==='입금 확인'&&['🚚 배송 중','📦 일부 배송 중'].includes(deliveryTag)?'':paymentMark;
  const showPaymentSummary=state.filter==='preparing_orders'&&confirmedOrders.length>0;
  const paymentSummary=showPaymentSummary?`<span class="admin-order-fold-amounts"><span>총 결제 <b>${canSumPayments?money(confirmedDue):'확인 중'}</b></span><span>입금 <b>${money(confirmedPaid)}</b></span><span class="is-due">미입금 <strong>${canSumPayments?money(confirmedOrders.reduce((sum,q)=>sum+balanceDue(q),0)):'확인 중'}</strong></span></span>`:'';
  return `<details class="admin-order-fold ${urgent?'has-pending':''}" data-admin-order-id="${esc(key)}"${adminOrderSearchAttrs(group)} ${open?'open':''}>
   <summary class="admin-order-fold-heading">
    <span class="admin-order-fold-left">
     <strong>${esc(root.buyer_name||'주문자 미입력')} ${adminGithubGroupIcon(group)} <span class="admin-order-fold-baby">아기: ${esc(babies.join(' · ')||'미입력')}</span></strong>
-    <span class="admin-order-fold-meta">${group.length>1?(isAdminViewGroup(group)?'확정 주문 '+group.length+'건 자동 합침 · ':group.every(q=>bundleRootId(q)===bundleRootId(group[0]))?'묶음배송 '+group.length+'건 · ':'주문 '+group.length+'건 함께 보기 · '):''}상품 ${count}종 · ${qty}개 · ${fmtDate(root.created_at)}${listPaymentMark?` <b class="admin-order-payment-chip ${['입금 확인','입고 완료'].includes(listPaymentMark)?'paid':''}">${listPaymentMark}</b>`:''}${deliveryTag&&!shippingFocus?` <b class="admin-order-payment-chip paid">${esc(deliveryTag)}</b>`:''}</span>
+    <span class="admin-order-fold-meta">${group.length>1?(isAdminViewGroup(group)?'확정 주문 '+group.length+'건 자동 합침 · ':group.every(q=>bundleRootId(q)===bundleRootId(group[0]))?'묶음배송 '+group.length+'건 · ':'주문 '+group.length+'건 함께 보기 · '):''}상품 ${count}종 · ${qty}개 · ${fmtDate(root.created_at)}</span>
     ${paymentSummary}
    </span>
    <span class="admin-order-fold-right"><span class="admin-order-fold-next ${urgent?'is-urgent':''}">${esc(nextShort)}</span></span>

@@ -60,7 +60,7 @@
 .admin-ship-waiting .admin-price-section{margin-top:13px}
 @media(max-width:370px){.admin-order-modes button{font-size:11px}.admin-ship-toolbar{gap:5px}.admin-ship-export{padding:10px 7px;font-size:11px}}
 </style>
-<script src="./nuvo_shipping.js?v=20261106-a5-queue-preselection" defer></script>
+<script src="./nuvo_shipping.js?v=20261106-a6-recipient-notes-merge" defer></script>
 <script src="./nuvo_import.js?v=20261106-a3-one-label-merged" defer></script>
 <script src="./partial_shipping.js?v=20261106-v120-tracking-status" defer></script>
 <!-- Release 439f3d34: remove only the retired MINIYENA offline cache.
@@ -10149,7 +10149,7 @@ function renderAdminQuotes(){
     <button type="button" data-action="admin-shipping-method" data-method="courier" class="${state.adminShippingMethod==='courier'?'active':''}" aria-pressed="${state.adminShippingMethod==='courier'}">택배 <b>${nCourierDelivery}</b></button>
     <button type="button" data-action="admin-shipping-method" data-method="pickup" class="${state.adminShippingMethod==='pickup'?'active':''}" aria-pressed="${state.adminShippingMethod==='pickup'}">직접수령 <b>${nPickupDelivery}</b></button>
    </div>
-   <button type="button" class="admin-nuvo-shortcut" data-action="nuvo-open" title="누보 택배 일괄등록 엑셀 만들기" aria-label="누보 택배 일괄등록 엑셀 만들기">📄 엑셀</button>
+   ${(!state.adminShippingMethod||state.adminShippingMethod==='all')?'<button type="button" class="admin-nuvo-shortcut" data-action="nuvo-open" title="누보 택배 일괄등록 엑셀 만들기" aria-label="누보 택배 일괄등록 엑셀 만들기">📄 엑셀</button>':''}
   </div>`:''}
   ${dispatchBatch?renderAdminDispatchQueue(dispatchBatch,dispatchWaitingGroups):qq.length?filter==='all'?renderAdminQuoteFlatSection(waiting,'가격 확인','pending')+renderAdminQuoteFlatSection(priced,'구매 선택 대기'):
    renderAdminQuoteFlatSection(groups,'',filter==='pricing'?'pending':'saved'):

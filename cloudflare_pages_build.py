@@ -27,6 +27,7 @@ ASSETS = (
     "icon-shop-readable-192.png",
     "OneSignalSDKWorker.js",
     "nuvo_shipping.js",
+    "nuvo_import.js",
     "partial_shipping.js",
     "sw.js",
 )

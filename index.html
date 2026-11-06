@@ -5150,7 +5150,7 @@ function miniOpenLinkedProduct(){
  state.shopCategory='all';
  state.shopStore='all';
  state.modal={type:product.is_sold_out?'product-photos':'pick',id:product.id};
- render();
+ renderShopProductSheetOnly();
 }
 const trackLink=(id,token)=>location.origin+STOREFRONT_PATH+'?page=track&id='+encodeURIComponent(id)+'&token='+encodeURIComponent(token);
 function parseOrderLookupLink(input){
@@ -11517,9 +11517,29 @@ function updateAdminPaymentPopupPreview(form){
    :'실제 순입금 '+money(paid-refunded)+' · 남은 금액 '+money(remaining);
  }catch(e){output.textContent=e.message||'입금액과 환불액을 확인해 주세요.';}
 }
+// Keep the product listing DOM and its scroll/carousel state intact while
+// opening and closing buyer product sheets. Recreating the entire store each
+// time would reload many images and can trigger iOS Safari memory refreshes.
+function renderShopProductSheetOnly(){
+ if(state.page!=='shop'||!app.querySelector('.shop-content')){render();return;}
+ app.querySelector('#overlay')?.remove();
+ const next=renderModal();
+ if(next)app.insertAdjacentHTML('beforeend',next);
+ syncModalPageLock();
+ prepareMiniDeferredPhotos();
+}
+function closeShopProductSheetOnly(){
+ if(githubStorefront&&new URLSearchParams(location.search).has('product')){
+  history.replaceState({},'',location.pathname+'?page=shop');
+ }
+ state.modal=null;
+ renderShopProductSheetOnly();
+}
 function modalOpen(type,id=null){
  if(type==='approve'||type==='product')initAdminPhotoSequence(type,id);
- state.modal={type,id};render();
+ state.modal={type,id};
+ if(state.page==='shop'&&['pick','product-photos'].includes(type))renderShopProductSheetOnly();
+ else render();
  if(type==='approve'||type==='product'){
   const editor=app.querySelector(type==='approve'?'#approve-form':'#product-form');
   updateAdminPhotoEditor(editor);
@@ -14017,7 +14037,7 @@ if(a==='edit-delivery'){
  b.disabled=true;
  try{await randomizeHeroPhoto();notif('랜덤 상품 사진으로 변경했어요. 고객 메인화면에도 적용돼요.')}
  finally{if(b.isConnected)b.disabled=false}
-}else if(a==='reset-hero-photo'){if(!window.confirm('기존 메인 사진을 지우고 자동 상품 사진으로 되돌릴까요?'))return;await resetHeroPhoto();notif('기존 상품 사진으로 되돌렸어요')}else if(a==='close'){if(state.modal?.type==='entry-push')postponeEntryPush();if(githubStorefront&&['pick','product-photos'].includes(state.modal?.type)&&new URLSearchParams(location.search).has('product'))history.replaceState({},'',location.pathname+'?page=shop');clearAdminSelectedPhotos();state.modal=null;render()}else if(a==='product-photos'){
+}else if(a==='reset-hero-photo'){if(!window.confirm('기존 메인 사진을 지우고 자동 상품 사진으로 되돌릴까요?'))return;await resetHeroPhoto();notif('기존 상품 사진으로 되돌렸어요')}else if(a==='close'){if(state.modal?.type==='entry-push')postponeEntryPush();if(state.page==='shop'&&['pick','product-photos'].includes(state.modal?.type)){closeShopProductSheetOnly();return;}clearAdminSelectedPhotos();state.modal=null;render()}else if(a==='product-photos'){
  const p=selectedProd(id);
  if(!p||!p.published||!state.stores.some(st=>st.id===p.store_id&&st.active))throw Error('현재 전시 중인 상품이 아니에요.');
  modalOpen('product-photos',id);
@@ -14938,8 +14958,8 @@ function finishDismissSheetSwipe(e,cancelled){
      cancelAdminPhotoDrag();
      clearAdminSelectedPhotos();
     }
-    state.modal=null;
-    render();
+    if(state.page==='shop'&&['pick','product-photos'].includes(drag.modalType))closeShopProductSheetOnly();
+    else{state.modal=null;render();}
    }
   },185);
  }else{

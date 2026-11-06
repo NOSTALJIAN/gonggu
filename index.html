@@ -7,6 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="미니예나">
 <meta name="application-name" content="MINIYENA">
+<script src="./nuvo_shipping.js?v=20261106-a1" defer></script>
 <!-- Release 439f3d34: remove only the retired MINIYENA offline cache.
      Never unregister OneSignal's separate push notification worker. -->
 <script>
@@ -9923,6 +9924,7 @@ function renderAdminQuotes(){
    ${preparingMissing?`<p class="admin-preproc-totals-note">금액 미확정 ${preparingMissing}건은 총액에서 제외했어요. 확정 후 합산돼요.</p>`:''}
   </div>`:''}
   ${filter==='preparing_orders'?'<p class="admin-preproc-note">입금 확인 후 발주하면 ‘입고·배송’으로 이동해요.</p>':''}
+  ${filter==='wholesale_completed'?'<div class="nuvo-export-entry" style="margin:3px 0 12px"><button type="button" class="btn block secondary" data-action="nuvo-open">📦 택배 일괄등록 · 누보 엑셀 만들기</button></div>':''}
   ${qq.length?filter==='all'?renderAdminQuoteFlatSection(waiting,'가격 확인','pending')+renderAdminQuoteFlatSection(priced,'구매 선택 대기'):
       renderAdminQuoteFlatSection(groups,'',filter==='pricing'?'pending':'saved'):
       '<div class="empty">해당 주문이 없어요.</div>'}
@@ -11899,6 +11901,12 @@ async function click(e){
  if(e.target.matches?.('[data-product-store-search]')){productStoreSearchResults(e.target,true);return;}
  if(!e.target.closest?.('[data-product-store-picker]'))closeProductStoreSearch(app.querySelector('#product-form'));
  const pg=e.target.closest('[data-page]');if(pg){goto(pg.dataset.page);if(pg.classList.contains('brand-home'))window.scrollTo({top:0,behavior:'auto'});return}const b=e.target.closest('[data-action]');if(!b)return;const a=b.dataset.action,id=b.dataset.id;try{
+ if(a==='nuvo-open'){
+  if(!state.admin||state.page!=='admin')throw Error('관리자 전용 기능이에요.');
+  if(!window.MiniNuvoShipping)throw Error('엑셀 기능을 불러오지 못했어요. 새로고침 후 다시 시도해 주세요.');
+  window.MiniNuvoShipping.open({quotes:state.quotes,bundleRootId,allReceived,balanceDue,workflowStage,normalizeBuyerPhone,saleItems});
+  return;
+ }
 
 if(a==='receipt-view'){
  if(!state.admin||state.tab!=='receipts')return;

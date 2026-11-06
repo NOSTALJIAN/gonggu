@@ -2229,6 +2229,7 @@ details[open]>summary>.admin-quote-extra-chevron{transform:rotate(180deg)}
 .admin-login-footnote{color:#999;font-size:10px;line-height:1.6;text-align:center;margin:12px 0 0;}
 .admin-login-status{font-size:11px;line-height:1.5;text-align:center;color:#575757;margin:0;}
 .admin-login-status:not(:empty){margin-top:11px;}
+.admin-login-status.is-error{color:#a33333;background:#fff5f5;border:1px solid #f2d6d6;border-radius:9px;padding:10px 12px;text-align:left;}
 .admin-login-spinner{display:inline-block;width:16px;height:16px;border:2px solid #ffffff55;border-top-color:white;border-radius:50%;animation:spin .7s linear infinite;}
 .admin-auth-loading{min-height:calc(100svh - 154px);display:flex;align-items:center;justify-content:center;padding:24px 18px 70px!important;background:#fafafa;}
 .admin-auth-loading-panel{width:100%;max-width:350px;text-align:center;padding:30px 20px;}
@@ -14014,7 +14015,7 @@ if(isLoginSubmit){
  if(submitButton){submitButton.disabled=true;submitButton.innerHTML='<span class="admin-login-spinner" aria-hidden="true"></span> 관리자 화면 여는 중';}
  f.setAttribute('aria-busy','true');
  const loginStatus=f.querySelector('[data-login-status]');
- if(loginStatus)loginStatus.textContent='로그인 확인 및 주문 정보 불러오는 중…';
+ if(loginStatus){loginStatus.classList.remove('is-error');loginStatus.textContent='로그인 확인 및 주문 정보 불러오는 중…';}
 }
 const data=new FormData(f);try{if(f.id==='admin-bundle-refund-form'){
  if(!connected||!state.admin||state.page!=='admin'||state.modal?.type!=='admin-bundle-refund'||
@@ -14358,7 +14359,7 @@ else if(f.id==='product-form'){
  await loadAdmin();
  notif('상품을 저장했어요. 새 가게를 입력했다면 거래처에도 자동 등록됐어요.');
 }
-else if(f.id==='login'){if(!connected)throw Error('온라인 연결 설정을 먼저 해 주세요');const r=await fetch(url+'/auth/v1/token?grant_type=password',{method:'POST',headers:{apikey:key,'Content-Type':'application/json'},body:JSON.stringify({email:data.get('email'),password:data.get('password')})});const j=await r.json();if(!r.ok)throw Error(j.error_description||'로그인 실패');session={...j,expires_at:Math.floor(Date.now()/1000)+j.expires_in};localStorage.setItem(SESS,JSON.stringify(session));await loadAdmin();if(!state.admin)throw Error('관리자 권한을 확인하지 못했어요.');notif('관리자 로그인 완료')}
+else if(f.id==='login'){if(!connected)throw Error('온라인 연결 설정을 먼저 해 주세요');const r=await fetch(url+'/auth/v1/token?grant_type=password',{method:'POST',headers:{apikey:key,'Content-Type':'application/json'},body:JSON.stringify({email:data.get('email'),password:data.get('password')})});const j=await r.json();if(!r.ok){if(r.status===402)throw Error('Supabase 무료 플랜 이용 한도가 초과되어 관리자 로그인이 차단됐어요. 비밀번호 오류가 아닙니다. Supabase 조직 사용량과 요금제에서 서비스 제한을 해제해야 해요.');throw Error(j.error_description||j.msg||j.message||'로그인 실패');}session={...j,expires_at:Math.floor(Date.now()/1000)+j.expires_in};localStorage.setItem(SESS,JSON.stringify(session));await loadAdmin();if(!state.admin)throw Error('관리자 권한을 확인하지 못했어요.');notif('관리자 로그인 완료')}
 else if(f.dataset.supplierShipping){
  const q=state.quotes.find(x=>x.id===f.dataset.supplierShipping);
  const values=parseSupplierShippingValues(data.get('supplier_total'),data.get('supplier_people'));
@@ -14451,13 +14452,13 @@ else if(f.dataset.payment){
   render();
  }else notif(updated?.status==='confirmed'&&q.status==='quoted'?'입금 저장 완료 · 최종 주문확정으로 자동 변경됐어요.':'이 주문의 입금 기록을 저장했어요.');
 }
-}catch(ex){if(f.dataset.price)adminPriceScrollAnchor=null;notif(errorText(ex))}finally{
+}catch(ex){if(f.dataset.price)adminPriceScrollAnchor=null;if(isLoginSubmit){const loginStatus=f.querySelector('[data-login-status]');if(loginStatus){loginStatus.textContent=errorText(ex);loginStatus.classList.add('is-error');}}notif(errorText(ex))}finally{
  if(isLoginSubmit&&f.isConnected){
   const button=f.querySelector('button[type="submit"]');
   if(button){button.disabled=false;button.textContent='로그인';}
   f.removeAttribute('aria-busy');
   const loginStatus=f.querySelector('[data-login-status]');
-  if(loginStatus)loginStatus.textContent='';
+  if(loginStatus&&!loginStatus.classList.contains('is-error'))loginStatus.textContent='';
  }
  busy=false;
 }}

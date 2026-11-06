@@ -106,15 +106,15 @@ async function open(ctx){
  document.body.append(overlay);
  overlay.addEventListener('click',e=>{if(e.target===overlay||e.target.closest('.ps-close'))close();});
  const rootId=ctx.bundleRootId(ctx.quote);
- const group=ctx.quotes.filter(q=>q.status!=='cancelled'&&ctx.bundleRootId(q)===rootId);
+ const group=ctx.quotes.filter(q=>q.status==='confirmed'&&q.delivery_method==='courier'&&ctx.bundleRootId(q)===rootId);
  if(!group.length){close();throw Error('주문 목록이 바뀌었어요. 새로고침해 주세요.');}
  try{
   const history=await ctx.rpc('gq_admin_list_partial_parcels_v118',{},true);
   if(!overlay)return;
   const already=Array.isArray(history)?history:[];
-  const possible=group.flatMap(q=>(q.items||[]).filter(i=>i.fulfillment!=='sold_out'&&i.fulfillment!=='delivered')
+  const possible=group.flatMap(q=>(q.items||[]).filter(i=>i.fulfillment==='received'||(i.fulfillment==='ordered'&&Number(i.received_qty||0)>0))
    .map(i=>({q,i,limit:Math.max(0,arrivedQty(i)-sentQty(i.id,already))})).filter(x=>x.limit>0 && ['new','preparing'].includes(q.workflow_stage||'new')));
-  const waiting=group.flatMap(q=>(q.items||[]).filter(i=>i.fulfillment!=='sold_out'&&
+  const waiting=group.flatMap(q=>(q.items||[]).filter(i=>i.fulfillment!=='sold_out'&&i.fulfillment!=='delivered'&&
    Math.max(0,Number(i.quantity)||0)>sentQty(i.id,already)+Math.max(0,arrivedQty(i)-sentQty(i.id,already))));
   const prev=group.map(q=>parcelHistory(q,already)).filter(Boolean).join('');
   const body=overlay.querySelector('.ps-content');body.className='ps-content';

@@ -8,6 +8,19 @@
 <meta name="apple-mobile-web-app-title" content="미니예나">
 <meta name="application-name" content="MINIYENA">
 <style>.admin-part-inventory,.admin-part-shipment-card{padding:8px 5px}.admin-part-inventory-title{background:#edf4f1;border-radius:8px;padding:10px 11px;margin:8px 0;font-size:12px;font-weight:800;display:flex;justify-content:space-between}.admin-part-inventory-title.waiting{background:#f8f5ee}.admin-part-item-row{display:flex;justify-content:space-between;gap:10px;border-bottom:1px solid #eee;padding:10px 5px;font-size:12px}.admin-part-item-row b{display:block;font-weight:800;overflow-wrap:anywhere}.admin-part-item-row small{display:block;color:#888;margin-top:4px}.admin-part-item-row strong{white-space:nowrap}.admin-part-summary{font-size:12px;line-height:1.5;color:#555}.admin-part-summary-numbers{display:flex;gap:10px;font-size:12px;border-bottom:1px solid #eee;padding:8px 0 14px}.admin-part-summary-numbers span{flex:1}.admin-part-parcel{background:#fafafa;border:1px solid #eaeaea;border-radius:10px;margin:10px 0;padding:12px}.admin-part-parcel-title{display:flex;flex-direction:column;gap:4px;font-size:12px;margin-bottom:6px}.admin-part-parcel-title span{color:#777;overflow-wrap:anywhere}.admin-part-parcel a{display:inline-block;margin:12px 0 0;font-size:12px;text-decoration:underline}.admin-part-full-order{border-top:1px solid #eee;margin:14px 0;padding:13px 0}.admin-part-full-order>summary{font-size:12px;font-weight:800;cursor:pointer}.admin-delivery-stage-links{display:flex;gap:6px;margin:8px 0 12px}.admin-delivery-stage-links button{flex:1;min-width:0;padding:11px 4px;border:1px solid #ddd;border-radius:9px;background:#fff;color:#333;font-size:11px;font-weight:750;white-space:nowrap}.admin-delivery-stage-links button.active{background:#1c1c1c;color:#fff;border-color:#1c1c1c}.admin-shipping-method{display:flex;gap:6px;margin:9px 0 12px}.admin-shipping-method button{min-width:0;flex:1;border:1px solid #e5e5e5;background:#fff;border-radius:9px;padding:10px 4px;color:#555;font-size:12px;font-weight:750;white-space:nowrap}.admin-shipping-method button.active{border-color:#171717;background:#171717;color:white}.admin-shipping-method b{font-size:11px}.admin-courier-address{margin:4px 0 12px;border:1px solid #e5e5e5;border-radius:10px;background:#f9fafb;padding:11px 12px}.admin-courier-address>summary{font-size:13px;font-weight:800;cursor:pointer}.admin-courier-address-info{padding:10px 2px 3px;display:flex;gap:6px;flex-direction:column;font-size:13px}.admin-courier-address-info strong{font-weight:800}.admin-courier-address-info span,.admin-courier-address-info small{color:#666}.admin-courier-address-info p{margin:2px 0 0;line-height:1.7;overflow-wrap:anywhere}</style>
+<style id="admin-delivery-compact-v2">
+.admin-delivery-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;margin:10px 0 8px;padding:4px;border:1px solid #eee;border-radius:12px;background:#f5f5f5}
+.admin-delivery-tabs button{display:flex;align-items:center;justify-content:center;gap:5px;min-width:0;min-height:38px;padding:7px 3px;border:0;border-radius:9px;background:transparent;color:#646464;font-size:12px;font-weight:760;white-space:nowrap}
+.admin-delivery-tabs button.active{background:#fff;color:#191919;box-shadow:0 1px 5px #00000013}
+.admin-delivery-tabs button b{font-size:11px;font-weight:800;font-variant-numeric:tabular-nums}
+.admin-shipping-tools{display:flex;align-items:center;justify-content:space-between;gap:6px;margin:0 0 10px;min-width:0}
+.admin-method-pills{display:flex;align-items:center;gap:3px;flex:1;min-width:0}
+.admin-method-pills button{border:1px solid transparent;background:transparent;color:#777;border-radius:7px;min-width:0;min-height:34px;padding:6px 8px;font-size:11px;font-weight:740;white-space:nowrap}
+.admin-method-pills button.active{background:#222;color:#fff}
+.admin-method-pills b{font-size:11px;font-weight:800}
+.admin-nuvo-shortcut{flex:none;min-height:34px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#333;padding:5px 10px;font-size:12px;font-weight:780;white-space:nowrap}
+@media(max-width:375px){.admin-method-pills{gap:1px}.admin-method-pills button{padding:6px 5px;font-size:10.5px}.admin-delivery-tabs button{font-size:11px}.admin-nuvo-shortcut{padding:5px 7px;font-size:11px}}
+</style>
 <script src="./nuvo_shipping.js?v=20261106-a3-one-label-manual" defer></script>
 <script src="./nuvo_import.js?v=20261106-a3-one-label-merged" defer></script>
 <script src="./partial_shipping.js?v=20261106-v120-tracking-status" defer></script>
@@ -10007,17 +10020,19 @@ function renderAdminQuotes(){
    ${preparingMissing?`<p class="admin-preproc-totals-note">금액 미확정 ${preparingMissing}건은 총액에서 제외했어요. 확정 후 합산돼요.</p>`:''}
   </div>`:''}
   ${filter==='preparing_orders'?'<p class="admin-preproc-note">입금 확인 후 발주하면 ‘입고·배송’으로 이동해요.</p>':''}
-  ${filter==='wholesale_completed'?`<div class="admin-shipping-method" role="group" aria-label="수령방식별 보기">
-     <button type="button" data-action="admin-shipping-method" data-method="all" class="${!state.adminShippingMethod||state.adminShippingMethod==='all'?'active':''}" aria-pressed="${!state.adminShippingMethod||state.adminShippingMethod==='all'}">전체 <b>${nDelivery}</b></button>
-     <button type="button" data-action="admin-shipping-method" data-method="courier" class="${state.adminShippingMethod==='courier'?'active':''}" aria-pressed="${state.adminShippingMethod==='courier'}">🚚 택배 발송 <b>${nCourierDelivery}</b></button>
-     <button type="button" data-action="admin-shipping-method" data-method="pickup" class="${state.adminShippingMethod==='pickup'?'active':''}" aria-pressed="${state.adminShippingMethod==='pickup'}">직접수령 <b>${nPickupDelivery}</b></button>
-    </div>`:''}
-  ${['wholesale_completed','delivery_shipped','delivery_completed'].includes(filter)?`<div class="admin-delivery-stage-links" role="group" aria-label="배송 진행 상태">
-   <button type="button" data-filter="wholesale_completed" class="${filter==='wholesale_completed'?'active':''}">📦 입고·발송 관리</button>
-   <button type="button" data-filter="delivery_shipped" class="${filter==='delivery_shipped'?'active':''}">🚚 배송 중 <b>${nCourierShipped}건</b></button>
-   <button type="button" data-filter="delivery_completed" class="${filter==='delivery_completed'?'active':''}">✓ 배송 완료 <b>${nCourierCompleted}건</b></button>
+  ${['wholesale_completed','delivery_shipped','delivery_completed'].includes(filter)?`<div class="admin-delivery-tabs" role="group" aria-label="배송 단계별 보기">
+   <button type="button" data-filter="wholesale_completed" class="${filter==='wholesale_completed'?'active':''}" aria-pressed="${filter==='wholesale_completed'}">입고·발송 <b>${nDelivery}</b></button>
+   <button type="button" data-filter="delivery_shipped" class="${filter==='delivery_shipped'?'active':''}" aria-pressed="${filter==='delivery_shipped'}">배송 중 <b>${nCourierShipped}</b></button>
+   <button type="button" data-filter="delivery_completed" class="${filter==='delivery_completed'?'active':''}" aria-pressed="${filter==='delivery_completed'}">배송 완료 <b>${nCourierCompleted}</b></button>
   </div>`:''}
-  ${filter==='wholesale_completed'?'<div class="nuvo-export-entry" style="margin:3px 0 12px"><button type="button" class="btn block secondary" data-action="nuvo-open">📦 택배 일괄등록 · 누보 엑셀 만들기</button></div>':''}
+  ${filter==='wholesale_completed'?`<div class="admin-shipping-tools" role="group" aria-label="수령방식과 택배 엑셀">
+   <div class="admin-method-pills" role="group" aria-label="수령방식별 보기">
+    <button type="button" data-action="admin-shipping-method" data-method="all" class="${!state.adminShippingMethod||state.adminShippingMethod==='all'?'active':''}" aria-pressed="${!state.adminShippingMethod||state.adminShippingMethod==='all'}">전체 <b>${nDelivery}</b></button>
+    <button type="button" data-action="admin-shipping-method" data-method="courier" class="${state.adminShippingMethod==='courier'?'active':''}" aria-pressed="${state.adminShippingMethod==='courier'}">택배 <b>${nCourierDelivery}</b></button>
+    <button type="button" data-action="admin-shipping-method" data-method="pickup" class="${state.adminShippingMethod==='pickup'?'active':''}" aria-pressed="${state.adminShippingMethod==='pickup'}">직접수령 <b>${nPickupDelivery}</b></button>
+   </div>
+   <button type="button" class="admin-nuvo-shortcut" data-action="nuvo-open" title="누보 택배 일괄등록 엑셀 만들기" aria-label="누보 택배 일괄등록 엑셀 만들기">📄 엑셀</button>
+  </div>`:''}
   ${qq.length?filter==='all'?renderAdminQuoteFlatSection(waiting,'가격 확인','pending')+renderAdminQuoteFlatSection(priced,'구매 선택 대기'):
       renderAdminQuoteFlatSection(groups,'',filter==='pricing'?'pending':'saved'):
       '<div class="empty">해당 주문이 없어요.</div>'}

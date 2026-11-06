@@ -137,7 +137,7 @@
 </style>
 <script src="./nuvo_shipping.js?v=20261106-b1-miniyena-name" defer></script>
 <script src="./nuvo_import.js?v=20261106-b1-miniyena-name" defer></script>
-<script src="./partial_shipping.js?v=20261106-v122-received-only" defer></script>
+<script src="./partial_shipping.js?v=20261106-v123-buyer-tracking-timeline" defer></script>
 <!-- Release 439f3d34: remove only the retired MINIYENA offline cache.
      Never unregister OneSignal's separate push notification worker. -->
 <script>
@@ -6541,7 +6541,9 @@ function buyerCourierShipment(q){
  if(q.status!=='confirmed'||q.delivery_method!=='courier')return '';
  if(q.partial_parcels?.length&&window.MiniPartialShipping?.buyerMarkup)return window.MiniPartialShipping.buyerMarkup(q);
  if(trackingInfo(q)){
-  const root=sharedShipment(q),carrier=String(root.tracking_carrier||'택배');
+  const root=sharedShipment(q);
+  if(window.MiniPartialShipping?.singleBuyerMarkup)return window.MiniPartialShipping.singleBuyerMarkup(root,workflowStage(q)==='completed');
+  const carrier=String(root.tracking_carrier||'택배');
   const number=String(root.tracking_number||'').replace(/[\s-]/g,'');
   const href=isLotteShipment(root)&&/^\d{4,30}$/.test(number)
    ?'https://www.lotteglogis.com/home/reservation/tracking/linkView?InvNo='+encodeURIComponent(number):'';
@@ -6570,7 +6572,6 @@ function renderTrack(){
  }).join('');
  const finalValue=q.status==='requested'?'가격 확인 중':q.status==='quoted'&&!settledBuyerTotal(q)?'배송비 계산 중':!readyQuote(q)?'금액 확인 중':money(totalDue(q));
  const due=buyerFinalPaymentReady(q)&&readyQuote(q)?balanceDue(q):null;
- const paid=q.status==='confirmed'&&due===0;
  const shippingAmount=q.status==='requested'?'안내 전':shippingLabel(q);
  const courierTracking=buyerCourierShipment(q);
  const delivery='<div class="buyer-simple-delivery"><span>수령 방법 · <b>'+esc(deliveryLabel(q))+'</b></span>'+
@@ -6588,7 +6589,6 @@ function renderTrack(){
    '<div class="buyer-simple-sum"><span>택배비</span><b>'+shippingAmount+'</b></div>'+
    (!q.instant_purchase&&supplierShippingShare(q)>0?'<div class="buyer-simple-sum"><span>추가 배송비</span><b>'+supplierShippingLabel(q)+'</b></div>':'')+
    '<div class="buyer-simple-sum buyer-simple-grand"><span>총 주문금액</span><strong>'+finalValue+'</strong></div>'+
-   (paid?'<p class="buyer-track-paid">✓ 입금 확인 완료 · 추가 입금할 금액 없음</p>':'')+
   '</div>'+
   delivery+
   (courierTracking||q.delivery_method==='pickup'&&q.status==='confirmed'? 
@@ -6596,8 +6596,6 @@ function renderTrack(){
   renderBuyerDispatchPanel(q)+
   (due!==null&&due>0?confirmedPaymentWidget(q):'')+
   renderBuyerSupplierFreightRequest(q)+
-  (q.status==='confirmed'&&canRequestCancel(q)&&!q.cancel_requested_at?
-   '<div class="buyer-cancel-confirmed"><button type="button" data-action="request-cancel">구매 취소 요청</button></div>':'')+
   (q.cancel_requested_at&&q.status!=='cancelled'?'<div class="buyer-hint">취소 요청 확인 중 · <button class="textbutton" type="button" data-action="withdraw-cancel-request">요청 철회</button></div>':'')+
   (q.status==='cancelled'?'<p class="buyer-hint">취소된 주문이에요.</p>':'')+
   '</section>';

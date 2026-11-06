@@ -18,20 +18,37 @@ function carrierLink(carrier,tracking){
 function parcelHistory(q,history,buyer=false){
  const records=forOrder(q,history);
  if(!records.length)return '';
- return '<div class="partial-history"><b>📦 '+(buyer?'발송된 상품 · 송장조회':'부분발송 기록')+' '+records.length+'건</b>'+
+ if(buyer){
+  return '<section class="buyer-shipment-card"><div class="buyer-shipment-heading"><strong>배송 조회</strong><small>송장 '+records.length+'건</small></div>'+
+   records.map(p=>{
+    const carrier=escapeHtml(p.carrier||'택배'),number=escapeHtml(p.tracking_number||''),
+      url=carrierLink(p.carrier,p.tracking_number),status=String(p.tracking_status_code||'');
+    const label=status==='DELIVERED'?'배송 완료':status==='OUT_FOR_DELIVERY'?'배송 출발':
+      status==='IN_TRANSIT'?'배송 중':status==='AT_PICKUP'?'집하 완료':
+      status==='EXCEPTION'?'배송 확인 필요':'송장 등록';
+    const lines=(p.items||[]).filter(i=>!i.quote_id||i.quote_id===q.id);
+    const total=lines.reduce((sum,i)=>sum+Math.max(0,Number(i.quantity)||0),0);
+    return '<div class="buyer-shipment-entry"><div class="buyer-shipment-summary"><span><b>'+carrier+'</b><small>'+number+'</small></span>'+
+     '<span class="buyer-shipment-status">'+label+'</span></div>'+
+     (url?'<a class="buyer-shipment-link" href="'+url+'" target="_blank" rel="noopener noreferrer">택배 배송조회 <span aria-hidden="true">↗</span></a>':'<small class="buyer-shipment-unavailable">택배사 조회 링크 확인 중</small>')+
+     (lines.length?'<details class="buyer-shipment-lines"><summary>발송 상품 '+total+'개 보기</summary><ul>'+lines.map(i=>
+      '<li>'+escapeHtml(i.name||q.items?.find(x=>x.id===i.item_id)?.product_name||'상품')+' · '+escapeHtml([i.color,i.size].filter(Boolean).join(' / '))+' ×'+Math.max(0,Number(i.quantity)||0)+'</li>').join('')+'</ul></details>':'')+
+    '</div>';
+   }).join('')+'</section>';
+ }
+ return '<div class="partial-history"><b>부분발송 기록 '+records.length+'건</b>'+
   records.map(p=>{
    const name=escapeHtml(p.carrier||'택배'),number=escapeHtml(p.tracking_number||''),url=carrierLink(p.carrier,p.tracking_number);
-   const status=String(p.tracking_status_code||'');
-   const shipmentLabel=status==='DELIVERED'?'✓ 배송 완료':status==='OUT_FOR_DELIVERY'?'🚚 배송 출발':status==='IN_TRANSIT'?'🚚 배송 중':status==='AT_PICKUP'?'📦 집하 완료':status==='EXCEPTION'?'⚠️ 배송 확인 필요':'🚚 송장 등록 · 조회 대기';
-   const lines=(p.items||[]).filter(i=>!i.quote_id||i.quote_id===q.id);
-   const summary=lines.map(i=>escapeHtml(i.name||q.items?.find(x=>x.id===i.item_id)?.product_name||'상품')+' '+escapeHtml(i.color||'')+' '+escapeHtml(i.size||'')+' ×'+Number(i.quantity||0)).join(' · ');
-   return '<div class="partial-history-package"><div><strong>'+name+' '+number+'</strong><span>'+shipmentLabel+' · '+new Date(p.created_at||Date.now()).toLocaleDateString('ko-KR')+'</span></div>'+
-    '<small>'+summary+'</small>'+(url?'<a href="'+url+'" target="_blank" rel="noopener noreferrer">롯데택배 배송조회 ↗</a>':'')+'</div>';
+   return '<div class="partial-history-package"><strong>'+name+' '+number+'</strong>'+
+     (url?'<a href="'+url+'" target="_blank" rel="noopener noreferrer">배송조회 ↗</a>':'')+'</div>';
   }).join('')+'</div>';
 }
 function buyerMarkup(q){
  if(!q||!Array.isArray(q.partial_parcels)||!q.partial_parcels.length)return '';
- return '<section class="partial-buyer-box">'+parcelHistory(q,q.partial_parcels,true)+'<p>아직 받지 못한 상품은 입고·발송 대기 중이며, 상품이 도착하면 별도로 발송될 수 있어요.</p></section>';
+ const total=(q.items||[]).filter(i=>i.fulfillment!=='sold_out').reduce((n,i)=>n+Math.max(0,Number(i.quantity)||0),0);
+ const sent=(q.items||[]).reduce((n,i)=>n+Math.min(Math.max(0,Number(i.quantity)||0),sentQty(i.id,q.partial_parcels)),0);
+ return '<div class="partial-buyer-box">'+parcelHistory(q,q.partial_parcels,true)+
+  (sent<total?'<p class="buyer-shipment-awaiting">아직 발송되지 않은 상품 '+(total-sent)+'개는 준비 중이에요.</p>':'')+'</div>';
 }
 function buyerItemStatus(q,item){
  const n=sentQty(item.id,q?.partial_parcels);
@@ -64,6 +81,20 @@ function style(){
  if(document.getElementById('partial-shipping-css'))return;
  const el=document.createElement('style');el.id='partial-shipping-css';
  el.textContent='.partial-admin-entry,.partial-bundle-entry{margin:10px 0;padding:12px 0;border-top:1px solid #eee}.partial-open{width:100%;padding:12px 8px;background:#1d1d1d;color:#fff}.partial-history{margin:10px 0;padding:12px;background:#f8f8f8;border-radius:10px}.partial-history>b{display:block;font-size:13px;margin-bottom:9px}.partial-history-package{padding:11px 0;border-top:1px solid #e8e8e8}.partial-history-package:first-of-type{border-top:0}.partial-history-package>div{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}.partial-history-package strong{font-size:12px}.partial-history-package span{font-size:11px;color:#888}.partial-history-package small{display:block;font-size:11px;color:#555;margin-top:5px;line-height:1.6}.partial-history-package a{display:block;font-size:12px;color:#254c8d;margin-top:6px;text-decoration:underline}.partial-buyer-box{margin:14px 0}.partial-buyer-box>p{font-size:12px;color:#666;line-height:1.6;margin:8px}.partial-item-tag{font-weight:700;color:#377050!important}.ps-mask{position:fixed;inset:0;z-index:100700;background:#0009;display:flex;align-items:flex-end;justify-content:center}.ps-dialog{width:min(100%,700px);max-height:92dvh;background:#fff;border-radius:18px 18px 0 0;box-sizing:border-box;padding:17px 18px max(18px,env(safe-area-inset-bottom));color:#222;display:flex;flex-direction:column;gap:10px}.ps-head{display:flex;align-items:center;justify-content:space-between}.ps-head h2{font-size:19px;margin:0}.ps-close{width:38px;height:38px;background:#f5f5f5;border:none;border-radius:8px;font-size:22px}.ps-lead,.ps-footer{font-size:12px;color:#666;line-height:1.6;margin:0}.ps-list{overflow-y:auto;min-height:0;max-height:46dvh;border-top:1px solid #eee;border-bottom:1px solid #eee}.ps-item{display:flex;align-items:center;gap:10px;padding:12px 2px;border-bottom:1px solid #eee}.ps-item input[type=checkbox]{width:19px;height:19px;flex-shrink:0}.ps-item span{flex:1;min-width:0}.ps-item strong{display:block;font-size:13px;line-height:1.5}.ps-item small{display:block;font-size:11px;color:#777;margin-top:3px}.ps-item input[type=number]{width:55px;padding:8px 4px;border:1px solid #ddd;border-radius:7px;text-align:center;font-size:14px}.ps-fields{display:flex;gap:8px}.ps-fields label{flex:1;min-width:0;font-size:12px;font-weight:750}.ps-fields input{box-sizing:border-box;width:100%;font-size:14px;border-radius:7px;border:1px solid #ddd;padding:11px 9px;margin-top:5px}.ps-bulk{padding:13px;border:1px solid #bbb;border-radius:9px;background:#f8f8f8;color:#222;font-size:13px;font-weight:800;cursor:pointer}.ps-submit{padding:15px;background:#171717;color:white;border:none;border-radius:9px;font-size:14px;font-weight:850}.ps-submit:disabled{opacity:.5}.ps-awaiting{font-size:11px;color:#8b633f;padding:8px 0}.ps-history{max-height:21dvh;overflow-y:auto}.ps-summary{font-size:12px;font-weight:800;color:#222}.ps-loading{padding:18px;text-align:center;color:#666}.ps-alert{font-size:12px;color:#a34242}@media(min-width:740px){.ps-mask{align-items:center}.ps-dialog{border-radius:18px}}';
+ el.textContent+=
+ '.buyer-shipment-card{border:1px solid #e6e6e6;border-radius:14px;padding:16px;background:#fff;margin:10px 0}'+
+ '.buyer-shipment-heading{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:12px}'+
+ '.buyer-shipment-heading strong{font-size:17px}.buyer-shipment-heading small{font-size:12px;color:#888}'+
+ '.buyer-shipment-entry{padding:12px 0;border-top:1px solid #ededed}'+
+ '.buyer-shipment-summary{display:flex;justify-content:space-between;align-items:center;gap:10px}'+
+ '.buyer-shipment-summary b{display:block;font-size:14px}.buyer-shipment-summary small{display:block;font-size:12px;color:#777;letter-spacing:.1px;margin-top:2px}'+
+ '.buyer-shipment-status{font-size:12px;font-weight:800;white-space:nowrap}'+
+ '.buyer-shipment-link{display:inline-flex;margin-top:11px;padding:11px 16px;background:#242426;color:#fff!important;border-radius:8px;text-decoration:none!important;font-size:13px;font-weight:800;gap:8px;align-items:center}'+
+ '.buyer-shipment-unavailable{display:block;color:#888;margin-top:8px;font-size:12px}'+
+ '.buyer-shipment-lines{margin-top:13px;padding-top:10px;border-top:1px solid #f0f0f0}'+
+ '.buyer-shipment-lines summary{font-size:12px;color:#777;cursor:pointer}'+
+ '.buyer-shipment-lines ul{padding-left:18px;margin:8px 0 0;color:#555;font-size:12px;line-height:1.7;overflow-wrap:anywhere}'+
+ '.partial-buyer-box{margin:14px 0}.buyer-shipment-awaiting{font-size:12px;color:#666;margin:5px 0 0;line-height:1.6}';
  document.head.append(el);
 }
 function close(){overlay?.remove();overlay=null;active=null;}
@@ -93,7 +124,7 @@ async function open(ctx){
     '<input type="number" aria-label="'+escapeHtml(i.product_name)+' 발송 수량" data-qty="'+escapeHtml(i.id)+'" value="'+limit+'" min="1" max="'+limit+'" inputmode="numeric"></label>'
     ).join(''):'<p class="ps-loading">지금 부분발송할 수 있는 입고완료 상품이 없어요.</p>')+'</div>'+
    (waiting.length?'<p class="ps-awaiting">아직 입고되지 않은 상품 '+waiting.length+'종은 기존 주문에 남겨둘게요.</p>':'')+
-   (possible.length?(ctx.openBulk?'<button type="button" class="ps-bulk">📄 누보 엑셀로 일괄등록하기</button>':'')+'<div class="ps-fields"><label>택배사<input class="ps-carrier" maxlength="60" value="롯데택배" required></label><label>송장번호<input class="ps-tracking" inputmode="numeric" maxlength="80" placeholder="운송장번호" required></label></div>'+
+   (possible.length?(ctx.openBulk?'<button type="button" class="ps-bulk">📄 택배 송장 엑셀 만들기</button>':'')+'<div class="ps-fields"><label>택배사<input class="ps-carrier" maxlength="60" value="롯데택배" required></label><label>송장번호<input class="ps-tracking" inputmode="numeric" maxlength="80" placeholder="운송장번호" required></label></div>'+
    '<div class="ps-summary">선택한 상품 <span class="ps-count"></span></div>'+
    '<button class="ps-submit" type="button">선택한 상품만 배송 중 등록</button>'+
    '<p class="ps-footer">선택한 상품만 송장에 연결돼요. 나머지 상품·입금액·기존 택배비는 변경하지 않으며 추가 택배비도 자동 청구하지 않아요.</p>':'')+

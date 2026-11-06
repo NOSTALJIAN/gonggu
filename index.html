@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="미니예나">
 <meta name="application-name" content="MINIYENA">
-<style>.admin-shipping-method{display:flex;gap:6px;margin:9px 0 12px}.admin-shipping-method button{min-width:0;flex:1;border:1px solid #e5e5e5;background:#fff;border-radius:9px;padding:10px 4px;color:#555;font-size:12px;font-weight:750;white-space:nowrap}.admin-shipping-method button.active{border-color:#171717;background:#171717;color:white}.admin-shipping-method b{font-size:11px}.admin-courier-address{margin:4px 0 12px;border:1px solid #e5e5e5;border-radius:10px;background:#f9fafb;padding:11px 12px}.admin-courier-address>summary{font-size:13px;font-weight:800;cursor:pointer}.admin-courier-address-info{padding:10px 2px 3px;display:flex;gap:6px;flex-direction:column;font-size:13px}.admin-courier-address-info strong{font-weight:800}.admin-courier-address-info span,.admin-courier-address-info small{color:#666}.admin-courier-address-info p{margin:2px 0 0;line-height:1.7;overflow-wrap:anywhere}</style>
+<style>.admin-delivery-stage-links{display:flex;gap:6px;margin:8px 0 12px}.admin-delivery-stage-links button{flex:1;min-width:0;padding:11px 4px;border:1px solid #ddd;border-radius:9px;background:#fff;color:#333;font-size:11px;font-weight:750;white-space:nowrap}.admin-delivery-stage-links button.active{background:#1c1c1c;color:#fff;border-color:#1c1c1c}.admin-shipping-method{display:flex;gap:6px;margin:9px 0 12px}.admin-shipping-method button{min-width:0;flex:1;border:1px solid #e5e5e5;background:#fff;border-radius:9px;padding:10px 4px;color:#555;font-size:12px;font-weight:750;white-space:nowrap}.admin-shipping-method button.active{border-color:#171717;background:#171717;color:white}.admin-shipping-method b{font-size:11px}.admin-courier-address{margin:4px 0 12px;border:1px solid #e5e5e5;border-radius:10px;background:#f9fafb;padding:11px 12px}.admin-courier-address>summary{font-size:13px;font-weight:800;cursor:pointer}.admin-courier-address-info{padding:10px 2px 3px;display:flex;gap:6px;flex-direction:column;font-size:13px}.admin-courier-address-info strong{font-weight:800}.admin-courier-address-info span,.admin-courier-address-info small{color:#666}.admin-courier-address-info p{margin:2px 0 0;line-height:1.7;overflow-wrap:anywhere}</style>
 <script src="./nuvo_shipping.js?v=20261106-a2-bulk-partial" defer></script>
 <script src="./nuvo_import.js?v=20261106-a2-bulk-import" defer></script>
 <script src="./partial_shipping.js?v=20261106-v118-bulk" defer></script>
@@ -8185,7 +8185,7 @@ function renderAdminQuoteCard(q){
  const active=(q.items||[]).filter(i=>i.fulfillment!=='sold_out');
  const command=task.filter?`data-filter="${esc(task.filter)}"`:task.action?`data-action="${esc(task.action)}" data-id="${esc(q.id)}" ${task.stage?`data-stage="${esc(task.stage)}"`:''}`:`data-action="compact-open-tool" data-id="${esc(q.id)}" data-tool="${esc(task.tool||'advanced')}"`;
  return `<div class="card ordercard compact-order-card" data-compact-order="${esc(q.id)}">
-  <div class="compact-order-top"><strong>${(q.items||[]).length}종 · ${qty}개</strong><span>${esc(deliveryLabel(q))} · ${esc(buyerOrderPhase(q))}</span></div>
+  <div class="compact-order-top"><strong>${(q.items||[]).length}종 · ${qty}개</strong><span>${esc(deliveryLabel(q))} · ${q.delivery_method==='courier'&&workflowStage(q)==='shipped'?'🚚 배송 중':q.delivery_method==='courier'&&workflowStage(q)==='completed'?'✓ 배송 완료':esc(buyerOrderPhase(q))}</span></div>
   ${renderAdminDispatchNotice(q)}
   <div class="compact-order-products">${(q.items||[]).map(i=>`<div class="compact-order-product">
    <span><b>${adminOrderItemName(i)}</b><small>${esc(i.color)} / ${esc(i.size)} · ${Number(i.quantity)||0}개${i.fulfillment==='sold_out'?' · 품절':''}</small></span>
@@ -8724,9 +8724,13 @@ function renderCollapsibleAdminOrder(group,section){
  else if(group.some(q=>q.status==='quoted'&&q.purchase_intent==='next_round'))next='다음 회차 대기';
  else if(group.some(q=>q.status==='quoted'&&q.purchase_intent==='on_hold'))next='구매 보류';
  else if(group.some(q=>q.status==='quoted'))next='구매자 선택 기다리는 중';
- else if(group.some(q=>q.status==='confirmed'))next=ordered?'발주 완료 · 입고 관리':assigned?'입금 확인 · 도매 발주':group.some(q=>q.instant_purchase)?'입금 확인 · 발주 준비':'배송비 · 발주 준비';
+ else if(group.some(q=>q.status==='confirmed'))next=
+  group.every(q=>q.status==='confirmed'&&q.delivery_method==='courier'&&workflowStage(q)==='completed')?'✓ 배송 완료':
+  group.some(q=>q.status==='confirmed'&&q.delivery_method==='courier'&&workflowStage(q)==='shipped')?'🚚 배송 중 · 송장 등록 완료':
+  group.some(q=>q.status==='confirmed'&&(state.partialParcels||[]).some(p=>(p.items||[]).some(i=>i.quote_id===q.id)))?'📦 일부 배송 중 · 남은 상품 입고 대기':
+  ordered?'발주 완료 · 입고 관리':assigned?'입금 확인 · 도매 발주':group.some(q=>q.instant_purchase)?'입금 확인 · 발주 준비':'배송비 · 발주 준비';
  else if(group.every(q=>q.status==='cancelled'))next='취소된 주문';
- if(group.length>1&&group.every(readyQuote)){
+ if(group.length>1&&group.every(readyQuote)&&!group.some(q=>q.status==='confirmed'&&['shipped','completed'].includes(workflowStage(q)))){
   const total=group.reduce((n,q)=>n+totalDue(q),0);
   const received=group.reduce((n,q)=>n+(Number(q.amount_paid)||0)-(Number(q.amount_refunded)||0),0);
   if(received>=total&&group.some(q=>q.status==='quoted'&&q.purchase_intent==='buy_now'))
@@ -8734,6 +8738,7 @@ function renderCollapsibleAdminOrder(group,section){
   else if(received>=total&&group.every(q=>q.status==='confirmed'))next='입금 완료 · 발주 준비';
  }
  const urgent=!!(cancel||options||delivery||missing);
+ const deliveryTag=group.every(q=>q.status==='confirmed'&&q.delivery_method==='courier'&&workflowStage(q)==='completed')?'✓ 배송 완료':group.some(q=>q.status==='confirmed'&&q.delivery_method==='courier'&&workflowStage(q)==='shipped')?'🚚 배송 중':group.some(q=>q.status==='confirmed'&&(state.partialParcels||[]).some(p=>(p.items||[]).some(i=>i.quote_id===q.id)))?'📦 일부 배송 중':'';
  const confirmedOrders=group.filter(q=>q.status==='confirmed');
  const canSumPayments=confirmedOrders.length>0&&confirmedOrders.every(readyQuote);
  const confirmedDue=canSumPayments?confirmedOrders.reduce((sum,q)=>sum+totalDue(q),0):0;
@@ -8747,7 +8752,7 @@ function renderCollapsibleAdminOrder(group,section){
   <summary class="admin-order-fold-heading">
    <span class="admin-order-fold-left">
     <strong>${esc(root.buyer_name||'주문자 미입력')} ${adminGithubGroupIcon(group)} <span class="admin-order-fold-baby">아기: ${esc(babies.join(' · ')||'미입력')}</span></strong>
-    <span class="admin-order-fold-meta">${group.length>1?(group.every(q=>bundleRootId(q)===bundleRootId(group[0]))?'묶음배송 '+group.length+'건 · ':'주문 '+group.length+'건 함께 보기 · '):''}상품 ${count}종 · ${qty}개 · ${fmtDate(root.created_at)}${paymentMark?` <b class="admin-order-payment-chip ${paymentMark==='입금 확인'?'paid':''}">${paymentMark}</b>`:''}</span>
+    <span class="admin-order-fold-meta">${group.length>1?(group.every(q=>bundleRootId(q)===bundleRootId(group[0]))?'묶음배송 '+group.length+'건 · ':'주문 '+group.length+'건 함께 보기 · '):''}상품 ${count}종 · ${qty}개 · ${fmtDate(root.created_at)}${paymentMark?` <b class="admin-order-payment-chip ${paymentMark==='입금 확인'?'paid':''}">${paymentMark}</b>`:''}${deliveryTag?` <b class="admin-order-payment-chip paid">${esc(deliveryTag)}</b>`:''}</span>
     ${paymentSummary}
    </span>
    <span class="admin-order-fold-right"><span class="admin-order-fold-next ${urgent?'is-urgent':''}">${esc(next)}</span></span>
@@ -9879,6 +9884,8 @@ function renderAdminQuotes(){
  const nCourierDelivery=count(q=>isWholesaleCompleted(q)&&!isFinishedOrder(q)&&q.delivery_method==='courier');
  const nPickupDelivery=count(q=>isWholesaleCompleted(q)&&!isFinishedOrder(q)&&q.delivery_method==='pickup');
  const nFinished=count(isFinishedOrder);
+ const nCourierShipped=count(q=>q.status==='confirmed'&&q.delivery_method==='courier'&&workflowStage(q)==='shipped');
+ const nCourierCompleted=count(q=>q.status==='confirmed'&&q.delivery_method==='courier'&&workflowStage(q)==='completed');
  const nCancel=count(q=>q.cancel_requested_at&&q.status!=='cancelled');
  const nOther=count(q=>q.status==='quoted'&&['next_round','on_hold'].includes(q.purchase_intent));
  const filter=state.filter;
@@ -9893,14 +9900,16 @@ function renderAdminQuotes(){
   filter==='buy_now'?isRoundBuyer(q)&&!isFinishedOrder(q):
   filter==='preparing_orders'?adminOrderNeedsPaymentOrProcurement(q):
   filter==='wholesale_completed'?isWholesaleCompleted(q)&&!isFinishedOrder(q):
+  filter==='delivery_shipped'?q.status==='confirmed'&&q.delivery_method==='courier'&&workflowStage(q)==='shipped':
+  filter==='delivery_completed'?q.status==='confirmed'&&q.delivery_method==='courier'&&workflowStage(q)==='completed':
   filter==='next_round'?q.status==='quoted'&&q.purchase_intent==='next_round':
   filter==='on_hold'?q.status==='quoted'&&q.purchase_intent==='on_hold':
   filter==='undecided'?q.status==='quoted'&&(!q.purchase_intent||q.purchase_intent==='undecided'):
   filter==='cancel_requested'?!!q.cancel_requested_at&&q.status!=='cancelled':
   filter.startsWith('flow_')?q.status==='confirmed'&&workflowStage(q)===filter.slice(5):q.status===filter)
  .filter(q=>filter!=='wholesale_completed'||!state.adminShippingMethod||state.adminShippingMethod==='all'||q.delivery_method===state.adminShippingMethod);
- const groups=['all_history','finished','wholesale_completed'].includes(filter)?
-  bundledQuoteGroups(qq,['all_history','finished'].includes(filter)):sameRoundGroups(qq);
+ const groups=['all_history','finished','wholesale_completed','delivery_shipped','delivery_completed'].includes(filter)?
+  bundledQuoteGroups(qq,['all_history','finished','delivery_shipped','delivery_completed'].includes(filter)):sameRoundGroups(qq);
  const preparingRows=filter==='preparing_orders'?qq.filter(readyQuote):[];
  const preparingMissing=filter==='preparing_orders'?qq.length-preparingRows.length:0;
  const preparingTotal=preparingRows.reduce((sum,row)=>sum+totalDue(row),0);
@@ -9911,8 +9920,8 @@ function renderAdminQuotes(){
  const tabs=[['pricing','견적',nPrice],['waiting_buyer','구매 선택',nWaiting],['final_confirmation','확정 대기',nFinalWaiting],['preparing_orders','입금·발주',nPaymentProcurement],['wholesale_completed','입고·배송',nDelivery],['all_history','전체',all.length]];
  const extras=adminOrderAdvancedFilterEntries();
  const visibleTabs=tabs; // All six tabs remain in the same positions.
- const advancedSelected=!tabs.some(([key])=>key===filter);
- const title=[...tabs,...extras].find(([key])=>key===filter)?.[1]||(
+ const advancedSelected=!tabs.some(([key])=>key===filter)&&!['delivery_shipped','delivery_completed'].includes(filter);
+ const title=filter==='delivery_shipped'?'배송 중':filter==='delivery_completed'?'배송 완료':[...tabs,...extras].find(([key])=>key===filter)?.[1]||(
    filter.startsWith('flow_')?workflowLabels[filter.slice(5)]:statusLabel[filter]||'주문');
  return `<section class="admin-quote-workspace admin-orders-page">
   <div class="admin-quote-anchor" id="admin-quote-results"></div>
@@ -9922,7 +9931,7 @@ function renderAdminQuotes(){
    <button type="button" data-action="clear-admin-order-search" class="${state.adminOrderSearch?'':'hidden'}" aria-label="검색어 지우기">×</button>
   </div>
   <div class="admin-orders-filterbar" role="group" aria-label="주문 상태">
-   ${visibleTabs.map(([key,label,num])=>`<button type="button" data-filter="${key}" class="${filter===key?'active':''}" aria-pressed="${filter===key}"><span>${label}</span><b>${num}</b></button>`).join('')}
+   ${visibleTabs.map(([key,label,num])=>`<button type="button" data-filter="${key}" class="${filter===key||(key==='wholesale_completed'&&['delivery_shipped','delivery_completed'].includes(filter))?'active':''}" aria-pressed="${filter===key||(key==='wholesale_completed'&&['delivery_shipped','delivery_completed'].includes(filter))}"><span>${label}</span><b>${num}</b></button>`).join('')}
   </div>
   ${filter==='waiting_buyer'&&nWaiting?`<div class="admin-choice-bulk-bar">
    <span>개별 발송은 각 주문에서 · 전체 대상 <b>${reminderTargets.length}건</b></span>
@@ -9946,6 +9955,11 @@ function renderAdminQuotes(){
      <button type="button" data-action="admin-shipping-method" data-method="courier" class="${state.adminShippingMethod==='courier'?'active':''}" aria-pressed="${state.adminShippingMethod==='courier'}">🚚 택배 발송 <b>${nCourierDelivery}</b></button>
      <button type="button" data-action="admin-shipping-method" data-method="pickup" class="${state.adminShippingMethod==='pickup'?'active':''}" aria-pressed="${state.adminShippingMethod==='pickup'}">직접수령 <b>${nPickupDelivery}</b></button>
     </div>`:''}
+  ${['wholesale_completed','delivery_shipped','delivery_completed'].includes(filter)?`<div class="admin-delivery-stage-links" role="group" aria-label="배송 진행 상태">
+   <button type="button" data-filter="wholesale_completed" class="${filter==='wholesale_completed'?'active':''}">📦 입고·발송 관리</button>
+   <button type="button" data-filter="delivery_shipped" class="${filter==='delivery_shipped'?'active':''}">🚚 배송 중 <b>${nCourierShipped}</b></button>
+   <button type="button" data-filter="delivery_completed" class="${filter==='delivery_completed'?'active':''}">✓ 배송 완료 <b>${nCourierCompleted}</b></button>
+  </div>`:''}
   ${filter==='wholesale_completed'?'<div class="nuvo-export-entry" style="margin:3px 0 12px"><button type="button" class="btn block secondary" data-action="nuvo-open">📦 택배 일괄등록 · 누보 엑셀 만들기</button></div>':''}
   ${qq.length?filter==='all'?renderAdminQuoteFlatSection(waiting,'가격 확인','pending')+renderAdminQuoteFlatSection(priced,'구매 선택 대기'):
       renderAdminQuoteFlatSection(groups,'',filter==='pricing'?'pending':'saved'):

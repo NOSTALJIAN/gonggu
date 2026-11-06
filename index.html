@@ -5777,7 +5777,7 @@ async function uploadHeroGif(file){
  if(file.type!=='image/gif'||!file.size||file.size>15*1024*1024)throw Error('15MB 이하 GIF 파일만 등록할 수 있어요.');
  const path='covers/'+uuid()+'.gif';
  const token=await getToken();
- const res=await fetch(url+'/storage/v1/object/'+PHOTO_PUBLIC+'/'+path,{method:'POST',headers:{apikey:key,Authorization:'Bearer '+token,'Content-Type':'image/gif'},body:file});
+ const res=await fetch(url+'/storage/v1/object/'+PHOTO_PUBLIC+'/'+path,{method:'POST',headers:{apikey:key,Authorization:'Bearer '+token,'Content-Type':'image/gif','cache-control':'2592000'},body:file});
  if(!res.ok){let msg='GIF 업로드 실패';try{const j=await res.json();msg=j.message||j.error||msg}catch{}throw Error(msg)}
  return path;
 }
@@ -5995,7 +5995,7 @@ function changeProductGallery(next){
 function galleryEditor(p){
  const photos=Array.isArray(p?.gallery_urls)?p.gallery_urls:[];
  if(!photos.length)return '';
- return `<fieldset class="product-gallery-edit"><legend>기존 추가 사진 ${photos.length}장</legend><div class="gallery-edit-grid">${photos.map((src,n)=>`<label class="gallery-edit-photo"><img src="${esc(src)}" alt="추가 사진 ${n+1}"><span><input name="remove_gallery" type="checkbox" value="${esc(src)}"> 사진 삭제</span></label>`).join('')}</div><p class="smallnote">삭제할 사진을 선택하고 아래 상품 저장을 눌러 주세요.</p></fieldset>`;
+ return `<fieldset class="product-gallery-edit"><legend>기존 추가 사진 ${photos.length}장</legend><div class="gallery-edit-grid">${photos.map((src,n)=>`<label class="gallery-edit-photo"><img src="${esc(src)}" alt="추가 사진 ${n+1}" loading="lazy" decoding="async"><span><input name="remove_gallery" type="checkbox" value="${esc(src)}"> 사진 삭제</span></label>`).join('')}</div><p class="smallnote">삭제할 사진을 선택하고 아래 상품 저장을 눌러 주세요.</p></fieldset>`;
 }
 async function uploadGalleryPhotos(files,maxCount){
  if(files.length>maxCount)throw Error('추가 사진은 최대 8장까지 가능해요. 지금 추가할 수 있는 사진은 '+maxCount+'장이에요.');
@@ -6007,7 +6007,7 @@ async function uploadGalleryPhotos(files,maxCount){
  }
  return images;
 }
-const img=(p,cls='product-cover')=>p?.image_url?`<img class="${cls}" src="${esc(p.image_url)}" alt="${esc(p.name)} 대표사진" loading="lazy">`:`<div class="producticon">🧸</div>`;
+const img=(p,cls='product-cover')=>p?.image_url?`<img class="${cls}" src="${esc(p.image_url)}" alt="${esc(p.name)} 대표사진" loading="lazy" decoding="async">`:`<div class="producticon">🧸</div>`;
 async function showRequestImages(){if(!connected||!state.admin)return;const nodes=[...document.querySelectorAll('[data-request-photo]')];if(!nodes.length)return;const token=await getToken();for(const el of nodes){const path=el.dataset.requestPhoto;if(!path)continue;if(requestImageCache.has(path)){const saved=await requestImageCache.get(path);if(el.isConnected&&saved)el.src=saved;continue}const task=(async()=>{try{const resp=await fetch(url+'/storage/v1/object/authenticated/'+PHOTO_PRIVATE+'/'+path.split('/').map(encodeURIComponent).join('/'),{headers:{apikey:key,Authorization:'Bearer '+token}});if(!resp.ok)throw Error('사진 조회 실패');return URL.createObjectURL(await resp.blob())}catch(e){console.error('신청 사진 표시 오류',e);return null}})();requestImageCache.set(path,task);const value=await task;if(el.isConnected&&value)el.src=value;}}
 function header(){
  const admin=state.page==='admin';
@@ -12016,7 +12016,56 @@ async function quickProductState(id,kind){
 }
 function imageExtension(_file){return 'jpg'}
 async function toJpeg(input){if(!input||!input.type.startsWith('image/'))throw Error('이미지 파일을 선택해 주세요');if(input.size>35*1024*1024)throw Error('사진이 너무 커요. 다른 사진을 선택해 주세요');const objectURL=URL.createObjectURL(input),bitmap=new Image();try{await new Promise((resolve,reject)=>{bitmap.onload=resolve;bitmap.onerror=()=>reject(Error('사진을 읽을 수 없어요'));bitmap.src=objectURL});let w=bitmap.naturalWidth,h=bitmap.naturalHeight;if(!w||!h)throw Error('사진 크기를 확인할 수 없어요');const scale=Math.min(1,1600/Math.max(w,h));w=Math.max(1,Math.round(w*scale));h=Math.max(1,Math.round(h*scale));const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;const ctx=canvas.getContext('2d');if(!ctx)throw Error('사진 처리 오류');ctx.drawImage(bitmap,0,0,w,h);let blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',.78));if(!blob)throw Error('사진을 변환할 수 없어요');if(blob.size>5*1024*1024)throw Error('압축 후에도 사진이 너무 커요');return blob}finally{URL.revokeObjectURL(objectURL)}}
-async function uploadPhoto(file,bucket,admin=false){if(!connected)throw Error('온라인 연결이 필요해요');const blob=file.type==='image/jpeg'&&file instanceof Blob&&file.size<5*1024*1024?file:await toJpeg(file);const path=(bucket===PHOTO_PRIVATE?'incoming/':'covers/')+uuid()+'.jpg';const hdr={apikey:key,'Content-Type':'image/jpeg'};if(admin){const token=await getToken();hdr.Authorization='Bearer '+token}const res=await fetch(url+'/storage/v1/object/'+bucket+'/'+path,{method:'POST',headers:hdr,body:blob});if(!res.ok){let msg='사진 업로드 실패';try{let j=await res.json();msg=j.message||j.error||msg}catch{}throw Error(msg)}return path}
+
+/* Pro-only image efficiency: do not change existing photo URLs or create paid resize variants.
+   A new JPEG that is already small stays original. Larger JPEGs are re-encoded
+   at a high visual quality only when the result is at least 16% smaller. */
+async function optimizePublicJpeg(input){
+ if(!input||input.size<=720*1024)return input;
+ const objectURL=URL.createObjectURL(input);
+ try{
+  const image=new Image();
+  await new Promise((resolve,reject)=>{
+   image.onload=resolve;
+   image.onerror=()=>reject(Error('이미지 크기를 읽지 못했어요'));
+   image.src=objectURL;
+  });
+  const longest=Math.max(image.naturalWidth||0,image.naturalHeight||0);
+  if(!longest)return input;
+  const scale=Math.min(1,1920/longest);
+  const width=Math.max(1,Math.round(image.naturalWidth*scale));
+  const height=Math.max(1,Math.round(image.naturalHeight*scale));
+  const canvas=document.createElement('canvas');
+  canvas.width=width;canvas.height=height;
+  const context=canvas.getContext('2d');
+  if(!context)return input;
+  context.drawImage(image,0,0,width,height);
+  const optimized=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',.86));
+  if(!optimized||optimized.size>=input.size*.84)return input;
+  return optimized;
+ }catch(error){
+  console.warn('상품 사진 최적화 생략 · 원본 업로드',error);
+  return input;
+ }finally{
+  URL.revokeObjectURL(objectURL);
+ }
+}
+async function uploadPhoto(file,bucket,admin=false){
+ if(!connected)throw Error('온라인 연결이 필요해요');
+ // Newly added JPEGs used to bypass optimization whenever below 5 MB.
+ // Keep private request-photo handling unchanged and compress only new public photos.
+ const readyJpeg=file.type==='image/jpeg'&&file instanceof Blob&&file.size<5*1024*1024;
+ const blob=readyJpeg?(bucket===PHOTO_PUBLIC?await optimizePublicJpeg(file):file):await toJpeg(file);
+ const path=(bucket===PHOTO_PRIVATE?'incoming/':'covers/')+uuid()+'.jpg';
+ const hdr={apikey:key,'Content-Type':'image/jpeg'};
+ // Each new public photo has a unique UUID path, so a 30-day browser cache is safe.
+ // Supabase Pro Smart CDN is already included; no paid image transformations required.
+ if(bucket===PHOTO_PUBLIC)hdr['cache-control']='2592000';
+ if(admin){const token=await getToken();hdr.Authorization='Bearer '+token}
+ const res=await fetch(url+'/storage/v1/object/'+bucket+'/'+path,{method:'POST',headers:hdr,body:blob});
+ if(!res.ok){let msg='사진 업로드 실패';try{let j=await res.json();msg=j.message||j.error||msg}catch{}throw Error(msg)}
+ return path;
+}
 async function downloadPrivatePhoto(path){const token=await getToken();if(!token)throw Error('관리자 로그인이 필요해요');const r=await fetch(url+'/storage/v1/object/authenticated/'+PHOTO_PRIVATE+'/'+path.split('/').map(encodeURIComponent).join('/'),{headers:{apikey:key,Authorization:'Bearer '+token}});if(!r.ok)throw Error('신청 사진을 가져오지 못했어요');return r.blob()}
 const publicPhotoUrl=path=>url+'/storage/v1/object/public/'+PHOTO_PUBLIC+'/'+path;
 function customerRequestFiles(d){

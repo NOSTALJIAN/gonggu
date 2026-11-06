@@ -6,14 +6,14 @@ const HEADERS=['주문번호','받는사람','전화번호1','전화번호2','�
 let layer=null,previousOverflow='',selected=new Set(),context=null;
 const h=v=>String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 const xml=v=>String(v==null?'':v).replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g,'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;');
+function receivedQty(i){const q=Math.max(0,Number(i.quantity)||0);return Math.min(q,Math.max(0,['received','delivered'].includes(i.fulfillment)?q:Number(i.received_qty)||0));}
+function dispatchedQty(id,h){return (Array.isArray(h)?h:[]).reduce((n,p)=>n+(p.items||[]).filter(i=>i.item_id===id).reduce((x,i)=>x+Math.max(0,Number(i.quantity)||0),0),0);}
 function shipments(ctx){
- const {quotes,bundleRootId,allReceived,balanceDue,workflowStage,normalizeBuyerPhone,saleItems}=ctx;
- const candidateRoots=new Set();
- for(const q of quotes){
-  if(q.status==='confirmed'&&q.delivery_method==='courier'&&!['shipped','completed','soldout_closed'].includes(workflowStage(q))&&!String(q.tracking_number||'').trim())candidateRoots.add(bundleRootId(q));
- }
+ const {quotes,bundleRootId,balanceDue,workflowStage,normalizeBuyerPhone,saleItems}=ctx;
+ const history=ctx.partialHistory||[],roots=new Set();
+ for(const q of quotes)if(q.status==='confirmed'&&q.delivery_method==='courier'&&['new','preparing'].includes(workflowStage(q))&&!String(q.tracking_number||'').trim())roots.add(bundleRootId(q));
  const ready=[],blocked=[];
- for(const id of candidateRoots){
+ for(const id of roots){
   const group=quotes.filter(q=>q.status!=='cancelled'&&bundleRootId(q)===id);
   const root=group.find(q=>q.id===id)||group[0];if(!root)continue;
   const issues=[];
@@ -21,8 +21,6 @@ function shipments(ctx){
   if(group.some(q=>q.delivery_method!=='courier'))issues.push('수령방식 불일치');
   if(group.some(q=>!['new','preparing'].includes(workflowStage(q))||String(q.tracking_number||'').trim()))issues.push('이미 발송·송장 등록됨');
   if(group.some(q=>q.cancel_requested_at||q.delivery_change_requested_at))issues.push('취소·배송지 변경 요청');
-  if(group.some(q=>!allReceived(q)))issues.push('입고 미완료');
-  if((ctx.partialHistory||[]).some(p=>(p.items||[]).some(item=>group.some(q=>q.id===item.quote_id))))issues.push('부분 발송 이력 있음 · 남은 상품은 부분 발송에서 처리');
   if(group.some(q=>balanceDue(q)>0))issues.push('미입금액 있음');
   const phone=normalizeBuyerPhone(root.contact);
   if(!phone)issues.push('전화번호 확인');
@@ -32,14 +30,15 @@ function shipments(ctx){
   if(group.some(q=>q.id!==root.id&&q.contact&&normalizeBuyerPhone(q.contact)!==phone))issues.push('묶음 연락처 불일치');
   if(group.some(q=>q.id!==root.id&&q.postal_code&&String(q.postal_code).trim()!==String(root.postal_code||'').trim()))issues.push('묶음 우편번호 불일치');
   if(group.some(q=>q.id!==root.id&&q.address_line1&&String(q.address_line1).trim()!==String(root.address_line1||'').trim()))issues.push('묶음 주소 불일치');
-  const items=group.flatMap(q=>saleItems(q));
-  const qty=items.reduce((n,i)=>n+Math.max(0,Number(i.quantity)||0),0);
-  if(!qty)issues.push('발송 상품 없음');
-  (issues.length?blocked:ready).push({id,root,group,items,qty,issues});
+  const original=group.flatMap(q=>saleItems(q));
+  const items=original.filter(i=>i.fulfillment!=='sold_out'&&i.fulfillment!=='delivered').map(i=>Object.assign({},i,{quantity:Math.max(0,receivedQty(i)-dispatchedQty(i.id,history))})).filter(i=>i.quantity>0);
+  const qty=items.reduce((n,i)=>n+i.quantity,0);
+  const waiting=original.reduce((n,i)=>n+Math.max(0,(Number(i.quantity)||0)-dispatchedQty(i.id,history)),0)-qty;
+  if(!qty)issues.push('현재 발송 가능한 입고 상품 없음');
+  (issues.length?blocked:ready).push({id,root,group,items,qty,waiting:Math.max(0,waiting),issues});
  }
  const sort=(a,b)=>String(a.root.recipient_name||a.root.buyer_name||'').localeCompare(String(b.root.recipient_name||b.root.buyer_name||''),'ko');
- ready.sort(sort);blocked.sort(sort);
- return {ready,blocked};
+ ready.sort(sort);blocked.sort(sort);return {ready,blocked};
 }
 function writeZip(files){
  const enc=new TextEncoder(),parts=[],central=[];let offset=0;
@@ -113,14 +112,14 @@ function open(ctx){
  layer=document.createElement('div');layer.className='nuvo-mask';layer.setAttribute('role','presentation');
  layer.innerHTML='<section class="nuvo-dialog" role="dialog" aria-modal="true" aria-label="누보 택배 일괄등록">'+
   '<div class="nuvo-title"><h2>누보 택배 일괄등록</h2><button type="button" class="nuvo-close" data-nuvo-close aria-label="닫기">×</button></div>'+
-  '<p>발송할 주문을 선택하면 <b>누보 A타입(일반) 엑셀</b>을 자동 작성해요. 이미 묶음배송한 주문은 한 줄로 합쳐요.</p>'+
+  '<p>입고된 상품만 <b>누보 A타입(일반) 엑셀</b>에 담아요. 미입고 상품은 제외하고 묶음배송은 한 줄로 합쳐요.</p>'+
   '<div class="nuvo-stats"><strong>발송 가능 '+batch.ready.length+'건</strong><span>확인 필요 '+batch.blocked.length+'건</span></div>'+
   '<div class="nuvo-controls"><button type="button" data-nuvo-all>전체 선택</button><button type="button" data-nuvo-none>모두 해제</button></div>'+
   '<div class="nuvo-list">'+(batch.ready.length?batch.ready.map(r=>
-  '<label class="nuvo-entry"><input type="checkbox" data-nuvo-id="'+h(r.id)+'" checked><span><b>'+h(r.root.recipient_name||r.root.buyer_name)+'</b><small>'+h(r.root.buyer_name||'')+' · '+r.group.length+'건 묶음 · 상품 '+r.qty+'개 · '+h(r.root.postal_code||'')+'</small></span></label>'
+  '<label class="nuvo-entry"><input type="checkbox" data-nuvo-id="'+h(r.id)+'" checked><span><b>'+h(r.root.recipient_name||r.root.buyer_name)+'</b><small>'+h(r.root.buyer_name||'')+' · '+r.group.length+'건 묶음 · 입고 '+r.qty+'개'+(r.waiting?' · 미입고 '+r.waiting+'개 제외':'')+' · '+h(r.root.postal_code||'')+'</small></span></label>'
   ).join(''):'<p style="padding:18px 0">지금 발송 가능한 택배 주문이 없어요.</p>')+'</div>'+
   '<button type="button" class="nuvo-download" data-nuvo-download><span data-nuvo-count>'+selected.size+'건 선택</span> · 엑셀 다운로드</button>'+
-  '<p>주문번호·수령자·주소·상품정보·수량만 자동 입력해요. 운임구분·운임·운송장번호는 비워 두니 누보에서 확인하고 등록해 주세요. <b>엑셀 다운로드만으로 미니예나 주문이 배송 중 처리되지는 않아요.</b></p>'+
+  '<p>주문번호·수령자·주소·상품정보·수량만 자동 입력해요. 운임구분·운임·운송장번호는 누보에서 확인하세요. 송장을 부여받은 뒤 아래에서 엑셀을 다시 업로드해 미니예나에 일괄 반영할 수 있어요.</p>'+
   (batch.blocked.length?'<details class="nuvo-skipped"><summary>제외 '+batch.blocked.length+'건 · 사유 보기</summary>'+
   batch.blocked.map(r=>'<div><b>'+h(r.root.buyer_name||r.root.recipient_name)+'</b><small>'+h(r.issues.join(' · '))+'</small></div>').join('')+'</details>':'')+
   '</section>';

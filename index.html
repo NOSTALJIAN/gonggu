@@ -13523,16 +13523,6 @@ if(a==='bundle-stage'){
  if(!window.confirm(stage==='completed'?'묶음 주문의 모든 상품 전달을 확인했나요?':stage==='pickup_ready'?'묶음 상품 모두 입고되어 픽업 대기로 전환할까요?':'묶음 주문의 상품 준비를 시작할까요?'))return;
  await adminBundleStage(id,stage);await loadAdmin();notif('묶음 주문 진행상태를 함께 변경했어요.');return;
 }
-if(a==='admin-early-pickup-select-store'){
- const label=b.closest('.admin-early-pickup-store');
- const section=label?.closest('.admin-early-pickup-group');
- if(!section)return;
- const source=label.querySelector('input[data-admin-pickup-store]');
- if(!source)return;
- source.checked=!source.checked;
- section.querySelectorAll('input[name="pickup_item_id"]').forEach(input=>input.checked=source.checked);
- return;
-}
 if(a==='mark-item-received'){
   if(!state.admin)throw Error('관리자만 입고완료를 체크할 수 있어요.');
   const q=state.quotes.find(q=>(q.items||[]).some(i=>i.id===id));
@@ -14170,6 +14160,18 @@ else if(f.dataset.payment){
  busy=false;
 }}
 async function change(e){const x=e.target;
+if(state.page==='admin'&&state.admin&&x.matches?.('[data-admin-pickup-store]')){
+ const group=x.closest('.admin-early-pickup-group');
+ group?.querySelectorAll('input[name="pickup_item_id"]').forEach(box=>box.checked=x.checked);
+ return;
+}
+if(state.page==='admin'&&state.admin&&x.matches?.('input[name="pickup_item_id"]')){
+ const group=x.closest('.admin-early-pickup-group');
+ const toggle=group?.querySelector('[data-admin-pickup-store]');
+ const items=[...(group?.querySelectorAll('input[name="pickup_item_id"]')||[])];
+ if(toggle)toggle.checked=items.length>0&&items.every(box=>box.checked);
+ return;
+}
 if(state.page==='admin'&&state.admin&&state.tab==='quotes'&&x.id==='admin-order-search-mode'){
  state.adminOrderSearchMode=['all','buyer','baby','product','contact','order'].includes(x.value)?x.value:'all';
  updateAdminOrderSearch();return;

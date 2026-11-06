@@ -109,6 +109,38 @@ function singleBuyerMarkup(q,completed){
   _fallback_status:completed?'배송 완료':'배송 중'};
  return buyerShippingCard(q,[parcel]);
 }
+// Same compact tracking timeline for administrators; only pass verified
+// carrier data from the admin's existing shipment lookup. No synthetic events.
+function adminTrackingMarkup(q,history,verifiedSnapshot){
+ if(!q)return '';
+ const parcels=forOrder(q,history).map(p=>({...p,_fallback_status:
+   p.tracking_status_code==='DELIVERED'?'배송 완료':'배송 중'}));
+ const invoice=String(q.tracking_number||'').replace(/[\s-]/g,'');
+ if(invoice){
+  const snap=verifiedSnapshot&&String(verifiedSnapshot.tracking_number||'').replace(/[\s-]/g,'')===invoice?
+   verifiedSnapshot:null;
+  const direct={
+   carrier:q.tracking_carrier||'택배',
+   tracking_number:q.tracking_number,
+   tracking_status_code:snap?.status_code||'',
+   tracking_status_label:snap?.status||'',
+   tracking_event_time:snap?.event_time||'',
+   tracking_checked_at:snap?.fetched_at||'',
+   tracking_events:Array.isArray(snap?.events)?snap.events:[],
+   _fallback_status:q.workflow_stage==='completed'?'배송 완료':'배송 중'
+  };
+  const existing=parcels.find(p=>String(p.tracking_number||'').replace(/[\s-]/g,'')===invoice);
+  if(existing){
+   if(!(existing.tracking_events||[]).length&&direct.tracking_events.length)
+    existing.tracking_events=direct.tracking_events;
+   if(!existing.tracking_status_label)existing.tracking_status_label=direct.tracking_status_label;
+   if(!existing.tracking_status_code)existing.tracking_status_code=direct.tracking_status_code;
+  }else parcels.push(direct);
+ }
+ if(!parcels.length)return '';
+ parcels.sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')));
+ return buyerShippingCard(q,parcels);
+}
 function buyerMarkup(q){
  if(!q||!Array.isArray(q.partial_parcels)||!q.partial_parcels.length)return '';
  const total=(q.items||[]).filter(i=>i.fulfillment!=='sold_out').reduce((n,i)=>n+Math.max(0,Number(i.quantity)||0),0);
@@ -247,5 +279,5 @@ async function open(ctx){
   });
  }catch(err){if(overlay){overlay.querySelector('.ps-content').innerHTML='<p class="ps-alert">부분배송 정보를 확인하지 못했어요. 새로고침 후 다시 시도해 주세요.</p>';throw err;}}
 }
-window.MiniPartialShipping={open,adminBlock,bundleBlock,buyerMarkup,singleBuyerMarkup,buyerItemStatus,sentQty,parcelHistory};
+window.MiniPartialShipping={open,adminBlock,bundleBlock,buyerMarkup,singleBuyerMarkup,adminTrackingMarkup,buyerItemStatus,sentQty,parcelHistory};
 })();

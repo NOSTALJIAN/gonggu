@@ -137,7 +137,7 @@
 </style>
 <script src="./nuvo_shipping.js?v=20261106-b1-miniyena-name" defer></script>
 <script src="./nuvo_import.js?v=20261106-b1-miniyena-name" defer></script>
-<script src="./partial_shipping.js?v=20261106-v124-compact-tracking" defer></script>
+<script src="./partial_shipping.js?v=20261107-v125-admin-shipping-focus" defer></script>
 <!-- Release 439f3d34: remove only the retired MINIYENA offline cache.
      Never unregister OneSignal's separate push notification worker. -->
 <script>
@@ -4591,6 +4591,41 @@ body:has(#search:focus) .mini-openchat-banner{display:none!important;}
  .admin-orders-page .admin-journey-step>span{gap:2px}
  .admin-orders-page .admin-journey-step b{font-size:10px}
 }
+
+
+/* Shipping order view – courier events first; merchandise and other controls closed. */
+.admin-orders-page .admin-shipping-focus{display:flex;flex-direction:column;gap:11px;padding:0 0 5px;min-width:0}
+.admin-orders-page .admin-shipping-focus>.my-shipping-card{margin:0!important;padding:13px 14px!important;border:1px solid #e6e6e8!important;border-radius:11px!important;box-shadow:none!important}
+.admin-orders-page .admin-shipping-focus .my-shipping-heading{margin-bottom:6px!important}
+.admin-orders-page .admin-shipping-focus .my-shipping-heading h3{font-size:15px!important}
+.admin-orders-page .admin-shipping-focus .my-shipping-parcel{padding-top:11px}
+.admin-orders-page .admin-shipping-focus .my-shipping-invoice{align-items:center}
+.admin-orders-page .admin-shipping-focus .my-shipping-events{background:#f8f9f9!important}
+.admin-orders-page .admin-shipping-focus-actions{display:flex;justify-content:flex-end;gap:8px;margin:0}
+.admin-orders-page .admin-shipping-focus-actions button{min-height:39px!important;padding:9px 16px!important;background:#222!important;border-color:#222!important;color:white!important;font-size:12px!important;font-weight:800!important;border-radius:8px!important}
+.admin-orders-page .admin-shipping-focus-products,.admin-orders-page .admin-shipping-focus-tools{margin:0!important;border:1px solid #e7e7e9!important;border-radius:10px!important;background:#fff!important;overflow:hidden}
+.admin-orders-page .admin-shipping-focus-products>summary,.admin-orders-page .admin-shipping-focus-tools>summary{list-style:none;display:flex;align-items:center;gap:7px;min-height:44px;padding:12px!important;cursor:pointer;color:#444!important;font-size:12px!important;font-weight:760!important;line-height:1.3}
+.admin-orders-page .admin-shipping-focus-products>summary::-webkit-details-marker,.admin-orders-page .admin-shipping-focus-tools>summary::-webkit-details-marker{display:none}
+.admin-orders-page .admin-shipping-focus-products>summary b{font-size:12px;color:#202020}
+.admin-orders-page .admin-shipping-focus-products>summary span{margin-left:auto;color:#777;font-weight:600;font-size:11px}
+.admin-orders-page .admin-shipping-focus-products>summary:after,.admin-orders-page .admin-shipping-focus-tools>summary:after{content:'⌄';font-size:16px;margin-left:5px;color:#929292}
+.admin-orders-page .admin-shipping-focus-products[open]>summary:after,.admin-orders-page .admin-shipping-focus-tools[open]>summary:after{content:'⌃'}
+.admin-orders-page .admin-shipping-focus-tools>summary{color:#777!important;font-weight:660!important}
+.admin-orders-page .admin-shipping-focus-item-list{border-top:1px solid #efefef;padding:0 13px}
+.admin-orders-page .admin-shipping-focus-item{display:flex;align-items:center;justify-content:space-between;gap:9px;padding:10px 0;border-bottom:1px solid #eee}
+.admin-orders-page .admin-shipping-focus-item:last-child{border-bottom:0}
+.admin-orders-page .admin-shipping-focus-item span{display:grid;gap:3px;min-width:0}
+.admin-orders-page .admin-shipping-focus-item b{font-size:12px;line-height:1.4;font-weight:740}
+.admin-orders-page .admin-shipping-focus-item small{font-size:11px;color:#8b8b8b}
+.admin-orders-page .admin-shipping-focus-item strong{font-size:12px;white-space:nowrap}
+.admin-orders-page .admin-shipping-focus-more{padding:11px;border-top:1px solid #ededed;background:#fcfcfc}
+.admin-orders-page .admin-shipping-focus-address{padding:8px 4px 14px;margin-bottom:8px;border-bottom:1px solid #eee;font-size:12px;line-height:1.5;color:#555}
+.admin-orders-page .admin-shipping-focus-address b{color:#333}
+.admin-orders-page .admin-shipping-focus-address p{margin:5px 0 0;overflow-wrap:anywhere}
+.admin-orders-page .admin-shipping-focus-tools .shipment-progress{display:none!important}
+.admin-orders-page .admin-shipping-empty{padding:15px;border:1px solid #e6e6e8;border-radius:10px;background:#fff}
+.admin-orders-page .admin-shipping-empty strong{font-size:14px}
+.admin-orders-page .admin-shipping-empty p{font-size:12px;color:#888;line-height:1.5}
 
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
@@ -9116,6 +9151,35 @@ function renderOrderDepositControl(q,showFreightRequest=true){
   ${renderPaymentWaiverControl(q)}
  </div>`;
 }
+/* Shipment-first administrator card: tracking timeline before any order details.
+   Keep the original finance, returns and workflow controls under an opt-in fold. */
+function renderAdminShippingFocus(q){
+ const root=sharedShipment(q);
+ const shipping={...q,tracking_carrier:root.tracking_carrier||q.tracking_carrier,
+  tracking_number:root.tracking_number||q.tracking_number,
+  shipment_tracking:root.shipment_tracking||q.shipment_tracking};
+ const snapshot=validShipmentSnapshot(shipping)?shipping.shipment_tracking:null;
+ const card=window.MiniPartialShipping?.adminTrackingMarkup?.(shipping,state.partialParcels||[],snapshot)||'';
+ const lines=(q.items||[]).filter(i=>i.fulfillment!=='sold_out');
+ const quantity=lines.reduce((n,i)=>n+Math.max(0,Number(i.quantity)||0),0);
+ const stage=workflowStage(q);
+ const canFinish=stage==='shipped';
+ const address=[q.postal_code,[q.address_line1,q.address_line2].filter(Boolean).join(' ')].filter(Boolean).join(' · ');
+ const rows=lines.map(i=>'<div class="admin-shipping-focus-item"><span><b>'+adminOrderItemName(i)+
+   '</b><small>'+esc([i.color,i.size].filter(Boolean).join(' / '))+' · '+Math.max(0,Number(i.quantity)||0)+'개</small></span>'+
+   (i.unit_price==null?'':'<strong>'+money(Number(i.unit_price)*Number(i.quantity||0))+'</strong>')+'</div>').join('');
+ return '<div class="admin-shipping-focus">'+
+   (card||'<section class="admin-shipping-empty"><strong>배송 현황</strong><p>송장 정보 확인 중 · 송장이 등록되면 이곳에서 배송 이력을 확인할 수 있어요.</p></section>')+
+   (canFinish?'<div class="admin-shipping-focus-actions"><button class="btn" type="button" data-action="set-workflow" data-id="'+esc(q.id)+'" data-stage="completed">배송 완료 처리</button></div>':'')+
+   '<details class="admin-shipping-focus-products"><summary>발송 상품 <b>'+lines.length+'종 · '+quantity+'개</b><span>보기</span></summary>'+
+   '<div class="admin-shipping-focus-item-list">'+(rows||'<p class="smallnote">발송 상품 정보가 없어요.</p>')+'</div></details>'+
+   '<details class="admin-shipping-focus-tools"><summary>주소·결제·기타 관리</summary>'+
+   '<div class="admin-shipping-focus-more">'+
+   '<div class="admin-shipping-focus-address"><b>배송지</b><p>'+esc(q.recipient_name||q.buyer_name||'수령인')+
+   (q.contact?' · '+esc(q.contact):'')+'</p><p>'+esc(address||'등록된 주소가 없어요.')+'</p></div>'+
+   renderAdminQuoteCard(q)+'</div></details>'+
+   '</div>';
+}
 function renderCollapsibleAdminOrder(group,section){
  const root=group.length>1?roundOrderRoot(group):group[0];
  const babies=[...new Set(group.map(q=>String(q.baby_name||'').trim()).filter(Boolean))];
@@ -9181,25 +9245,28 @@ function renderCollapsibleAdminOrder(group,section){
   !canSumPayments?'':confirmedDue>0&&confirmedPaid>=confirmedDue?'입금 확인':confirmedPaid>0?'부분 입금':'미입금';
  // Once an order is shipping (including partial shipment), its status already
  // implies checkout is done. Avoid a duplicate "입금 확인" chip in the list.
- const listPaymentMark=paymentMark==='입금 확인'&&['🚚 배송 중','📦 일부 배송 중'].includes(deliveryTag)?'':paymentMark;
+ const shippingFocus=group.length===1&&group[0].status==='confirmed'&&group[0].delivery_method==='courier'&&(
+  adminOrderJourneyStep(group[0])==='journey_shipping'||
+  state.filter==='delivery_shipped'&&adminDeliveryListed(group[0],'delivery_shipped'));
+ const listPaymentMark=shippingFocus?'':paymentMark==='입금 확인'&&['🚚 배송 중','📦 일부 배송 중'].includes(deliveryTag)?'':paymentMark;
  const showPaymentSummary=state.filter==='preparing_orders'&&confirmedOrders.length>0;
  const paymentSummary=showPaymentSummary?`<span class="admin-order-fold-amounts"><span>총 결제 <b>${canSumPayments?money(confirmedDue):'확인 중'}</b></span><span>입금 <b>${money(confirmedPaid)}</b></span><span class="is-due">미입금 <strong>${canSumPayments?money(confirmedOrders.reduce((sum,q)=>sum+balanceDue(q),0)):'확인 중'}</strong></span></span>`:'';
  return `<details class="admin-order-fold ${urgent?'has-pending':''}" data-admin-order-id="${esc(key)}"${adminOrderSearchAttrs(group)} ${open?'open':''}>
   <summary class="admin-order-fold-heading">
    <span class="admin-order-fold-left">
     <strong>${esc(root.buyer_name||'주문자 미입력')} ${adminGithubGroupIcon(group)} <span class="admin-order-fold-baby">아기: ${esc(babies.join(' · ')||'미입력')}</span></strong>
-    <span class="admin-order-fold-meta">${group.length>1?(isAdminViewGroup(group)?'확정 주문 '+group.length+'건 자동 합침 · ':group.every(q=>bundleRootId(q)===bundleRootId(group[0]))?'묶음배송 '+group.length+'건 · ':'주문 '+group.length+'건 함께 보기 · '):''}상품 ${count}종 · ${qty}개 · ${fmtDate(root.created_at)}${listPaymentMark?` <b class="admin-order-payment-chip ${listPaymentMark==='입금 확인'?'paid':''}">${listPaymentMark}</b>`:''}${deliveryTag?` <b class="admin-order-payment-chip paid">${esc(deliveryTag)}</b>`:''}</span>
+    <span class="admin-order-fold-meta">${group.length>1?(isAdminViewGroup(group)?'확정 주문 '+group.length+'건 자동 합침 · ':group.every(q=>bundleRootId(q)===bundleRootId(group[0]))?'묶음배송 '+group.length+'건 · ':'주문 '+group.length+'건 함께 보기 · '):''}상품 ${count}종 · ${qty}개 · ${fmtDate(root.created_at)}${listPaymentMark?` <b class="admin-order-payment-chip ${listPaymentMark==='입금 확인'?'paid':''}">${listPaymentMark}</b>`:''}${deliveryTag&&!shippingFocus?` <b class="admin-order-payment-chip paid">${esc(deliveryTag)}</b>`:''}</span>
     ${paymentSummary}
    </span>
    <span class="admin-order-fold-right"><span class="admin-order-fold-next ${urgent?'is-urgent':''}">${esc(nextShort)}</span></span>
    <span class="admin-order-fold-chevron" aria-hidden="true"></span>
   </summary>
   <div class="admin-order-fold-body">
-   ${group.some(q=>q.delivery_method==='courier')?`<details class="admin-courier-address" ${state.filter==='wholesale_completed'&&state.adminShippingMethod==='courier'?'open':''}>
+   ${!shippingFocus&&group.some(q=>q.delivery_method==='courier')?`<details class="admin-courier-address" ${state.filter==='wholesale_completed'&&state.adminShippingMethod==='courier'?'open':''}>
       <summary>📍 배송지 보기 · ${esc((group.find(q=>q.delivery_method==='courier')||root).recipient_name||root.buyer_name||'수령인')}</summary>
       ${group.filter(q=>q.delivery_method==='courier').filter((q,i,rows)=>rows.findIndex(x=>String(x.postal_code||'')+'|'+String(x.address_line1||'')+'|'+String(x.address_line2||'')===String(q.postal_code||'')+'|'+String(q.address_line1||'')+'|'+String(q.address_line2||''))===i).map(q=>`<div class="admin-courier-address-info"><strong>${esc(q.recipient_name||q.buyer_name||'받는 사람 미입력')}</strong><span>${esc(q.contact||'연락처 미입력')}</span><p>${esc(q.postal_code||'우편번호 미입력')} · ${esc([q.address_line1,q.address_line2].filter(Boolean).join(' ')||'주소 미입력')}</p>${q.delivery_note?`<small>배송 요청사항 · ${esc(q.delivery_note)}</small>`:''}</div>`).join('')}
      </details>`:''}
-   ${group.length===1&&['delivery_shipped','delivery_completed','journey_shipping'].includes(state.filter)&&['new','preparing'].includes(workflowStage(group[0]))&&adminPartialParcels(group[0]).length?renderAdminPartShipmentCard(group[0]):group.length>1?(isAdminViewGroup(group)?renderAdminViewGroupCard(group):group.every(q=>bundleRootId(q)===bundleRootId(group[0]))?renderBundleCard(group):renderSameRoundCard(group)):renderAdminQuoteCard(group[0])}
+   ${shippingFocus?renderAdminShippingFocus(group[0]):group.length===1&&['delivery_shipped','delivery_completed','journey_shipping'].includes(state.filter)&&['new','preparing'].includes(workflowStage(group[0]))&&adminPartialParcels(group[0]).length?renderAdminPartShipmentCard(group[0]):group.length>1?(isAdminViewGroup(group)?renderAdminViewGroupCard(group):group.every(q=>bundleRootId(q)===bundleRootId(group[0]))?renderBundleCard(group):renderSameRoundCard(group)):renderAdminQuoteCard(group[0])}
   </div>
  </details>`;
 }

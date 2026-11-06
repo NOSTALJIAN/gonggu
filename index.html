@@ -21,7 +21,46 @@
 .admin-nuvo-shortcut{flex:none;min-height:34px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#333;padding:5px 10px;font-size:12px;font-weight:780;white-space:nowrap}
 @media(max-width:375px){.admin-method-pills{gap:1px}.admin-method-pills button{padding:6px 5px;font-size:10.5px}.admin-delivery-tabs button{font-size:11px}.admin-nuvo-shortcut{padding:5px 7px;font-size:11px}}
 </style>
-<script src="./nuvo_shipping.js?v=20261106-a3-one-label-manual" defer></script>
+<style id="admin-order-ably-practical-v3">
+.admin-order-modes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;background:#f5f5f5;border-radius:11px;padding:4px;margin:7px 0 13px}
+.admin-order-modes button{min-width:0;border:0;border-radius:8px;background:transparent;color:#666;font-size:12px;font-weight:800;min-height:39px;padding:7px 3px;white-space:nowrap}
+.admin-order-modes button.active{background:white;color:#151515;box-shadow:0 1px 5px #00000012}
+.admin-orders-page .admin-orders-search{display:flex;align-items:center;gap:7px;position:relative;margin:0 0 11px}
+.admin-order-search-type{flex:0 0 auto}
+.admin-order-search-type select{appearance:auto;width:85px;min-height:43px;background:#fff;color:#222;border:1px solid #ddd;border-radius:8px;padding:8px 5px;font-size:12px}
+.admin-orders-page .admin-orders-search input{flex:1;min-width:0;width:0;min-height:43px;margin:0;padding:8px 36px 8px 10px;background:#fff}
+.admin-orders-page .admin-orders-search button{right:5px;top:6px}
+.admin-orders-page .admin-orders-filterbar{display:flex;gap:5px;overflow-x:auto;scrollbar-width:none;flex-wrap:nowrap;padding:0 0 5px;margin-bottom:9px}
+.admin-orders-page .admin-orders-filterbar::-webkit-scrollbar{display:none}
+.admin-orders-page .admin-orders-filterbar button{display:inline-flex;flex:0 0 auto;flex-direction:row;justify-content:center;gap:5px;min-height:34px;border-radius:8px;font-size:11px;padding:6px 11px}
+.admin-orders-page .admin-orders-filterbar button b{font-size:11px}
+.admin-preproc-quick{display:flex;justify-content:space-between;align-items:center;gap:9px;margin:8px 0 14px;padding:11px 12px;background:#f8f8f8;border-radius:9px}
+.admin-preproc-quick span{font-size:11px;color:#666}
+.admin-preproc-quick button{font-size:11px;font-weight:780;border:1px solid #ddd;border-radius:8px;padding:9px 10px;background:#fff;color:#222;white-space:nowrap}
+.admin-ship-queue{margin-top:5px}
+.admin-ship-instruction{font-size:11px;line-height:1.6;color:#666;margin:5px 2px 12px}
+.admin-ship-toolbar{display:flex;justify-content:space-between;align-items:center;gap:8px;border-radius:10px;padding:9px 10px;background:#f5f5f5;margin:0 0 10px}
+.admin-ship-toolbar>span{font-size:11px;color:#555}.admin-ship-toolbar b{font-weight:850;color:#222}
+.admin-ship-export{flex:0 0 auto;border:0;border-radius:8px;background:#1f1f1f;color:#fff;padding:11px 12px;font-size:12px;font-weight:800}
+.admin-ship-export:disabled{background:#ddd;color:#888}
+.admin-ship-candidate{border:1px solid #e5e5e5;border-radius:12px;background:#fff;padding:12px 13px;margin:8px 0}
+.admin-ship-pick{display:flex;align-items:flex-start;gap:11px;cursor:pointer}
+.admin-ship-pick input{width:20px;height:20px;flex:0 0 auto;margin:3px 0 0;accent-color:#181818}
+.admin-ship-pick span{min-width:0;flex:1}.admin-ship-pick strong{display:block;font-size:14px;color:#222}
+.admin-ship-pick small{display:block;font-size:11px;color:#777;line-height:1.5;margin-top:3px;overflow-wrap:anywhere}
+.admin-ship-candidate-details{border-top:1px solid #eee;margin-top:11px;padding-top:9px}
+.admin-ship-candidate-details>summary{font-size:11px;font-weight:750;color:#555;cursor:pointer}
+.admin-ship-summary-address{font-size:11px;color:#555;margin-top:9px;padding:9px;background:#f7f7f7;border-radius:8px}
+.admin-ship-summary-address p{line-height:1.6;margin:4px 0 0;overflow-wrap:anywhere}
+.admin-ship-summary-products{font-size:11px;line-height:1.7;color:#555;margin:10px 0}
+.admin-ship-original-order{border-top:1px solid #eee;margin-top:9px;padding-top:9px}
+.admin-ship-original-order>summary{font-size:12px;cursor:pointer;font-weight:750}
+.admin-ship-waiting{border-top:1px solid #eee;padding-top:13px;margin-top:18px}
+.admin-ship-waiting>summary{font-size:12px;font-weight:770;cursor:pointer}
+.admin-ship-waiting .admin-price-section{margin-top:13px}
+@media(max-width:370px){.admin-order-modes button{font-size:11px}.admin-ship-toolbar{gap:5px}.admin-ship-export{padding:10px 7px;font-size:11px}}
+</style>
+<script src="./nuvo_shipping.js?v=20261106-a5-queue-preselection" defer></script>
 <script src="./nuvo_import.js?v=20261106-a3-one-label-merged" defer></script>
 <script src="./partial_shipping.js?v=20261106-v120-tracking-status" defer></script>
 <!-- Release 439f3d34: remove only the retired MINIYENA offline cache.
@@ -12105,10 +12144,28 @@ async function click(e){
   state.adminShippingMethod=method;
   const y=window.scrollY;render();window.scrollTo({top:y,behavior:'instant'});updateAdminOrderSearch();return;
  }
+ if(a==='admin-order-mode'){
+  if(!state.admin||state.tab!=='quotes')throw Error('관리자 주문 화면에서만 사용할 수 있어요.');
+  const next={orders:'all_history',procurement:'preparing_orders',shipping:'wholesale_completed'}[b.dataset.mode];
+  if(!next)return;
+  state.filter=next;state.orderViewFilter=next;
+  if(b.dataset.mode==='shipping')state.adminShippingMethod='courier';
+  const y=window.scrollY;render();window.scrollTo({top:y,behavior:'instant'});return;
+ }
+ if(a==='admin-open-wholesale'){
+  if(!state.admin)throw Error('관리자 로그인이 필요해요.');
+  state.tab='payments';state.filter='supplier_payments';render();return;
+ }
+ if(a==='nuvo-open-selected'){
+  if(!state.admin||!window.MiniNuvoShipping)throw Error('택배 엑셀 기능을 새로고침해 주세요.');
+  const ids=adminNuvoCandidates().ready.filter(r=>state.adminDispatchSelection.has(r.id)).map(r=>r.id);
+  if(!ids.length)throw Error('발송할 수령인을 먼저 선택해 주세요.');
+  window.MiniNuvoShipping.open(adminNuvoContext({preselectedIds:ids}));return;
+ }
  if(a==='nuvo-open'){
   if(!state.admin||state.page!=='admin')throw Error('관리자 전용 기능이에요.');
   if(!window.MiniNuvoShipping)throw Error('엑셀 기능을 불러오지 못했어요. 새로고침 후 다시 시도해 주세요.');
-  window.MiniNuvoShipping.open({quotes:state.quotes,partialHistory:state.partialParcels||[],bundleRootId,allReceived,balanceDue,workflowStage,normalizeBuyerPhone,saleItems,rpc,reload:loadAdmin,notify:notif,isAdmin:state.admin});
+  window.MiniNuvoShipping.open(adminNuvoContext());
   return;
  }
 
@@ -13934,6 +13991,17 @@ else if(f.dataset.payment){
  busy=false;
 }}
 async function change(e){const x=e.target;
+if(state.page==='admin'&&state.admin&&state.tab==='quotes'&&x.id==='admin-order-search-mode'){
+ state.adminOrderSearchMode=['all','buyer','baby','product','contact','order'].includes(x.value)?x.value:'all';
+ updateAdminOrderSearch();return;
+}
+if(state.page==='admin'&&state.admin&&state.tab==='quotes'&&x.matches?.('[data-admin-dispatch-pick]')){
+ const id=x.dataset.adminDispatchPick,allowed=new Set(adminNuvoCandidates().ready.map(r=>r.id));
+ if(!allowed.has(id)){x.checked=false;state.adminDispatchSelection.delete(id);}
+ else if(x.checked)state.adminDispatchSelection.add(id);
+ else state.adminDispatchSelection.delete(id);
+ updateAdminDispatchSelection();return;
+}
 if(state.page==='admin'&&state.admin&&state.tab==='receipts'&&(x.id==='receipt-store'||x.id==='receipt-group-by')){
  if(x.id==='receipt-store')state.receiptStore=x.value;
  else state.receiptGroupBy=x.value==='buyer'?'buyer':'product';

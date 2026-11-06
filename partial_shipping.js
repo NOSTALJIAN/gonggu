@@ -120,7 +120,7 @@ async function open(ctx){
   const body=overlay.querySelector('.ps-content');body.className='ps-content';
   body.innerHTML='<p class="ps-lead"><b>'+escapeHtml(ctx.quote.buyer_name||ctx.quote.recipient_name)+'</b> · '+group.length+'건 묶음 / 지금 입고된 상품 중 원하는 것만 선택하세요. <b>미입고 상품은 포함되지 않아요.</b></p>'+
    '<div class="ps-list">'+(possible.length?possible.map(({q,i,limit})=>
-    '<label class="ps-item"><input type="checkbox" data-item="'+escapeHtml(i.id)+'" checked><span><strong>'+escapeHtml(i.store_name)+' · '+escapeHtml(i.product_name)+'</strong><small>'+escapeHtml(i.color)+' / '+escapeHtml(i.size)+' · 발송 가능 '+limit+'개'+(group.length>1?' · '+escapeHtml(q.buyer_name):'')+'</small></span>'+
+    '<label class="ps-item"><input type="checkbox" data-item="'+escapeHtml(i.id)+'"><span><strong>'+escapeHtml(i.store_name)+' · '+escapeHtml(i.product_name)+'</strong><small>'+escapeHtml(i.color)+' / '+escapeHtml(i.size)+' · 발송 가능 '+limit+'개'+(group.length>1?' · '+escapeHtml(q.buyer_name):'')+'</small></span>'+
     '<input type="number" aria-label="'+escapeHtml(i.product_name)+' 발송 수량" data-qty="'+escapeHtml(i.id)+'" value="'+limit+'" min="1" max="'+limit+'" inputmode="numeric"></label>'
     ).join(''):'<p class="ps-loading">지금 부분발송할 수 있는 입고완료 상품이 없어요.</p>')+'</div>'+
    (waiting.length?'<p class="ps-awaiting">아직 입고되지 않은 상품 '+waiting.length+'종은 기존 주문에 남겨둘게요.</p>':'')+

@@ -85,6 +85,10 @@
 .admin-view-group-original>summary{font-size:11px;font-weight:750;cursor:pointer}
 .admin-view-group-original>details{padding:9px 0;border-bottom:1px solid #eee}
 .admin-view-group-original>details>summary{font-size:11px;font-weight:750;cursor:pointer}
+.admin-view-group-separated{border-top:1px solid #e8e8e8;margin-top:8px;padding-top:10px}
+.admin-view-group-separated>strong{font-size:12px;color:#666;display:block}
+.admin-view-group-separated .admin-view-group-items{border-top:0;margin:4px 0 8px;color:#777}
+.admin-view-group-head{padding-bottom:3px}
 @media(max-width:390px){.admin-order-header-links button{font-size:10px}.admin-order-merge-launch{padding:8px;font-size:10px}.admin-order-list-actions .admin-clean-utility{font-size:10px;padding:7px}}
 </style>
 <script src="./nuvo_shipping.js?v=20261106-b1-miniyena-name" defer></script>
@@ -8522,99 +8526,66 @@ function renderShippingMergeButton(group){
  return `<div class="shipping-merge-entry"><button type="button" class="btn sm secondary" data-action="merge-shipping" data-id="${esc(first.id)}">주문 합치기 · ${options.length}건</button></div>`;
 }
 /* Admin presentation groups are independent from courier bundling and settlement. */
+/* Automatically group confirmed unfinished orders for the administrator only.
+   Shipping batches, customer payments and individual order IDs remain untouched. */
 function adminOrderGroupKey(q){
- return normKey(q?.buyer_name)+'|'+normKey(q?.baby_name);
+ const name=normKey(q?.buyer_name);
+ const phone=String(normalizeBuyerPhone(q?.contact)||'').replace(/\D/g,'');
+ if(name&&phone.length>=10)return name+'|phone:'+phone;
+ if(name&&q?.customer_key)return name+'|customer:'+String(q.customer_key);
+ return name+'|baby:'+normKey(q?.baby_name);
 }
-function adminOrderGroupingCandidates(q){
- if(!q||!normKey(q.buyer_name))return [];
- const key=adminOrderGroupKey(q);
- return (state.quotes||[]).filter(x=>x.status!=='cancelled'&&adminOrderGroupKey(x)===key)
-  .sort((a,b)=>String(a.created_at||'').localeCompare(String(b.created_at||'')));
+function adminViewCanCombine(q){
+ return !!q&&q.status==='confirmed'&&!q.cancel_requested_at&&
+  !isFinishedOrder(q)&&!['shipped','completed','soldout_closed'].includes(workflowStage(q))&&
+  !!normKey(q.buyer_name);
 }
 function adminViewGroups(visible){
  const byKey=new Map();
  for(const q of visible){
-  const key=q.admin_view_group_id?'admin:'+q.admin_view_group_id:'single:'+q.id;
+  const key=adminViewCanCombine(q)?'confirmed:'+adminOrderGroupKey(q):'single:'+q.id;
   if(!byKey.has(key))byKey.set(key,[]);
   byKey.get(key).push(q);
  }
- return [...byKey.values()].map(g=>g.sort((a,b)=>String(a.created_at).localeCompare(String(b.created_at))))
+ return [...byKey.values()].map(g=>g.sort((a,b)=>String(a.created_at||'').localeCompare(String(b.created_at||''))))
   .sort((a,b)=>String(b[b.length-1]?.created_at||'').localeCompare(String(a[a.length-1]?.created_at||'')));
 }
 function isAdminViewGroup(group){
- return group.length>1&&!!group[0].admin_view_group_id&&
-  group.every(q=>q.admin_view_group_id===group[0].admin_view_group_id);
+ return group.length>1&&group.every(q=>adminViewCanCombine(q)&&adminOrderGroupKey(q)===adminOrderGroupKey(group[0]));
+}
+function adminViewGroupItems(group){
+ const pending=[],released=[],soldout=[];
+ for(const q of group)for(const i of q.items||[]){
+  const total=Math.max(0,Number(i.quantity)||0),stage=workflowStage(q);
+  const courierSent=q.delivery_method==='courier'
+   ?(['shipped','completed'].includes(stage)||i.fulfillment==='delivered'?total:Math.min(total,adminSentCount(i))):0;
+  const picked=q.delivery_method==='pickup'
+   ?(stage==='completed'||i.fulfillment==='delivered'?total:0):0;
+  const done=Math.min(total,Math.max(courierSent,picked));
+  const line={q,i,quantity:0,type:picked?'pickup':'courier'};
+  if(done)released.push({...line,quantity:done});
+  if(total>done)(i.fulfillment==='sold_out'?soldout:pending).push({...line,quantity:total-done});
+ }
+ return {pending,released,soldout};
 }
 function renderAdminViewGroupCard(group){
- const itemRows=group.flatMap(q=>(q.items||[]).map(i=>({q,i})));
- const qty=itemRows.reduce((sum,{i})=>sum+Number(i.quantity||0),0);
+ const split=adminViewGroupItems(group),count=rows=>rows.reduce((n,row)=>n+row.quantity,0);
  const due=group.every(readyQuote)?money(group.reduce((sum,q)=>sum+totalDue(q),0)):'금액 확인 필요';
- const net=group.reduce((sum,q)=>sum+Number(q.amount_paid||0)-Number(q.amount_refunded||0),0);
+ const paid=group.reduce((sum,q)=>sum+Number(q.amount_paid||0)-Number(q.amount_refunded||0),0);
+ const itemLines=rows=>rows.map(({i,quantity})=>'<div><span>'+esc(i.product_name||'상품')+
+  ' · '+esc([i.color,i.size].filter(Boolean).join('/')||'옵션 없음')+'</span><b>×'+quantity+'</b></div>').join('');
  return '<div class="admin-view-group-card">'+
-  '<div class="admin-view-group-head"><strong>주문 '+group.length+'건 · 상품 '+itemRows.length+'종 · '+qty+'개</strong><button type="button" data-action="admin-view-group-edit" data-id="'+esc(group[0].id)+'">묶음 수정</button></div>'+
-  '<div class="admin-view-group-items">'+itemRows.map(({i})=>'<div><span>'+esc(i.product_name||'상품')+' · '+esc([i.color,i.size].filter(Boolean).join('/')||'옵션 없음')+'</span><b>×'+Math.max(0,Number(i.quantity)||0)+'</b></div>').join('')+'</div>'+
-  '<div class="admin-view-group-totals"><span>주문금액 '+due+'</span><span>입금 기록 '+money(net)+'</span></div>'+
+  '<div class="admin-view-group-head"><strong>확정 주문 '+group.length+'건 · 남은 상품 '+count(split.pending)+'개</strong></div>'+
+  '<div class="admin-view-group-items">'+(itemLines(split.pending)||'<p class="smallnote">남은 상품이 없어요.</p>')+'</div>'+
+  (split.released.length?'<section class="admin-view-group-separated"><strong>먼저 발송·픽업한 상품 '+count(split.released)+'개</strong>'+
+   '<div class="admin-view-group-items">'+split.released.map(({i,quantity,type})=>
+    '<div><span>'+esc(type==='pickup'?'픽업 완료 · ':'선발송 · ')+esc(i.product_name||'상품')+
+    ' · '+esc([i.color,i.size].filter(Boolean).join('/')||'옵션 없음')+'</span><b>×'+quantity+'</b></div>').join('')+'</div></section>':'')+
+  (split.soldout.length?'<details class="admin-view-group-original"><summary>품절 '+count(split.soldout)+'개</summary><div class="admin-view-group-items">'+itemLines(split.soldout)+'</div></details>':'')+
+  '<div class="admin-view-group-totals"><span>전체 주문금액 '+due+'</span><span>입금 기록 '+money(paid)+'</span></div>'+
   '<details class="admin-view-group-original"><summary>원주문 '+group.length+'건 · 개별 수정</summary>'+
    group.map((q,idx)=>'<details><summary>'+(idx+1)+'번째 주문 · '+esc(fmtDate(q.created_at))+' · '+esc(deliveryLabel(q))+'</summary>'+renderAdminQuoteCard(q)+'</details>').join('')+
   '</details></div>';
-}
-function renderAdminOrderMergePicker(){
- const groups=new Map();
- for(const q of state.quotes||[]){
-  if(q.status==='cancelled'||!normKey(q.buyer_name))continue;
-  const key=adminOrderGroupKey(q);
-  if(!groups.has(key))groups.set(key,[]);
-  groups.get(key).push(q);
- }
- const choices=[...groups.values()].filter(x=>x.length>=2).sort((a,b)=>String(a[0].buyer_name||'').localeCompare(String(b[0].buyer_name||''),'ko'));
- return '<div class="admin-merge-order-picker">'+
-  '<p class="smallnote">택배·직접수령 구분 없이 같은 구매자의 주문을 묶어 볼 수 있어요. 배송비·입금액은 바뀌지 않아요.</p>'+
-  (choices.length?choices.map(rows=>{
-   const root=rows[0],grouped=rows.filter(q=>q.admin_view_group_id).length;
-   return '<button type="button" class="admin-merge-picker-row" data-action="admin-view-group-edit" data-id="'+esc(root.id)+'"><strong>'+esc(root.buyer_name||'주문자')+' <small>아기 '+esc(root.baby_name||'미입력')+'</small></strong>'+
-    '<span>주문 '+rows.length+'건'+(grouped?' · 기존 묶음 있음':'')+' <b>선택 ›</b></span></button>';
-  }).join(''):'<div class="empty">함께 묶을 수 있는 주문이 아직 없어요.</div>')+'</div>';
-}
-function renderAdminViewGroupEditor(m){
- const opened=state.quotes.find(q=>q.id===m.id);
- const choices=adminOrderGroupingCandidates(opened);
- if(choices.length<2)return '<div class="empty">같은 구매자의 주문이 2건 이상 있어야 묶을 수 있어요.</div>';
- const previous=opened.admin_view_group_id;
- return '<form id="admin-view-group-form" class="admin-view-group-editor">'+
-  '<input type="hidden" name="root_id" value="'+esc(opened.id)+'">'+
-  '<p class="smallnote">합칠 주문에 체크하세요. 택배 주소나 배송 방법은 수정하지 않아요.</p>'+
-  '<div class="admin-view-group-checks">'+choices.map((q,idx)=>{
-   const checked=previous?previous===q.admin_view_group_id:true;
-   const items=(q.items||[]).map(i=>esc(i.product_name||'상품')+' '+esc([i.color,i.size].filter(Boolean).join('/'))+' ×'+(Number(i.quantity)||0)).join(' · ');
-   return '<label><input type="checkbox" name="order_ids" value="'+esc(q.id)+'"'+(checked?' checked':'')+'><span><b>'+esc(fmtDate(q.created_at))+' · '+esc(deliveryLabel(q))+'</b>'+
-    '<small>상품 '+(q.items||[]).length+'종 · '+esc(statusLabel[q.status]||q.status)+'</small><small>'+items+'</small></span></label>';
-  }).join('')+'</div>'+
-  '<button type="submit" class="btn block">선택한 주문 합치기</button>'+
-  (previous?'<button type="button" class="btn neutral block" data-action="admin-view-group-clear" data-id="'+esc(opened.id)+'">이 묶음 해제</button>':'')+
-  '</form>';
-}
-async function adminSaveViewGroup(ids){
- if(!state.admin||!connected)throw Error('관리자 로그인 후 주문을 합칠 수 있어요.');
- const selected=[...new Set(ids)].map(id=>state.quotes.find(q=>q.id===id));
- if(selected.length<2||selected.some(q=>!q||q.status==='cancelled'))throw Error('취소되지 않은 주문 2건 이상을 선택해 주세요.');
- if(new Set(selected.map(adminOrderGroupKey)).size!==1)throw Error('같은 구매자의 주문만 묶을 수 있어요.');
- const prior=selected.map(q=>q.admin_view_group_id).filter(Boolean);
- const groupId=prior.length===selected.length&&new Set(prior).size===1?prior[0]:uuid();
- const idsParam=selected.map(q=>encodeURIComponent(q.id)).join(',');
- const saved=await api('/rest/v1/gq_quotes?id=in.('+idsParam+')',{method:'PATCH',admin:true,body:{admin_view_group_id:groupId}});
- if(!Array.isArray(saved)||saved.length!==selected.length)throw Error('저장된 주문 수가 일치하지 않아요. 새로고침해 확인해 주세요.');
- state.modal=null;await loadAdmin();state.tab='quotes';state.filter='active_orders';state.orderViewFilter='active_orders';render();
- notif('주문 '+selected.length+'건을 한 카드로 묶었어요. 입금·배송 기록은 그대로예요.');
-}
-async function adminClearViewGroup(id){
- const q=state.quotes.find(x=>x.id===id);if(!q?.admin_view_group_id)throw Error('해제할 묶음이 없어요.');
- const members=state.quotes.filter(x=>x.admin_view_group_id===q.admin_view_group_id);
- if(!window.confirm('주문 '+members.length+'건의 화면 묶음을 해제할까요? 기존 합배송이나 입금 내역은 바뀌지 않아요.'))return;
- const saved=await api('/rest/v1/gq_quotes?admin_view_group_id=eq.'+encodeURIComponent(q.admin_view_group_id),
-  {method:'PATCH',admin:true,body:{admin_view_group_id:null}});
- if(!Array.isArray(saved)||saved.length!==members.length)throw Error('묶음 해제 기록을 확인해 주세요.');
- state.modal=null;await loadAdmin();state.tab='quotes';state.filter='active_orders';state.orderViewFilter='active_orders';render();
- notif('주문 묶음을 해제했어요.');
 }
 function renderMergeShippingBody(m){
  const opened=state.quotes.find(q=>q.id===m.id);
@@ -8982,7 +8953,7 @@ function renderCollapsibleAdminOrder(group,section){
   <summary class="admin-order-fold-heading">
    <span class="admin-order-fold-left">
     <strong>${esc(root.buyer_name||'주문자 미입력')} ${adminGithubGroupIcon(group)} <span class="admin-order-fold-baby">아기: ${esc(babies.join(' · ')||'미입력')}</span></strong>
-    <span class="admin-order-fold-meta">${group.length>1?(isAdminViewGroup(group)?'묶은 주문 '+group.length+'건 · ':group.every(q=>bundleRootId(q)===bundleRootId(group[0]))?'묶음배송 '+group.length+'건 · ':'주문 '+group.length+'건 함께 보기 · '):''}상품 ${count}종 · ${qty}개 · ${fmtDate(root.created_at)}${paymentMark?` <b class="admin-order-payment-chip ${paymentMark==='입금 확인'?'paid':''}">${paymentMark}</b>`:''}${deliveryTag?` <b class="admin-order-payment-chip paid">${esc(deliveryTag)}</b>`:''}</span>
+    <span class="admin-order-fold-meta">${group.length>1?(isAdminViewGroup(group)?'확정 주문 '+group.length+'건 자동 합침 · ':group.every(q=>bundleRootId(q)===bundleRootId(group[0]))?'묶음배송 '+group.length+'건 · ':'주문 '+group.length+'건 함께 보기 · '):''}상품 ${count}종 · ${qty}개 · ${fmtDate(root.created_at)}${paymentMark?` <b class="admin-order-payment-chip ${paymentMark==='입금 확인'?'paid':''}">${paymentMark}</b>`:''}${deliveryTag?` <b class="admin-order-payment-chip paid">${esc(deliveryTag)}</b>`:''}</span>
     ${paymentSummary}
    </span>
    <span class="admin-order-fold-right"><span class="admin-order-fold-next ${urgent?'is-urgent':''}">${esc(next)}</span></span>
@@ -10196,7 +10167,7 @@ function renderAdminQuotes(){
   filter.startsWith('flow_')?q.status==='confirmed'&&workflowStage(q)===filter.slice(5):q.status===filter)
  .filter(q=>filter!=='wholesale_completed'||!state.adminShippingMethod||state.adminShippingMethod==='all'||q.delivery_method===state.adminShippingMethod);
  const groups=['delivery_shipped','delivery_completed'].includes(filter)?qq.map(q=>[q]):
-  ['active_orders','all_history','cancellation_orders'].includes(filter)?adminViewGroups(qq):
+  ['active_orders','preparing_orders','all_history','cancellation_orders'].includes(filter)?adminViewGroups(qq):
   ['finished','wholesale_completed'].includes(filter)?bundledQuoteGroups(qq,filter==='finished'):sameRoundGroups(qq);
  const preparingRows=filter==='preparing_orders'?qq.filter(readyQuote):[];
  const preparingMissing=filter==='preparing_orders'?qq.length-preparingRows.length:0;
@@ -10235,7 +10206,6 @@ function renderAdminQuotes(){
   <div class="admin-orders-title-row">
    <div class="admin-orders-list-title"><strong>${esc(title)}</strong><span>${['delivery_shipped','delivery_completed'].includes(filter)?groups.length+'건 · 주문별로 표시':qq.length+'건'}</span></div>
    <div class="admin-order-list-actions">
-    ${['active_orders','all_history','needs_review'].includes(filter)?'<button type="button" class="admin-order-merge-launch" data-action="open-admin-order-merge-picker">주문 합치기</button>':''}
     <button type="button" class="admin-clean-utility" data-action="open-admin-order-filters" aria-label="주문 상세 필터 열기">
     ${advancedSelected?'선택 중 · '+esc(title):'필터'} <span aria-hidden="true">☷</span>
     </button>
@@ -10582,8 +10552,6 @@ if(m.type==='admin-purchase-remind-bulk'&&state.admin&&state.page==='admin'){
  </div>`);
 }
 if(m.type==='admin-option-requests'&&state.admin&&state.page==='admin')return wrap('옵션 변경 요청',adminOptionRequestsModalBody(m));
- if(m.type==='admin-order-merge-picker'&&state.admin&&state.page==='admin'&&state.tab==='quotes')return wrap('주문 합치기',renderAdminOrderMergePicker());
- if(m.type==='admin-view-group-editor'&&state.admin&&state.page==='admin'&&state.tab==='quotes')return wrap('주문 선택',renderAdminViewGroupEditor(m));
  if(m.type==='admin-order-filters'&&state.admin&&state.page==='admin'&&state.tab==='quotes')return wrap('주문 상세 필터',renderAdminOrderFilterModal());
  if(m.type==='admin-wholesale-history'&&state.admin&&state.page==='admin'&&state.tab==='payments')
   return wrap('진행 중 배분·입금 관리',`<div class="admin-history-modal">
@@ -12583,20 +12551,6 @@ if(a==='set-purchase-intent'){
  notif(next==='buy_now'?'구매 의사가 전달됐어요. 배송비 계산 후 최종 금액을 안내받아요.':next==='next_round'?'다음 회차 구매로 저장했어요.':'구매 보류로 저장했어요.');
  return;
 }
-if(a==='open-admin-order-merge-picker'){
- if(!state.admin||state.page!=='admin'||state.tab!=='quotes')throw Error('관리자 주문 화면에서 주문을 합쳐 주세요.');
- modalOpen('admin-order-merge-picker');return;
-}
-if(a==='admin-view-group-edit'){
- if(!state.admin||state.tab!=='quotes')throw Error('관리자 주문 화면에서만 가능해요.');
- const q=state.quotes.find(q=>q.id===id);
- if(!q||adminOrderGroupingCandidates(q).length<2)throw Error('선택할 주문이 2건 이상 필요해요.');
- modalOpen('admin-view-group-editor',id);return;
-}
-if(a==='admin-view-group-clear'){
- if(!state.admin||state.modal?.type!=='admin-view-group-editor')throw Error('주문 선택 화면에서 해제해 주세요.');
- await adminClearViewGroup(id);return;
-}
 if(a==='open-admin-order-filters'){
  if(!state.admin||state.page!=='admin'||state.tab!=='quotes')throw Error('관리자 주문 화면에서 상세 필터를 열어 주세요.');
  modalOpen('admin-order-filters');return;
@@ -13943,8 +13897,7 @@ const data=new FormData(f);try{if(f.id==='admin-bundle-refund-form'){
  if(carrier.length<1||carrier.length>60||!/^[-0-9A-Za-z ]{4,80}$/.test(tracking))throw Error('택배사와 송장번호를 확인해 주세요 (영문·숫자·하이픈 4~80자).');
  if(!window.confirm(`${carrier} / ${tracking}\n송장을 등록하고 배송 중으로 변경할까요?`))return;
  await adminWorkflowStage(f.dataset.ship,'shipped',carrier,tracking);await loadAdmin();notif('송장번호가 등록됐어요.');
-}else if(f.id==='admin-view-group-form'){await adminSaveViewGroup(data.getAll('order_ids').map(String));}
-else if(f.id==='merge-shipping-form'){await handleMergeShippingSubmit(f,data);}
+}else if(f.id==='merge-shipping-form'){await handleMergeShippingSubmit(f,data);}
 else if(f.id==='bundle-form'){
  const q=state.quotes.find(x=>x.id===state.modal?.id);if(!q)throw Error('주문을 찾지 못했어요');
  const parent=String(data.get('parent_id')||'');

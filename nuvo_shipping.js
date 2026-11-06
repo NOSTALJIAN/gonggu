@@ -98,12 +98,11 @@ function dataRow(r){
  const x=r.root,items=r.items,first=String(items[0].product_name||'상품').trim();
  const names=new Set(items.map(i=>String(i.product_name||'상품').trim()));
  const name=first+(names.size>1?' 외 '+(names.size-1)+'종':'');
- const detail=items.length===1?[items[0].color,items[0].size].filter(Boolean).join(' / '):
-  items.map(i=>String(i.product_name||'상품')+' '+[i.color,i.size].filter(Boolean).join('/')+' ×'+i.quantity).join(' ; ');
+ const detail=items.map(i=>String(i.product_name||'상품')+' '+[i.color,i.size].filter(Boolean).join('/')+' ×'+i.quantity).join(' ; ');
  const phone=context.normalizeBuyerPhone(x.contact).replace(/^([0-9]{3})([0-9]{3,4})([0-9]{4})$/,'$1-$2-$3');
  return ['MY'+r.id.replace(/-/g,'').slice(0,16).toUpperCase(),String(x.recipient_name||'').trim(),phone,'',
   String(x.postal_code||'').trim(),[x.address_line1,x.address_line2].filter(Boolean).join(' ').trim(),
-  name,detail,r.qty,String(x.delivery_note||'').trim(),'','',''];
+  name,detail,1,String(x.delivery_note||'').trim(),'','',''];
 }
 function updateCount(){
  if(!layer)return;
@@ -135,7 +134,7 @@ function open(ctx){
   '<label class="nuvo-entry"><input type="checkbox" data-nuvo-id="'+h(r.id)+'"><span><b>'+h(r.root.recipient_name||r.root.buyer_name)+'</b><small>'+h([...new Set(r.group.map(q=>q.buyer_name||'주문자'))].join(', '))+' · 원주문 '+r.group.length+'건'+(r.parts.length>1?' · 합배송 '+r.parts.length+'묶음':'')+' · 이번 발송 '+r.qty+'개'+(r.waiting?' · 미발송 '+r.waiting+'개':'' )+'</small><small>'+h(r.items.map(i=>(i.product_name||'상품')+' '+[i.color,i.size].filter(Boolean).join('/')+' ×'+i.quantity).join(' · '))+'</small></span></label>'
   ).join(''):'<p style="padding:18px 0">지금 발송 가능한 택배 주문이 없어요.</p>')+'</div>'+
   '<button type="button" class="nuvo-download" data-nuvo-download><span data-nuvo-count>'+selected.size+'건 선택</span> · 누보 엑셀 만들기</button>'+
-  '<p>주문번호·수령자·주소·상품정보·수량만 자동 입력해요. 운임구분·운임·운송장번호는 누보에서 확인하세요. 송장을 부여받은 뒤 아래에서 엑셀을 다시 업로드해 미니예나에 일괄 반영할 수 있어요.</p>'+
+  '<p><b>수량(A타입)은 송장 장수이므로 각 합배송 1건당 1로 입력해요.</b> 상품별 개수는 상품상세에 따로 적혀 있어요. 운임구분·운임·운송장번호는 누보에서 확인하세요. 송장을 부여받은 뒤 아래에서 엑셀을 다시 업로드해 미니예나에 일괄 반영할 수 있어요.</p>'+
   (batch.blocked.length?'<details class="nuvo-skipped"><summary>제외 '+batch.blocked.length+'건 · 사유 보기</summary>'+
   batch.blocked.map(r=>'<div><b>'+h(r.root.buyer_name||r.root.recipient_name)+'</b><small>'+h(r.issues.join(' · '))+'</small></div>').join('')+'</details>':'')+
   '</section>';

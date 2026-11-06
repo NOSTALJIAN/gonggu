@@ -81,9 +81,8 @@ function attach(layer,batch,ctx){
     const dest=available.get(row.order);
     if(!dest)throw Error('현재 발송 가능한 주문과 맞지 않는 주문번호가 있어요: '+row.order);
     if(used.has(row.order))throw Error('한 주문번호가 여러 번 있어요: '+row.order);
-    if(row.qty!=null&&(!Number.isInteger(row.qty)||row.qty!==dest.qty))throw Error('엑셀 발송 수량과 현재 상품 수량이 달라요. 다시 엑셀을 만들어 주세요: '+row.order);
-    const details=dest.items.length===1?[dest.items[0].color,dest.items[0].size].filter(Boolean).join(' / '):
-      dest.items.map(i=>String(i.product_name||'상품')+' '+[i.color,i.size].filter(Boolean).join('/')+' ×'+i.quantity).join(' ; ');
+    if(row.qty!=null&&(!Number.isInteger(row.qty)||row.qty!==1))throw Error('택배 한 건당 수량(A타입)은 반드시 1이어야 해요. 다시 엑셀을 만들어 주세요: '+row.order);
+    const details=dest.items.map(i=>String(i.product_name||'상품')+' '+[i.color,i.size].filter(Boolean).join('/')+' ×'+i.quantity).join(' ; ');
     if(row.detail!==null&&row.detail!==details)throw Error('엑셀과 현재 발송 상품 구성이 다릅니다. 다시 엑셀을 만들어 주세요: '+row.order);
     if(!/^[A-Za-z0-9 -]{4,80}$/.test(row.tracking))throw Error('송장번호를 확인해 주세요: '+row.order);
     if((dest.parts||[dest]).some(p=>p.items.some(i=>!Number.isInteger(i.quantity)||i.quantity<1||i.quantity>20)))throw Error('상품별 발송 수량은 최대 20개예요: '+row.order);

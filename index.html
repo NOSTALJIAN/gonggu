@@ -7,7 +7,11 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="미니예나">
 <meta name="application-name" content="MINIYENA">
-<style>.admin-part-inventory,.admin-part-shipment-card{padding:8px 5px}.admin-part-inventory-title{background:#edf4f1;border-radius:8px;padding:10px 11px;margin:8px 0;font-size:12px;font-weight:800;display:flex;justify-content:space-between}.admin-part-inventory-title.waiting{background:#f8f5ee}.admin-part-item-row{display:flex;justify-content:space-between;gap:10px;border-bottom:1px solid #eee;padding:10px 5px;font-size:12px}.admin-part-item-row b{display:block;font-weight:800;overflow-wrap:anywhere}.admin-part-item-row small{display:block;color:#888;margin-top:4px}.admin-part-item-row strong{white-space:nowrap}.admin-part-summary{font-size:12px;line-height:1.5;color:#555}.admin-part-summary-numbers{display:flex;gap:10px;font-size:12px;border-bottom:1px solid #eee;padding:8px 0 14px}.admin-part-summary-numbers span{flex:1}.admin-part-parcel{background:#fafafa;border:1px solid #eaeaea;border-radius:10px;margin:10px 0;padding:12px}.admin-part-parcel-title{display:flex;flex-direction:column;gap:4px;font-size:12px;margin-bottom:6px}.admin-part-parcel-title span{color:#777;overflow-wrap:anywhere}.admin-part-parcel a{display:inline-block;margin:12px 0 0;font-size:12px;text-decoration:underline}.admin-part-full-order{border-top:1px solid #eee;margin:14px 0;padding:13px 0}.admin-part-full-order>summary{font-size:12px;font-weight:800;cursor:pointer}.admin-delivery-stage-links{display:flex;gap:6px;margin:8px 0 12px}.admin-delivery-stage-links button{flex:1;min-width:0;padding:11px 4px;border:1px solid #ddd;border-radius:9px;background:#fff;color:#333;font-size:11px;font-weight:750;white-space:nowrap}.admin-delivery-stage-links button.active{background:#1c1c1c;color:#fff;border-color:#1c1c1c}.admin-shipping-method{display:flex;gap:6px;margin:9px 0 12px}.admin-shipping-method button{min-width:0;flex:1;border:1px solid #e5e5e5;background:#fff;border-radius:9px;padding:10px 4px;color:#555;font-size:12px;font-weight:750;white-space:nowrap}.admin-shipping-method button.active{border-color:#171717;background:#171717;color:white}.admin-shipping-method b{font-size:11px}.admin-courier-address{margin:4px 0 12px;border:1px solid #e5e5e5;border-radius:10px;background:#f9fafb;padding:11px 12px}.admin-courier-address>summary{font-size:13px;font-weight:800;cursor:pointer}.admin-courier-address-info{padding:10px 2px 3px;display:flex;gap:6px;flex-direction:column;font-size:13px}.admin-courier-address-info strong{font-weight:800}.admin-courier-address-info span,.admin-courier-address-info small{color:#666}.admin-courier-address-info p{margin:2px 0 0;line-height:1.7;overflow-wrap:anywhere}</style>
+<style>.admin-part-inventory,.admin-part-shipment-card{padding:8px 5px}.admin-part-inventory-title{background:#edf4f1;border-radius:8px;padding:10px 11px;margin:8px 0;font-size:12px;font-weight:800;display:flex;justify-content:space-between}.admin-part-inventory-title.waiting{background:#f8f5ee}.admin-part-item-row{display:flex;justify-content:space-between;gap:10px;border-bottom:1px solid #eee;padding:10px 5px;font-size:12px}.admin-part-item-row b{display:block;font-weight:800;overflow-wrap:anywhere}.admin-part-item-row small{display:block;color:#888;margin-top:4px}.admin-part-item-row strong{white-space:nowrap}.admin-part-summary{font-size:12px;line-height:1.5;color:#555}.admin-part-summary-numbers{display:flex;gap:10px;font-size:12px;border-bottom:1px solid #eee;padding:8px 0 14px}.admin-part-summary-numbers span{flex:1}.admin-part-parcel{background:#fafafa;border:1px solid #eaeaea;border-radius:10px;margin:10px 0;padding:12px}.admin-part-parcel-title{display:flex;flex-direction:column;gap:4px;font-size:12px;margin-bottom:6px}.admin-part-parcel-title span{color:#777;overflow-wrap:anywhere}.admin-part-parcel a{display:inline-block;margin:12px 0 0;font-size:12px;text-decoration:underline}.admin-part-full-order{border-top:1px solid #eee;margin:14px 0;padding:13px 0}.admin-part-full-order>summary{font-size:12px;font-weight:800;cursor:pointer}.admin-delivery-stage-links{display:flex;gap:6px;margin:8px 0 12px}.admin-delivery-stage-links button{flex:1;min-width:0;padding:11px 4px;border:1px solid #ddd;border-radius:9px;background:#fff;color:#333;font-size:11px;font-weight:750;white-space:nowrap}.admin-delivery-stage-links button.active{background:#1c1c1c;color:#fff;border-color:#1c1c1c}.admin-shipping-method{display:flex;gap:6px;margin:9px 0 12px}.admin-shipping-method button{min-width:0;flex:1;border:1px solid #e5e5e5;background:#fff;border-radius:9px;padding:10px 4px;color:#555;font-size:12px;font-weight:750;white-space:nowrap}.admin-shipping-method button.active{border-color:#171717;background:#171717;color:white}.admin-shipping-method b{font-size:11px}.admin-courier-address{margin:4px 0 12px;border:1px solid #e5e5e5;border-radius:10px;background:#f9fafb;padding:11px 12px}.admin-courier-address>summary{font-size:13px;font-weight:800;cursor:pointer}.admin-courier-address-info{padding:10px 2px 3px;display:flex;gap:6px;flex-direction:column;font-size:13px}.admin-courier-address-info strong{font-weight:800}.admin-courier-address-info span,.admin-courier-address-info small{color:#666}.admin-courier-address-info p{margin:2px 0 0;line-height:1.7;overflow-wrap:anywhere}
+.catalog-photo-counter{position:absolute;bottom:8px;right:8px;z-index:2;border-radius:12px;background:rgba(0,0,0,.53);color:#fff;padding:3px 8px;font-size:10px;font-weight:700;pointer-events:none;font-variant-numeric:tabular-nums}
+.shop-load-more{display:flex;justify-content:center;padding:17px 0 28px}
+.shop-load-more button{border:1px solid #e0e0e0;border-radius:9px;background:#fff;color:#333;padding:12px 20px;font-size:13px;font-weight:700;min-width:160px;max-width:100%}
+</style>
 <style id="admin-delivery-compact-v2">
 .admin-delivery-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;margin:10px 0 8px;padding:4px;border:1px solid #eee;border-radius:12px;background:#f5f5f5}
 .admin-delivery-tabs button{display:flex;align-items:center;justify-content:center;gap:5px;min-width:0;min-height:38px;padding:7px 3px;border:0;border-radius:9px;background:transparent;color:#646464;font-size:12px;font-weight:760;white-space:nowrap}
@@ -4818,7 +4822,7 @@ const CDN_SHARE_HOST=/^(?:rawcdn|raw)\.githack\.com$/i.test(location.hostname);
 const STOREFRONT_PATH=location.hostname.toLowerCase()==='nostaljian.github.io'?'/gonggu/':CDN_SHARE_HOST?location.pathname:'/';
 const dedicatedAdminPage=location.hostname.toLowerCase()==='miniyena.pages.dev'&&/^\/admin(?:\/index\.html|\/)?$/i.test(location.pathname);
 if(!dedicatedAdminPage&&p.get('page')==='admin')location.replace(ADMIN_HOME);
-const state={partialParcels:[],partialParcelsReady:false,page:dedicatedAdminPage?'admin':p.get('page')==='track'?'track':'shop',tab:'home',adminOrderSearch:'',adminOrderSearchMode:'all',adminDispatchSelection:new Set(),receiptSearch:'',receiptView:'pending',receiptGroupBy:'product',receiptStore:'all',stores:[],products:[],requests:[],quotes:[],cart:read(CART,[]),modal:null,search:'',shopCategory:'all',shopSort:'newest',shopStore:'all',shopFiltersOpen:false,adminCategory:'all',trackId:p.get('id')||'',trackToken:p.get('token')||'',tracking:null,receipts:read(TRACK,[]),notice:'',filter:'pricing',orderViewFilter:null,admin:false,heroPhotoUrl:null,heroStoreId:null,dateGroupsOpen:{},orderCardsOpen:{},supplierBulkSelected:new Set(),supplierBulkStoreId:'',supplierBatches:[],supplierBatchesReady:false,supplierBatchesError:'',supplierPartialInvoices:[],trackSupplierPartial:[],lowerPriceReports:[],optionRequests:[],optionRequestsReady:false,optionRequestsError:'',requestStatusFilter:'pending',adminCatalogView:'products',adminCatalogFilter:'all',adminProductSort:'newest',adminProductSearch:'',productPrivate:{},productPrivateReady:false,emailSettings:null,emailSettingsReady:false,emailSettingsError:'',supplierFreightNotify:{},supplierFreightNotifyReady:false,adminPinIds:new Set(),phoneLookupReady:null,pinLookupNotice:''};
+const state={partialParcels:[],partialParcelsReady:false,page:dedicatedAdminPage?'admin':p.get('page')==='track'?'track':'shop',tab:'home',adminOrderSearch:'',adminOrderSearchMode:'all',adminDispatchSelection:new Set(),receiptSearch:'',receiptView:'pending',receiptGroupBy:'product',receiptStore:'all',stores:[],products:[],requests:[],quotes:[],cart:read(CART,[]),modal:null,search:'',shopCategory:'all',shopSort:'newest',shopStore:'all',shopFiltersOpen:false,shopVisibleCount:24,adminCategory:'all',trackId:p.get('id')||'',trackToken:p.get('token')||'',tracking:null,receipts:read(TRACK,[]),notice:'',filter:'pricing',orderViewFilter:null,admin:false,heroPhotoUrl:null,heroStoreId:null,dateGroupsOpen:{},orderCardsOpen:{},supplierBulkSelected:new Set(),supplierBulkStoreId:'',supplierBatches:[],supplierBatchesReady:false,supplierBatchesError:'',supplierPartialInvoices:[],trackSupplierPartial:[],lowerPriceReports:[],optionRequests:[],optionRequestsReady:false,optionRequestsError:'',requestStatusFilter:'pending',adminCatalogView:'products',adminCatalogFilter:'all',adminProductSort:'newest',adminProductSearch:'',productPrivate:{},productPrivateReady:false,emailSettings:null,emailSettingsReady:false,emailSettingsError:'',supplierFreightNotify:{},supplierFreightNotifyReady:false,adminPinIds:new Set(),phoneLookupReady:null,pinLookupNotice:''};
 
 state.adminLoading=Boolean(connected&&state.page==='admin'&&session?.refresh_token);
 const PRODUCT_CATEGORIES=['바디수트','세트','상의','하의','아우터','원피스','스커트','모자','양말','악세서리','잡화'];
@@ -5906,14 +5910,13 @@ function catalogPhotoGallery(p){
  const action=p.is_sold_out?'product-photos':'pick-product';
  const label=esc(p.name)+' '+(p.is_sold_out?'상품 사진 보기':'상품 옵션 보기');
  if(photos.length<2)return `<button class="shop-catalog-photo shop-photo-button" type="button" data-action="${action}" data-id="${esc(p.id)}" aria-label="${label}">${img(p)}</button>`;
- return `<div class="shop-catalog-photo catalog-gallery" data-catalog-gallery>
+ return `<div class="shop-catalog-photo catalog-gallery" data-catalog-gallery data-catalog-product="${esc(p.id)}" data-catalog-total="${photos.length}">
   <div class="catalog-photo-track" aria-label="${esc(p.name)} 상품 사진">
-   ${photos.map((src,i)=>`<button class="catalog-photo-slide" type="button" data-action="${action}" data-id="${esc(p.id)}" aria-label="${label} · 사진 ${i+1}/${photos.length}"><img class="product-cover" ${i===0?`src="${esc(src)}"`:`data-deferred-photo="${esc(src)}"`} alt="${esc(p.name)} 사진 ${i+1}" loading="lazy" decoding="async" draggable="false"></button>`).join('')}
+   ${photos.slice(0,2).map((src,i)=>`<button class="catalog-photo-slide" type="button" data-action="${action}" data-id="${esc(p.id)}" aria-label="${label} · 사진 ${i+1}/${photos.length}"><img class="product-cover" ${i===0?`src="${esc(src)}"`:`data-deferred-photo="${esc(src)}"`} alt="${esc(p.name)} 사진 ${i+1}" loading="lazy" decoding="async" draggable="false"></button>`).join('')}
   </div>
-  <div class="catalog-photo-dots" aria-label="사진 선택">${photos.map((_,i)=>`<button type="button" data-action="catalog-photo-index" data-index="${i}" aria-label="${i+1}번 사진" aria-pressed="${i===0}"><span></span></button>`).join('')}</div>
+  <span class="catalog-photo-counter" data-catalog-counter aria-live="off">1 / ${photos.length}</span>
  </div>`;
 }
-
 function productPhotoUrls(p){
  const links=[p?.image_url,...(Array.isArray(p?.gallery_urls)?p.gallery_urls:[])];
  return [...new Set(links.filter(x=>typeof x==='string'&&x.startsWith('https://')))];
@@ -6332,6 +6335,56 @@ function revealCatalogPhoto(track,index){
  if(!track||!Number.isInteger(index)||index<0)return;
  revealMiniDeferredPhoto(track.children[index]?.querySelector('img[data-deferred-photo]'));
 }
+
+let shopMoreObserver=null;
+function setupShopMoreObserver(){
+ shopMoreObserver?.disconnect();shopMoreObserver=null;
+ if(state.page!=='shop'||state.modal)return;
+ const more=app.querySelector('.shop-load-more');
+ if(!more||typeof IntersectionObserver==='undefined')return;
+ shopMoreObserver=new IntersectionObserver(entries=>{
+  if(entries.some(e=>e.isIntersecting))appendShopMoreProducts();
+ },{rootMargin:'260px 0px',threshold:0});
+ shopMoreObserver.observe(more);
+}
+function appendShopMoreProducts(){
+ if(state.page!=='shop'||state.modal)return;
+ const grid=app.querySelector('.shop-content .shop-catalog-grid'),footer=app.querySelector('.shop-content .shop-load-more');
+ if(!grid||!footer)return;
+ shopMoreObserver?.disconnect();shopMoreObserver=null;
+ const shown=grid.children.length;
+ state.shopVisibleCount=Math.max(shown,Number(state.shopVisibleCount)||24)+24;
+ const view=document.createElement('template');
+ view.innerHTML=renderShop();
+ const nextGrid=view.content.querySelector('.shop-catalog-grid');
+ if(!nextGrid)return;
+ const fragment=document.createDocumentFragment();
+ [...nextGrid.children].slice(shown).forEach(el=>fragment.appendChild(el));
+ grid.appendChild(fragment);
+ const nextFooter=view.content.querySelector('.shop-load-more');
+ if(nextFooter)footer.replaceWith(nextFooter);else footer.remove();
+ prepareMiniDeferredPhotos();
+ setupShopMoreObserver();
+}
+function appendCatalogSlideAhead(track,index){
+ const gallery=track?.closest('[data-catalog-gallery]');
+ if(!gallery)return;
+ const product=selectedProd(gallery.dataset.catalogProduct);
+ if(!product)return;
+ const photos=productPhotoUrls(product);
+ if(index<track.children.length-2||track.children.length>=photos.length)return;
+ const n=track.children.length,button=document.createElement('button');
+ button.type='button';button.className='catalog-photo-slide';
+ button.dataset.action=product.is_sold_out?'product-photos':'pick-product';
+ button.dataset.id=product.id;
+ button.setAttribute('aria-label',product.name+' · 사진 '+(n+1)+'/'+photos.length);
+ const image=document.createElement('img');
+ image.className='product-cover';image.alt=product.name+' 사진 '+(n+1);
+ image.loading='lazy';image.decoding='async';image.draggable=false;
+ image.dataset.deferredPhoto=photos[n];
+ button.appendChild(image);track.appendChild(button);
+ revealMiniDeferredPhoto(image);
+}
 function render(){
  const categoryScrollBefore=app.querySelector('.shop-category-list')?.scrollLeft||0;
  const adminScrollPositions=['.admin-main-tabs','.admin-product-filter-list','.admin-category-list','.admin-quote-primary-filters','.admin-orders-filterbar'].map(selector=>[selector,app.querySelector(selector)?.scrollLeft||0]);
@@ -6348,6 +6401,7 @@ function render(){
  syncModalPageLock();
  if(adminPriceScrollAnchor)restoreAdminPriceScrollAnchor();
  syncHeroContrast();
+ setupShopMoreObserver();
  scheduleEntryPush();
  updateScrollTop();updateProcurementSchedule();if(state.admin){updateSupplierBulkPreview();queueMicrotask(()=>showRequestImages().catch(console.error));queueMicrotask(()=>miniRegisterAdminAlias().catch(console.warn));queueMicrotask(()=>miniPushStatus().catch(console.warn));}}
 function updateScrollTop(){const btn=app.querySelector('.back-to-top');if(!btn)return;const visible=window.scrollY>440&&!state.modal;btn.classList.toggle('is-visible',visible);btn.tabIndex=visible?0:-1;btn.setAttribute('aria-hidden',String(!visible));}
@@ -6408,6 +6462,7 @@ function renderShop(){
   });
  const categoryCounts=Object.fromEntries(categoryFilterKeys.map(k=>[k,catalogue.filter(({p})=>matchesCategory(p,k)).length]));
  const banner=currentHeroPhotoUrl();
+ const visibleProducts=products.slice(0,Math.max(1,Number(state.shopVisibleCount)||24));
  return `<section class="content shop-content">
  <div class="shop-editorial"><div class="shop-editorial-visual ${banner?'has-photo':''}">${banner?`<img src="${esc(banner)}" alt="미니예나 메인 사진" loading="eager">`:'<div class="shop-editorial-art" aria-hidden="true"></div>'}</div>
  <div class="shop-editorial-copy"><h1>남대문 · 수입<br>아동복 공동구매</h1>${instantStorefront?'':'<p>견적 요청 후 주문 가능한 공동구매몰이에요.</p>'}</div></div>
@@ -6435,7 +6490,7 @@ function renderShop(){
    ${state.stores.filter(st=>st.active&&catalogue.some(row=>row.store.id===st.id)).sort((a,b)=>String(a.name).localeCompare(String(b.name),'ko')).map(st=>`<option value="${esc(st.id)}" ${activeStore===st.id?'selected':''}>${esc(st.name)}</option>`).join('')}
   </select></label>
  </div>
- <div class="shoplist">${products.length?`<div class="shop-catalog-grid">${products.map(({p,store})=>`<article class="shop-catalog-card ${p.is_sold_out?'shop-soldout-card':''}">${catalogPhotoGallery(p)}${p.is_sold_out?'<span class="shop-soldout-label">품절</span>':''}<div class="shop-catalog-store">${esc(store.name)}</div><button class="producttitle catalog-title-link" type="button" data-action="${p.is_sold_out?'product-photos':'pick-product'}" data-id="${esc(p.id)}" aria-label="${esc(p.name)} ${p.is_sold_out?'상품 사진 보기':'상품 옵션 보기'}" title="${esc(p.name)}">${esc(p.name)}</button><div class="shop-catalog-colors">${Object.keys(p.options||{}).map(esc).join(' · ')||'색상 옵션 확인'}</div>${hasProductEstimate(p)?estimatedProductPrice(p):'<div class="product-estimate product-estimate-card shop-catalog-no-estimate"><span class="product-estimate-label">가격</span><strong>판매가 준비 중</strong></div>'}</article>`).join('')}</div>`:'<div class="empty">조건에 맞는 상품이 없어요. 다른 카테고리나 검색어를 선택해 주세요.</div>'}</div>
+ <div class="shoplist">${products.length?`<div class="shop-catalog-grid">${visibleProducts.map(({p,store})=>`<article class="shop-catalog-card ${p.is_sold_out?'shop-soldout-card':''}">${catalogPhotoGallery(p)}${p.is_sold_out?'<span class="shop-soldout-label">품절</span>':''}<div class="shop-catalog-store">${esc(store.name)}</div><button class="producttitle catalog-title-link" type="button" data-action="${p.is_sold_out?'product-photos':'pick-product'}" data-id="${esc(p.id)}" aria-label="${esc(p.name)} ${p.is_sold_out?'상품 사진 보기':'상품 옵션 보기'}" title="${esc(p.name)}">${esc(p.name)}</button><div class="shop-catalog-colors">${Object.keys(p.options||{}).map(esc).join(' · ')||'색상 옵션 확인'}</div>${hasProductEstimate(p)?estimatedProductPrice(p):'<div class="product-estimate product-estimate-card shop-catalog-no-estimate"><span class="product-estimate-label">가격</span><strong>판매가 준비 중</strong></div>'}</article>`).join('')}</div>${products.length>visibleProducts.length?`<div class="shop-load-more"><button type="button" data-action="shop-more-products">상품 더 보기 · ${products.length-visibleProducts.length}개 남음</button></div>`:''}`:'<div class="empty">조건에 맞는 상품이 없어요. 다른 카테고리나 검색어를 선택해 주세요.</div>'}</div>
  </section>`;
 }
 /* MINIYENA final-order bank transfer instructions (never pre-confirmation). */
@@ -12974,6 +13029,7 @@ if(a==='home-preparing-payments'){
  if(target)window.scrollTo({top:Math.max(0,window.scrollY+target.getBoundingClientRect().top-12),behavior:'instant'});
  return;
 }
+if(a==='shop-more-products'){appendShopMoreProducts();return;}
 if(a==='shop-filter-toggle'){
  if(state.page!=='shop')return;
  state.shopFiltersOpen=!state.shopFiltersOpen;
@@ -13840,6 +13896,7 @@ if(a==='shop-category'){
  const chosen=b.dataset.category;
  if(!categoryFilterKeys.includes(chosen))throw Error('올바르지 않은 카테고리예요.');
  state.shopCategory=chosen;
+ state.shopVisibleCount=24;
  render();
  const section=app.querySelector('.shop-category-list');
  if(section){
@@ -14613,6 +14670,7 @@ if(x.id==='shop-sort'||x.id==='shop-store'){
  if(state.page!=='shop')return;
  if(x.id==='shop-sort')state.shopSort=['newest','oldest','price-low','price-high','name'].includes(x.value)?x.value:'newest';
  else state.shopStore=state.stores.some(st=>st.active&&st.id===x.value)?x.value:'all';
+ state.shopVisibleCount=24;
  const previousScroll=window.scrollY;
  render();window.scrollTo({top:previousScroll,behavior:'auto'});
  return;
@@ -14727,6 +14785,8 @@ function updateShopSearchResults(){
  const count=app.querySelector('.shop-content .shop-filter-count');
  const nextCount=template.content.querySelector('.shop-filter-count');
  if(count&&nextCount)count.textContent=nextCount.textContent;
+ prepareMiniDeferredPhotos();
+ setupShopMoreObserver();
 }
 function input(e){
  if(e.target.id==='receipt-search'&&state.admin&&state.tab==='receipts'){
@@ -14806,6 +14866,7 @@ function input(e){
   return;
  }if(e.target.id==='search'){
   state.search=e.target.value;
+  state.shopVisibleCount=24;
   // Korean IME sends intermediate syllables; don't collapse the results
   // before text composition finishes or while the iPhone keyboard animates.
   if(!shopSearchComposing&&!e.isComposing)updateShopSearchResults();
@@ -14835,7 +14896,9 @@ app.addEventListener('scroll',e=>{
  const index=Math.max(0,Math.min(count-1,Math.round(track.scrollLeft/(track.clientWidth||1))));
  revealCatalogPhoto(track,index);
  revealCatalogPhoto(track,index+1);
- gallery.querySelectorAll('.catalog-photo-dots button').forEach((button,i)=>button.setAttribute('aria-pressed',String(i===index)));
+ appendCatalogSlideAhead(track,index);
+ const counter=gallery.querySelector('[data-catalog-counter]');
+ if(counter)counter.textContent=(index+1)+' / '+(gallery.dataset.catalogTotal||count);
  track.dataset.suppressClickUntil=String(Date.now()+250);
 },true);
 app.addEventListener('click',e=>{
@@ -14908,6 +14971,7 @@ app.addEventListener('compositionend',e=>{
  if(e.target.id!=='search')return;
  shopSearchComposing=false;
  state.search=e.target.value;
+ state.shopVisibleCount=24;
  updateShopSearchResults();
 });
 app.addEventListener('keydown',e=>{

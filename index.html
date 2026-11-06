@@ -131,6 +131,9 @@
 .buyer-compact-dispatch-inner{margin-top:8px}
 .buyer-compact-dispatch-inner p{font-size:12px;color:#777}
 .buyer-track-clean .buyer-cancel-confirmed{margin:20px 0 0}
+.admin-ready-courier-actions{margin:11px 0;padding:12px;background:#f6f6f6;border:1px solid #eee;border-radius:10px}
+.admin-ready-courier-actions strong{font-size:12px;display:block;margin-bottom:8px}
+.admin-ready-courier-actions button{margin:6px 0 0;font-size:12px;min-height:41px}
 </style>
 <script src="./nuvo_shipping.js?v=20261106-b1-miniyena-name" defer></script>
 <script src="./nuvo_import.js?v=20261106-b1-miniyena-name" defer></script>
@@ -8426,6 +8429,21 @@ function renderAdminPickupProductSection(q){
   (done.length?'<details class="admin-early-pickup-done"><summary>✓ 먼저 픽업 완료 '+done.length+'종</summary><div class="compact-order-products">'+renderLines(done)+'</div></details>':'')+
   adminPickupForm([q]);
 }
+function adminReadyCourierActions(group){
+ const qs=(Array.isArray(group)?group:[group]).filter(q=>q.status==='confirmed'&&
+  q.delivery_method==='courier'&&!q.cancel_requested_at&&!q.delivery_change_requested_at&&
+  ['new','preparing'].includes(workflowStage(q))&&
+  (q.items||[]).some(i=>i.fulfillment==='received'&&
+   Math.max(0,Number(i.received_qty||0)-adminSentCount(i))>0));
+ if(!qs.length)return '';
+ return '<div class="admin-ready-courier-actions"><strong>입고완료 상품 택배 발송</strong>'+
+  qs.map(q=>{
+   const qty=(q.items||[]).reduce((n,i)=>n+(i.fulfillment==='received'?
+    Math.max(0,Number(i.received_qty||0)-adminSentCount(i)):0),0);
+   return '<button type="button" class="btn secondary block" data-action="open-partial-shipping" data-id="'+esc(q.id)+'">'+
+    '입고된 상품 '+qty+'개 선택해 발송하기</button>';
+  }).join('')+'</div>';
+}
 function renderAdminQuoteCard(q){
  const qty=(q.items||[]).reduce((n,i)=>n+Number(i.quantity||0),0);
  const paid=(Number(q.amount_paid)||0)-(Number(q.amount_refunded)||0);
@@ -8447,6 +8465,7 @@ function renderAdminQuoteCard(q){
    <span><b>${adminOrderItemName(i)}</b><small>${esc(i.color)} / ${esc(i.size)} · ${Number(i.quantity)||0}개${i.fulfillment==='sold_out'?' · 품절':''}</small></span>
    <strong>${i.unit_price==null?'가격 미정':money(Number(i.unit_price)*(Number(i.quantity)||0))}</strong>${window.MiniPartialShipping&&window.MiniPartialShipping.sentQty(i.id,state.partialParcels||[])>0?'<small class="tiny">📦 먼저 발송 '+window.MiniPartialShipping.sentQty(i.id,state.partialParcels||[])+'개</small>':''}
   </div>`).join('')}</div>`}
+  ${q.status==='confirmed'?adminReadyCourierActions([q]):''}
   <div class="compact-order-money">
    ${priced?`<div class="compact-order-cost-lines">
     <div><span>상품값</span><b>${money(previewOrderSum(q))}</b></div>
@@ -8696,6 +8715,7 @@ function renderAdminViewGroupCard(group){
   '<div class="admin-view-group-head"><strong>확정 주문 '+group.length+'건 · 남은 상품 '+count(split.pending)+'개</strong></div>'+
   '<div class="admin-view-group-items">'+(itemLines(split.pending)||'<p class="smallnote">남은 상품이 없어요.</p>')+'</div>'+
   adminPickupForm(group.filter(q=>q.delivery_method==='pickup'))+
+  adminReadyCourierActions(group)+
   (split.released.length?'<section class="admin-view-group-separated"><strong>먼저 발송·픽업한 상품 '+count(split.released)+'개</strong>'+
    '<div class="admin-view-group-items">'+split.released.map(({i,quantity,type})=>
     '<div><span>'+esc(type==='pickup'?'픽업 완료 · ':'선발송 · ')+esc(i.product_name||'상품')+

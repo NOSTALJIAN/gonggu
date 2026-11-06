@@ -4566,6 +4566,32 @@ body:has(#search:focus) .mini-openchat-banner{display:none!important;}
 .admin-orders-page .admin-order-fold-next{font-size:10px!important}
 }
 
+
+/* Order management workflow stepper: eight steps in a compact two-row grid. */
+.admin-orders-page .admin-journey{padding:0;margin:1px 0 13px;min-width:0;max-width:100%}
+.admin-orders-page .admin-journey-heading{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin:0 1px 8px}
+.admin-orders-page .admin-journey-heading strong{font-size:12px;font-weight:820;color:#303030}
+.admin-orders-page .admin-journey-heading small{font-size:10px;color:#969696;font-weight:500;line-height:1.3}
+.admin-orders-page .admin-journey-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;width:100%}
+.admin-orders-page .admin-journey-step{box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-width:0;min-height:53px;padding:7px 2px;border:1px solid #e4e5e8;border-radius:9px;background:#fff;color:#494949;font-size:11px;font-weight:740;text-align:center;cursor:pointer;white-space:nowrap;box-shadow:none}
+.admin-orders-page .admin-journey-step>span{display:flex;align-items:center;justify-content:center;gap:3px;min-width:0;line-height:1.3;letter-spacing:-.03em}
+.admin-orders-page .admin-journey-step em{font-size:9px;font-style:normal;font-weight:800;color:#999}
+.admin-orders-page .admin-journey-step b{font-size:11px;line-height:1.2;font-weight:800;color:#777;font-variant-numeric:tabular-nums}
+.admin-orders-page .admin-journey-step.active{color:#fff;background:#25272b;border-color:#25272b}
+.admin-orders-page .admin-journey-step.active b,.admin-orders-page .admin-journey-step.active em{color:#fff}
+.admin-orders-page .admin-journey-step:focus-visible{outline:2px solid #333;outline-offset:2px}
+.admin-orders-page .admin-journey-action{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:8px 0 13px;padding:10px 12px;background:#f7f8f9;border:1px solid #eaeaec;border-radius:9px}
+.admin-orders-page .admin-journey-action span{flex:1;font-size:11px;line-height:1.45;color:#696969}
+.admin-orders-page .admin-journey-action button{flex:0 0 auto;min-height:35px;padding:7px 10px;border:1px solid #dcdcdc;border-radius:7px;background:#fff;color:#292929;font-size:11px;font-weight:780;white-space:nowrap}
+.admin-orders-page .admin-price-section-title{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:15px 2px 8px!important}
+.admin-orders-page .admin-price-section-title h3{font-size:13px!important;line-height:1.3!important;font-weight:820!important;margin:0!important}
+@media(max-width:375px){
+ .admin-orders-page .admin-journey-grid{gap:4px}
+ .admin-orders-page .admin-journey-step{font-size:10px;min-height:49px;padding:7px 1px}
+ .admin-orders-page .admin-journey-step>span{gap:2px}
+ .admin-orders-page .admin-journey-step b{font-size:10px}
+}
+
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 표시된 판매가로 바로 주문하세요.">
@@ -9173,7 +9199,7 @@ function renderCollapsibleAdminOrder(group,section){
       <summary>📍 배송지 보기 · ${esc((group.find(q=>q.delivery_method==='courier')||root).recipient_name||root.buyer_name||'수령인')}</summary>
       ${group.filter(q=>q.delivery_method==='courier').filter((q,i,rows)=>rows.findIndex(x=>String(x.postal_code||'')+'|'+String(x.address_line1||'')+'|'+String(x.address_line2||'')===String(q.postal_code||'')+'|'+String(q.address_line1||'')+'|'+String(q.address_line2||''))===i).map(q=>`<div class="admin-courier-address-info"><strong>${esc(q.recipient_name||q.buyer_name||'받는 사람 미입력')}</strong><span>${esc(q.contact||'연락처 미입력')}</span><p>${esc(q.postal_code||'우편번호 미입력')} · ${esc([q.address_line1,q.address_line2].filter(Boolean).join(' ')||'주소 미입력')}</p>${q.delivery_note?`<small>배송 요청사항 · ${esc(q.delivery_note)}</small>`:''}</div>`).join('')}
      </details>`:''}
-   ${group.length===1&&['delivery_shipped','delivery_completed'].includes(state.filter)&&['new','preparing'].includes(workflowStage(group[0]))&&adminPartialParcels(group[0]).length?renderAdminPartShipmentCard(group[0]):group.length>1?(isAdminViewGroup(group)?renderAdminViewGroupCard(group):group.every(q=>bundleRootId(q)===bundleRootId(group[0]))?renderBundleCard(group):renderSameRoundCard(group)):renderAdminQuoteCard(group[0])}
+   ${group.length===1&&['delivery_shipped','delivery_completed','journey_shipping'].includes(state.filter)&&['new','preparing'].includes(workflowStage(group[0]))&&adminPartialParcels(group[0]).length?renderAdminPartShipmentCard(group[0]):group.length>1?(isAdminViewGroup(group)?renderAdminViewGroupCard(group):group.every(q=>bundleRootId(q)===bundleRootId(group[0]))?renderBundleCard(group):renderSameRoundCard(group)):renderAdminQuoteCard(group[0])}
   </div>
  </details>`;
 }
@@ -10333,11 +10359,43 @@ function renderAdminOrderFilterModal(){
   </div>`;
 }
 /* Main Orders opens the earliest active queue on first visit. */
+const ADMIN_JOURNEY_STEPS=[
+ ['journey_all','진행 전체'],
+ ['journey_review','주문 확인'],
+ ['journey_payment','입금 확인'],
+ ['journey_procurement','발주 대기'],
+ ['journey_receiving','입고 대기'],
+ ['journey_dispatch','발송·픽업'],
+ ['journey_shipping','배송 중'],
+ ['journey_done','완료']
+];
+// Display-only queues: a single operational stage for each order.
+function adminOrderJourneyStep(q){
+ if(!q||q.status==='cancelled'||q.cancel_requested_at||
+   q.status==='quoted'&&['next_round','on_hold'].includes(q.purchase_intent))return 'other';
+ if(isFinishedOrder(q))return 'journey_done';
+ if(q.status!=='confirmed'||!readyQuote(q))return 'journey_review';
+ const stage=workflowStage(q),active=saleItems(q);
+ if(q.delivery_method==='courier'&&stage==='shipped')return 'journey_shipping';
+ if(stage==='pickup_ready')return 'journey_dispatch';
+ if(q.delivery_method==='courier'&&active.length>0&&
+   active.every(i=>adminSentCount(i)>=Math.max(0,Number(i.quantity)||0)))return 'journey_shipping';
+ if(allReceived(q))return 'journey_dispatch';
+ const ordered=!!q.supplier_ordered_at||active.some(i=>!!i.supplier_ordered_at||
+  ['received','delivered'].includes(i.fulfillment)||!!supplierItemBatch(i.id)?.ordered_at);
+ if(ordered)return 'journey_receiving';
+ if(!readyQuote(q)||balanceDue(q)>0)return 'journey_payment';
+ return 'journey_procurement';
+}
 function preferredAdminOrderFilter(){
- return 'active_orders';
+ return 'journey_all';
 }
 function renderAdminQuotes(){
  const all=state.quotes;
+ const journeyMap=new Map(all.map(q=>[q.id,adminOrderJourneyStep(q)]));
+ const journeyCounts=new Map(ADMIN_JOURNEY_STEPS.slice(1).map(([key])=>[key,0]));
+ for(const stage of journeyMap.values())if(journeyCounts.has(stage))journeyCounts.set(stage,journeyCounts.get(stage)+1);
+ const journeyActiveCount=ADMIN_JOURNEY_STEPS.slice(1,-1).reduce((n,[key])=>n+journeyCounts.get(key),0);
  const isPre=q=>q.status==='requested'||(q.status==='quoted'&&(!q.purchase_intent||q.purchase_intent==='undecided'));
  const isPricing=q=>q.status==='requested'||(q.status==='quoted'&&quoteNeedsPriceInput(q));
  const isWaiting=q=>q.status==='quoted'&&(!q.purchase_intent||q.purchase_intent==='undecided')&&!quoteNeedsPriceInput(q);
@@ -10355,7 +10413,10 @@ function renderAdminQuotes(){
  const nOther=count(q=>q.status==='quoted'&&['next_round','on_hold'].includes(q.purchase_intent));
  if(['all','waiting_buyer','final_confirmation'].includes(state.filter))state.filter='active_orders';
  const filter=state.filter;
- const qq=all.filter(q=>filter==='active_orders'?q.status!=='cancelled'&&!q.cancel_requested_at&&!isFinishedOrder(q):
+ const qq=all.filter(q=>filter==='journey_all'?
+  journeyMap.get(q.id)?.startsWith('journey_')&&journeyMap.get(q.id)!=='journey_done':
+  filter.startsWith('journey_')?journeyMap.get(q.id)===filter:
+  filter==='active_orders'?q.status!=='cancelled'&&!q.cancel_requested_at&&!isFinishedOrder(q):
   filter==='cancellation_orders'?q.status==='cancelled'||!!q.cancel_requested_at:
   filter==='needs_review'?(q.status==='requested'||q.status==='quoted')&&!q.cancel_requested_at:
   filter==='all'?isPre(q):
@@ -10377,7 +10438,7 @@ function renderAdminQuotes(){
   filter.startsWith('flow_')?q.status==='confirmed'&&workflowStage(q)===filter.slice(5):q.status===filter)
  .filter(q=>filter!=='wholesale_completed'||!state.adminShippingMethod||state.adminShippingMethod==='all'||q.delivery_method===state.adminShippingMethod);
  const groups=['delivery_shipped','delivery_completed'].includes(filter)?qq.map(q=>[q]):
-  ['active_orders','preparing_orders','all_history','cancellation_orders'].includes(filter)?adminViewGroups(qq):
+  ['active_orders','preparing_orders','all_history','cancellation_orders'].includes(filter)||filter.startsWith('journey_')?adminViewGroups(qq):
   ['finished','wholesale_completed'].includes(filter)?bundledQuoteGroups(qq,filter==='finished'):sameRoundGroups(qq);
  const preparingRows=filter==='preparing_orders'?qq.filter(readyQuote):[];
  const preparingMissing=filter==='preparing_orders'?qq.length-preparingRows.length:0;
@@ -10394,15 +10455,21 @@ function renderAdminQuotes(){
  const dispatchReadyIds=new Set(dispatchBatch?dispatchBatch.ready.flatMap(r=>r.group.map(q=>q.id)):[]);
  const dispatchWaitingGroups=dispatchBatch?bundledQuoteGroups(qq.filter(q=>!dispatchReadyIds.has(q.id)),true):[];
  const advancedSelected=!tabs.some(([key])=>key===filter)&&!['delivery_shipped','delivery_completed'].includes(filter);
- const title=filter==='delivery_shipped'?'배송 중':filter==='delivery_completed'?'배송 완료':[...tabs,...extras].find(([key])=>key===filter)?.[1]||(
+ const title=filter==='delivery_shipped'?'배송 중':filter==='delivery_completed'?'배송 완료':ADMIN_JOURNEY_STEPS.find(([key])=>key===filter)?.[1]||[...tabs,...extras].find(([key])=>key===filter)?.[1]||(
    filter.startsWith('flow_')?workflowLabels[filter.slice(5)]:statusLabel[filter]||'주문');
  return `<section class="admin-quote-workspace admin-orders-page">
   <div class="admin-quote-anchor" id="admin-quote-results"></div>
   <div class="admin-page-heading"><h2>주문 관리</h2></div>
-  <nav class="admin-order-modes" aria-label="업무별 주문 관리">
-   <button type="button" data-action="admin-order-mode" data-mode="orders" class="${orderMode==='orders'?'active':''}" aria-pressed="${orderMode==='orders'}">주문</button>
-   <button type="button" data-action="admin-order-mode" data-mode="procurement" class="${orderMode==='procurement'?'active':''}" aria-pressed="${orderMode==='procurement'}">발주</button>
-   <button type="button" data-action="admin-order-mode" data-mode="shipping" class="${orderMode==='shipping'?'active':''}" aria-pressed="${orderMode==='shipping'}">발송</button>
+  <nav class="admin-journey" aria-label="주문 처리 단계 메뉴">
+   <div class="admin-journey-heading"><strong>진행 순서</strong><small>단계를 누르면 해당 주문만 보여요</small></div>
+   <div class="admin-journey-grid">
+    ${ADMIN_JOURNEY_STEPS.map(([key,label],index)=>{
+     const total=key==='journey_all'?journeyActiveCount:journeyCounts.get(key)||0;
+     return '<button type="button" class="admin-journey-step '+(filter===key?'active':'')+
+       '" data-action="admin-order-stage" data-stage="'+key+'" aria-pressed="'+(filter===key)+'" aria-label="'+esc(label)+' '+total+'건">'+
+       '<span>'+(index?'<em>'+index+'</em>':'')+esc(label)+'</span><b>'+total+'건</b></button>';
+    }).join('')}
+   </div>
   </nav>
   <div class="admin-orders-toolbar">
   <div class="admin-orders-search">
@@ -10413,7 +10480,7 @@ function renderAdminQuotes(){
   </div>
   <div class="admin-orders-title-row">
    <div class="admin-orders-list-title"><strong>${esc(title)}</strong><span>${qq.length}건</span></div>
-   <span class="admin-order-list-sort">최근 주문순</span>
+   <span class="admin-order-list-sort">${filter==='journey_all'?'처리 단계순':'최근 주문순'}</span>
   </div>
   ${filter==='preparing_orders'?`<div class="admin-preproc-totals" aria-label="입금 및 발주 대기 금액">
    <div><span>총 결제금액</span><strong>${preparingMissing?'확인 중':money(preparingTotal)}</strong></div>
@@ -10435,7 +10502,14 @@ function renderAdminQuotes(){
    </div>
    ${(!state.adminShippingMethod||state.adminShippingMethod==='all')?'<button type="button" class="admin-nuvo-shortcut" data-action="nuvo-open" title="미니예나 택배 송장 엑셀 만들기" aria-label="미니예나 택배 송장 엑셀 만들기">📄 송장 엑셀</button>':''}
   </div>`:''}
-  ${dispatchBatch?renderAdminDispatchQueue(dispatchBatch,dispatchWaitingGroups):qq.length?filter==='all'?renderAdminQuoteFlatSection(waiting,'가격 확인','pending')+renderAdminQuoteFlatSection(priced,'이전 주문'):
+  ${filter==='journey_procurement'?'<div class="admin-journey-action"><span>입금이 확인된 상품을 거래처에 발주하세요.</span><button type="button" data-action="admin-open-wholesale">도매 발주 관리</button></div>':''}
+  ${filter==='journey_receiving'?'<div class="admin-journey-action"><span>상품이 도착하면 실제 입고 수량을 체크하세요.</span><button type="button" data-tab="receipts">입고 체크</button></div>':''}
+  ${filter==='journey_dispatch'?'<div class="admin-journey-action"><span>입고된 상품을 발송하거나 직접 전달하세요.</span><button type="button" data-action="nuvo-open">택배 일괄등록</button></div>':''}
+  ${filter==='journey_all'?(ADMIN_JOURNEY_STEPS.slice(1,-1).map(([key,label])=>{
+   const rows=qq.filter(q=>journeyMap.get(q.id)===key);
+   return rows.length?renderAdminQuoteFlatSection(adminViewGroups(rows),label):'';
+  }).join('')||'<div class="empty">진행 중인 주문이 없어요.</div>'):
+  dispatchBatch?renderAdminDispatchQueue(dispatchBatch,dispatchWaitingGroups):qq.length?filter==='all'?renderAdminQuoteFlatSection(waiting,'가격 확인','pending')+renderAdminQuoteFlatSection(priced,'이전 주문'):
    renderAdminQuoteFlatSection(groups,'',filter==='pricing'?'pending':'saved'):
    '<div class="empty">해당 주문이 없어요.</div>'}
   <div id="admin-order-search-empty" class="empty hidden">검색 결과가 없어요.</div>
@@ -12426,6 +12500,13 @@ async function click(e){
   const method=b.dataset.method;
   if(!['all','courier','pickup'].includes(method))return;
   state.adminShippingMethod=method;
+  const y=window.scrollY;render();window.scrollTo({top:y,behavior:'instant'});updateAdminOrderSearch();return;
+ }
+ if(a==='admin-order-stage'){
+  if(!state.admin||state.page!=='admin'||state.tab!=='quotes')throw Error('관리자 주문 화면에서만 사용할 수 있어요.');
+  const next=b.dataset.stage;
+  if(!ADMIN_JOURNEY_STEPS.some(([key])=>key===next))return;
+  state.filter=next;state.orderViewFilter=next;
   const y=window.scrollY;render();window.scrollTo({top:y,behavior:'instant'});updateAdminOrderSearch();return;
  }
  if(a==='admin-order-mode'){

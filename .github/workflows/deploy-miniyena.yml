@@ -28,6 +28,18 @@ jobs:
           test -s cloudflare-dist/admin/manifest.webmanifest
           grep -q 'admin/manifest.webmanifest' cloudflare-dist/admin/index.html
           grep -q 'dedicatedAdminPage' cloudflare-dist/admin/index.html
+      - name: Package the Cloudflare storefront and administrator
+        run: |
+          cd cloudflare-dist
+          zip -qr ../miniyena-cloudflare.zip .
+          cd ..
+          test -s miniyena-cloudflare.zip
+      - name: Save Cloudflare direct-upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: miniyena-cloudflare-upload
+          path: miniyena-cloudflare.zip
+          retention-days: 7
       - name: Build public storefront without the Cloudflare admin page
         run: |
           python3 cloudflare_pages_build.py --github

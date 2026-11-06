@@ -8328,7 +8328,7 @@ function adminPickupEligible(q,i){
  return !!state.admin&&!!q&&q.status==='confirmed'&&q.delivery_method==='pickup'&&
   !q.cancel_requested_at&&!q.delivery_change_requested_at&&
   ['preparing','pickup_ready'].includes(workflowStage(q))&&
-  !!i&&['ordered','delayed','received'].includes(i.fulfillment);
+  !!i&&i.fulfillment==='received'&&Number(i.received_qty||0)>=Number(i.quantity||0);
 }
 function adminPickupForm(orders){
  const rows=orders.flatMap(q=>(q.items||[]).filter(i=>adminPickupEligible(q,i)).map(i=>({q,i})));
@@ -8340,13 +8340,13 @@ function adminPickupForm(orders){
   groups.get(name).push(item);
  }
  return '<form id="admin-early-pickup-form" class="admin-early-pickup-form">'+
-  '<div class="admin-early-pickup-title"><strong>먼저 가져간 상품 체크</strong><small>체크한 상품만 픽업 완료</small></div>'+
+  '<div class="admin-early-pickup-title"><strong>입고된 상품 먼저 전달</strong><small>입고완료 상품만 선택</small></div>'+
   [...groups].map(([name,group])=>'<section class="admin-early-pickup-group">'+
    '<label class="admin-early-pickup-store"><input type="checkbox" data-admin-pickup-store aria-label="'+esc(name)+' 전체 선택"><b>'+esc(name)+'</b><small>'+group.length+'종 전체선택</small></label>'+
    group.map(({q,i})=>'<label class="admin-early-pickup-item">'+
     '<input type="checkbox" name="pickup_item_id" value="'+esc(i.id)+'">'+
     '<span><b>'+esc(i.product_name||'상품')+'</b><small>'+esc([i.color,i.size].filter(Boolean).join(' / '))+
-    ' · '+Number(i.quantity||0)+'개'+(i.fulfillment==='received'?' · 입고완료':' · 입고 확인 전')+'</small></span></label>').join('')+
+    ' · '+Number(i.quantity||0)+'개 · 입고완료'+'</small></span></label>').join('')+
    '</section>').join('')+
   '<button type="submit" class="btn block admin-early-pickup-submit">선택한 상품 픽업 완료</button>'+
   '</form>';
@@ -8369,7 +8369,7 @@ async function adminFinishEarlyPickup(ids){
  let saved;
  if(connected){
   const idsParam=unique.map(encodeURIComponent).join(',');
-  saved=await api('/rest/v1/gq_quote_items?id=in.('+idsParam+')&fulfillment=in.(ordered,delayed,received)',
+  saved=await api('/rest/v1/gq_quote_items?id=in.('+idsParam+')&fulfillment=eq.received&received_qty=gt.0',
    {method:'PATCH',admin:true,body:{fulfillment:'delivered'}});
   if(!Array.isArray(saved)||saved.length!==unique.length){
    await loadAdmin();
@@ -13705,7 +13705,7 @@ async function submit(e){const f=e.target;
 // All in-app forms are handled by JavaScript. Never allow a native browser GET
 // to replace ?page=admin and appear to sign the administrator out.
 e.preventDefault();
-if(!f.dataset.lowerPriceReport&&!f.dataset.sizeChartForm&&!f.dataset.customerEmail&&!['new-arrival-push-form','gmail-settings-form','hero-photo-form','reject-request-form','admin-pin-form','pin-register-form','pin-lookup-form','import-track-form','pick','request','store-form','product-form','login','suggest-form','approve-form','bundle-form','merge-shipping-form','edit-delivery-form','bulk-supplier-shipping-form','admin-payment-popup-form','admin-bundle-refund-form','admin-price-popup-form','admin-option-decision-form'].includes(f.id)&&!f.dataset.itemOptions&&!f.dataset.buyerOptionRequest&&!f.dataset.price&&!f.dataset.payment&&!f.dataset.shipping&&!f.dataset.supplierShipping&&!f.dataset.ship&&!f.dataset.bundleShip)return;if(busy)return;busy=true;
+if(!f.dataset.lowerPriceReport&&!f.dataset.sizeChartForm&&!f.dataset.customerEmail&&!['new-arrival-push-form','gmail-settings-form','hero-photo-form','reject-request-form','admin-pin-form','pin-register-form','pin-lookup-form','import-track-form','pick','request','store-form','product-form','login','suggest-form','approve-form','bundle-form','merge-shipping-form','admin-early-pickup-form','edit-delivery-form','bulk-supplier-shipping-form','admin-payment-popup-form','admin-bundle-refund-form','admin-price-popup-form','admin-option-decision-form'].includes(f.id)&&!f.dataset.itemOptions&&!f.dataset.buyerOptionRequest&&!f.dataset.price&&!f.dataset.payment&&!f.dataset.shipping&&!f.dataset.supplierShipping&&!f.dataset.ship&&!f.dataset.bundleShip)return;if(busy)return;busy=true;
 const isLoginSubmit=f.id==='login';
 if(isLoginSubmit){
  const submitButton=f.querySelector('button[type="submit"]');

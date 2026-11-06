@@ -6595,7 +6595,8 @@ function renderAdminHome(){
  const pendingBuyers=all.filter(q=>q.status==='quoted'&&(!q.purchase_intent||q.purchase_intent==='undecided')&&!quoteNeedsPriceInput(q)).length;
  const pendingFinal=all.filter(q=>q.status==='quoted'&&q.purchase_intent==='buy_now'&&!quoteNeedsPriceInput(q)).length;
  const preparing=all.filter(adminOrderNeedsPaymentOrProcurement).length;
- const shipping=all.filter(q=>isWholesaleCompleted(q)&&!isFinishedOrder(q)).length;
+ const shipping=all.filter(q=>isWholesaleCompleted(q)&&!isFinishedOrder(q)&&workflowStage(q)!=='shipped').length;
+ const shippingInTransit=all.filter(q=>q.status==='confirmed'&&q.delivery_method==='courier'&&workflowStage(q)==='shipped').length;
  const deliveryChanges=all.filter(q=>q.delivery_change_requested_at).length;
  const dispatchRequests=all.filter(q=>q.dispatch_request_status==='pending').length;
  const cancellations=all.filter(q=>q.cancel_requested_at).length;
@@ -6609,7 +6610,8 @@ function renderAdminHome(){
   {name:'확정 대기',count:pendingFinal,attrs:'data-tab="quotes" data-nav-filter="final_confirmation"'},
   {name:'입금·발주 대기',count:preparing,attrs:`data-action="home-preparing-toggle" aria-expanded="${state.homePreparingOpen===true}" aria-controls="admin-home-preparing-list"`},
   {name:'입고 체크',count:receiptTotals().pendingRows,attrs:'data-tab="receipts"'},
-  {name:'입고·배송',count:shipping,attrs:'data-tab="quotes" data-nav-filter="wholesale_completed"'}
+  {name:'입고·배송',count:shipping,attrs:'data-tab="quotes" data-nav-filter="wholesale_completed"'},
+  {name:'배송 중',count:shippingInTransit,attrs:'data-tab="quotes" data-nav-filter="delivery_shipped"'}
  ];
  const active=stages.filter(x=>x.count>0),empty=stages.filter(x=>x.count===0);
  return `<section class="admin-dashboard">
@@ -9880,8 +9882,8 @@ function renderAdminQuotes(){
  const count=fn=>all.filter(fn).length;
  const nPre=count(isPre),nPrice=count(isPricing),nWaiting=count(isWaiting),nFinalWaiting=count(isFinalWaiting);
  const nPaymentProcurement=count(adminOrderNeedsPaymentOrProcurement);
- const nDelivery=count(q=>isWholesaleCompleted(q)&&!isFinishedOrder(q));
- const nCourierDelivery=count(q=>isWholesaleCompleted(q)&&!isFinishedOrder(q)&&q.delivery_method==='courier');
+ const nDelivery=count(q=>isWholesaleCompleted(q)&&!isFinishedOrder(q)&&workflowStage(q)!=='shipped');
+ const nCourierDelivery=count(q=>isWholesaleCompleted(q)&&!isFinishedOrder(q)&&workflowStage(q)!=='shipped'&&q.delivery_method==='courier');
  const nPickupDelivery=count(q=>isWholesaleCompleted(q)&&!isFinishedOrder(q)&&q.delivery_method==='pickup');
  const nFinished=count(isFinishedOrder);
  const nCourierShipped=count(q=>q.status==='confirmed'&&q.delivery_method==='courier'&&workflowStage(q)==='shipped');
@@ -9899,7 +9901,7 @@ function renderAdminQuotes(){
   filter==='other'?q.status==='quoted'&&['next_round','on_hold'].includes(q.purchase_intent):
   filter==='buy_now'?isRoundBuyer(q)&&!isFinishedOrder(q):
   filter==='preparing_orders'?adminOrderNeedsPaymentOrProcurement(q):
-  filter==='wholesale_completed'?isWholesaleCompleted(q)&&!isFinishedOrder(q):
+  filter==='wholesale_completed'?isWholesaleCompleted(q)&&!isFinishedOrder(q)&&workflowStage(q)!=='shipped':
   filter==='delivery_shipped'?q.status==='confirmed'&&q.delivery_method==='courier'&&workflowStage(q)==='shipped':
   filter==='delivery_completed'?q.status==='confirmed'&&q.delivery_method==='courier'&&workflowStage(q)==='completed':
   filter==='next_round'?q.status==='quoted'&&q.purchase_intent==='next_round':

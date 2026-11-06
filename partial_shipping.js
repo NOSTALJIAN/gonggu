@@ -77,7 +77,7 @@ function buyerShippingCard(q,records){
    (records.length>1?'<span>'+(index+1)+'번째 발송</span>':date?'<time>'+escapeHtml(date)+' 등록</time>':'')+'</div>'+
    '<div class="my-shipping-invoice"><div class="my-shipping-number"><b>'+escapeHtml(carrier)+'</b><span>'+escapeHtml(number)+'</span></div>'+
    (href?'<a class="my-shipping-link" href="'+href+'" target="_blank" rel="noopener noreferrer">배송조회 ↗</a>':'')+'</div>'+
-   (latestLabel&&status!=='배송 완료'?'<p class="my-shipping-current">최근 이동 · '+escapeHtml(latestLabel)+
+   (latestLabel&&!events.length&&status!=='배송 완료'?'<p class="my-shipping-current">최근 이동 · '+escapeHtml(latestLabel)+
     (p.tracking_event_time?' <span>'+escapeHtml(shipmentDate(p.tracking_event_time))+'</span>':'')+'</p>':'')+
    history+itemDetails+'</div>';
  }).join('');
@@ -166,7 +166,7 @@ function style(){
  '.my-shipping-card{margin:14px 0 4px!important;padding:16px!important;border:1px solid #e7e7e7!important;border-radius:14px!important;box-sizing:border-box;background:#fff}'+
  '.my-shipping-card *{box-sizing:border-box}.my-shipping-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}'+
  '.my-shipping-heading h3{font-size:16px;font-weight:850;margin:0}.my-shipping-heading small{font-size:12px;color:#888}'+
- '.my-shipping-parcel{padding:13px 0;border-top:1px solid #ededed}.my-shipping-parcel:first-of-type{border-top:0;padding-top:2px}.my-shipping-parcel:last-child{padding-bottom:0}'+
+ '.my-shipping-parcel{padding:13px 0;border-top:1px solid #ededed}.my-shipping-heading + .my-shipping-parcel{border-top:0;padding-top:2px}.my-shipping-parcel:last-child{padding-bottom:0}'+
  '.my-shipping-top{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:0 0 9px}.my-shipping-top strong{font-size:13px;color:#247552}.my-shipping-top span,.my-shipping-top time{font-size:11px;color:#999}'+
  '.my-shipping-invoice{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:9px;min-width:0}'+
  '.my-shipping-number{display:flex;align-items:baseline;flex-wrap:wrap;gap:6px 9px;min-width:0;overflow-wrap:anywhere}.my-shipping-number b{font-size:13px;font-weight:800}.my-shipping-number span{font-size:13px;color:#484848;font-variant-numeric:tabular-nums;letter-spacing:.2px}'+

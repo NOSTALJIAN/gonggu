@@ -124,6 +124,7 @@ function open(ctx){
   batch.blocked.map(r=>'<div><b>'+h(r.root.buyer_name||r.root.recipient_name)+'</b><small>'+h(r.issues.join(' · '))+'</small></div>').join('')+'</details>':'')+
   '</section>';
  document.body.appendChild(layer);document.body.style.overflow='hidden';updateCount();
+ if(window.MiniNuvoImport)window.MiniNuvoImport.attach(layer,batch,ctx);
  layer.addEventListener('click',e=>{
   if(e.target===layer||e.target.closest('[data-nuvo-close]')){close();return;}
   if(e.target.closest('[data-nuvo-all]')){selected=new Set(batch.ready.map(r=>r.id));layer.querySelectorAll('[data-nuvo-id]').forEach(x=>x.checked=true);updateCount();return;}

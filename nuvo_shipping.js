@@ -22,6 +22,7 @@ function shipments(ctx){
   if(group.some(q=>!['new','preparing'].includes(workflowStage(q))||String(q.tracking_number||'').trim()))issues.push('이미 발송·송장 등록됨');
   if(group.some(q=>q.cancel_requested_at||q.delivery_change_requested_at))issues.push('취소·배송지 변경 요청');
   if(group.some(q=>!allReceived(q)))issues.push('입고 미완료');
+  if((ctx.partialHistory||[]).some(p=>(p.items||[]).some(item=>group.some(q=>q.id===item.quote_id))))issues.push('부분 발송 이력 있음 · 남은 상품은 부분 발송에서 처리');
   if(group.some(q=>balanceDue(q)>0))issues.push('미입금액 있음');
   const phone=normalizeBuyerPhone(root.contact);
   if(!phone)issues.push('전화번호 확인');

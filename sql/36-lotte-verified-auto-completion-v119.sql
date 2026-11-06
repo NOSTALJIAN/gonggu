@@ -64,8 +64,7 @@ BEGIN
     checked_at=excluded.checked_at,
     tracking_url=excluded.tracking_url;
   RETURN true;
-END; $function$
-
+END; $function$;
 
 CREATE OR REPLACE FUNCTION gq_private.gq_complete_lotte_deliveries_v119()
 RETURNS trigger

@@ -28,17 +28,13 @@ jobs:
           test -s cloudflare-dist/admin/manifest.webmanifest
           grep -q 'admin/manifest.webmanifest' cloudflare-dist/admin/index.html
           grep -q 'dedicatedAdminPage' cloudflare-dist/admin/index.html
-      - name: Package the Cloudflare storefront and administrator
-        run: |
-          cd cloudflare-dist
-          zip -qr ../miniyena-cloudflare.zip .
-          cd ..
-          test -s miniyena-cloudflare.zip
+      # The downloaded GitHub Actions artifact is itself a ZIP of this directory,
+      # ready for Cloudflare Pages Direct Upload without nested ZIP extraction.
       - name: Save Cloudflare direct-upload package
         uses: actions/upload-artifact@v4
         with:
           name: miniyena-cloudflare-upload
-          path: miniyena-cloudflare.zip
+          path: cloudflare-dist/
           retention-days: 7
       - name: Build public storefront without the Cloudflare admin page
         run: |

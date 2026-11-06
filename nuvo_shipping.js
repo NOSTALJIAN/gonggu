@@ -46,11 +46,11 @@ function shipments(ctx){
   const x=part.root;
   const phone=String(normalizeBuyerPhone(x.contact)||'').replace(/[^0-9]/g,'');
   const key=[normalize(x.recipient_name),phone,normalize(x.postal_code),
-   normalize(x.address_line1),normalize(x.address_line2),normalize(x.delivery_note)].join('|');
-  if(!merged.has(key))merged.set(key,{...part,parts:[part],group:[...part.group],items:[...part.items]});
+   normalize(x.address_line1),normalize(x.address_line2)].join('|');
+  if(!merged.has(key))merged.set(key,{...part,parts:[part],group:[...part.group],items:[...part.items],deliveryNotes:[...new Set(part.group.map(q=>normalize(q.delivery_note)).filter(Boolean))]});
   else{
    const target=merged.get(key);
-   target.parts.push(part);target.group.push(...part.group);target.items.push(...part.items);
+   target.parts.push(part);target.group.push(...part.group);target.items.push(...part.items);target.deliveryNotes=[...new Set([...target.deliveryNotes,...part.group.map(q=>normalize(q.delivery_note)).filter(Boolean)])];
    target.qty+=part.qty;target.waiting+=part.waiting;
   }
  }
@@ -102,7 +102,7 @@ function dataRow(r){
  const phone=context.normalizeBuyerPhone(x.contact).replace(/^([0-9]{3})([0-9]{3,4})([0-9]{4})$/,'$1-$2-$3');
  return ['MY'+r.id.replace(/-/g,'').slice(0,16).toUpperCase(),String(x.recipient_name||'').trim(),phone,'',
   String(x.postal_code||'').trim(),[x.address_line1,x.address_line2].filter(Boolean).join(' ').trim(),
-  name,detail,1,String(x.delivery_note||'').trim(),'','',''];
+  name,detail,1,String((r.deliveryNotes||[]).join(' / ')||x.delivery_note||'').trim(),'','',''];
 }
 function updateCount(){
  if(!layer)return;

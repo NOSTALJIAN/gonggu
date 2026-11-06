@@ -8412,7 +8412,13 @@ function adminPickupEligible(q,i){
   !!i&&i.fulfillment==='received'&&Number(i.received_qty||0)>=Number(i.quantity||0);
 }
 function adminPickupForm(orders){
- const rows=orders.flatMap(q=>(q.items||[]).filter(i=>adminPickupEligible(q,i)).map(i=>({q,i})));
+ // This checkbox form is for PARTIAL pickup only. A fully received order
+ // follows its normal pickup-ready / pickup-complete workflow instead.
+ const partiallyReceived=orders.filter(q=>{
+  const active=(q.items||[]).filter(i=>i.fulfillment!=='sold_out');
+  return active.length>0&&active.some(i=>!['received','delivered'].includes(i.fulfillment));
+ });
+ const rows=partiallyReceived.flatMap(q=>(q.items||[]).filter(i=>adminPickupEligible(q,i)).map(i=>({q,i})));
  if(!rows.length)return '';
  const groups=new Map();
  for(const item of rows){

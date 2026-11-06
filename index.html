@@ -9153,13 +9153,16 @@ function renderCollapsibleAdminOrder(group,section){
  const onePart=confirmedOrders.length===1&&canSumPayments?orderPaymentParts(confirmedOrders[0]):null;
  const paymentMark=confirmedOrders.some(q=>paymentWaiver(q)>0)&&canSumPayments&&confirmedPaid+confirmedOrders.reduce((n,q)=>n+paymentWaiver(q),0)>=confirmedDue?'차액 인정 · 정산 완료':onePart&&onePart.goodsMissing===0&&onePart.shippingMissing>0?'상품 입금 완료 · 택배비 별도':
   !canSumPayments?'':confirmedDue>0&&confirmedPaid>=confirmedDue?'입금 확인':confirmedPaid>0?'부분 입금':'미입금';
+ // Once an order is shipping (including partial shipment), its status already
+ // implies checkout is done. Avoid a duplicate "입금 확인" chip in the list.
+ const listPaymentMark=paymentMark==='입금 확인'&&['🚚 배송 중','📦 일부 배송 중'].includes(deliveryTag)?'':paymentMark;
  const showPaymentSummary=state.filter==='preparing_orders'&&confirmedOrders.length>0;
  const paymentSummary=showPaymentSummary?`<span class="admin-order-fold-amounts"><span>총 결제 <b>${canSumPayments?money(confirmedDue):'확인 중'}</b></span><span>입금 <b>${money(confirmedPaid)}</b></span><span class="is-due">미입금 <strong>${canSumPayments?money(confirmedOrders.reduce((sum,q)=>sum+balanceDue(q),0)):'확인 중'}</strong></span></span>`:'';
  return `<details class="admin-order-fold ${urgent?'has-pending':''}" data-admin-order-id="${esc(key)}"${adminOrderSearchAttrs(group)} ${open?'open':''}>
   <summary class="admin-order-fold-heading">
    <span class="admin-order-fold-left">
     <strong>${esc(root.buyer_name||'주문자 미입력')} ${adminGithubGroupIcon(group)} <span class="admin-order-fold-baby">아기: ${esc(babies.join(' · ')||'미입력')}</span></strong>
-    <span class="admin-order-fold-meta">${group.length>1?(isAdminViewGroup(group)?'확정 주문 '+group.length+'건 자동 합침 · ':group.every(q=>bundleRootId(q)===bundleRootId(group[0]))?'묶음배송 '+group.length+'건 · ':'주문 '+group.length+'건 함께 보기 · '):''}상품 ${count}종 · ${qty}개 · ${fmtDate(root.created_at)}${paymentMark?` <b class="admin-order-payment-chip ${paymentMark==='입금 확인'?'paid':''}">${paymentMark}</b>`:''}${deliveryTag?` <b class="admin-order-payment-chip paid">${esc(deliveryTag)}</b>`:''}</span>
+    <span class="admin-order-fold-meta">${group.length>1?(isAdminViewGroup(group)?'확정 주문 '+group.length+'건 자동 합침 · ':group.every(q=>bundleRootId(q)===bundleRootId(group[0]))?'묶음배송 '+group.length+'건 · ':'주문 '+group.length+'건 함께 보기 · '):''}상품 ${count}종 · ${qty}개 · ${fmtDate(root.created_at)}${listPaymentMark?` <b class="admin-order-payment-chip ${listPaymentMark==='입금 확인'?'paid':''}">${listPaymentMark}</b>`:''}${deliveryTag?` <b class="admin-order-payment-chip paid">${esc(deliveryTag)}</b>`:''}</span>
     ${paymentSummary}
    </span>
    <span class="admin-order-fold-right"><span class="admin-order-fold-next ${urgent?'is-urgent':''}">${esc(nextShort)}</span></span>

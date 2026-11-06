@@ -104,10 +104,37 @@
 .admin-early-pickup-done{margin:6px 0 12px;padding:10px 12px;background:#f4f5f5;border-radius:10px}
 .admin-early-pickup-done summary{font-size:12px;font-weight:800;cursor:pointer}
 .admin-early-pickup-done .compact-order-products{margin:8px 0 0}
+
+.buyer-track-clean{padding-bottom:100px}
+.buyer-track-clean .buyer-simple-head{margin-bottom:18px}
+.buyer-track-clean .buyer-simple-items{margin-bottom:12px}
+.buyer-track-clean .buyer-simple-item{padding:15px 4px}
+.buyer-track-clean .buyer-simple-product b{font-size:15px}
+.buyer-track-clean .buyer-simple-unit{margin-top:5px}
+.buyer-track-clean .buyer-simple-totals{margin:15px 0 17px;padding:15px;border:1px solid #ececec;border-radius:13px}
+.buyer-track-clean .buyer-simple-grand{padding-top:12px;margin-top:9px}
+.buyer-track-product-state{font-size:12px;font-weight:700;color:#267554;margin-top:5px}
+.buyer-track-paid{font-size:12px;font-weight:800;color:#28744c;margin:12px 0 0}
+.buyer-track-clean .buyer-simple-delivery{margin-top:15px}
+.buyer-track-clean .buyer-simple-address{font-size:12px;color:#777;overflow-wrap:anywhere}
+.buyer-simple-single-shipment{border:1px solid #e6e6e6;border-radius:13px;padding:17px;margin-top:16px}
+.buyer-simple-single-shipment .buyer-shipment-heading strong{font-size:17px}
+.buyer-simple-single-shipment .buyer-shipment-summary{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.buyer-simple-single-shipment .buyer-shipment-summary span:first-child{min-width:0}
+.buyer-simple-single-shipment .buyer-shipment-summary b{display:block;font-size:14px}
+.buyer-simple-single-shipment .buyer-shipment-summary small{display:block;color:#777;font-size:12px;overflow-wrap:anywhere}
+.buyer-simple-single-shipment .buyer-shipment-status{font-size:12px;font-weight:800;white-space:nowrap}
+.buyer-simple-single-shipment .buyer-shipment-link{display:inline-block;margin-top:12px;background:#252525;border-radius:9px;padding:10px 14px;color:white;text-decoration:none;font-size:13px;font-weight:800}
+.buyer-pickup-summary{font-size:12px;font-weight:700;padding:12px 0;color:#444}
+.buyer-compact-dispatch{border:1px solid #e7e7e7;border-radius:11px;padding:12px 14px;margin-top:14px}
+.buyer-compact-dispatch>summary{cursor:pointer;font-size:12px;font-weight:750}
+.buyer-compact-dispatch-inner{margin-top:8px}
+.buyer-compact-dispatch-inner p{font-size:12px;color:#777}
+.buyer-track-clean .buyer-cancel-confirmed{margin:20px 0 0}
 </style>
 <script src="./nuvo_shipping.js?v=20261106-b1-miniyena-name" defer></script>
 <script src="./nuvo_import.js?v=20261106-b1-miniyena-name" defer></script>
-<script src="./partial_shipping.js?v=20261106-v120-tracking-status" defer></script>
+<script src="./partial_shipping.js?v=20261106-v121-buyer-clean" defer></script>
 <!-- Release 439f3d34: remove only the retired MINIYENA offline cache.
      Never unregister OneSignal's separate push notification worker. -->
 <script>
@@ -6283,18 +6310,26 @@ function buyerFinalPaymentReady(q){
 }
 function buyerOrderPhase(q){
  if(!q)return '주문 확인 중';
- if(q.status==='quoted'&&q.purchase_intent==='buy_now'&&!q.direct_1688){
-  const ready=buyerFinalPaymentReady(q)||(state.page==='admin'&&state.admin&&readyQuote(q)&&adminFreightReady(q));
-  return ready?'최종 입금 안내 · 입금 대기':'구매 신청 완료 · 배송비 계산 중';
+ if(q.status==='confirmed'){
+  if(q.cancel_requested_at)return '취소 요청 확인 중';
+  const stage=workflowStage(q);
+  if(stage==='completed')return q.delivery_method==='pickup'?'픽업 완료':'배송 완료';
+  if(stage==='shipped')return '배송 중';
+  if(stage==='pickup_ready')return '픽업 대기';
+  if(q.delivery_method==='courier'&&q.partial_parcels?.length)return '일부 발송 · 나머지 준비 중';
+  if(balanceDue(q)>0)return '입금 확인 대기';
+  return isWholesaleCompleted(q)?'상품 입고 중':'상품 준비 중';
  }
- if(q.status==='confirmed'&&!isWholesaleCompleted(q))return balanceDue(q)>0?'입금 확인 대기':'입금 확인 완료 · 도매 발주 대기';
- if(isWholesaleCompleted(q))return '도매 발주 완료';
+ if(q.status==='quoted'&&q.purchase_intent==='buy_now'){
+  return buyerFinalPaymentReady(q)?'입금 안내':'주문 확인 중';
+ }
  return statusLabel[q.status]||q.status||'진행 중';
 }
 function confirmedPaymentWidget(q){
  if(!buyerFinalPaymentReady(q))return '';
  const due=readyQuote(q)?balanceDue(q):null;
- const paid=due===0;
+ if(due===0)return '';
+ const paid=false;
  const p=orderPaymentParts(q),freightOnly=supplierFreightOnlyDue(q);
  return `<section class="confirmed-payment-card" aria-label="입금 계좌 안내">
  <div class="confirmed-payment-head"><strong>${q.status==='quoted'?'배송비 배분 완료 · 최종 입금 안내':'최종 주문 확정 · 입금 안내'}</strong></div>
@@ -6469,103 +6504,101 @@ const dispatchModeLabel=mode=>mode==='ship_ready'?'입고된 상품 먼저 배�
 function renderBuyerDispatchPanel(q){
  if(q.status!=='confirmed'||q.delivery_method!=='courier')return '';
  const active=(q.items||[]).filter(i=>i.fulfillment!=='sold_out');
- if(!active.length)return '';
  const arrived=active.filter(i=>['received','delivered'].includes(i.fulfillment)).length;
- const closed=['shipped','completed','soldout_closed'].includes(workflowStage(q))||!!String(q.tracking_number||'').trim();
- const pending=q.dispatch_request_status==='pending';
+ const hasShipment=['shipped','completed'].includes(workflowStage(q))||!!q.tracking_number||!!q.partial_parcels?.length;
+ if(!active.length||hasShipment||(!arrived&&q.dispatch_request_status!=='pending'))return '';
  const mode=q.dispatch_request_mode||'';
- const status=q.dispatch_request_status==='pending'?'요청이 접수됐어요. 관리자 확인 전이며, 배송비나 출고 상태는 아직 변경되지 않았어요.':
-   q.dispatch_request_status==='acknowledged'?'관리자가 요청을 확인했어요. 실제 출고 일정과 추가 택배비는 별도 안내될 수 있어요.':
-   q.dispatch_request_status==='rejected'?'이전 요청은 처리하기 어려운 것으로 확인됐어요. 발송 전이라면 다른 방법으로 다시 요청할 수 있어요.':'';
- return `<section class="buyer-dispatch-panel">
-  <h3>📦 전체배송 · 부분배송 요청</h3>
-  <div class="buyer-dispatch-count">이 주문 입고완료 ${arrived}종 / ${active.length}종</div>
-  <div class="buyer-dispatch-choices">
-   <button type="button" class="${mode==='wait_all'?'selected':''}" data-action="request-dispatch" data-mode="wait_all" ${closed||(pending&&mode==='wait_all')?'disabled':''}>전체 입고 후<br>한 번에 배송</button>
-   <button type="button" class="${mode==='ship_ready'?'selected':''}" data-action="request-dispatch" data-mode="ship_ready" ${closed||(pending&&mode==='ship_ready')?'disabled':''}>입고된 옷 먼저<br>부분배송 요청</button>
-  </div>
-  <p class="buyer-dispatch-note">부분배송은 입고된 상품이 있을 때 관리자 확인 후 진행됩니다. 배송이 추가되면 택배비가 발생할 수 있고, 사전 안내 후 처리해요. ${isBundle(q)?'묶음배송 중인 주문은 다른 주문의 입고 상태도 함께 확인해요.':''}</p>
-  ${mode&&status?`<div class="buyer-dispatch-status"><b>${esc(dispatchModeLabel(mode))}</b> · ${esc(status)}</div>`:''}
-  ${closed?'<p class="buyer-dispatch-note">이미 송장이 등록되었거나 배송이 시작되어 새 요청을 받지 않아요.</p>':''}
- </section>`;
+ const pending=q.dispatch_request_status==='pending';
+ return '<details class="buyer-compact-dispatch"'+(pending?' open':'')+'>'+
+  '<summary>배송 요청 변경'+(pending?' · 관리자 확인 중':'')+'</summary>'+
+  '<div class="buyer-compact-dispatch-inner"><p>입고 완료 '+arrived+'종 / '+active.length+'종</p>'+
+  '<div class="buyer-dispatch-choices">'+
+   '<button type="button" class="'+(mode==='wait_all'?'selected':'')+'" data-action="request-dispatch" data-mode="wait_all">한 번에 배송</button>'+
+   '<button type="button" class="'+(mode==='ship_ready'?'selected':'')+'" data-action="request-dispatch" data-mode="ship_ready" '+(!arrived?'disabled':'')+'>입고된 상품 먼저 배송 요청</button></div>'+
+  '<p class="buyer-dispatch-note">부분배송 여부와 추가 비용은 관리자 확인 후 안내돼요.</p></div></details>';
+}
+function buyerTrackItemLabel(q,i){
+ if(q.status!=='confirmed')return '';
+ if(i.fulfillment==='sold_out')return '품절';
+ if(q.delivery_method==='pickup'){
+  if(i.fulfillment==='delivered')return '픽업 완료';
+  if(i.fulfillment==='received')return '입고 완료';
+  return '';
+ }
+ const parcels=q.partial_parcels||[],sent=window.MiniPartialShipping?
+  Math.min(Number(i.quantity)||0,window.MiniPartialShipping.sentQty(i.id,parcels)):0;
+ if(sent){
+  const rest=Math.max(0,Number(i.quantity||0)-sent);
+  return sent+'개 발송'+(rest?' · '+rest+'개 준비 중':'');
+ }
+ if(i.fulfillment==='received'&&!['shipped','completed'].includes(workflowStage(q)))return '입고 완료';
+ return '';
+}
+function buyerCourierShipment(q){
+ if(q.status!=='confirmed'||q.delivery_method!=='courier')return '';
+ if(q.partial_parcels?.length&&window.MiniPartialShipping?.buyerMarkup)return window.MiniPartialShipping.buyerMarkup(q);
+ if(trackingInfo(q)){
+  const root=sharedShipment(q),carrier=String(root.tracking_carrier||'택배');
+  const number=String(root.tracking_number||'').replace(/[\s-]/g,'');
+  const href=isLotteShipment(root)&&/^\d{4,30}$/.test(number)
+   ?'https://www.lotteglogis.com/home/reservation/tracking/linkView?InvNo='+encodeURIComponent(number):'';
+  return '<section class="buyer-shipment-card buyer-simple-single-shipment"><div class="buyer-shipment-heading"><strong>배송 조회</strong></div>'+
+   '<div class="buyer-shipment-summary"><span><b>'+esc(carrier)+'</b><small>'+esc(root.tracking_number||'')+'</small></span>'+
+   '<span class="buyer-shipment-status">'+esc(workflowStage(q)==='completed'?'배송 완료':'배송 중')+'</span></div>'+
+   (href?'<a class="buyer-shipment-link" href="'+href+'" target="_blank" rel="noopener noreferrer">택배 배송조회 ↗</a>':'')+'</section>';
+ }
+ return '';
 }
 function renderTrack(){
  const q=state.tracking;
  if(!state.trackId||!state.trackToken)
-  return '<section class="content buyer-simple"><h1>내 주문조회</h1><div class="empty">견적 내역에서 주문을 선택해 주세요.</div></section>';
+  return '<section class="content buyer-simple"><h1>내 주문조회</h1><div class="empty">주문 내역에서 주문을 선택해 주세요.</div></section>';
  if(!q)
-  return '<section class="content buyer-simple"><h1>내 주문조회</h1><div class="card">주문을 불러오는 중이에요.<div class="space"></div><button class="btn secondary" data-action="load-track">다시 불러오기</button></div></section>';
- const status=q.status==='quoted'&&!q.direct_1688&&(!q.purchase_intent||q.purchase_intent==='undecided')?'구매 선택 필요':buyerOrderPhase(q);
- const itemMarkup=(q.items||[]).map(i=>`<article class="buyer-simple-item">
-   <div class="buyer-simple-product"><b>${esc(i.store_name)} · ${esc(i.product_name)}</b><span>${Number(i.quantity)}개</span></div>
-   <div class="buyer-simple-variant">${esc(i.color)} / ${esc(i.size)}</div>
-   <div class="buyer-simple-unit">${i.unit_price==null?'가격 확인 중':money(Number(i.unit_price)*Number(i.quantity))}${i.unit_price!=null&&Number(i.quantity)>1?` <span class="tiny">(${money(Number(i.unit_price))} × ${Number(i.quantity)})</span>`:''}</div>
-   ${q.status==='confirmed'?`<div class="tiny">${esc(itemStatusLabel(q,i))}</div>`:''}
-   ${window.MiniPartialShipping?window.MiniPartialShipping.buyerItemStatus(q,i):''}
-   ${buyerOptionRequest(q,i)}
-   ${buyerQuotedItemActions(q,i)?`<details class="buyer-extra-action"><summary>물품 제외 · 기타 변경</summary>${buyerQuotedItemActions(q,i)}</details>`:''}
-  </article>`).join('');
+  return '<section class="content buyer-simple"><h1>내 주문조회</h1><div class="card">주문 정보를 불러오는 중이에요.<div class="space"></div><button class="btn secondary" data-action="load-track">새로고침</button></div></section>';
+ const status=buyerOrderPhase(q);
+ const itemMarkup=(q.items||[]).map(i=>{
+  const progress=buyerTrackItemLabel(q,i);
+  const action=q.status!=='confirmed'?buyerOptionRequest(q,i):i.option_request?.status==='pending'?buyerOptionRequest(q,i):'';
+  return '<article class="buyer-simple-item">'+
+   '<div class="buyer-simple-product"><b>'+esc(i.store_name)+' · '+esc(i.product_name)+'</b><span>'+Number(i.quantity)+'개</span></div>'+
+   '<div class="buyer-simple-variant">'+esc(i.color)+' / '+esc(i.size)+'</div>'+
+   '<div class="buyer-simple-unit">'+(i.unit_price==null?'가격 확인 중':money(Number(i.unit_price)*Number(i.quantity)))+'</div>'+
+   (progress?'<div class="buyer-track-product-state">'+esc(progress)+'</div>':'')+action+'</article>';
+ }).join('');
  const finalValue=q.status==='requested'?'가격 확인 중':q.status==='quoted'&&!settledBuyerTotal(q)?'배송비 계산 중':!readyQuote(q)?'금액 확인 중':money(totalDue(q));
- const shipment=q.status==='confirmed'?`<section class="buyer-simple-progress">
-  <h3>${esc(workflowLabel(q))}</h3>
-  ${trackingInfo(q)?(q.partial_parcels?.length?'':`<div class="tiny">${esc(trackingInfo(q))}</div>${renderShipment(q)}`):
-   q.delivery_method==='courier'?'<p class="buyer-hint">송장 등록 전</p>':''}
-  ${q.items.some(i=>i.fulfillment==='sold_out')?'<p class="buyer-hint">품절 상품은 주문금액에서 제외돼요. 환불 여부는 판매자에게 확인해 주세요.</p>':''}
- </section>`:'';
- const deliverySection=`<div class="buyer-simple-delivery">
-   <span>수령 · <b>${esc(deliveryLabel(q))}</b></span>
-   ${canChangeDelivery(q)?`<button type="button" class="textbutton" data-action="edit-delivery">${q.delivery_change_requested_at?'변경 요청 수정':'변경'}</button>`:''}
-  </div>
-  ${q.delivery_method==='courier'?`<div class="buyer-simple-address">${esc(addressLabel(q))}</div>`:''}
-  ${isBundle(q)?'<div class="buyer-simple-address">묶음배송 적용</div>':''}
-  ${q.delivery_change_requested_at?`<div class="buyer-hint">${q.requested_delivery_method==='courier'?'택배':'직접'}수령 변경 요청 중 · 관리자 승인 전에는 기존 금액 유지</div>`:''}
-  ${q.delivery_change_rejected_at&&!q.delivery_change_requested_at?'<div class="buyer-hint">수령방식 변경 요청이 반려됐어요.</div>':''}`;
- const utilities=`<details class="buyer-simple-tools">
-    <summary>알림 · 링크 · 기타 설정</summary>
-    <div class="buyer-tool-buttons">
-     <button type="button" class="btn sm secondary" data-action="enable-buyer-push">알림 받기</button>
-     <button type="button" class="btn sm secondary" data-action="copy-track">조회 링크 복사</button>
-     <button type="button" class="btn sm secondary" data-action="share-track">링크 공유</button>
-    </div>
-    <p class="tiny">알림은 홈 화면에 추가한 미니예나에서 허용해 주세요. 조회 링크는 개인적으로 보관해 주세요.</p>
-    <details class="track-pin-box buyer-simple-pin">
-     <summary>조회 비밀번호 등록 · 변경</summary>
-     <form id="pin-register-form">
-      <label class="label">비밀번호 6자리<input name="lookup_pin" type="password" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" autocomplete="off" required placeholder="숫자 6자리"></label>
-      <label class="label">비밀번호 확인<input name="lookup_pin_confirm" type="password" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" autocomplete="off" required placeholder="다시 입력"></label>
-      <button class="btn block secondary" type="submit">비밀번호 저장</button>
-     </form>
-    </details>
-    ${q.status==='requested'&&canRequestCancel(q)?`<button type="button" class="textbutton buyer-cancel-link" data-action="request-cancel">취소 요청</button>`:''}
-   </details>`;
- return `<section class="content buyer-simple">
-  <div class="buyer-simple-head"><div><h1>${esc(q.buyer_name)}님 ${q.instant_purchase?'주문':'견적'}</h1><div class="tiny">${esc(q.baby_name||'')} · ${esc(q.id.slice(0,8).toUpperCase())}</div></div><span class="buyer-simple-state">${esc(status)}</span></div>
-  ${q.status==='quoted'?buyerRoundIntent(q):''}
-  <div class="buyer-simple-items">${itemMarkup||'<div class="buyer-hint">등록된 상품이 없어요.</div>'}</div>
-  <div class="buyer-simple-totals">
-   <div class="buyer-simple-sum"><span>상품 합계</span><b>${unknown(q)?'가격 확인 중':money(previewOrderSum(q))}</b></div>
-   <div class="buyer-simple-sum"><span>수령 배송비</span><b>${q.status==='requested'?'안내 전':shippingLabel(q)}</b></div>
-   ${q.instant_purchase?'':`<div class="buyer-simple-sum"><span>도매 배송비</span><b>${q.status==='requested'?'안내 전':q.status==='quoted'&&!q.supplier_shipping_ready?'계산 중':supplierShippingLabel(q)}</b></div>`}
-   <div class="buyer-simple-sum buyer-simple-grand"><span>최종 결제금액</span><strong>${finalValue}</strong></div>
-  </div>
-  ${deliverySection}
-  ${renderBuyerDispatchPanel(q)}
-  ${buyerSupplierPartialMarkup()}
-  ${renderBuyerSupplierFreightRequest(q)}
-  ${q.status==='requested'?'<p class="buyer-hint">상품 가격 확인 중</p>':''}
-  ${confirmedPaymentWidget(q)}
-  ${q.status==='confirmed'&&canRequestCancel(q)?'<div class="buyer-cancel-confirmed"><button type="button" data-action="request-cancel">구매 취소 요청</button></div>':''}
-  ${buyerWholesaleStatus(q)}
-  ${shipment}
-  ${window.MiniPartialShipping?window.MiniPartialShipping.buyerMarkup(q):''}
-  ${q.status==='cancelled'?'<p class="buyer-hint">취소된 견적입니다.</p>':''}
-  ${q.status==='confirmed'&&q.amount_changed_at?`<div class="buyer-hint">주문 금액 변경 이력이 있어요. 입금 전 최신 금액을 확인해 주세요.</div>`:''}
-  ${q.cancel_requested_at&&q.status!=='cancelled'?`<div class="buyer-hint">취소 요청 접수됨 · 처리 결과를 기다리는 중입니다.${q.cancel_reason?`<div>사유: ${esc(q.cancel_reason)}</div>`:''}<button class="btn sm outline" type="button" data-action="withdraw-cancel-request">취소 요청 철회</button></div>`:''}
-  ${q.cancel_rejected_at&&q.status!=='cancelled'?'<p class="buyer-hint">이전 취소 요청이 반려됐어요.</p>':''}
-  ${utilities}
- </section>`;
+ const due=buyerFinalPaymentReady(q)&&readyQuote(q)?balanceDue(q):null;
+ const paid=q.status==='confirmed'&&due===0;
+ const shippingAmount=q.status==='requested'?'안내 전':shippingLabel(q);
+ const courierTracking=buyerCourierShipment(q);
+ const delivery='<div class="buyer-simple-delivery"><span>수령 방법 · <b>'+esc(deliveryLabel(q))+'</b></span>'+
+   (canChangeDelivery(q)?'<button type="button" class="textbutton" data-action="edit-delivery">변경</button>':'')+'</div>'+
+   (q.delivery_method==='courier'?'<div class="buyer-simple-address">'+esc(addressLabel(q))+'</div>':'')+
+   (q.delivery_change_requested_at?'<p class="buyer-hint">수령방식 변경 요청 확인 중</p>':'');
+ return '<section class="content buyer-simple buyer-track-clean">'+
+  '<div class="buyer-simple-head"><div><h1>'+esc(q.buyer_name)+'님 '+(q.status==='requested'||q.status==='quoted'?'주문 확인':'주문')+'</h1>'+
+   '<div class="tiny">아기 '+esc(q.baby_name||'')+' · 주문 '+esc(q.id.slice(0,8).toUpperCase())+'</div></div>'+
+   '<span class="buyer-simple-state">'+esc(status)+'</span></div>'+
+  (q.status==='quoted'?buyerRoundIntent(q):'')+
+  '<div class="buyer-simple-items">'+(itemMarkup||'<div class="buyer-hint">주문 상품이 없어요.</div>')+'</div>'+
+  '<div class="buyer-simple-totals">'+
+   '<div class="buyer-simple-sum"><span>상품 합계</span><b>'+(unknown(q)?'확인 중':money(previewOrderSum(q)))+'</b></div>'+
+   '<div class="buyer-simple-sum"><span>택배비</span><b>'+shippingAmount+'</b></div>'+
+   (!q.instant_purchase&&supplierShippingShare(q)>0?'<div class="buyer-simple-sum"><span>추가 배송비</span><b>'+supplierShippingLabel(q)+'</b></div>':'')+
+   '<div class="buyer-simple-sum buyer-simple-grand"><span>총 주문금액</span><strong>'+finalValue+'</strong></div>'+
+   (paid?'<p class="buyer-track-paid">✓ 입금 확인 완료 · 추가 입금할 금액 없음</p>':'')+
+  '</div>'+
+  delivery+
+  (courierTracking||q.delivery_method==='pickup'&&q.status==='confirmed'? 
+    courierTracking||'<div class="buyer-pickup-summary">현재 상태 · '+esc(status)+'</div>':'')+
+  renderBuyerDispatchPanel(q)+
+  (due!==null&&due>0?confirmedPaymentWidget(q):'')+
+  renderBuyerSupplierFreightRequest(q)+
+  (q.status==='confirmed'&&canRequestCancel(q)&&!q.cancel_requested_at?
+   '<div class="buyer-cancel-confirmed"><button type="button" data-action="request-cancel">구매 취소 요청</button></div>':'')+
+  (q.cancel_requested_at&&q.status!=='cancelled'?'<div class="buyer-hint">취소 요청 확인 중 · <button class="textbutton" type="button" data-action="withdraw-cancel-request">요청 철회</button></div>':'')+
+  (q.status==='cancelled'?'<p class="buyer-hint">취소된 주문이에요.</p>':'')+
+  '</section>';
 }
-
 function renderAdminHomePreparingList(quotes){
  const rows=[...quotes].filter(q=>q.status==='confirmed').sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')));
  const shown=rows;

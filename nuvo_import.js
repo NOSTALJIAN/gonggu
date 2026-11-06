@@ -54,9 +54,9 @@ async function readNuvo(file){
  });
  if(rows.length<2)throw Error('엑셀에 주문 정보가 없어요.');
  const columns=rows[0],header=name=>Object.keys(columns).find(k=>String(columns[k]).replace(/\s/g,'')===name);
- const orderColumn=header('주문번호'),trackingColumn=header('운송장번호');
+ const orderColumn=header('주문번호'),trackingColumn=header('운송장번호'),qtyColumn=header('수량(A타입)'),itemColumn=header('상품상세1');
  if(!orderColumn||!trackingColumn)throw Error('주문번호와 운송장번호 열이 있는 누보 A타입 엑셀 파일을 올려 주세요.');
- return rows.slice(1).map(r=>({order:String(r[orderColumn]||'').trim().toUpperCase(),tracking:String(r[trackingColumn]||'').trim()})).filter(r=>r.order||r.tracking);
+ return rows.slice(1).map(r=>({order:String(r[orderColumn]||'').trim().toUpperCase(),tracking:String(r[trackingColumn]||'').trim(),qty:qtyColumn?Number(r[qtyColumn]):null,detail:itemColumn?String(r[itemColumn]||'').trim():null})).filter(r=>r.order||r.tracking);
 }
 function attach(layer,batch,ctx){
  const button=layer.querySelector('[data-nuvo-download]');if(!button||!ctx||!ctx.isAdmin)return;
@@ -81,26 +81,38 @@ function attach(layer,batch,ctx){
     const dest=available.get(row.order);
     if(!dest)throw Error('현재 발송 가능한 주문과 맞지 않는 주문번호가 있어요: '+row.order);
     if(used.has(row.order))throw Error('한 주문번호가 여러 번 있어요: '+row.order);
+    if(row.qty!=null&&(!Number.isInteger(row.qty)||row.qty!==dest.qty))throw Error('엑셀 발송 수량과 현재 상품 수량이 달라요. 다시 엑셀을 만들어 주세요: '+row.order);
+    const details=dest.items.length===1?[dest.items[0].color,dest.items[0].size].filter(Boolean).join(' / '):
+      dest.items.map(i=>String(i.product_name||'상품')+' '+[i.color,i.size].filter(Boolean).join('/')+' ×'+i.quantity).join(' ; ');
+    if(row.detail!==null&&row.detail!==details)throw Error('엑셀과 현재 발송 상품 구성이 다릅니다. 다시 엑셀을 만들어 주세요: '+row.order);
     if(!/^[A-Za-z0-9 -]{4,80}$/.test(row.tracking))throw Error('송장번호를 확인해 주세요: '+row.order);
-    if(dest.items.some(i=>!Number.isInteger(i.quantity)||i.quantity<1||i.quantity>20))throw Error('상품별 발송 수량은 최대 20개예요: '+row.order);
+    if((dest.parts||[dest]).some(p=>p.items.some(i=>!Number.isInteger(i.quantity)||i.quantity<1||i.quantity>20)))throw Error('상품별 발송 수량은 최대 20개예요: '+row.order);
     chosen.push({dest,tracking:row.tracking});used.add(row.order);
    }
    if(!chosen.length)throw Error('송장번호가 입력된 주문이 없어요.');
    if(chosen.length>100)throw Error('한 번에 100건 이하로 나눠 등록해 주세요.');
-   const preview=chosen.slice(0,12).map(x=>(x.dest.root.recipient_name||x.dest.root.buyer_name)+' / '+x.dest.qty+'개 / '+x.tracking).join('\n');
+   const preview=chosen.slice(0,12).map(x=>(x.dest.root.recipient_name||x.dest.root.buyer_name)+' / '+x.dest.qty+'개'+((x.dest.parts||[]).length>1?' / 합배송 '+x.dest.parts.length+'주문묶음':'')+' / '+x.tracking).join('\n');
    if(!confirm('롯데택배 '+chosen.length+'건을 배송 중으로 등록할까요?\n\n'+preview+(chosen.length>12?'\n외 '+(chosen.length-12)+'건':'')+'\n\n미입고 상품과 기존 배송비·입금액은 그대로 유지해요.')){
     result.textContent='등록을 취소했어요.';return;
    }
-   let done=0;const failures=[];
+   let done=0;let appliedOrders=0;const failures=[];
    for(const {dest,tracking} of chosen){
-    result.textContent='배송 중 등록 중… '+done+'/'+chosen.length+'건';
-    try{
-     await ctx.rpc('gq_admin_create_partial_parcel_v118',{p_root_quote_id:dest.id,p_carrier:'롯데택배',p_tracking_number:tracking,p_lines:dest.items.map(i=>({item_id:i.id,quantity:i.quantity}))},true);
-     done++;
-    }catch(e){failures.push((dest.root.recipient_name||dest.root.buyer_name)+': '+(e?.message||'등록 실패'));}
+    const parts=dest.parts||[dest];
+    let completedParts=0;
+    for(const part of parts){
+     result.textContent='배송 중 등록 중… 택배 '+done+'/'+chosen.length+'건 · 원주문 묶음 '+completedParts+'/'+parts.length+'건';
+     try{
+      await ctx.rpc('gq_admin_create_partial_parcel_v118',{p_root_quote_id:part.id,p_carrier:'롯데택배',p_tracking_number:tracking,p_lines:part.items.map(i=>({item_id:i.id,quantity:i.quantity}))},true);
+      completedParts++;appliedOrders++;
+     }catch(e){
+      failures.push((dest.root.recipient_name||dest.root.buyer_name)+' · '+(completedParts+1)+'번째 주문묶음: '+(e?.message||'등록 실패'));
+      break;
+     }
+    }
+    if(completedParts===parts.length)done++;
    }
-   result.textContent='등록 완료 '+done+'건'+(failures.length?' · 실패 '+failures.length+'건\n'+failures.slice(0,8).join('\n'):' · 미입고 상품은 계속 입고 대기 중');
-   if(done){await ctx.reload();ctx.notify('송장 '+done+'건을 등록했어요.');}
+   result.textContent='택배 송장 반영 완료 '+done+'건 · 개별 주문묶음 '+appliedOrders+'건'+(failures.length?' · 실패 '+failures.length+'건\\n'+failures.slice(0,8).join('\\n'):' · 미입고 상품은 계속 입고 대기');
+   if(appliedOrders){await ctx.reload();ctx.notify('택배 송장 '+done+'건, 개별 주문묶음 '+appliedOrders+'건에 반영했어요.');}
   }catch(e){result.textContent=e?.message||'엑셀 일괄등록에 실패했어요.';}
   finally{input.disabled=false;input.value='';}
  });

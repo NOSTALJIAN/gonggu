@@ -90,6 +90,20 @@
 .admin-view-group-separated .admin-view-group-items{border-top:0;margin:4px 0 8px;color:#777}
 .admin-view-group-head{padding-bottom:3px}
 @media(max-width:390px){.admin-order-header-links button{font-size:10px}.admin-order-merge-launch{padding:8px;font-size:10px}.admin-order-list-actions .admin-clean-utility{font-size:10px;padding:7px}}
+
+.admin-early-pickup-form{margin:10px 0;border:1px solid #e4e4e4;border-radius:11px;padding:12px;background:#fafafa;display:flex;flex-direction:column;gap:8px}
+.admin-early-pickup-title{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.admin-early-pickup-title strong{font-size:13px}.admin-early-pickup-title small{font-size:11px;color:#777}
+.admin-early-pickup-group{border:1px solid #ededed;background:#fff;border-radius:8px;overflow:hidden}
+.admin-early-pickup-store{display:flex;align-items:center;gap:9px;padding:9px 10px;background:#f5f5f5;font-size:12px;font-weight:800}
+.admin-early-pickup-store small{color:#888;font-size:11px;font-weight:600;margin-left:auto}
+.admin-early-pickup-item{display:flex;align-items:center;gap:9px;padding:9px 10px;border-top:1px solid #efefef}
+.admin-early-pickup-item span{flex:1;min-width:0}.admin-early-pickup-item b{display:block;font-size:12px}.admin-early-pickup-item small{display:block;font-size:11px;color:#777;margin-top:3px;line-height:1.45}
+.admin-early-pickup-form input[type=checkbox]{appearance:auto;width:19px;height:19px;min-height:19px;flex-shrink:0;accent-color:#202020;margin:0}
+.admin-early-pickup-submit{font-size:12px;min-height:40px;margin-top:5px}
+.admin-early-pickup-done{margin:6px 0 12px;padding:10px 12px;background:#f4f5f5;border-radius:10px}
+.admin-early-pickup-done summary{font-size:12px;font-weight:800;cursor:pointer}
+.admin-early-pickup-done .compact-order-products{margin:8px 0 0}
 </style>
 <script src="./nuvo_shipping.js?v=20261106-b1-miniyena-name" defer></script>
 <script src="./nuvo_import.js?v=20261106-b1-miniyena-name" defer></script>
@@ -8309,6 +8323,76 @@ function renderAdminPartShipmentCard(q){
   '<details class="admin-part-full-order"><summary>원래 주문 · 금액 · 남은 상품 관리</summary>'+renderAdminQuoteCard(q)+'</details></div>';
 }
 
+/* Pickup is recorded per original item; never completes an entire order early. */
+function adminPickupEligible(q,i){
+ return !!state.admin&&!!q&&q.status==='confirmed'&&q.delivery_method==='pickup'&&
+  !q.cancel_requested_at&&!q.delivery_change_requested_at&&
+  ['preparing','pickup_ready'].includes(workflowStage(q))&&
+  !!i&&['ordered','delayed','received'].includes(i.fulfillment);
+}
+function adminPickupForm(orders){
+ const rows=orders.flatMap(q=>(q.items||[]).filter(i=>adminPickupEligible(q,i)).map(i=>({q,i})));
+ if(!rows.length)return '';
+ const groups=new Map();
+ for(const item of rows){
+  const name=String(item.i.store_name||'기타').trim()||'기타';
+  if(!groups.has(name))groups.set(name,[]);
+  groups.get(name).push(item);
+ }
+ return '<form id="admin-early-pickup-form" class="admin-early-pickup-form">'+
+  '<div class="admin-early-pickup-title"><strong>먼저 가져간 상품 체크</strong><small>체크한 상품만 픽업 완료</small></div>'+
+  [...groups].map(([name,group])=>'<section class="admin-early-pickup-group">'+
+   '<label class="admin-early-pickup-store"><input type="checkbox" data-admin-pickup-store aria-label="'+esc(name)+' 전체 선택"><b>'+esc(name)+'</b><small>'+group.length+'종 전체선택</small></label>'+
+   group.map(({q,i})=>'<label class="admin-early-pickup-item">'+
+    '<input type="checkbox" name="pickup_item_id" value="'+esc(i.id)+'">'+
+    '<span><b>'+esc(i.product_name||'상품')+'</b><small>'+esc([i.color,i.size].filter(Boolean).join(' / '))+
+    ' · '+Number(i.quantity||0)+'개'+(i.fulfillment==='received'?' · 입고완료':' · 입고 확인 전')+'</small></span></label>').join('')+
+   '</section>').join('')+
+  '<button type="submit" class="btn block admin-early-pickup-submit">선택한 상품 픽업 완료</button>'+
+  '</form>';
+}
+async function adminFinishEarlyPickup(ids){
+ if(!state.admin)throw Error('관리자 로그인 후 사용할 수 있어요.');
+ const unique=[...new Set(ids.map(String))];
+ if(!unique.length)throw Error('먼저 가져간 상품을 체크해 주세요.');
+ if(unique.length>100)throw Error('한 번에 100개 상품까지 처리할 수 있어요.');
+ const matches=unique.map(id=>state.quotes.flatMap(q=>(q.items||[]).map(i=>({q,i}))).find(x=>x.i.id===id));
+ if(matches.some(x=>!x||!adminPickupEligible(x.q,x.i)))throw Error('선택한 상품의 상태가 변경됐어요. 새로고침 후 다시 체크해 주세요.');
+ const keys=new Set(matches.map(x=>adminOrderGroupKey(x.q)));
+ if(keys.size!==1)throw Error('같은 구매자의 상품만 함께 픽업 처리할 수 있어요.');
+ const units=matches.reduce((n,{i})=>n+Math.max(0,Number(i.quantity)||0),0);
+ const list=matches.slice(0,10).map(({i})=>'• '+String(i.store_name||'')+' '+String(i.product_name||'')+
+  ' '+[i.color,i.size].filter(Boolean).join('/')+' ×'+Number(i.quantity||0)).join('\n');
+ if(!window.confirm('선택한 '+unique.length+'종 · '+units+'개가 실제로 먼저 픽업 완료된 게 맞나요?\n\n'+list+
+  (unique.length>10?'\n외 '+(unique.length-10)+'종':'')+
+  '\n\n선택하지 않은 상품과 결제·배송비는 그대로 유지해요.'))return;
+ let saved;
+ if(connected){
+  const idsParam=unique.map(encodeURIComponent).join(',');
+  saved=await api('/rest/v1/gq_quote_items?id=in.('+idsParam+')&fulfillment=in.(ordered,delayed,received)',
+   {method:'PATCH',admin:true,body:{fulfillment:'delivered'}});
+  if(!Array.isArray(saved)||saved.length!==unique.length){
+   await loadAdmin();
+   throw Error('일부 상품의 상태가 변경됐을 수 있어요. 새로고침된 픽업 현황을 확인해 주세요.');
+  }
+ }else{
+  for(const {i} of matches){const row=demo.items.find(x=>x.id===i.id);if(row){row.fulfillment='delivered';row.received_qty=row.quantity;}}
+  saveDemo();syncDemo();
+ }
+ await loadAdmin();
+ notif('선픽업 '+unique.length+'종 · '+units+'개 체크 완료. 나머지는 준비 중으로 유지했어요.');
+}
+function renderAdminPickupProductSection(q){
+ const done=(q.items||[]).filter(i=>i.fulfillment==='delivered');
+ const pending=(q.items||[]).filter(i=>i.fulfillment!=='delivered');
+ const renderLines=items=>items.map(i=>'<div class="compact-order-product">'+
+  '<span><b>'+adminOrderItemName(i)+'</b><small>'+esc(i.color)+' / '+esc(i.size)+' · '+Number(i.quantity||0)+
+  '개'+(i.fulfillment==='sold_out'?' · 품절':i.fulfillment==='received'?' · 입고완료':'')+'</small></span>'+
+  '<strong>'+ (i.unit_price==null?'가격 미정':money(Number(i.unit_price)*Number(i.quantity||0)))+'</strong></div>').join('');
+ return '<div class="compact-order-products">'+(renderLines(pending)||'<p class="smallnote">남은 상품이 없어요.</p>')+'</div>'+
+  (done.length?'<details class="admin-early-pickup-done"><summary>✓ 먼저 픽업 완료 '+done.length+'종</summary><div class="compact-order-products">'+renderLines(done)+'</div></details>':'')+
+  adminPickupForm([q]);
+}
 function renderAdminQuoteCard(q){
  const qty=(q.items||[]).reduce((n,i)=>n+Number(i.quantity||0),0);
  const paid=(Number(q.amount_paid)||0)-(Number(q.amount_refunded)||0);
@@ -8325,7 +8409,8 @@ function renderAdminQuoteCard(q){
  return `<div class="card ordercard compact-order-card" data-compact-order="${esc(q.id)}">
   <div class="compact-order-top"><strong>${(q.items||[]).length}종 · ${qty}개</strong><span>${esc(deliveryLabel(q))} · ${q.delivery_method==='courier'&&workflowStage(q)==='shipped'?'🚚 배송 중':q.delivery_method==='courier'&&workflowStage(q)==='completed'?'✓ 배송 완료':esc(buyerOrderPhase(q))}</span></div>
   ${renderAdminDispatchNotice(q)}
-  ${adminPartialParcels(q).length&&['new','preparing'].includes(workflowStage(q))?adminSplitInventoryMarkup(q):`<div class="compact-order-products">${(q.items||[]).map(i=>`<div class="compact-order-product">
+  ${q.status==='confirmed'&&q.delivery_method==='pickup'?renderAdminPickupProductSection(q):
+  adminPartialParcels(q).length&&['new','preparing'].includes(workflowStage(q))?adminSplitInventoryMarkup(q):`<div class="compact-order-products">${(q.items||[]).map(i=>`<div class="compact-order-product">
    <span><b>${adminOrderItemName(i)}</b><small>${esc(i.color)} / ${esc(i.size)} · ${Number(i.quantity)||0}개${i.fulfillment==='sold_out'?' · 품절':''}</small></span>
    <strong>${i.unit_price==null?'가격 미정':money(Number(i.unit_price)*(Number(i.quantity)||0))}</strong>${window.MiniPartialShipping&&window.MiniPartialShipping.sentQty(i.id,state.partialParcels||[])>0?'<small class="tiny">📦 먼저 발송 '+window.MiniPartialShipping.sentQty(i.id,state.partialParcels||[])+'개</small>':''}
   </div>`).join('')}</div>`}
@@ -8577,6 +8662,7 @@ function renderAdminViewGroupCard(group){
  return '<div class="admin-view-group-card">'+
   '<div class="admin-view-group-head"><strong>확정 주문 '+group.length+'건 · 남은 상품 '+count(split.pending)+'개</strong></div>'+
   '<div class="admin-view-group-items">'+(itemLines(split.pending)||'<p class="smallnote">남은 상품이 없어요.</p>')+'</div>'+
+  adminPickupForm(group.filter(q=>q.delivery_method==='pickup'))+
   (split.released.length?'<section class="admin-view-group-separated"><strong>먼저 발송·픽업한 상품 '+count(split.released)+'개</strong>'+
    '<div class="admin-view-group-items">'+split.released.map(({i,quantity,type})=>
     '<div><span>'+esc(type==='pickup'?'픽업 완료 · ':'선발송 · ')+esc(i.product_name||'상품')+
@@ -13437,6 +13523,16 @@ if(a==='bundle-stage'){
  if(!window.confirm(stage==='completed'?'묶음 주문의 모든 상품 전달을 확인했나요?':stage==='pickup_ready'?'묶음 상품 모두 입고되어 픽업 대기로 전환할까요?':'묶음 주문의 상품 준비를 시작할까요?'))return;
  await adminBundleStage(id,stage);await loadAdmin();notif('묶음 주문 진행상태를 함께 변경했어요.');return;
 }
+if(a==='admin-early-pickup-select-store'){
+ const label=b.closest('.admin-early-pickup-store');
+ const section=label?.closest('.admin-early-pickup-group');
+ if(!section)return;
+ const source=label.querySelector('input[data-admin-pickup-store]');
+ if(!source)return;
+ source.checked=!source.checked;
+ section.querySelectorAll('input[name="pickup_item_id"]').forEach(input=>input.checked=source.checked);
+ return;
+}
 if(a==='mark-item-received'){
   if(!state.admin)throw Error('관리자만 입고완료를 체크할 수 있어요.');
   const q=state.quotes.find(q=>(q.items||[]).some(i=>i.id===id));
@@ -13897,7 +13993,8 @@ const data=new FormData(f);try{if(f.id==='admin-bundle-refund-form'){
  if(carrier.length<1||carrier.length>60||!/^[-0-9A-Za-z ]{4,80}$/.test(tracking))throw Error('택배사와 송장번호를 확인해 주세요 (영문·숫자·하이픈 4~80자).');
  if(!window.confirm(`${carrier} / ${tracking}\n송장을 등록하고 배송 중으로 변경할까요?`))return;
  await adminWorkflowStage(f.dataset.ship,'shipped',carrier,tracking);await loadAdmin();notif('송장번호가 등록됐어요.');
-}else if(f.id==='merge-shipping-form'){await handleMergeShippingSubmit(f,data);}
+}else if(f.id==='admin-early-pickup-form'){await adminFinishEarlyPickup(data.getAll('pickup_item_id').map(String));}
+else if(f.id==='merge-shipping-form'){await handleMergeShippingSubmit(f,data);}
 else if(f.id==='bundle-form'){
  const q=state.quotes.find(x=>x.id===state.modal?.id);if(!q)throw Error('주문을 찾지 못했어요');
  const parent=String(data.get('parent_id')||'');

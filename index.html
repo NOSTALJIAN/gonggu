@@ -68,6 +68,23 @@
 .admin-merge-order-picker{display:flex;flex-direction:column;gap:9px}
 .admin-merge-picker-row{display:flex;flex-direction:column;text-align:left;gap:3px;width:100%;background:white;border:1px solid #e0e0e0;border-radius:10px;padding:12px 13px;color:#222}
 .admin-merge-picker-row strong{font-size:14px}.admin-merge-picker-row span{font-size:11px;color:#777}.admin-merge-picker-row span b{float:right;color:#222}
+.admin-merge-picker-row small{font-size:11px;color:#666;font-weight:600}
+.admin-view-group-editor{display:flex;flex-direction:column;gap:10px}
+.admin-view-group-checks{max-height:52vh;overflow:auto;border:1px solid #e5e5e5;border-radius:10px}
+.admin-view-group-checks label{display:flex;gap:10px;align-items:flex-start;padding:13px 10px;border-bottom:1px solid #eee}
+.admin-view-group-checks label:last-child{border-bottom:0}.admin-view-group-checks input{flex:0 0 20px;width:20px;height:20px;min-height:20px;margin-top:3px;accent-color:#222}
+.admin-view-group-checks span{flex:1;min-width:0}.admin-view-group-checks b{display:block;font-size:13px}.admin-view-group-checks small{display:block;color:#777;font-size:11px;line-height:1.5;margin-top:4px}
+.admin-view-group-card{padding:12px;background:#fff;border:1px solid #eee;border-radius:11px}
+.admin-view-group-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.admin-view-group-head strong{font-size:13px}.admin-view-group-head button{border:1px solid #ddd;border-radius:8px;background:#fff;color:#333;padding:8px 9px;font-size:11px;font-weight:750}
+.admin-view-group-items{margin:10px 0;border-top:1px solid #eee;border-bottom:1px solid #eee}
+.admin-view-group-items>div{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;padding:8px 1px;font-size:12px;border-bottom:1px solid #f3f3f3}
+.admin-view-group-items>div:last-child{border:0}.admin-view-group-items b{white-space:nowrap}
+.admin-view-group-totals{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;font-weight:700;margin:9px 0}
+.admin-view-group-original{border-top:1px solid #eee;margin-top:8px;padding-top:10px}
+.admin-view-group-original>summary{font-size:11px;font-weight:750;cursor:pointer}
+.admin-view-group-original>details{padding:9px 0;border-bottom:1px solid #eee}
+.admin-view-group-original>details>summary{font-size:11px;font-weight:750;cursor:pointer}
 @media(max-width:390px){.admin-order-header-links button{font-size:10px}.admin-order-merge-launch{padding:8px;font-size:10px}.admin-order-list-actions .admin-clean-utility{font-size:10px;padding:7px}}
 </style>
 <script src="./nuvo_shipping.js?v=20261106-b1-miniyena-name" defer></script>
@@ -8504,24 +8521,100 @@ function renderShippingMergeButton(group){
  if(roots.size<2)return '';
  return `<div class="shipping-merge-entry"><button type="button" class="btn sm secondary" data-action="merge-shipping" data-id="${esc(first.id)}">주문 합치기 · ${options.length}건</button></div>`;
 }
-function renderAdminOrderMergePicker(){
- const groups=[],seen=new Set();
- for(const q of state.quotes||[]){
-  if(!shippingMergeEligible(q))continue;
-  const eligible=shippingMergeCandidates(q);
-  if(new Set(eligible.map(x=>x.bundle_parent_id||x.id)).size<2)continue;
-  const key=eligible.map(x=>x.id).sort().join('|');
-  if(seen.has(key))continue;
-  seen.add(key);
-  const root=shippingMergeRoot(eligible,q);
-  if(root)groups.push({root,eligible});
+/* Admin presentation groups are independent from courier bundling and settlement. */
+function adminOrderGroupKey(q){
+ return normKey(q?.buyer_name)+'|'+normKey(q?.baby_name);
+}
+function adminOrderGroupingCandidates(q){
+ if(!q||!normKey(q.buyer_name))return [];
+ const key=adminOrderGroupKey(q);
+ return (state.quotes||[]).filter(x=>x.status!=='cancelled'&&adminOrderGroupKey(x)===key)
+  .sort((a,b)=>String(a.created_at||'').localeCompare(String(b.created_at||'')));
+}
+function adminViewGroups(visible){
+ const byKey=new Map();
+ for(const q of visible){
+  const key=q.admin_view_group_id?'admin:'+q.admin_view_group_id:'single:'+q.id;
+  if(!byKey.has(key))byKey.set(key,[]);
+  byKey.get(key).push(q);
  }
- groups.sort((a,b)=>String(a.root.buyer_name||'').localeCompare(String(b.root.buyer_name||''),'ko'));
+ return [...byKey.values()].map(g=>g.sort((a,b)=>String(a.created_at).localeCompare(String(b.created_at))))
+  .sort((a,b)=>String(b[b.length-1]?.created_at||'').localeCompare(String(a[a.length-1]?.created_at||'')));
+}
+function isAdminViewGroup(group){
+ return group.length>1&&!!group[0].admin_view_group_id&&
+  group.every(q=>q.admin_view_group_id===group[0].admin_view_group_id);
+}
+function renderAdminViewGroupCard(group){
+ const itemRows=group.flatMap(q=>(q.items||[]).map(i=>({q,i})));
+ const qty=itemRows.reduce((sum,{i})=>sum+Number(i.quantity||0),0);
+ const due=group.every(readyQuote)?money(group.reduce((sum,q)=>sum+totalDue(q),0)):'금액 확인 필요';
+ const net=group.reduce((sum,q)=>sum+Number(q.amount_paid||0)-Number(q.amount_refunded||0),0);
+ return '<div class="admin-view-group-card">'+
+  '<div class="admin-view-group-head"><strong>주문 '+group.length+'건 · 상품 '+itemRows.length+'종 · '+qty+'개</strong><button type="button" data-action="admin-view-group-edit" data-id="'+esc(group[0].id)+'">묶음 수정</button></div>'+
+  '<div class="admin-view-group-items">'+itemRows.map(({i})=>'<div><span>'+esc(i.product_name||'상품')+' · '+esc([i.color,i.size].filter(Boolean).join('/')||'옵션 없음')+'</span><b>×'+Math.max(0,Number(i.quantity)||0)+'</b></div>').join('')+'</div>'+
+  '<div class="admin-view-group-totals"><span>주문금액 '+due+'</span><span>입금 기록 '+money(net)+'</span></div>'+
+  '<details class="admin-view-group-original"><summary>원주문 '+group.length+'건 · 개별 수정</summary>'+
+   group.map((q,idx)=>'<details><summary>'+(idx+1)+'번째 주문 · '+esc(fmtDate(q.created_at))+' · '+esc(deliveryLabel(q))+'</summary>'+renderAdminQuoteCard(q)+'</details>').join('')+
+  '</details></div>';
+}
+function renderAdminOrderMergePicker(){
+ const groups=new Map();
+ for(const q of state.quotes||[]){
+  if(q.status==='cancelled'||!normKey(q.buyer_name))continue;
+  const key=adminOrderGroupKey(q);
+  if(!groups.has(key))groups.set(key,[]);
+  groups.get(key).push(q);
+ }
+ const choices=[...groups.values()].filter(x=>x.length>=2).sort((a,b)=>String(a[0].buyer_name||'').localeCompare(String(b[0].buyer_name||''),'ko'));
  return '<div class="admin-merge-order-picker">'+
-  '<p class="smallnote">합칠 구매자를 선택하고, 다음 화면에서 주문을 체크하세요. 기존 주문 상품·입금 내역은 그대로 남아요.</p>'+
-  (groups.length?groups.map(({root,eligible})=>'<button type="button" class="admin-merge-picker-row" data-action="merge-shipping" data-id="'+esc(root.id)+'"><strong>'+esc(root.buyer_name||'주문자')+'</strong><span>아기 '+esc(root.baby_name||'미입력')+' · 합칠 수 있는 주문 '+eligible.length+'건 <b>선택 ›</b></span></button>').join(''):
-  '<div class="empty">현재 합칠 수 있는 발송 전 주문이 없어요. 같은 구매자의 주문인지, 이미 발송한 주문인지 확인해 주세요.</div>')+
-  '</div>';
+  '<p class="smallnote">택배·직접수령 구분 없이 같은 구매자의 주문을 묶어 볼 수 있어요. 배송비·입금액은 바뀌지 않아요.</p>'+
+  (choices.length?choices.map(rows=>{
+   const root=rows[0],grouped=rows.filter(q=>q.admin_view_group_id).length;
+   return '<button type="button" class="admin-merge-picker-row" data-action="admin-view-group-edit" data-id="'+esc(root.id)+'"><strong>'+esc(root.buyer_name||'주문자')+' <small>아기 '+esc(root.baby_name||'미입력')+'</small></strong>'+
+    '<span>주문 '+rows.length+'건'+(grouped?' · 기존 묶음 있음':'')+' <b>선택 ›</b></span></button>';
+  }).join(''):'<div class="empty">함께 묶을 수 있는 주문이 아직 없어요.</div>')+'</div>';
+}
+function renderAdminViewGroupEditor(m){
+ const opened=state.quotes.find(q=>q.id===m.id);
+ const choices=adminOrderGroupingCandidates(opened);
+ if(choices.length<2)return '<div class="empty">같은 구매자의 주문이 2건 이상 있어야 묶을 수 있어요.</div>';
+ const previous=opened.admin_view_group_id;
+ return '<form id="admin-view-group-form" class="admin-view-group-editor">'+
+  '<input type="hidden" name="root_id" value="'+esc(opened.id)+'">'+
+  '<p class="smallnote">합칠 주문에 체크하세요. 택배 주소나 배송 방법은 수정하지 않아요.</p>'+
+  '<div class="admin-view-group-checks">'+choices.map((q,idx)=>{
+   const checked=previous?previous===q.admin_view_group_id:true;
+   const items=(q.items||[]).map(i=>esc(i.product_name||'상품')+' '+esc([i.color,i.size].filter(Boolean).join('/'))+' ×'+(Number(i.quantity)||0)).join(' · ');
+   return '<label><input type="checkbox" name="order_ids" value="'+esc(q.id)+'"'+(checked?' checked':'')+'><span><b>'+esc(fmtDate(q.created_at))+' · '+esc(deliveryLabel(q))+'</b>'+
+    '<small>상품 '+(q.items||[]).length+'종 · '+esc(statusLabel[q.status]||q.status)+'</small><small>'+items+'</small></span></label>';
+  }).join('')+'</div>'+
+  '<button type="submit" class="btn block">선택한 주문 합치기</button>'+
+  (previous?'<button type="button" class="btn neutral block" data-action="admin-view-group-clear" data-id="'+esc(opened.id)+'">이 묶음 해제</button>':'')+
+  '</form>';
+}
+async function adminSaveViewGroup(ids){
+ if(!state.admin||!connected)throw Error('관리자 로그인 후 주문을 합칠 수 있어요.');
+ const selected=[...new Set(ids)].map(id=>state.quotes.find(q=>q.id===id));
+ if(selected.length<2||selected.some(q=>!q||q.status==='cancelled'))throw Error('취소되지 않은 주문 2건 이상을 선택해 주세요.');
+ if(new Set(selected.map(adminOrderGroupKey)).size!==1)throw Error('같은 구매자의 주문만 묶을 수 있어요.');
+ const prior=selected.map(q=>q.admin_view_group_id).filter(Boolean);
+ const groupId=prior.length===selected.length&&new Set(prior).size===1?prior[0]:uuid();
+ const idsParam=selected.map(q=>encodeURIComponent(q.id)).join(',');
+ const saved=await api('/rest/v1/gq_quotes?id=in.('+idsParam+')',{method:'PATCH',admin:true,body:{admin_view_group_id:groupId}});
+ if(!Array.isArray(saved)||saved.length!==selected.length)throw Error('저장된 주문 수가 일치하지 않아요. 새로고침해 확인해 주세요.');
+ state.modal=null;await loadAdmin();state.tab='quotes';state.filter='active_orders';state.orderViewFilter='active_orders';render();
+ notif('주문 '+selected.length+'건을 한 카드로 묶었어요. 입금·배송 기록은 그대로예요.');
+}
+async function adminClearViewGroup(id){
+ const q=state.quotes.find(x=>x.id===id);if(!q?.admin_view_group_id)throw Error('해제할 묶음이 없어요.');
+ const members=state.quotes.filter(x=>x.admin_view_group_id===q.admin_view_group_id);
+ if(!window.confirm('주문 '+members.length+'건의 화면 묶음을 해제할까요? 기존 합배송이나 입금 내역은 바뀌지 않아요.'))return;
+ const saved=await api('/rest/v1/gq_quotes?admin_view_group_id=eq.'+encodeURIComponent(q.admin_view_group_id),
+  {method:'PATCH',admin:true,body:{admin_view_group_id:null}});
+ if(!Array.isArray(saved)||saved.length!==members.length)throw Error('묶음 해제 기록을 확인해 주세요.');
+ state.modal=null;await loadAdmin();state.tab='quotes';state.filter='active_orders';state.orderViewFilter='active_orders';render();
+ notif('주문 묶음을 해제했어요.');
 }
 function renderMergeShippingBody(m){
  const opened=state.quotes.find(q=>q.id===m.id);
@@ -8889,7 +8982,7 @@ function renderCollapsibleAdminOrder(group,section){
   <summary class="admin-order-fold-heading">
    <span class="admin-order-fold-left">
     <strong>${esc(root.buyer_name||'주문자 미입력')} ${adminGithubGroupIcon(group)} <span class="admin-order-fold-baby">아기: ${esc(babies.join(' · ')||'미입력')}</span></strong>
-    <span class="admin-order-fold-meta">${group.length>1?(group.every(q=>bundleRootId(q)===bundleRootId(group[0]))?'묶음배송 '+group.length+'건 · ':'주문 '+group.length+'건 함께 보기 · '):''}상품 ${count}종 · ${qty}개 · ${fmtDate(root.created_at)}${paymentMark?` <b class="admin-order-payment-chip ${paymentMark==='입금 확인'?'paid':''}">${paymentMark}</b>`:''}${deliveryTag?` <b class="admin-order-payment-chip paid">${esc(deliveryTag)}</b>`:''}</span>
+    <span class="admin-order-fold-meta">${group.length>1?(isAdminViewGroup(group)?'묶은 주문 '+group.length+'건 · ':group.every(q=>bundleRootId(q)===bundleRootId(group[0]))?'묶음배송 '+group.length+'건 · ':'주문 '+group.length+'건 함께 보기 · '):''}상품 ${count}종 · ${qty}개 · ${fmtDate(root.created_at)}${paymentMark?` <b class="admin-order-payment-chip ${paymentMark==='입금 확인'?'paid':''}">${paymentMark}</b>`:''}${deliveryTag?` <b class="admin-order-payment-chip paid">${esc(deliveryTag)}</b>`:''}</span>
     ${paymentSummary}
    </span>
    <span class="admin-order-fold-right"><span class="admin-order-fold-next ${urgent?'is-urgent':''}">${esc(next)}</span></span>
@@ -8900,8 +8993,7 @@ function renderCollapsibleAdminOrder(group,section){
       <summary>📍 배송지 보기 · ${esc((group.find(q=>q.delivery_method==='courier')||root).recipient_name||root.buyer_name||'수령인')}</summary>
       ${group.filter(q=>q.delivery_method==='courier').filter((q,i,rows)=>rows.findIndex(x=>String(x.postal_code||'')+'|'+String(x.address_line1||'')+'|'+String(x.address_line2||'')===String(q.postal_code||'')+'|'+String(q.address_line1||'')+'|'+String(q.address_line2||''))===i).map(q=>`<div class="admin-courier-address-info"><strong>${esc(q.recipient_name||q.buyer_name||'받는 사람 미입력')}</strong><span>${esc(q.contact||'연락처 미입력')}</span><p>${esc(q.postal_code||'우편번호 미입력')} · ${esc([q.address_line1,q.address_line2].filter(Boolean).join(' ')||'주소 미입력')}</p>${q.delivery_note?`<small>배송 요청사항 · ${esc(q.delivery_note)}</small>`:''}</div>`).join('')}
      </details>`:''}
-   ${['active_orders','all_history','needs_review'].includes(state.filter)?renderShippingMergeButton(group):''}
-   ${group.length===1&&['delivery_shipped','delivery_completed'].includes(state.filter)&&['new','preparing'].includes(workflowStage(group[0]))&&adminPartialParcels(group[0]).length?renderAdminPartShipmentCard(group[0]):group.length>1?(group.every(q=>bundleRootId(q)===bundleRootId(group[0]))?renderBundleCard(group):renderSameRoundCard(group)):renderAdminQuoteCard(group[0])}
+   ${group.length===1&&['delivery_shipped','delivery_completed'].includes(state.filter)&&['new','preparing'].includes(workflowStage(group[0]))&&adminPartialParcels(group[0]).length?renderAdminPartShipmentCard(group[0]):group.length>1?(isAdminViewGroup(group)?renderAdminViewGroupCard(group):group.every(q=>bundleRootId(q)===bundleRootId(group[0]))?renderBundleCard(group):renderSameRoundCard(group)):renderAdminQuoteCard(group[0])}
   </div>
  </details>`;
 }
@@ -10103,8 +10195,9 @@ function renderAdminQuotes(){
   filter==='cancel_requested'?!!q.cancel_requested_at&&q.status!=='cancelled':
   filter.startsWith('flow_')?q.status==='confirmed'&&workflowStage(q)===filter.slice(5):q.status===filter)
  .filter(q=>filter!=='wholesale_completed'||!state.adminShippingMethod||state.adminShippingMethod==='all'||q.delivery_method===state.adminShippingMethod);
- const groups=['delivery_shipped','delivery_completed'].includes(filter)?qq.map(q=>[q]):['active_orders','cancellation_orders','all_history','finished','wholesale_completed'].includes(filter)?
-  bundledQuoteGroups(qq,['active_orders','cancellation_orders','all_history','finished'].includes(filter)):sameRoundGroups(qq);
+ const groups=['delivery_shipped','delivery_completed'].includes(filter)?qq.map(q=>[q]):
+  ['active_orders','all_history','cancellation_orders'].includes(filter)?adminViewGroups(qq):
+  ['finished','wholesale_completed'].includes(filter)?bundledQuoteGroups(qq,filter==='finished'):sameRoundGroups(qq);
  const preparingRows=filter==='preparing_orders'?qq.filter(readyQuote):[];
  const preparingMissing=filter==='preparing_orders'?qq.length-preparingRows.length:0;
  const preparingTotal=preparingRows.reduce((sum,row)=>sum+totalDue(row),0);
@@ -10490,6 +10583,7 @@ if(m.type==='admin-purchase-remind-bulk'&&state.admin&&state.page==='admin'){
 }
 if(m.type==='admin-option-requests'&&state.admin&&state.page==='admin')return wrap('옵션 변경 요청',adminOptionRequestsModalBody(m));
  if(m.type==='admin-order-merge-picker'&&state.admin&&state.page==='admin'&&state.tab==='quotes')return wrap('주문 합치기',renderAdminOrderMergePicker());
+ if(m.type==='admin-view-group-editor'&&state.admin&&state.page==='admin'&&state.tab==='quotes')return wrap('주문 선택',renderAdminViewGroupEditor(m));
  if(m.type==='admin-order-filters'&&state.admin&&state.page==='admin'&&state.tab==='quotes')return wrap('주문 상세 필터',renderAdminOrderFilterModal());
  if(m.type==='admin-wholesale-history'&&state.admin&&state.page==='admin'&&state.tab==='payments')
   return wrap('진행 중 배분·입금 관리',`<div class="admin-history-modal">
@@ -12493,6 +12587,16 @@ if(a==='open-admin-order-merge-picker'){
  if(!state.admin||state.page!=='admin'||state.tab!=='quotes')throw Error('관리자 주문 화면에서 주문을 합쳐 주세요.');
  modalOpen('admin-order-merge-picker');return;
 }
+if(a==='admin-view-group-edit'){
+ if(!state.admin||state.tab!=='quotes')throw Error('관리자 주문 화면에서만 가능해요.');
+ const q=state.quotes.find(q=>q.id===id);
+ if(!q||adminOrderGroupingCandidates(q).length<2)throw Error('선택할 주문이 2건 이상 필요해요.');
+ modalOpen('admin-view-group-editor',id);return;
+}
+if(a==='admin-view-group-clear'){
+ if(!state.admin||state.modal?.type!=='admin-view-group-editor')throw Error('주문 선택 화면에서 해제해 주세요.');
+ await adminClearViewGroup(id);return;
+}
 if(a==='open-admin-order-filters'){
  if(!state.admin||state.page!=='admin'||state.tab!=='quotes')throw Error('관리자 주문 화면에서 상세 필터를 열어 주세요.');
  modalOpen('admin-order-filters');return;
@@ -13839,7 +13943,8 @@ const data=new FormData(f);try{if(f.id==='admin-bundle-refund-form'){
  if(carrier.length<1||carrier.length>60||!/^[-0-9A-Za-z ]{4,80}$/.test(tracking))throw Error('택배사와 송장번호를 확인해 주세요 (영문·숫자·하이픈 4~80자).');
  if(!window.confirm(`${carrier} / ${tracking}\n송장을 등록하고 배송 중으로 변경할까요?`))return;
  await adminWorkflowStage(f.dataset.ship,'shipped',carrier,tracking);await loadAdmin();notif('송장번호가 등록됐어요.');
-}else if(f.id==='merge-shipping-form'){await handleMergeShippingSubmit(f,data);}
+}else if(f.id==='admin-view-group-form'){await adminSaveViewGroup(data.getAll('order_ids').map(String));}
+else if(f.id==='merge-shipping-form'){await handleMergeShippingSubmit(f,data);}
 else if(f.id==='bundle-form'){
  const q=state.quotes.find(x=>x.id===state.modal?.id);if(!q)throw Error('주문을 찾지 못했어요');
  const parent=String(data.get('parent_id')||'');

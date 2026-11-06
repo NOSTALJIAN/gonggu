@@ -8802,8 +8802,10 @@ function adminBuyerGroupAllReceived(q){
  return group.length>0&&group.every(allReceived);
 }
 function adminSeparateReceiptApproved(q){
- return adminBuyerPendingGroup(q).some(x=>
-  x.dispatch_request_mode==='ship_ready'&&x.dispatch_request_status==='acknowledged');
+ // An approval belongs to the specific order selected by the buyer.
+ // Never let an older or unrelated approval pre-authorize other orders.
+ return !!q&&q.dispatch_request_mode==='ship_ready'&&
+  q.dispatch_request_status==='acknowledged';
 }
 function adminCanReleaseGroup(q){
  return !!q&&q.status==='confirmed'&&

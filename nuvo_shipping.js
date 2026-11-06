@@ -123,7 +123,7 @@ function close(){
 function open(ctx){
  if(!ctx||!Array.isArray(ctx.quotes)||typeof ctx.bundleRootId!=='function')throw Error('관리자 주문 데이터를 불러오지 못했어요.');
  close();context=ctx;ensureStyles();const batch=shipments(ctx);
- selected=new Set();previousOverflow=document.body.style.overflow;
+ selected=new Set(batch.ready.filter(r=>Array.isArray(ctx.preselectedIds)&&ctx.preselectedIds.includes(r.id)).map(r=>r.id));previousOverflow=document.body.style.overflow;
  layer=document.createElement('div');layer.className='nuvo-mask';layer.setAttribute('role','presentation');
  layer.innerHTML='<section class="nuvo-dialog" role="dialog" aria-modal="true" aria-label="누보 택배 일괄등록">'+
   '<div class="nuvo-title"><h2>누보 택배 일괄등록</h2><button type="button" class="nuvo-close" data-nuvo-close aria-label="닫기">×</button></div>'+
@@ -158,5 +158,5 @@ function open(ctx){
  });
  layer.addEventListener('change',e=>{const box=e.target.closest('[data-nuvo-id]');if(!box)return;if(box.checked)selected.add(box.dataset.nuvoId);else selected.delete(box.dataset.nuvoId);updateCount();});
 }
-window.MiniNuvoShipping={open};
+window.MiniNuvoShipping={open,prepare:shipments};
 })();

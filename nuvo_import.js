@@ -60,12 +60,12 @@ async function readNuvo(file){
 }
 function attach(layer,batch,ctx){
  const button=layer.querySelector('[data-nuvo-download]');if(!button||!ctx||!ctx.isAdmin)return;
- const panel=document.createElement('div');panel.className='nuvo-import-panel';
- panel.innerHTML='<label class="nuvo-import-label">📥 택배 송장 엑셀 업로드 · 일괄 배송 중 등록<input type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" data-nuvo-import></label><p class="nuvo-import-result" role="status">송장번호가 입력된 택배 송장 엑셀을 올리면, 입고된 상품만 등록해요.</p>';
- button.insertAdjacentElement('afterend',panel);
+ const panel=document.createElement('details');panel.className='nuvo-import-panel';
+ panel.innerHTML='<summary class="nuvo-import-summary"><b>송장번호 일괄 등록</b><span>택배 접수 후 업로드</span></summary><div class="nuvo-import-content"><p>택배사에서 받은 송장 엑셀을 선택해 주세요. 운송장번호가 입력된 건만 반영해요.</p><label class="nuvo-import-label"><span>엑셀 파일 선택</span><input type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" data-nuvo-import></label><p class="nuvo-import-result" role="status"></p></div>';
+ const slot=layer.querySelector('[data-nuvo-import-slot]');if(slot)slot.appendChild(panel);else button.insertAdjacentElement('beforebegin',panel);
  const css=document.createElement('style');css.id='nuvo-import-styles';
  if(!document.getElementById(css.id)){
-  css.textContent='.nuvo-import-panel{padding:10px 0;border-bottom:1px solid #e5e5e5}.nuvo-import-label{display:flex;flex-direction:column;gap:7px;align-items:center;border:1px dashed #aaa;background:#fafafa;padding:13px;border-radius:9px;text-align:center;font-weight:750;font-size:13px;cursor:pointer}.nuvo-import-label input{width:min(100%,340px);font-size:12px;font-weight:400}.nuvo-import-result{font-size:11px!important;color:#777!important;white-space:pre-line}';
+  css.textContent=".nuvo-import-panel{margin-top:13px;border-top:1px solid #eee;padding-top:12px}\n.nuvo-import-summary{display:flex;align-items:center;justify-content:space-between;gap:9px;list-style:none;cursor:pointer;font-size:12px;color:#555}\n.nuvo-import-summary b{font-weight:800;color:#333}\n.nuvo-import-summary span{font-size:11px;color:#888}\n.nuvo-import-summary:after{content:'⌄';color:#999}\n.nuvo-import-panel[open] .nuvo-import-summary:after{content:'⌃'}\n.nuvo-import-content{padding:12px 0 0}\n.nuvo-import-content p{font-size:11px!important;color:#777!important;line-height:1.55!important;margin:0 0 9px!important}\n.nuvo-import-label{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;padding:11px 12px;border:1px dashed #c9c9c9;background:#fafafa;border-radius:9px;font-size:12px;font-weight:750}\n.nuvo-import-label input{width:100%;font-size:12px;min-width:0}\n.nuvo-import-result{font-size:11px!important;color:#5a5a5a!important;white-space:pre-line;margin-top:9px!important}";
   document.head.append(css);
  }
  const input=panel.querySelector('input'),result=panel.querySelector('.nuvo-import-result');

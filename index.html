@@ -6596,14 +6596,14 @@ function renderAdminHome(){
  const pendingFinal=all.filter(q=>q.status==='quoted'&&q.purchase_intent==='buy_now'&&!quoteNeedsPriceInput(q)).length;
  const preparing=all.filter(adminOrderNeedsPaymentOrProcurement).length;
  const shipping=all.filter(q=>isWholesaleCompleted(q)&&!isFinishedOrder(q)&&workflowStage(q)!=='shipped').length;
- const shippingInTransit=all.filter(q=>q.status==='confirmed'&&q.delivery_method==='courier'&&workflowStage(q)==='shipped').length;
+ const shippingInTransit=new Set(all.filter(q=>q.status==='confirmed'&&q.delivery_method==='courier'&&workflowStage(q)==='shipped').map(q=>bundleRootId(q))).size;
  const deliveryChanges=all.filter(q=>q.delivery_change_requested_at).length;
  const dispatchRequests=all.filter(q=>q.dispatch_request_status==='pending').length;
  const cancellations=all.filter(q=>q.cancel_requested_at).length;
  const optionChanges=(state.optionRequests||[]).filter(r=>r.status==='pending').length;
  const requests=(state.requests||[]).filter(r=>r.status==='pending').length;
- const workRow=(label,count,attrs)=>`<button type="button" class="admin-home-work-row" ${attrs}>
-  <span>${label}</span><strong>${count}<small>건</small></strong><span class="admin-home-work-arrow" aria-hidden="true">›</span></button>`;
+ const workRow=(label,count,attrs,unit='건')=>`<button type="button" class="admin-home-work-row" ${attrs}>
+  <span>${label}</span><strong>${count}<small>${unit}</small></strong><span class="admin-home-work-arrow" aria-hidden="true">›</span></button>`;
  const stages=[
   {name:'견적 대기',count:requested,attrs:'data-tab="quotes" data-nav-filter="pricing"'},
   {name:'구매 선택 대기',count:pendingBuyers,attrs:'data-tab="quotes" data-nav-filter="waiting_buyer"'},
@@ -6611,7 +6611,7 @@ function renderAdminHome(){
   {name:'입금·발주 대기',count:preparing,attrs:`data-action="home-preparing-toggle" aria-expanded="${state.homePreparingOpen===true}" aria-controls="admin-home-preparing-list"`},
   {name:'입고 체크',count:receiptTotals().pendingRows,attrs:'data-tab="receipts"'},
   {name:'입고·배송',count:shipping,attrs:'data-tab="quotes" data-nav-filter="wholesale_completed"'},
-  {name:'배송 중',count:shippingInTransit,attrs:'data-tab="quotes" data-nav-filter="delivery_shipped"'}
+  {name:'배송 중',count:shippingInTransit,unit:'묶음',attrs:'data-tab="quotes" data-nav-filter="delivery_shipped"'}
  ];
  const active=stages.filter(x=>x.count>0),empty=stages.filter(x=>x.count===0);
  return `<section class="admin-dashboard">
@@ -6620,11 +6620,11 @@ function renderAdminHome(){
   <section class="admin-home-work" aria-label="주문 진행 현황">
    <div class="admin-home-work-head"><h3>주문 진행</h3><span>처리 중 ${active.length}단계</span></div>
    <div class="admin-home-work-list">
-    ${active.map(x=>workRow(x.name,x.count,x.attrs)).join('')||'<p class="admin-home-work-empty">현재 진행 중인 주문이 없어요.</p>'}
+    ${active.map(x=>workRow(x.name,x.count,x.attrs,x.unit)).join('')||'<p class="admin-home-work-empty">현재 진행 중인 주문이 없어요.</p>'}
    </div>
    ${empty.length?`<details class="admin-home-work-other" data-fold-key="admin-home-work-other">
     <summary>0건인 단계 ${empty.length}개 보기 <span aria-hidden="true">⌄</span></summary>
-    <div class="admin-home-work-list">${empty.map(x=>workRow(x.name,x.count,x.attrs)).join('')}</div>
+    <div class="admin-home-work-list">${empty.map(x=>workRow(x.name,x.count,x.attrs,x.unit)).join('')}</div>
    </details>`:''}
   </section>
   ${state.homePreparingOpen===true?renderAdminHomePreparingList(all.filter(q=>q.status==='confirmed'&&!isWholesaleCompleted(q)&&!isFinishedOrder(q))):''}
@@ -9886,8 +9886,8 @@ function renderAdminQuotes(){
  const nCourierDelivery=count(q=>isWholesaleCompleted(q)&&!isFinishedOrder(q)&&workflowStage(q)!=='shipped'&&q.delivery_method==='courier');
  const nPickupDelivery=count(q=>isWholesaleCompleted(q)&&!isFinishedOrder(q)&&q.delivery_method==='pickup');
  const nFinished=count(isFinishedOrder);
- const nCourierShipped=count(q=>q.status==='confirmed'&&q.delivery_method==='courier'&&workflowStage(q)==='shipped');
- const nCourierCompleted=count(q=>q.status==='confirmed'&&q.delivery_method==='courier'&&workflowStage(q)==='completed');
+ const nCourierShipped=new Set(all.filter(q=>q.status==='confirmed'&&q.delivery_method==='courier'&&workflowStage(q)==='shipped').map(q=>bundleRootId(q))).size;
+ const nCourierCompleted=new Set(all.filter(q=>q.status==='confirmed'&&q.delivery_method==='courier'&&workflowStage(q)==='completed').map(q=>bundleRootId(q))).size;
  const nCancel=count(q=>q.cancel_requested_at&&q.status!=='cancelled');
  const nOther=count(q=>q.status==='quoted'&&['next_round','on_hold'].includes(q.purchase_intent));
  const filter=state.filter;
@@ -9940,7 +9940,7 @@ function renderAdminQuotes(){
    <button type="button" data-action="open-purchase-remind-all" ${reminderTargets.length?'':'disabled'}>전체 보내기</button>
   </div>`:''}
   <div class="admin-orders-title-row">
-   <div class="admin-orders-list-title"><strong>${esc(title)}</strong><span>${qq.length}건</span></div>
+   <div class="admin-orders-list-title"><strong>${esc(title)}</strong><span>${['delivery_shipped','delivery_completed'].includes(filter)?groups.length+'묶음 · 주문 '+qq.length+'건':qq.length+'건'}</span></div>
    <button type="button" class="admin-clean-utility" data-action="open-admin-order-filters" aria-label="주문 상세 필터 열기">
     ${advancedSelected?'선택 중 · '+esc(title):'상세 필터'} <span aria-hidden="true">☷</span>
    </button>
@@ -9959,8 +9959,8 @@ function renderAdminQuotes(){
     </div>`:''}
   ${['wholesale_completed','delivery_shipped','delivery_completed'].includes(filter)?`<div class="admin-delivery-stage-links" role="group" aria-label="배송 진행 상태">
    <button type="button" data-filter="wholesale_completed" class="${filter==='wholesale_completed'?'active':''}">📦 입고·발송 관리</button>
-   <button type="button" data-filter="delivery_shipped" class="${filter==='delivery_shipped'?'active':''}">🚚 배송 중 <b>${nCourierShipped}</b></button>
-   <button type="button" data-filter="delivery_completed" class="${filter==='delivery_completed'?'active':''}">✓ 배송 완료 <b>${nCourierCompleted}</b></button>
+   <button type="button" data-filter="delivery_shipped" class="${filter==='delivery_shipped'?'active':''}">🚚 배송 중 <b>${nCourierShipped}묶음</b></button>
+   <button type="button" data-filter="delivery_completed" class="${filter==='delivery_completed'?'active':''}">✓ 배송 완료 <b>${nCourierCompleted}묶음</b></button>
   </div>`:''}
   ${filter==='wholesale_completed'?'<div class="nuvo-export-entry" style="margin:3px 0 12px"><button type="button" class="btn block secondary" data-action="nuvo-open">📦 택배 일괄등록 · 누보 엑셀 만들기</button></div>':''}
   ${qq.length?filter==='all'?renderAdminQuoteFlatSection(waiting,'가격 확인','pending')+renderAdminQuoteFlatSection(priced,'구매 선택 대기'):

@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="미니예나">
 <meta name="application-name" content="MINIYENA">
-<style>.admin-delivery-stage-links{display:flex;gap:6px;margin:8px 0 12px}.admin-delivery-stage-links button{flex:1;min-width:0;padding:11px 4px;border:1px solid #ddd;border-radius:9px;background:#fff;color:#333;font-size:11px;font-weight:750;white-space:nowrap}.admin-delivery-stage-links button.active{background:#1c1c1c;color:#fff;border-color:#1c1c1c}.admin-shipping-method{display:flex;gap:6px;margin:9px 0 12px}.admin-shipping-method button{min-width:0;flex:1;border:1px solid #e5e5e5;background:#fff;border-radius:9px;padding:10px 4px;color:#555;font-size:12px;font-weight:750;white-space:nowrap}.admin-shipping-method button.active{border-color:#171717;background:#171717;color:white}.admin-shipping-method b{font-size:11px}.admin-courier-address{margin:4px 0 12px;border:1px solid #e5e5e5;border-radius:10px;background:#f9fafb;padding:11px 12px}.admin-courier-address>summary{font-size:13px;font-weight:800;cursor:pointer}.admin-courier-address-info{padding:10px 2px 3px;display:flex;gap:6px;flex-direction:column;font-size:13px}.admin-courier-address-info strong{font-weight:800}.admin-courier-address-info span,.admin-courier-address-info small{color:#666}.admin-courier-address-info p{margin:2px 0 0;line-height:1.7;overflow-wrap:anywhere}</style>
+<style>.admin-part-inventory,.admin-part-shipment-card{padding:8px 5px}.admin-part-inventory-title{background:#edf4f1;border-radius:8px;padding:10px 11px;margin:8px 0;font-size:12px;font-weight:800;display:flex;justify-content:space-between}.admin-part-inventory-title.waiting{background:#f8f5ee}.admin-part-item-row{display:flex;justify-content:space-between;gap:10px;border-bottom:1px solid #eee;padding:10px 5px;font-size:12px}.admin-part-item-row b{display:block;font-weight:800;overflow-wrap:anywhere}.admin-part-item-row small{display:block;color:#888;margin-top:4px}.admin-part-item-row strong{white-space:nowrap}.admin-part-summary{font-size:12px;line-height:1.5;color:#555}.admin-part-summary-numbers{display:flex;gap:10px;font-size:12px;border-bottom:1px solid #eee;padding:8px 0 14px}.admin-part-summary-numbers span{flex:1}.admin-part-parcel{background:#fafafa;border:1px solid #eaeaea;border-radius:10px;margin:10px 0;padding:12px}.admin-part-parcel-title{display:flex;flex-direction:column;gap:4px;font-size:12px;margin-bottom:6px}.admin-part-parcel-title span{color:#777;overflow-wrap:anywhere}.admin-part-parcel a{display:inline-block;margin:12px 0 0;font-size:12px;text-decoration:underline}.admin-part-full-order{border-top:1px solid #eee;margin:14px 0;padding:13px 0}.admin-part-full-order>summary{font-size:12px;font-weight:800;cursor:pointer}.admin-delivery-stage-links{display:flex;gap:6px;margin:8px 0 12px}.admin-delivery-stage-links button{flex:1;min-width:0;padding:11px 4px;border:1px solid #ddd;border-radius:9px;background:#fff;color:#333;font-size:11px;font-weight:750;white-space:nowrap}.admin-delivery-stage-links button.active{background:#1c1c1c;color:#fff;border-color:#1c1c1c}.admin-shipping-method{display:flex;gap:6px;margin:9px 0 12px}.admin-shipping-method button{min-width:0;flex:1;border:1px solid #e5e5e5;background:#fff;border-radius:9px;padding:10px 4px;color:#555;font-size:12px;font-weight:750;white-space:nowrap}.admin-shipping-method button.active{border-color:#171717;background:#171717;color:white}.admin-shipping-method b{font-size:11px}.admin-courier-address{margin:4px 0 12px;border:1px solid #e5e5e5;border-radius:10px;background:#f9fafb;padding:11px 12px}.admin-courier-address>summary{font-size:13px;font-weight:800;cursor:pointer}.admin-courier-address-info{padding:10px 2px 3px;display:flex;gap:6px;flex-direction:column;font-size:13px}.admin-courier-address-info strong{font-weight:800}.admin-courier-address-info span,.admin-courier-address-info small{color:#666}.admin-courier-address-info p{margin:2px 0 0;line-height:1.7;overflow-wrap:anywhere}</style>
 <script src="./nuvo_shipping.js?v=20261106-a2-bulk-partial" defer></script>
 <script src="./nuvo_import.js?v=20261106-a2-bulk-import" defer></script>
 <script src="./partial_shipping.js?v=20261106-v120-tracking-status" defer></script>
@@ -8192,6 +8192,41 @@ function adminSentCount(i){
  return (state.partialParcels||[]).reduce((n,p)=>n+(p.items||[]).filter(x=>x.item_id===i.id).reduce((v,x)=>v+Math.max(0,Number(x.quantity)||0),0),0);
 }
 
+
+function adminSplitItemRow(item,n){
+ return '<div class="admin-part-item-row"><span><b>'+adminOrderItemName(item)+'</b><small>'+esc(item.color||'-')+' / '+esc(item.size||'-')+'</small></span><strong>'+n+'개</strong></div>';
+}
+function adminSplitInventoryMarkup(q){
+ const sent=[],waiting=[],sold=[];let nSent=0,nWait=0;
+ for(const i of q.items||[]){
+  const total=Math.max(0,Number(i.quantity)||0),n=Math.min(total,adminSentCount(i));
+  if(n){sent.push(adminSplitItemRow(i,n));nSent+=n;}
+  if(total>n){if(i.fulfillment==='sold_out')sold.push(adminSplitItemRow(i,total-n));else{waiting.push(adminSplitItemRow(i,total-n));nWait+=total-n;}}
+ }
+ return '<section class="admin-part-inventory"><div class="admin-part-inventory-title">🚚 먼저 발송한 상품 <strong>'+nSent+'개</strong></div>'+sent.join('')+
+  '<div class="admin-part-inventory-title waiting">📦 아직 안 보낸 상품 <strong>'+nWait+'개</strong></div>'+(waiting.join('')||'<p class="smallnote">발송 대기 상품이 없어요.</p>')+
+  (sold.length?'<div class="admin-part-inventory-title">품절 상품</div>'+sold.join(''):'')+'</section>';
+}
+function renderAdminPartShipmentCard(q){
+ const matching=adminPartialParcels(q).filter(p=>state.filter==='delivery_completed'?p.tracking_status_code==='DELIVERED':p.tracking_status_code!=='DELIVERED');
+ const totalSent=(q.items||[]).reduce((n,i)=>n+Math.min(Number(i.quantity)||0,adminSentCount(i)),0);
+ const totalLeft=(q.items||[]).reduce((n,i)=>n+(i.fulfillment==='sold_out'?0:Math.max(0,(Number(i.quantity)||0)-adminSentCount(i))),0);
+ const parcels=matching.map(p=>{
+  const lines=(p.items||[]).filter(i=>i.quote_id===q.id||(!i.quote_id&&(q.items||[]).some(x=>x.id===i.item_id)));
+  const status=p.tracking_status_code==='DELIVERED'?'✓ 배송 완료':p.tracking_status_code==='IN_TRANSIT'?'🚚 배송 중':p.tracking_status_code==='OUT_FOR_DELIVERY'?'🚚 배송 출발':'🚚 송장 등록 · 배송조회 대기';
+  const shipper=String(p.carrier||'롯데택배'),invoice=String(p.tracking_number||''),normalized=invoice.replace(/[\s-]/g,'');
+  const link=/^(롯데택배|롯데|롯데글로벌로지스|lotte|lotteglobal)$/i.test(shipper.replace(/\s/g,''))&&/^[0-9A-Za-z]{4,80}$/.test(normalized)?
+   '<a href="https://www.lotteglogis.com/home/reservation/tracking/linkView?InvNo='+encodeURIComponent(normalized)+'" target="_blank" rel="noopener noreferrer">롯데택배 배송조회 ↗</a>':'';
+  return '<section class="admin-part-parcel"><div class="admin-part-parcel-title"><b>'+esc(status)+'</b><span>'+esc(shipper)+' · '+esc(invoice)+'</span></div>'+
+   lines.map(l=>{const item=(q.items||[]).find(x=>x.id===l.item_id);return item?adminSplitItemRow(item,Math.max(0,Number(l.quantity)||0)):'<p class="smallnote">'+esc(l.name||'상품')+' · '+Number(l.quantity||0)+'개</p>';}).join('')+
+   link+'</section>';
+ }).join('');
+ return '<div class="admin-part-shipment-card"><p class="admin-part-summary">일부발송 주문 · 먼저 발송한 상품만 표시해요.</p>'+
+  '<div class="admin-part-summary-numbers"><span>발송 기록 <b>'+totalSent+'개</b></span><span>남은 상품 <b>'+totalLeft+'개</b></span></div>'+parcels+
+  '<p class="smallnote">남은 상품은 입고·발송 관리에 그대로 남아요. 결제금액과 배송비는 변경하지 않아요.</p>'+
+  '<details class="admin-part-full-order"><summary>원래 주문 · 금액 · 남은 상품 관리</summary>'+renderAdminQuoteCard(q)+'</details></div>';
+}
+
 function renderAdminQuoteCard(q){
  const qty=(q.items||[]).reduce((n,i)=>n+Number(i.quantity||0),0);
  const paid=(Number(q.amount_paid)||0)-(Number(q.amount_refunded)||0);
@@ -8208,10 +8243,10 @@ function renderAdminQuoteCard(q){
  return `<div class="card ordercard compact-order-card" data-compact-order="${esc(q.id)}">
   <div class="compact-order-top"><strong>${(q.items||[]).length}종 · ${qty}개</strong><span>${esc(deliveryLabel(q))} · ${q.delivery_method==='courier'&&workflowStage(q)==='shipped'?'🚚 배송 중':q.delivery_method==='courier'&&workflowStage(q)==='completed'?'✓ 배송 완료':esc(buyerOrderPhase(q))}</span></div>
   ${renderAdminDispatchNotice(q)}
-  <div class="compact-order-products">${(q.items||[]).map(i=>`<div class="compact-order-product">
+  ${adminPartialParcels(q).length&&['new','preparing'].includes(workflowStage(q))?adminSplitInventoryMarkup(q):`<div class="compact-order-products">${(q.items||[]).map(i=>`<div class="compact-order-product">
    <span><b>${adminOrderItemName(i)}</b><small>${esc(i.color)} / ${esc(i.size)} · ${Number(i.quantity)||0}개${i.fulfillment==='sold_out'?' · 품절':''}</small></span>
    <strong>${i.unit_price==null?'가격 미정':money(Number(i.unit_price)*(Number(i.quantity)||0))}</strong>${window.MiniPartialShipping&&window.MiniPartialShipping.sentQty(i.id,state.partialParcels||[])>0?'<small class="tiny">📦 먼저 발송 '+window.MiniPartialShipping.sentQty(i.id,state.partialParcels||[])+'개</small>':''}
-  </div>`).join('')}</div>
+  </div>`).join('')}</div>`}
   <div class="compact-order-money">
    ${priced?`<div class="compact-order-cost-lines">
     <div><span>상품값</span><b>${money(previewOrderSum(q))}</b></div>
@@ -8758,6 +8793,7 @@ function renderCollapsibleAdminOrder(group,section){
    next='입금 완료 · 최종 주문확정 대기';
   else if(received>=total&&group.every(q=>q.status==='confirmed'))next='입금 완료 · 발주 준비';
  }
+ if(group.length===1&&adminPartialParcels(group[0]).length&&['delivery_shipped','delivery_completed'].includes(state.filter)&&['new','preparing'].includes(workflowStage(group[0])))next=state.filter==='delivery_completed'?'✓ 부분발송분 배송 완료':'🚚 먼저 발송한 상품 배송 중';
  const urgent=!!(cancel||options||delivery||missing);
  const deliveryTag=group.every(q=>q.status==='confirmed'&&q.delivery_method==='courier'&&workflowStage(q)==='completed')?'✓ 배송 완료':group.some(q=>q.status==='confirmed'&&q.delivery_method==='courier'&&workflowStage(q)==='shipped')?'🚚 배송 중':group.some(q=>q.status==='confirmed'&&(state.partialParcels||[]).some(p=>(p.items||[]).some(i=>i.quote_id===q.id)))?'📦 일부 배송 중':'';
  const confirmedOrders=group.filter(q=>q.status==='confirmed');
@@ -8786,7 +8822,7 @@ function renderCollapsibleAdminOrder(group,section){
      </details>`:''}
    ${group.length>1&&group.filter(q=>q.delivery_method==='courier').length>1&&
      group.reduce((n,q)=>n+appliedShipping(q),0)>3000?'':renderShippingMergeButton(group)}
-   ${group.length>1?(group.every(q=>bundleRootId(q)===bundleRootId(group[0]))?renderBundleCard(group):renderSameRoundCard(group)):renderAdminQuoteCard(group[0])}
+   ${group.length===1&&['delivery_shipped','delivery_completed'].includes(state.filter)&&['new','preparing'].includes(workflowStage(group[0]))&&adminPartialParcels(group[0]).length?renderAdminPartShipmentCard(group[0]):group.length>1?(group.every(q=>bundleRootId(q)===bundleRootId(group[0]))?renderBundleCard(group):renderSameRoundCard(group)):renderAdminQuoteCard(group[0])}
   </div>
  </details>`;
 }

@@ -9242,7 +9242,7 @@ function renderCollapsibleAdminOrder(group,section){
   const received=group.reduce((n,q)=>n+(Number(q.amount_paid)||0)-(Number(q.amount_refunded)||0),0);
   if(received>=total&&group.some(q=>q.status==='quoted'&&q.purchase_intent==='buy_now'))
    next='입금 완료 · 최종 주문확정 대기';
-  else if(received>=total&&group.every(q=>q.status==='confirmed'))next='입금 완료 · 발주 준비';
+  // Confirmed orders must keep their actual procurement/receipt/dispatch status.\n  // Payment completion must not overwrite the supplier/receiving stage for grouped orders.
  }
  if(group.length===1&&adminPartialParcels(group[0]).length&&['delivery_shipped','delivery_completed'].includes(state.filter)&&['new','preparing'].includes(workflowStage(group[0])))next=state.filter==='delivery_completed'?'✓ 부분발송분 배송 완료':'🚚 먼저 발송한 상품 배송 중';
  // An actual complete receipt takes precedence over the earlier supplier-order

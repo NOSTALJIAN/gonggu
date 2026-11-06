@@ -21,9 +21,11 @@ function parcelHistory(q,history,buyer=false){
  return '<div class="partial-history"><b>📦 '+(buyer?'발송된 상품 · 송장조회':'부분발송 기록')+' '+records.length+'건</b>'+
   records.map(p=>{
    const name=escapeHtml(p.carrier||'택배'),number=escapeHtml(p.tracking_number||''),url=carrierLink(p.carrier,p.tracking_number);
+   const status=String(p.tracking_status_code||'');
+   const shipmentLabel=status==='DELIVERED'?'✓ 배송 완료':status==='OUT_FOR_DELIVERY'?'🚚 배송 출발':status==='IN_TRANSIT'?'🚚 배송 중':status==='AT_PICKUP'?'📦 집하 완료':status==='EXCEPTION'?'⚠️ 배송 확인 필요':'🚚 송장 등록 · 조회 대기';
    const lines=(p.items||[]).filter(i=>!i.quote_id||i.quote_id===q.id);
    const summary=lines.map(i=>escapeHtml(i.name||q.items?.find(x=>x.id===i.item_id)?.product_name||'상품')+' '+escapeHtml(i.color||'')+' '+escapeHtml(i.size||'')+' ×'+Number(i.quantity||0)).join(' · ');
-   return '<div class="partial-history-package"><div><strong>'+name+' '+number+'</strong><span>'+new Date(p.created_at||Date.now()).toLocaleDateString('ko-KR')+'</span></div>'+
+   return '<div class="partial-history-package"><div><strong>'+name+' '+number+'</strong><span>'+shipmentLabel+' · '+new Date(p.created_at||Date.now()).toLocaleDateString('ko-KR')+'</span></div>'+
     '<small>'+summary+'</small>'+(url?'<a href="'+url+'" target="_blank" rel="noopener noreferrer">롯데택배 배송조회 ↗</a>':'')+'</div>';
   }).join('')+'</div>';
 }

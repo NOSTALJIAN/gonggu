@@ -5908,7 +5908,7 @@ function catalogPhotoGallery(p){
  if(photos.length<2)return `<button class="shop-catalog-photo shop-photo-button" type="button" data-action="${action}" data-id="${esc(p.id)}" aria-label="${label}">${img(p)}</button>`;
  return `<div class="shop-catalog-photo catalog-gallery" data-catalog-gallery>
   <div class="catalog-photo-track" aria-label="${esc(p.name)} 상품 사진">
-   ${photos.map((src,i)=>`<button class="catalog-photo-slide" type="button" data-action="${action}" data-id="${esc(p.id)}" aria-label="${label} · 사진 ${i+1}/${photos.length}"><img class="product-cover" src="${esc(src)}" alt="${esc(p.name)} 사진 ${i+1}" loading="lazy" draggable="false"></button>`).join('')}
+   ${photos.map((src,i)=>`<button class="catalog-photo-slide" type="button" data-action="${action}" data-id="${esc(p.id)}" aria-label="${label} · 사진 ${i+1}/${photos.length}"><img class="product-cover" ${i===0?`src="${esc(src)}"`:`data-deferred-photo="${esc(src)}"`} alt="${esc(p.name)} 사진 ${i+1}" loading="lazy" decoding="async" draggable="false"></button>`).join('')}
   </div>
   <div class="catalog-photo-dots" aria-label="사진 선택">${photos.map((_,i)=>`<button type="button" data-action="catalog-photo-index" data-index="${i}" aria-label="${i+1}번 사진" aria-pressed="${i===0}"><span></span></button>`).join('')}</div>
  </div>`;
@@ -5978,7 +5978,7 @@ function productGallery(p){
    <img data-gallery-main src="${esc(photos[i])}" alt="${esc(p.name)} 사진 ${i+1}" loading="eager">
    ${photos.length>1?`<button type="button" class="gallery-prev" data-action="gallery-step" data-step="-1" aria-label="이전 사진">‹</button><button type="button" class="gallery-next" data-action="gallery-step" data-step="1" aria-label="다음 사진">›</button><span class="gallery-counter" data-gallery-counter>${i+1} / ${photos.length}</span>`:''}
   </div>
-  ${photos.length>1?`<div class="product-gallery-thumbs">${photos.map((src,n)=>`<button type="button" class="gallery-thumb ${n===i?'active':''}" data-action="gallery-select" data-index="${n}" aria-label="${n+1}번째 사진" aria-pressed="${n===i}"><img src="${esc(src)}" alt="" loading="lazy"></button>`).join('')}</div>`:''}
+  ${photos.length>1?`<div class="product-gallery-thumbs">${photos.map((src,n)=>`<button type="button" class="gallery-thumb ${n===i?'active':''}" data-action="gallery-select" data-index="${n}" aria-label="${n+1}번째 사진" aria-pressed="${n===i}"><img ${n<=i+1?`src="${esc(src)}"`:`data-deferred-photo="${esc(src)}"`} alt="" loading="lazy" decoding="async"></button>`).join('')}</div>`:''}
  </section>`;
 }
 function changeProductGallery(next){
@@ -6305,10 +6305,37 @@ function syncHeroContrast(){
  }
 }
 
+// Only download supplementary catalogue/thumbnail photos when they are actually in view.
+// Existing source URLs and photo data remain unchanged; no paid resize API is used.
+let miniDeferredPhotoObserver=null;
+function revealMiniDeferredPhoto(image){
+ if(!image||!image.dataset.deferredPhoto)return;
+ image.src=image.dataset.deferredPhoto;
+ image.removeAttribute('data-deferred-photo');
+ miniDeferredPhotoObserver?.unobserve(image);
+}
+function prepareMiniDeferredPhotos(){
+ miniDeferredPhotoObserver?.disconnect();
+ miniDeferredPhotoObserver=null;
+ const images=[...app.querySelectorAll('img[data-deferred-photo]')];
+ if(!images.length)return;
+ if(typeof IntersectionObserver==='undefined'){
+  images.forEach(revealMiniDeferredPhoto);
+  return;
+ }
+ miniDeferredPhotoObserver=new IntersectionObserver(entries=>{
+  for(const entry of entries)if(entry.isIntersecting)revealMiniDeferredPhoto(entry.target);
+ },{root:null,rootMargin:'180px 100px',threshold:0});
+ images.forEach(image=>miniDeferredPhotoObserver.observe(image));
+}
+function revealCatalogPhoto(track,index){
+ if(!track||!Number.isInteger(index)||index<0)return;
+ revealMiniDeferredPhoto(track.children[index]?.querySelector('img[data-deferred-photo]'));
+}
 function render(){
  const categoryScrollBefore=app.querySelector('.shop-category-list')?.scrollLeft||0;
  const adminScrollPositions=['.admin-main-tabs','.admin-product-filter-list','.admin-category-list','.admin-quote-primary-filters','.admin-orders-filterbar'].map(selector=>[selector,app.querySelector(selector)?.scrollLeft||0]);
- app.querySelectorAll("details[data-fold-key]").forEach(el=>adminFoldState.set(el.dataset.foldKey,el.open));cancelAdminPhotoDrag();app.innerHTML=`<main class="shell ${state.page==='admin'?'is-admin-shell':''}">${header()}${demoNotice()}${state.page==='admin'?renderAdmin():state.page==='track'?renderTrack():renderShop()}${shopBottomNav()}${renderOpenChatBanner()}<div class="floating-actions" aria-label="화면 바로가기"><button class="floating-refresh" type="button" data-action="reload-app" aria-label="최신 화면으로 새로고침" title="새로고침"><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8.1 8.1 0 0 0-15.5-2"/><path d="M4 4v5h5"/><path d="M4 13a8.1 8.1 0 0 0 15.5 2"/><path d="M20 20v-5h-5"/></svg><span>새로고침</span></button><button class="back-to-top" type="button" data-action="scroll-top" aria-label="맨 위로 이동" aria-hidden="true" tabindex="-1"><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 13 7-7 7 7M12 6v12"/></svg><span>위로</span></button></div></main>${renderModal()}`;app.querySelectorAll("details[data-fold-key]").forEach(el=>{
+ app.querySelectorAll("details[data-fold-key]").forEach(el=>adminFoldState.set(el.dataset.foldKey,el.open));cancelAdminPhotoDrag();app.innerHTML=`<main class="shell ${state.page==='admin'?'is-admin-shell':''}">${header()}${demoNotice()}${state.page==='admin'?renderAdmin():state.page==='track'?renderTrack():renderShop()}${shopBottomNav()}${renderOpenChatBanner()}<div class="floating-actions" aria-label="화면 바로가기"><button class="floating-refresh" type="button" data-action="reload-app" aria-label="최신 화면으로 새로고침" title="새로고침"><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8.1 8.1 0 0 0-15.5-2"/><path d="M4 4v5h5"/><path d="M4 13a8.1 8.1 0 0 0 15.5 2"/><path d="M20 20v-5h-5"/></svg><span>새로고침</span></button><button class="back-to-top" type="button" data-action="scroll-top" aria-label="맨 위로 이동" aria-hidden="true" tabindex="-1"><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 13 7-7 7 7M12 6v12"/></svg><span>위로</span></button></div></main>${renderModal()}`;prepareMiniDeferredPhotos();app.querySelectorAll("details[data-fold-key]").forEach(el=>{
   if(adminFoldState.has(el.dataset.foldKey))el.open=adminFoldState.get(el.dataset.foldKey)===true;
   else if(state.page==='admin'&&['quotes','payments'].includes(state.tab)&&state.filter==='supplier_payments'&&el.classList.contains('supplier-bulk-batch'))el.open=el.hasAttribute('open');
   else el.open=false;
@@ -12582,7 +12609,7 @@ async function click(e){
  const galleryChoice=e.target.closest?.('[data-action="catalog-photo-index"]');
  if(galleryChoice){
   const track=galleryChoice.closest('[data-catalog-gallery]')?.querySelector('.catalog-photo-track');
-  if(track)track.scrollTo({left:Number(galleryChoice.dataset.index)*track.clientWidth,behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});
+  if(track){revealCatalogPhoto(track,Number(galleryChoice.dataset.index));track.scrollTo({left:Number(galleryChoice.dataset.index)*track.clientWidth,behavior:window.matchMedia('(prefers-reduced-motion: reduce)' ).matches?'instant':'smooth'});}
   return;
  }
 
@@ -14737,6 +14764,8 @@ app.addEventListener('scroll',e=>{
  const gallery=track.closest('[data-catalog-gallery]');
  const count=track.children.length;
  const index=Math.max(0,Math.min(count-1,Math.round(track.scrollLeft/(track.clientWidth||1))));
+ revealCatalogPhoto(track,index);
+ revealCatalogPhoto(track,index+1);
  gallery.querySelectorAll('.catalog-photo-dots button').forEach((button,i)=>button.setAttribute('aria-pressed',String(i===index)));
  track.dataset.suppressClickUntil=String(Date.now()+250);
 },true);

@@ -4634,7 +4634,7 @@ const CDN_SHARE_HOST=/^(?:rawcdn|raw)\.githack\.com$/i.test(location.hostname);
 const STOREFRONT_PATH=location.hostname.toLowerCase()==='nostaljian.github.io'?'/gonggu/':CDN_SHARE_HOST?location.pathname:'/';
 const dedicatedAdminPage=location.hostname.toLowerCase()==='miniyena.pages.dev'&&/^\/admin(?:\/index\.html|\/)?$/i.test(location.pathname);
 if(!dedicatedAdminPage&&p.get('page')==='admin')location.replace(ADMIN_HOME);
-const state={partialParcels:[],page:dedicatedAdminPage?'admin':p.get('page')==='track'?'track':'shop',tab:'home',adminOrderSearch:'',adminOrderSearchMode:'all',adminDispatchSelection:new Set(),receiptSearch:'',receiptView:'pending',receiptGroupBy:'product',receiptStore:'all',stores:[],products:[],requests:[],quotes:[],cart:read(CART,[]),modal:null,search:'',shopCategory:'all',shopSort:'newest',shopStore:'all',shopFiltersOpen:false,adminCategory:'all',trackId:p.get('id')||'',trackToken:p.get('token')||'',tracking:null,receipts:read(TRACK,[]),notice:'',filter:'pricing',orderViewFilter:null,admin:false,heroPhotoUrl:null,heroStoreId:null,dateGroupsOpen:{},orderCardsOpen:{},supplierBulkSelected:new Set(),supplierBulkStoreId:'',supplierBatches:[],supplierBatchesReady:false,supplierBatchesError:'',supplierPartialInvoices:[],trackSupplierPartial:[],lowerPriceReports:[],optionRequests:[],optionRequestsReady:false,optionRequestsError:'',requestStatusFilter:'pending',adminCatalogView:'products',adminCatalogFilter:'all',adminProductSort:'newest',adminProductSearch:'',productPrivate:{},productPrivateReady:false,emailSettings:null,emailSettingsReady:false,emailSettingsError:'',supplierFreightNotify:{},supplierFreightNotifyReady:false,adminPinIds:new Set(),phoneLookupReady:null,pinLookupNotice:''};
+const state={partialParcels:[],partialParcelsReady:false,page:dedicatedAdminPage?'admin':p.get('page')==='track'?'track':'shop',tab:'home',adminOrderSearch:'',adminOrderSearchMode:'all',adminDispatchSelection:new Set(),receiptSearch:'',receiptView:'pending',receiptGroupBy:'product',receiptStore:'all',stores:[],products:[],requests:[],quotes:[],cart:read(CART,[]),modal:null,search:'',shopCategory:'all',shopSort:'newest',shopStore:'all',shopFiltersOpen:false,adminCategory:'all',trackId:p.get('id')||'',trackToken:p.get('token')||'',tracking:null,receipts:read(TRACK,[]),notice:'',filter:'pricing',orderViewFilter:null,admin:false,heroPhotoUrl:null,heroStoreId:null,dateGroupsOpen:{},orderCardsOpen:{},supplierBulkSelected:new Set(),supplierBulkStoreId:'',supplierBatches:[],supplierBatchesReady:false,supplierBatchesError:'',supplierPartialInvoices:[],trackSupplierPartial:[],lowerPriceReports:[],optionRequests:[],optionRequestsReady:false,optionRequestsError:'',requestStatusFilter:'pending',adminCatalogView:'products',adminCatalogFilter:'all',adminProductSort:'newest',adminProductSearch:'',productPrivate:{},productPrivateReady:false,emailSettings:null,emailSettingsReady:false,emailSettingsError:'',supplierFreightNotify:{},supplierFreightNotifyReady:false,adminPinIds:new Set(),phoneLookupReady:null,pinLookupNotice:''};
 
 state.adminLoading=Boolean(connected&&state.page==='admin'&&session?.refresh_token);
 const PRODUCT_CATEGORIES=['바디수트','세트','상의','하의','아우터','원피스','스커트','모자','양말','악세서리','잡화'];
@@ -5574,9 +5574,10 @@ async function loadAdmin(){
    }
   }
   state.adminLoading=false;
+  state.partialParcelsReady=false;
   render();
   await Promise.all([loadAdminShipping(),loadAdminPinStatus(),loadAdminEmailSettings(),loadSupplierFreightNotifyStatus(),loadAdminOptionRequests(),loadAdminLowerPriceReports(),
- rpc('gq_admin_list_partial_parcels_v118',{},true).then(records=>{state.partialParcels=Array.isArray(records)?records:[]}).catch(err=>{console.warn('부분배송 기록 조회 실패',err);state.partialParcels=[]})
+ rpc('gq_admin_list_partial_parcels_v118',{},true).then(records=>{if(!Array.isArray(records))throw Error('부분발송 기록 응답 오류');state.partialParcels=records;state.partialParcelsReady=true}).catch(err=>{console.warn('부분배송 기록 조회 실패',err);state.partialParcels=[];state.partialParcelsReady=false})
 ]);
   render();
  }catch(e){
@@ -9923,7 +9924,7 @@ function adminNuvoContext(extra){
   rpc,reload:loadAdmin,notify:notif,isAdmin:state.admin},extra||{});
 }
 function adminNuvoCandidates(){
- if(!window.MiniNuvoShipping?.prepare)return {ready:[],blocked:[]};
+ if(!state.partialParcelsReady||!window.MiniNuvoShipping?.prepare)return {ready:[],blocked:[]};
  return window.MiniNuvoShipping.prepare(adminNuvoContext());
 }
 function adminOrderSearchBlob(group,kind){
@@ -9939,6 +9940,7 @@ function adminOrderSearchAttrs(group){
  return ['all','buyer','baby','product','contact','order'].map(mode=>' data-admin-search-'+mode+'="'+esc(adminOrderSearchBlob(group,mode))+'"').join('');
 }
 function renderAdminDispatchQueue(batch,waitingGroups){
+ if(!state.partialParcelsReady)return '<div class="noticefail">기존 부분발송 기록을 확인 중이거나 불러오지 못했어요. 새로고침해 확인한 뒤 발송 대상을 선택해 주세요.</div>';
  const allowed=new Set(batch.ready.map(r=>r.id));
  for(const id of Array.from(state.adminDispatchSelection||[]))if(!allowed.has(id))state.adminDispatchSelection.delete(id);
  const chosen=batch.ready.filter(r=>state.adminDispatchSelection.has(r.id));
@@ -12158,12 +12160,14 @@ async function click(e){
  }
  if(a==='nuvo-open-selected'){
   if(!state.admin||!window.MiniNuvoShipping)throw Error('택배 엑셀 기능을 새로고침해 주세요.');
+  if(!state.partialParcelsReady)throw Error('부분발송 기록 조회 후 송장 엑셀을 만들 수 있어요. 새로고침해 주세요.');
   const ids=adminNuvoCandidates().ready.filter(r=>state.adminDispatchSelection.has(r.id)).map(r=>r.id);
   if(!ids.length)throw Error('발송할 수령인을 먼저 선택해 주세요.');
   window.MiniNuvoShipping.open(adminNuvoContext({preselectedIds:ids}));return;
  }
  if(a==='nuvo-open'){
   if(!state.admin||state.page!=='admin')throw Error('관리자 전용 기능이에요.');
+  if(!state.partialParcelsReady)throw Error('기존 부분발송 기록 조회가 끝나면 엑셀을 만들 수 있어요. 새로고침해 주세요.');
   if(!window.MiniNuvoShipping)throw Error('엑셀 기능을 불러오지 못했어요. 새로고침 후 다시 시도해 주세요.');
   window.MiniNuvoShipping.open(adminNuvoContext());
   return;

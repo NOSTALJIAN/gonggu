@@ -4519,6 +4519,53 @@ body:has(#search:focus) .mini-openchat-banner{display:none!important;}
 .round-group-payment-paid-btn{display:block;width:100%;min-height:45px;border:1px solid #252525;border-radius:8px;background:#fff;color:#1a1a1a;font-size:14px;font-weight:820;letter-spacing:-.03em;padding:10px 12px}
 .round-group-payment-paid-btn:disabled{opacity:.55}
 .round-group-payment-confirm small{font-size:11px;line-height:1.45;color:#777}
+
+/* MINIYENA order-management layout: Ably-inspired mobile operations table, v124 */
+.admin-orders-page .admin-page-heading{margin:0 1px 8px!important}
+.admin-orders-page .admin-page-heading h2{font-size:18px!important}
+.admin-orders-page .admin-order-modes{margin:0 0 12px!important;padding:3px!important;gap:3px!important;border-radius:9px!important}
+.admin-orders-page .admin-order-modes button{height:36px!important;min-height:36px!important;font-size:12px!important;padding:6px 5px!important;border-radius:7px!important}
+.admin-orders-page .admin-orders-toolbar{display:grid;grid-template-columns:minmax(0,1fr) 80px;gap:8px;align-items:stretch;min-width:0;width:100%;margin:0 0 14px}
+.admin-orders-page .admin-orders-toolbar .admin-orders-search{display:block!important;width:100%;min-width:0;position:relative;margin:0!important}
+.admin-orders-page .admin-orders-toolbar .admin-orders-search input{display:block;width:100%!important;min-width:0!important;box-sizing:border-box;height:43px!important;min-height:43px!important;padding:10px 35px 10px 12px!important;background:white!important;border:1px solid #dfe2e7!important;border-radius:8px!important;font-size:13px!important}
+.admin-orders-page .admin-orders-toolbar .admin-orders-search input::placeholder{color:#989ca3}
+.admin-orders-page .admin-orders-toolbar .admin-orders-search>button{position:absolute!important;right:5px!important;top:5px!important;min-height:32px!important;width:32px!important;height:32px!important;padding:0!important}
+.admin-orders-page .admin-orders-toolbar .admin-clean-utility{display:flex!important;flex-direction:row!important;align-items:center!important;justify-content:center!important;gap:6px!important;width:80px!important;min-width:80px!important;max-width:none!important;height:43px!important;min-height:43px!important;margin:0!important;padding:0 9px!important;border:1px solid #dfe2e7!important;border-radius:8px!important;background:#fff!important;color:#333!important;font-size:12px!important;font-weight:780!important;white-space:nowrap!important;word-break:keep-all!important;line-height:1!important;text-align:center!important}
+.admin-orders-page .admin-orders-toolbar .admin-clean-utility span{display:inline-block!important;flex:0 0 auto!important;font-size:12px!important;white-space:nowrap!important}
+.admin-orders-page .admin-orders-title-row{display:flex!important;flex-wrap:nowrap!important;align-items:center!important;justify-content:space-between!important;margin:2px 0 10px!important;gap:10px!important;min-height:26px}
+.admin-orders-page .admin-orders-list-title{display:flex!important;align-items:baseline!important;justify-content:flex-start!important;gap:8px!important;margin:0!important;min-width:0}
+.admin-orders-page .admin-orders-list-title strong{font-size:14px!important;line-height:1.3!important}
+.admin-orders-page .admin-orders-list-title span{font-size:12px!important;color:#777!important}
+.admin-orders-page .admin-order-list-sort{font-size:11px;color:#999;white-space:nowrap}
+.admin-orders-page .admin-price-section{margin:0 0 13px!important}
+.admin-orders-page .admin-date-orders{display:block!important;padding:0!important;margin:0!important;border:1px solid #e6e7eb;border-radius:11px;overflow:hidden;background:white!important}
+.admin-orders-page .admin-date-orders>.admin-order-fold{margin:0!important;border:0!important;border-bottom:1px solid #ebebee!important;border-radius:0!important;background:white!important;box-shadow:none!important}
+.admin-orders-page .admin-date-orders>.admin-order-fold:last-child{border-bottom:0!important}
+.admin-orders-page .admin-order-fold>.admin-order-fold-heading{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(82px,auto) 10px!important;align-items:center!important;gap:7px!important;row-gap:0!important;min-height:70px!important;box-sizing:border-box!important;padding:11px 12px!important;width:100%!important;background:transparent}
+.admin-orders-page .admin-order-fold-left{display:flex!important;grid-column:1!important;grid-row:1!important;flex-direction:column!important;gap:5px!important;min-width:0!important}
+.admin-orders-page .admin-order-fold-left>strong{display:flex!important;align-items:center!important;flex-wrap:nowrap!important;gap:5px!important;min-width:0!important;overflow:hidden!important;white-space:nowrap!important;text-overflow:ellipsis!important;word-break:keep-all!important;font-size:13px!important;font-weight:830!important;line-height:1.35!important}
+.admin-orders-page .admin-order-fold-baby{display:inline-block!important;flex:0 1 auto!important;min-width:0!important;max-width:45%!important;overflow:hidden!important;text-overflow:ellipsis!important;background:none!important;padding:0!important;margin:0 0 0 2px!important;color:#777!important;font-size:11px!important;font-weight:600!important;white-space:nowrap!important}
+.admin-orders-page .admin-order-fold-meta{display:block!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;font-size:10.5px!important;line-height:1.45!important;color:#929292!important}
+.admin-orders-page .admin-order-fold-meta .admin-order-payment-chip{display:inline!important;padding:0!important;margin-left:5px!important;border:0!important;border-radius:0!important;background:none!important;font-size:10px!important;color:#5e806b!important;font-weight:750!important}
+.admin-orders-page .admin-order-fold-meta .admin-order-payment-chip:not(.paid){color:#a46c3b!important}
+.admin-orders-page .admin-order-fold-right{display:flex!important;grid-column:2!important;grid-row:1!important;flex-direction:column!important;justify-content:center!important;align-items:flex-end!important;flex-wrap:nowrap!important;width:auto!important;min-width:0!important;max-width:115px!important;gap:0!important;text-align:right!important}
+.admin-orders-page .admin-order-fold-next{display:inline!important;max-width:100%!important;padding:0!important;background:none!important;border:0!important;border-radius:0!important;color:#5e6871!important;font-size:11px!important;font-weight:740!important;line-height:1.38!important;word-break:keep-all!important;text-align:right!important}
+.admin-orders-page .admin-order-fold-next.is-urgent{color:#a35b36!important}
+.admin-orders-page .admin-order-fold-chevron{grid-column:3!important;grid-row:1!important;justify-self:end!important;width:7px!important;height:7px!important;border-color:#888!important;margin:0!important}
+.admin-orders-page .admin-order-fold[open]>.admin-order-fold-heading{background:#f7f8f9!important;border-bottom:1px solid #ededed!important}
+.admin-orders-page .admin-order-fold[open]>.admin-order-fold-body{padding:10px 12px 13px!important;min-width:0!important;background:#fcfcfc!important}
+.admin-orders-page .admin-order-fold-amounts{display:flex!important;gap:2px 9px!important;font-size:10px!important;overflow:hidden!important;white-space:nowrap!important}
+.admin-orders-page .admin-order-fold-amounts b,.admin-orders-page .admin-order-fold-amounts strong{font-size:10px!important}
+.admin-orders-page .admin-order-fold-amounts>span:nth-child(2){display:none!important}
+@media(max-width:380px){
+.admin-orders-page .admin-orders-toolbar{grid-template-columns:minmax(0,1fr) 75px!important;gap:7px!important}
+.admin-orders-page .admin-orders-toolbar .admin-clean-utility{width:75px!important;min-width:75px!important;gap:5px!important}
+.admin-orders-page .admin-order-fold>.admin-order-fold-heading{grid-template-columns:minmax(0,1fr) minmax(64px,auto) 10px!important;gap:6px!important;padding:10px 9px!important}
+.admin-orders-page .admin-order-fold-left>strong{font-size:12px!important}
+.admin-orders-page .admin-order-fold-baby{font-size:10px!important;max-width:39%!important}
+.admin-orders-page .admin-order-fold-next{font-size:10px!important}
+}
+
 </style>
 <title>MINIYENA 미니예나 | 남대문 아동복 초저가 공동구매</title>
 <meta name="description" content="MINIYENA 미니예나 · 남대문 아동복 초저가 공동구매. 남아·여아 아동복을 골라 표시된 판매가로 바로 주문하세요.">
@@ -9075,6 +9122,22 @@ function renderCollapsibleAdminOrder(group,section){
   else if(received>=total&&group.every(q=>q.status==='confirmed'))next='입금 완료 · 발주 준비';
  }
  if(group.length===1&&adminPartialParcels(group[0]).length&&['delivery_shipped','delivery_completed'].includes(state.filter)&&['new','preparing'].includes(workflowStage(group[0])))next=state.filter==='delivery_completed'?'✓ 부분발송분 배송 완료':'🚚 먼저 발송한 상품 배송 중';
+ const nextShort=next.replace(/^[✓🚚📦]\s*/u,'')
+ .replace(' · 송장 등록 완료','')
+ .replace(' · 남은 상품 입고 대기','')
+ .replace('발주 완료 · 입고 관리','입고 대기')
+ .replace('입금 확인 · 도매 발주','발주 대기')
+ .replace('입금 확인 · 발주 준비','발주 대기')
+ .replace('배송비 · 발주 준비','발주 준비')
+ .replace('입금 완료 · 최종 주문확정 대기','확정 대기')
+ .replace('최종 주문확정 대기','확정 대기')
+ .replace('구매자 선택 기다리는 중','구매 선택 대기')
+ .replace('먼저 발송한 상품 배송 중','부분 배송 중')
+ .replace('일부 배송 중','부분 배송')
+ .replace('옵션 변경 요청 확인','옵션 변경')
+ .replace('수령방식 변경 확인','수령 변경')
+ .replace('취소 요청 확인','취소 요청')
+ .replace('판매가 입력 필요','가격 입력');
  const urgent=!!(cancel||options||delivery||missing);
  const deliveryTag=group.every(q=>q.status==='confirmed'&&q.delivery_method==='courier'&&workflowStage(q)==='completed')?'✓ 배송 완료':group.some(q=>q.status==='confirmed'&&q.delivery_method==='courier'&&workflowStage(q)==='shipped')?'🚚 배송 중':group.some(q=>q.status==='confirmed'&&(state.partialParcels||[]).some(p=>(p.items||[]).some(i=>i.quote_id===q.id)))?'📦 일부 배송 중':'';
  const confirmedOrders=group.filter(q=>q.status==='confirmed');
@@ -9093,7 +9156,7 @@ function renderCollapsibleAdminOrder(group,section){
     <span class="admin-order-fold-meta">${group.length>1?(isAdminViewGroup(group)?'확정 주문 '+group.length+'건 자동 합침 · ':group.every(q=>bundleRootId(q)===bundleRootId(group[0]))?'묶음배송 '+group.length+'건 · ':'주문 '+group.length+'건 함께 보기 · '):''}상품 ${count}종 · ${qty}개 · ${fmtDate(root.created_at)}${paymentMark?` <b class="admin-order-payment-chip ${paymentMark==='입금 확인'?'paid':''}">${paymentMark}</b>`:''}${deliveryTag?` <b class="admin-order-payment-chip paid">${esc(deliveryTag)}</b>`:''}</span>
     ${paymentSummary}
    </span>
-   <span class="admin-order-fold-right"><span class="admin-order-fold-next ${urgent?'is-urgent':''}">${esc(next)}</span></span>
+   <span class="admin-order-fold-right"><span class="admin-order-fold-next ${urgent?'is-urgent':''}">${esc(nextShort)}</span></span>
    <span class="admin-order-fold-chevron" aria-hidden="true"></span>
   </summary>
   <div class="admin-order-fold-body">
@@ -10233,6 +10296,7 @@ function adminOrderNeedsPaymentOrProcurement(q){
 function adminOrderAdvancedFilterEntries(){
  const all=state.quotes||[],count=fn=>all.filter(fn).length;
  return [
+  ['cancellation_orders','취소 주문',count(q=>q.status==='cancelled'||!!q.cancel_requested_at)],
   ['needs_review','확인 필요한 주문',count(q=>q.status==='requested'||q.status==='quoted')],
   ['pricing','가격 확인 필요',count(q=>q.status==='requested'||(q.status==='quoted'&&quoteNeedsPriceInput(q)))],
   ['finished','완료',count(isFinishedOrder)],
@@ -10325,28 +10389,22 @@ function renderAdminQuotes(){
    filter.startsWith('flow_')?workflowLabels[filter.slice(5)]:statusLabel[filter]||'주문');
  return `<section class="admin-quote-workspace admin-orders-page">
   <div class="admin-quote-anchor" id="admin-quote-results"></div>
-  <div class="admin-page-heading"><h2>주문 관리</h2>
-   <div class="admin-order-header-links">
-    <button type="button" data-filter="cancellation_orders" class="${filter==='cancellation_orders'?'active':''}">취소 ${count(q=>q.status==='cancelled'||!!q.cancel_requested_at)}</button>
-    <button type="button" data-filter="all_history" class="${filter==='all_history'?'active':''}">전체 기록</button>
-   </div>
-  </div>
+  <div class="admin-page-heading"><h2>주문 관리</h2></div>
   <nav class="admin-order-modes" aria-label="업무별 주문 관리">
-   <button type="button" data-action="admin-order-mode" data-mode="orders" class="${orderMode==='orders'?'active':''}" aria-pressed="${orderMode==='orders'}">진행 주문</button>
+   <button type="button" data-action="admin-order-mode" data-mode="orders" class="${orderMode==='orders'?'active':''}" aria-pressed="${orderMode==='orders'}">주문</button>
    <button type="button" data-action="admin-order-mode" data-mode="procurement" class="${orderMode==='procurement'?'active':''}" aria-pressed="${orderMode==='procurement'}">발주</button>
    <button type="button" data-action="admin-order-mode" data-mode="shipping" class="${orderMode==='shipping'?'active':''}" aria-pressed="${orderMode==='shipping'}">발송</button>
   </nav>
+  <div class="admin-orders-toolbar">
   <div class="admin-orders-search">
-   <input type="search" id="admin-order-search" aria-label="주문 검색" autocomplete="off" placeholder="주문자·아기·상품명 검색" value="${esc(state.adminOrderSearch||'')}">
+   <input type="search" id="admin-order-search" aria-label="주문 검색" autocomplete="off" placeholder="주문자 · 아기 · 상품명 검색" value="${esc(state.adminOrderSearch||'')}">
    <button type="button" data-action="clear-admin-order-search" class="${state.adminOrderSearch?'':'hidden'}" aria-label="검색어 지우기">×</button>
   </div>
+   <button type="button" class="admin-clean-utility" data-action="open-admin-order-filters" aria-label="상세 필터 열기"><span aria-hidden="true">☷</span><span>필터</span></button>
+  </div>
   <div class="admin-orders-title-row">
-   <div class="admin-orders-list-title"><strong>${esc(title)}</strong><span>${['delivery_shipped','delivery_completed'].includes(filter)?groups.length+'건 · 주문별로 표시':qq.length+'건'}</span></div>
-   <div class="admin-order-list-actions">
-    <button type="button" class="admin-clean-utility" data-action="open-admin-order-filters" aria-label="주문 상세 필터 열기">
-    ${advancedSelected?'선택 중 · '+esc(title):'필터'} <span aria-hidden="true">☷</span>
-    </button>
-   </div>
+   <div class="admin-orders-list-title"><strong>${esc(title)}</strong><span>${qq.length}건</span></div>
+   <span class="admin-order-list-sort">최근 주문순</span>
   </div>
   ${filter==='preparing_orders'?`<div class="admin-preproc-totals" aria-label="입금 및 발주 대기 금액">
    <div><span>총 결제금액</span><strong>${preparingMissing?'확인 중':money(preparingTotal)}</strong></div>

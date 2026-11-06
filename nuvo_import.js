@@ -25,7 +25,7 @@ async function readNuvo(file){
  }
  async function read(path,optional=false){
   const item=files.get(path);
-  if(!item){if(optional)return '';throw Error('누보 A타입 엑셀의 첫 번째 시트를 찾지 못했어요.');}
+  if(!item){if(optional)return '';throw Error('택배 송장 엑셀의 첫 번째 시트를 찾지 못했어요.');}
   if(item.expanded>12000000)throw Error('엑셀 파일 용량이 너무 커요.');
   const p=item.offset;
   if(p+30>data.length||u32(p)!==0x04034b50)throw Error('엑셀 파일이 손상되었어요.');
@@ -37,7 +37,7 @@ async function readNuvo(file){
    const inflated=await new Response(new Blob([part]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer();
    if(inflated.byteLength>12000000)throw Error('엑셀 파일 용량이 너무 커요.');
    return decode.decode(inflated);
-  }catch(e){throw Error('엑셀 압축을 해제하지 못했어요. 누보에서 다시 저장해 주세요.');}
+  }catch(e){throw Error('엑셀 압축을 해제하지 못했어요. 택배 송장 파일을 다시 저장해 주세요.');}
  }
  const strings=await read('xl/sharedStrings.xml',true);
  const shared=strings?[...parseXML(strings).getElementsByTagNameNS('*','si')].map(n=>[...n.getElementsByTagNameNS('*','t')].map(t=>t.textContent||'').join('')):[];
@@ -55,13 +55,13 @@ async function readNuvo(file){
  if(rows.length<2)throw Error('엑셀에 주문 정보가 없어요.');
  const columns=rows[0],header=name=>Object.keys(columns).find(k=>String(columns[k]).replace(/\s/g,'')===name);
  const orderColumn=header('주문번호'),trackingColumn=header('운송장번호'),qtyColumn=header('수량(A타입)'),itemColumn=header('상품상세1');
- if(!orderColumn||!trackingColumn)throw Error('주문번호와 운송장번호 열이 있는 누보 A타입 엑셀 파일을 올려 주세요.');
+ if(!orderColumn||!trackingColumn)throw Error('주문번호와 운송장번호 열이 있는 택배 송장 엑셀 파일을 올려 주세요.');
  return rows.slice(1).map(r=>({order:String(r[orderColumn]||'').trim().toUpperCase(),tracking:String(r[trackingColumn]||'').trim(),qty:qtyColumn?Number(r[qtyColumn]):null,detail:itemColumn?String(r[itemColumn]||'').trim():null})).filter(r=>r.order||r.tracking);
 }
 function attach(layer,batch,ctx){
  const button=layer.querySelector('[data-nuvo-download]');if(!button||!ctx||!ctx.isAdmin)return;
  const panel=document.createElement('div');panel.className='nuvo-import-panel';
- panel.innerHTML='<label class="nuvo-import-label">📥 누보 송장 엑셀 업로드 · 일괄 배송 중 등록<input type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" data-nuvo-import></label><p class="nuvo-import-result" role="status">송장번호가 입력된 누보 A타입 엑셀을 올리면, 입고된 상품만 등록해요.</p>';
+ panel.innerHTML='<label class="nuvo-import-label">📥 택배 송장 엑셀 업로드 · 일괄 배송 중 등록<input type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" data-nuvo-import></label><p class="nuvo-import-result" role="status">송장번호가 입력된 택배 송장 엑셀을 올리면, 입고된 상품만 등록해요.</p>';
  button.insertAdjacentElement('afterend',panel);
  const css=document.createElement('style');css.id='nuvo-import-styles';
  if(!document.getElementById(css.id)){

@@ -10588,6 +10588,14 @@ function adminOrderJourneyStep(q){
  if(isFinishedOrder(q))return 'journey_done';
  if(q.status!=='confirmed'||!readyQuote(q))return 'journey_review';
  const stage=workflowStage(q),active=saleItems(q);
+ // A ready-for-pickup order stays with the same buyer's still-awaiting-stock
+ // confirmed orders, so one customer has one active receiving card.
+ if(q.delivery_method==='pickup'&&stage==='pickup_ready'&&
+   state.quotes.some(other=>other.id!==q.id&&other.status==='confirmed'&&
+    other.delivery_method==='pickup'&&!isFinishedOrder(other)&&
+    adminOrderGroupKey(other)===adminOrderGroupKey(q)&&
+    (other.items||[]).some(i=>i.fulfillment!=='sold_out'&&i.fulfillment!=='received'&&i.fulfillment!=='delivered')))
+  return 'journey_receiving';
  if(q.delivery_method==='courier'&&stage==='shipped')return 'journey_shipping';
  if(q.delivery_method==='courier'&&active.length>0&&
    active.every(i=>adminSentCount(i)>=Math.max(0,Number(i.quantity)||0)))return 'journey_shipping';

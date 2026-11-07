@@ -11582,6 +11582,7 @@ function renderShopProductSheetOnly(){
  if(next)app.insertAdjacentHTML('beforeend',next);
  syncModalPageLock();
  prepareMiniDeferredPhotos();
+ setupShopMoreObserver();
 }
 function closeShopProductSheetOnly(){
  if(githubStorefront&&new URLSearchParams(location.search).has('product')){

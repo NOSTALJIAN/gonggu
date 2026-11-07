@@ -9424,7 +9424,9 @@ function renderCollapsibleAdminOrder(group,section){
      </details>`:''}
    ${shippingFocus?renderAdminShippingFocus(group[0]):group.length===1&&['delivery_shipped','delivery_completed','journey_shipping','journey_done'].includes(state.filter)&&['new','preparing'].includes(workflowStage(group[0]))&&adminPartialParcels(group[0]).length?renderAdminShippingFocus(group[0]):group.length>1?(isAdminViewGroup(group)?renderAdminViewGroupCard(group):group.every(q=>workflowStage(q)==='completed'&&q.delivery_method==='courier'&&String(q.tracking_number||'').replace(/[\\s-]/g,'')===String(group[0].tracking_number||'').replace(/[\\s-]/g,''))?
     '<div class="admin-completed-group"><p class="smallnote">동일 송장으로 배송 완료 · '+esc(group[0].tracking_number||'')+' · 원주문 '+group.length+'건</p>'+
-    group.map((q,index)=>'<details class="admin-view-group-original"'+(index===0?' open':'')+'><summary>'+esc(fmtDate(q.created_at))+' · 상품 '+(q.items||[]).length+'종</summary>'+renderAdminShippingFocus(q)+'</details>').join('')+'</div>':
+    renderAdminShippingFocus({...group[0],items:group.flatMap(q=>q.items||[])})+
+    '<details class="admin-view-group-original"><summary>원주문 '+group.length+'건 · 개별 수정</summary>'+
+    group.map((q,index)=>'<details class="admin-view-group-original"><summary>'+esc(fmtDate(q.created_at))+' · 상품 '+(q.items||[]).length+'종</summary>'+renderAdminQuoteCard(q)+'</details>').join('')+'</details></div>':
     group.every(q=>bundleRootId(q)===bundleRootId(group[0]))?renderBundleCard(group):renderSameRoundCard(group)):renderAdminQuoteCard(group[0])}
   </div>
  </details>`;

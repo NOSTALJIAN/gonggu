@@ -10665,7 +10665,6 @@ function renderAdminOrderJourneyNav(){
     const submenus={
      journey_review:[['needs_review','확인 필요'],['pricing','가격 확인']],
      journey_dispatch:[['flow_preparing','발송 대기'],['flow_pickup_ready','픽업 대기']],
-     journey_shipping:[['flow_shipped','배송 중']],
      journey_done:[['flow_completed','배송 완료'],['flow_soldout_closed','품절 종료']]
     };
     const parent=Object.keys(submenus).find(key=>key===filter||submenus[key].some(([sub])=>sub===filter));

@@ -10577,7 +10577,8 @@ function renderAdminOrderFilterModal(){
   .filter(([key,,num])=>num>0||key===current);
  const chips=rows=>rows.map(([key,label,num])=>`<button type="button" class="admin-filter-modal-choice ${current===key?'active':''}" data-filter="${esc(key)}" aria-pressed="${current===key}"><span>${esc(label)}</span><strong>${num}</strong></button>`).join('');
  return `<div class="admin-filter-modal" aria-label="주문 상세 필터">
-   <p class="admin-filter-modal-hint">자주 쓰는 진행 단계는 주문 화면에 표시하고, 나머지는 여기서 확인해요.</p>
+   <p class="admin-filter-modal-hint">진행 전체는 필요할 때만 여기에서 열어볼 수 있어요.</p>
+   <button type="button" class="admin-filter-modal-all" data-filter="journey_all">진행 전체 보기 · ${state.quotes.length}건</button>
    <div class="admin-filter-modal-section"><strong>주문 상태</strong><div class="admin-filter-modal-chips">
     ${chips(extras)||'<p class="smallnote">추가로 분류된 주문이 없어요.</p>'}
    </div></div>
@@ -10625,7 +10626,7 @@ function adminOrderJourneyStep(q){
  return 'journey_procurement';
 }
 function preferredAdminOrderFilter(){
- return 'journey_all';
+ return 'journey_review';
 }
 function renderAdminQuotes(){
  const all=state.quotes;
@@ -10717,11 +10718,11 @@ function renderAdminQuotes(){
   <nav class="admin-journey" aria-label="주문 처리 단계 메뉴">
    <div class="admin-journey-heading"><strong>진행 순서</strong><small>단계를 누르면 해당 주문만 보여요</small></div>
    <div class="admin-journey-grid">
-    ${ADMIN_JOURNEY_STEPS.map(([key,label],index)=>{
+    ${ADMIN_JOURNEY_STEPS.slice(1).map(([key,label],index)=>{
      const total=key==='journey_all'?journeyActiveCount:journeyCounts.get(key)||0;
      return '<button type="button" class="admin-journey-step '+(filter===key?'active':'')+
        '" data-action="admin-order-stage" data-stage="'+key+'" aria-pressed="'+(filter===key)+'" aria-label="'+esc(label)+' '+total+'건">'+
-       '<span>'+(index?'<em>'+index+'</em>':'')+esc(label)+'</span><b>'+total+'건</b></button>';
+       '<span><em>'+(index+1)+'</em>'+esc(label)+'</span><b>'+total+'건</b></button>';
     }).join('')}
    </div>
   </nav>

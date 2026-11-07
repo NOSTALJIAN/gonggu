@@ -10773,8 +10773,8 @@ function renderAdminQuotes(){
    </div>
    ${(!state.adminShippingMethod||state.adminShippingMethod==='all')?'<button type="button" class="admin-nuvo-shortcut" data-action="nuvo-open" title="미니예나 택배 송장 엑셀 만들기" aria-label="미니예나 택배 송장 엑셀 만들기">📄 송장 엑셀</button>':''}
   </div>`:''}
-  ${filter==='journey_procurement'?'<div class="admin-journey-action"><span>입금이 확인된 상품을 거래처에 발주하세요.</span><button type="button" data-action="admin-open-wholesale">도매 발주 관리</button></div>':''}
-  ${filter==='journey_receiving'?'<div class="admin-journey-action"><span>상품이 도착하면 실제 입고 수량을 체크하세요.</span><button type="button" data-tab="receipts">입고 체크</button></div>':''}
+  
+  
   ${filter==='journey_dispatch'?'<div class="admin-journey-action"><span>입고된 상품을 발송하거나 직접 전달하세요.</span><button type="button" data-action="nuvo-open">택배 일괄등록</button></div>':''}
   ${filter==='journey_all'?(ADMIN_JOURNEY_STEPS.slice(1,-1).map(([key,label])=>{
    const rows=qq.filter(q=>journeyMap.get(q.id)===key);

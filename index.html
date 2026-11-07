@@ -4573,6 +4573,8 @@ body:has(#search:focus) .mini-openchat-banner{display:none!important;}
 
 
 /* Order management workflow stepper: eight steps in a compact two-row grid. */
+.admin-orders-hub .admin-page-heading{margin-bottom:11px}
+.admin-manager-body .receipt-page .admin-page-heading h3,.admin-manager-body .admin-procurement-page .admin-page-heading h3{margin:0;font-size:17px;font-weight:800;letter-spacing:-.035em}
 .admin-orders-page .admin-journey{padding:0;margin:1px 0 13px;min-width:0;max-width:100%}
 .admin-orders-page .admin-journey-heading{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin:0 1px 8px}
 .admin-orders-page .admin-journey-heading strong{font-size:12px;font-weight:820;color:#303030}
@@ -6994,7 +6996,7 @@ function renderAdminPayments(){
    item.fulfillment!=='sold_out'&&!item.supplier_ordered_at&&!q.supplier_ordered_at&&
    !supplierItemBatch(item.id))):[];
  return `<section class="admin-procurement-page">
-  <div class="admin-page-heading"><h2>도매 관리</h2></div>
+  <div class="admin-page-heading"><h3>도매 입금·발주</h3></div>
   ${hasAllocationWork?`<nav class="admin-subnav" aria-label="도매 관리 메뉴">
    <button type="button" data-filter="buy_now" class="${selected==='buy_now'?'active':''}">배송비 배분${ready?' · '+pending.length+'곳':''}</button>
    <button type="button" data-filter="supplier_payments" class="${selected==='supplier_payments'?'active':''}">입금·발주</button>
@@ -7067,7 +7069,7 @@ function renderAdminReceipts(){
  const rows=receiptVisibleRows(),groups=new Map();
  for(const x of rows){const k=receiptKey(x);if(!groups.has(k))groups.set(k,[]);groups.get(k).push(x);}
  const ordered=[...groups.entries()].sort((a,b)=>a[0].localeCompare(b[0],'ko'));
- let html='<section class="receipt-page"><div class="admin-page-heading"><h2>입고 체크</h2><span>확정 주문</span></div>'+
+ let html='<section class="receipt-page"><div class="admin-page-heading"><h3>입고 체크</h3><span>확정 주문</span></div>'+
   '<div class="receipt-stats"><div><small>대기</small><strong>'+tot.pending+'<em>개</em></strong><span>'+tot.pendingRows+'종</span></div>'+
   '<div><small>완료</small><strong>'+tot.received+'<em>개</em></strong><span>체크된 수량</span></div>'+
   '<div><small>부분입고</small><strong>'+tot.partial+'<em>종</em></strong><span>일부 도착</span></div></div>'+
@@ -10650,7 +10652,7 @@ function renderAdminOrderJourneyNav(){
  return `<section class="admin-orders-page admin-orders-hub">
   <div class="admin-page-heading"><h2>주문 관리</h2></div>
   <nav class="admin-journey" aria-label="주문 처리 단계 메뉴">
-   <div class="admin-journey-heading"><strong>진행 순서</strong><small>단계를 누르면 해당 주문만 보여요</small></div>
+   <div class="admin-journey-heading"><strong>진행 순서</strong><small>단계별 조회·발주·입고</small></div>
    <div class="admin-journey-grid">
     ${ADMIN_JOURNEY_STEPS.slice(1).map(([key,label],index)=>{
      const total=key==='journey_all'?journeyActiveCount:journeyCounts.get(key)||0;

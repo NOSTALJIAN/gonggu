@@ -4585,6 +4585,9 @@ body:has(#search:focus) .mini-openchat-banner{display:none!important;}
 .admin-orders-page .admin-journey-step.active{color:#fff;background:#25272b;border-color:#25272b}
 .admin-orders-page .admin-journey-step.active b,.admin-orders-page .admin-journey-step.active em{color:#fff}
 .admin-orders-page .admin-journey-step:focus-visible{outline:2px solid #333;outline-offset:2px}
+.admin-orders-page .admin-journey-subfilters{display:flex;gap:6px;overflow-x:auto;padding:9px 0 2px;scrollbar-width:none}
+.admin-orders-page .admin-journey-subfilters button{flex:0 0 auto;border:1px solid #dedfe1;background:#fff;color:#666;border-radius:18px;padding:7px 12px;font-size:11px;font-weight:750}
+.admin-orders-page .admin-journey-subfilters button.active{background:#292b2f;border-color:#292b2f;color:#fff}
 .admin-orders-page .admin-journey-action{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:8px 0 13px;padding:10px 12px;background:#f7f8f9;border:1px solid #eaeaec;border-radius:9px}
 .admin-orders-page .admin-journey-action span{flex:1;font-size:11px;line-height:1.45;color:#696969}
 .admin-orders-page .admin-journey-action button{flex:0 0 auto;min-height:35px;padding:7px 10px;border:1px solid #dcdcdc;border-radius:7px;background:#fff;color:#292929;font-size:11px;font-weight:780;white-space:nowrap}
@@ -10574,19 +10577,12 @@ function adminOrderAdvancedFilterEntries(){
 function renderAdminOrderFilterModal(){
  const current=state.filter;
  const extras=adminOrderAdvancedFilterEntries().filter(([key,,num])=>num>0||key===current);
- const stages=['flow_new','flow_preparing','flow_pickup_ready','flow_shipped','flow_completed','flow_soldout_closed']
-  .map(key=>[key,workflowLabels[key.slice(5)],
-   adminVisibleOrders().filter(q=>q.status==='confirmed'&&workflowStage(q)===key.slice(5)).length])
-  .filter(([key,,num])=>num>0||key===current);
  const chips=rows=>rows.map(([key,label,num])=>`<button type="button" class="admin-filter-modal-choice ${current===key?'active':''}" data-filter="${esc(key)}" aria-pressed="${current===key}"><span>${esc(label)}</span><strong>${num}</strong></button>`).join('');
  return `<div class="admin-filter-modal" aria-label="주문 상세 필터">
    <p class="admin-filter-modal-hint">진행 전체는 필요할 때만 여기에서 열어볼 수 있어요.</p>
    <button type="button" class="admin-filter-modal-all" data-filter="journey_all">진행 전체 보기 · ${adminVisibleOrders().length}건</button>
    <div class="admin-filter-modal-section"><strong>주문 상태</strong><div class="admin-filter-modal-chips">
     ${chips(extras)||'<p class="smallnote">추가로 분류된 주문이 없어요.</p>'}
-   </div></div>
-   <div class="admin-filter-modal-section"><strong>배송 · 완료 상태</strong><div class="admin-filter-modal-chips">
-    ${chips(stages)||'<p class="smallnote">별도 진행 단계의 주문이 없어요.</p>'}
    </div></div>
    <button type="button" class="admin-filter-modal-all" data-filter="all_history">전체 주문 보기 · ${adminVisibleOrders().length}건</button>
   </div>`;
@@ -10730,6 +10726,21 @@ function renderAdminQuotes(){
        '<span><em>'+(index+1)+'</em>'+esc(label)+'</span><b>'+total+'건</b></button>';
     }).join('')}
    </div>
+   ${(()=>{
+    const submenus={
+     journey_review:[['needs_review','확인 필요'],['pricing','가격 확인']],
+     journey_dispatch:[['flow_preparing','발송 대기'],['flow_pickup_ready','픽업 대기']],
+     journey_shipping:[['flow_shipped','배송 중']],
+     journey_done:[['flow_completed','배송 완료'],['flow_soldout_closed','품절 종료']]
+    };
+    const parent=Object.keys(submenus).find(key=>key===filter||submenus[key].some(([sub])=>sub===filter));
+    if(!parent)return '';
+    const options=submenus[parent];
+    const items=[[''+parent,'전체'],...options];
+    return '<div class="admin-journey-subfilters" aria-label="선택한 단계의 세부 필터">'+items.map(([key,label])=>
+     '<button type="button" data-filter="'+key+'" class="'+(filter===key?'active':'')+'">'+esc(label)+'</button>'
+    ).join('')+'</div>';
+   })()}
   </nav>
   <div class="admin-orders-toolbar">
   <div class="admin-orders-search">

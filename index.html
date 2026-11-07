@@ -10629,7 +10629,13 @@ function preferredAdminOrderFilter(){
  return 'journey_review';
 }
 function renderAdminQuotes(){
- const all=state.quotes;
+ // Legacy cancelled rows belonging to the already consolidated Joo-yeon
+ // pickup order are archival records, not separate active customer orders.
+ const hiddenMergedJuyeonIds=new Set([
+  '04e14937-ddbd-4dc4-93ca-1d9db0686ee1',
+  'bdab7d55-108a-4488-82b4-966f4e48f179'
+ ]);
+ const all=state.quotes.filter(q=>!hiddenMergedJuyeonIds.has(q.id));
  const journeyMap=new Map(all.map(q=>[q.id,adminOrderJourneyStep(q)]));
  const journeyCounts=new Map(ADMIN_JOURNEY_STEPS.slice(1).map(([key])=>[key,0]));
  for(const q of all){

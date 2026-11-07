@@ -9387,7 +9387,7 @@ function renderCollapsibleAdminOrder(group,section){
  const confirmedDue=canSumPayments?confirmedOrders.reduce((sum,q)=>sum+totalDue(q),0):0;
  const confirmedPaid=confirmedOrders.reduce((sum,q)=>sum+Math.max(0,Number(q.amount_paid||0)-Number(q.amount_refunded||0)),0);
  const shippingFocus=group.length===1&&group[0].status==='confirmed'&&group[0].delivery_method==='courier'&&
-  !(state.filter==='delivery_shipped'&&adminPartialParcels(group[0]).length>0)&&(
+  !(['delivery_shipped','journey_shipping'].includes(state.filter)&&adminPartialParcels(group[0]).length>0)&&(
   adminOrderJourneyStep(group[0])==='journey_shipping'||
   state.filter==='delivery_shipped'&&adminDeliveryListed(group[0],'delivery_shipped'))&&!(state.filter==='wholesale_completed'&&adminPartialParcels(group[0]).length);
  const showPaymentSummary=state.filter==='preparing_orders'&&confirmedOrders.length>0;
@@ -10603,7 +10603,12 @@ function renderAdminQuotes(){
  const all=state.quotes;
  const journeyMap=new Map(all.map(q=>[q.id,adminOrderJourneyStep(q)]));
  const journeyCounts=new Map(ADMIN_JOURNEY_STEPS.slice(1).map(([key])=>[key,0]));
- for(const stage of journeyMap.values())if(journeyCounts.has(stage))journeyCounts.set(stage,journeyCounts.get(stage)+1);
+ for(const q of all){
+  const stage=journeyMap.get(q.id);
+  if(journeyCounts.has(stage))journeyCounts.set(stage,journeyCounts.get(stage)+1);
+  if(stage!=='journey_shipping'&&adminPartialDelivered(q,'delivery_shipped')&&q.status==='confirmed'&&q.delivery_method==='courier')
+   journeyCounts.set('journey_shipping',(journeyCounts.get('journey_shipping')||0)+1);
+ }
  const journeyActiveCount=ADMIN_JOURNEY_STEPS.slice(1,-1).reduce((n,[key])=>n+journeyCounts.get(key),0);
  const isPre=q=>q.status==='requested'||(q.status==='quoted'&&(!q.purchase_intent||q.purchase_intent==='undecided'));
  const isPricing=q=>q.status==='requested'||(q.status==='quoted'&&quoteNeedsPriceInput(q));
@@ -10625,7 +10630,7 @@ function renderAdminQuotes(){
  const filter=state.filter;
  const qq=all.filter(q=>filter==='journey_all'?
   journeyMap.get(q.id)?.startsWith('journey_')&&journeyMap.get(q.id)!=='journey_done':
-  filter.startsWith('journey_')?journeyMap.get(q.id)===filter:
+  filter.startsWith('journey_')?(journeyMap.get(q.id)===filter||(filter==='journey_shipping'&&q.status==='confirmed'&&q.delivery_method==='courier'&&adminPartialDelivered(q,'delivery_shipped'))):
   filter==='active_orders'?q.status!=='cancelled'&&!q.cancel_requested_at&&!isFinishedOrder(q):
   filter==='cancellation_orders'?q.status==='cancelled'||!!q.cancel_requested_at:
   filter==='needs_review'?(q.status==='requested'||q.status==='quoted')&&!q.cancel_requested_at:

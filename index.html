@@ -8518,7 +8518,11 @@ function adminPartialDelivered(q,filter){
 function adminDeliveryListed(q,filter){
  if(q.status!=='confirmed'||q.delivery_method!=='courier')return false;
  const stage=workflowStage(q);
- if(filter==='delivery_shipped')return stage==='shipped'||(['new','preparing'].includes(stage)&&adminPartialDelivered(q,filter));
+ if(filter==='delivery_shipped')return stage==='shipped'||
+  (['new','preparing'].includes(stage)&&(
+   adminPartialDelivered(q,filter)||
+   (!!String(q.tracking_number||'').trim()&&adminPartialParcels(q).length===0)
+  ));
  if(filter==='delivery_completed')return stage==='completed'||(['new','preparing'].includes(stage)&&adminPartialDelivered(q,filter));
  return false;
 }
@@ -9382,7 +9386,8 @@ function renderCollapsibleAdminOrder(group,section){
  const canSumPayments=confirmedOrders.length>0&&confirmedOrders.every(readyQuote);
  const confirmedDue=canSumPayments?confirmedOrders.reduce((sum,q)=>sum+totalDue(q),0):0;
  const confirmedPaid=confirmedOrders.reduce((sum,q)=>sum+Math.max(0,Number(q.amount_paid||0)-Number(q.amount_refunded||0)),0);
- const shippingFocus=group.length===1&&group[0].status==='confirmed'&&group[0].delivery_method==='courier'&&(
+ const shippingFocus=group.length===1&&group[0].status==='confirmed'&&group[0].delivery_method==='courier'&&
+  !(state.filter==='delivery_shipped'&&adminPartialParcels(group[0]).length>0)&&(
   adminOrderJourneyStep(group[0])==='journey_shipping'||
   state.filter==='delivery_shipped'&&adminDeliveryListed(group[0],'delivery_shipped'))&&!(state.filter==='wholesale_completed'&&adminPartialParcels(group[0]).length);
  const showPaymentSummary=state.filter==='preparing_orders'&&confirmedOrders.length>0;

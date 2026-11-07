@@ -9281,7 +9281,15 @@ function renderAdminShippingFocus(q){
   shipment_tracking:root.shipment_tracking||q.shipment_tracking};
  const snapshot=validShipmentSnapshot(shipping)?shipping.shipment_tracking:null;
  const card=window.MiniPartialShipping?.adminTrackingMarkup?.(shipping,state.partialParcels||[],snapshot)||'';
- const lines=(q.items||[]).filter(i=>i.fulfillment!=='sold_out');
+ const parcels=adminPartialParcels(q);
+ const sent=new Map();
+ for(const p of parcels)for(const x of p.items||[]){
+  if(x.quote_id===q.id||(q.items||[]).some(i=>i.id===x.item_id))
+   sent.set(x.item_id,(sent.get(x.item_id)||0)+Math.max(0,Number(x.quantity)||0));
+ }
+ const lines=(q.items||[]).filter(i=>i.fulfillment!=='sold_out').map(i=>({
+  ...i,quantity:parcels.length?Math.min(Math.max(0,Number(i.quantity)||0),sent.get(i.id)||0):Number(i.quantity)||0
+ })).filter(i=>Number(i.quantity)>0);
  const quantity=lines.reduce((n,i)=>n+Math.max(0,Number(i.quantity)||0),0);
  const stage=workflowStage(q);
  const canFinish=stage==='shipped';
@@ -9345,9 +9353,13 @@ function renderCollapsibleAdminOrder(group,section){
  const groupAllReceived=group.length>0&&group.every(q=>q.status==='confirmed'&&allReceived(q))&&adminBuyerGroupAllReceived(group[0]);
  const groupAlreadySent=group.some(q=>q.delivery_method==='courier'&&['shipped','completed'].includes(workflowStage(q)))||
   group.some(q=>q.delivery_method==='pickup'&&workflowStage(q)==='completed');
- if(groupAllReceived&&!groupAlreadySent&&!cancel&&!options&&!delivery&&!missing){
+ if(groupAllReceived&&!groupAlreadySent&&!cancel&&!options&&!delivery&&!missing&&!(state.filter==='wholesale_completed'&&group.length===1&&adminPartialParcels(group[0]).length)){
   next=group.every(q=>q.delivery_method==='pickup')?'픽업 대기':
    group.every(q=>q.delivery_method==='courier')?'발송 대기':'전달 대기';
+ }
+ if(state.filter==='wholesale_completed'&&group.length===1&&adminPartialParcels(group[0]).length){
+  const left=(group[0].items||[]).reduce((n,i)=>n+(i.fulfillment==='sold_out'?0:Math.max(0,(Number(i.quantity)||0)-adminSentCount(i))),0);
+  if(left>0)next='📦 입고 대기 · 미발송 '+left+'개';
  }
  const nextShort=next.replace(/^[✓🚚📦]\s*/u,'')
  .replace(' · 송장 등록 완료','')
@@ -9372,7 +9384,7 @@ function renderCollapsibleAdminOrder(group,section){
  const confirmedPaid=confirmedOrders.reduce((sum,q)=>sum+Math.max(0,Number(q.amount_paid||0)-Number(q.amount_refunded||0)),0);
  const shippingFocus=group.length===1&&group[0].status==='confirmed'&&group[0].delivery_method==='courier'&&(
   adminOrderJourneyStep(group[0])==='journey_shipping'||
-  state.filter==='delivery_shipped'&&adminDeliveryListed(group[0],'delivery_shipped'));
+  state.filter==='delivery_shipped'&&adminDeliveryListed(group[0],'delivery_shipped'))&&!(state.filter==='wholesale_completed'&&adminPartialParcels(group[0]).length);
  const showPaymentSummary=state.filter==='preparing_orders'&&confirmedOrders.length>0;
  const paymentSummary=showPaymentSummary?`<span class="admin-order-fold-amounts"><span>총 결제 <b>${canSumPayments?money(confirmedDue):'확인 중'}</b></span><span>입금 <b>${money(confirmedPaid)}</b></span><span class="is-due">미입금 <strong>${canSumPayments?money(confirmedOrders.reduce((sum,q)=>sum+balanceDue(q),0)):'확인 중'}</strong></span></span>`:'';
  return `<details class="admin-order-fold ${urgent?'has-pending':''}" data-admin-order-id="${esc(key)}"${adminOrderSearchAttrs(group)} ${open?'open':''}>
@@ -10595,8 +10607,9 @@ function renderAdminQuotes(){
  const count=fn=>all.filter(fn).length;
  const nPre=count(isPre),nPrice=count(isPricing),nWaiting=count(isWaiting),nFinalWaiting=count(isFinalWaiting);
  const nPaymentProcurement=count(adminOrderNeedsPaymentOrProcurement);
- const nDelivery=count(q=>isWholesaleCompleted(q)&&!isFinishedOrder(q)&&workflowStage(q)!=='shipped');
- const nCourierDelivery=count(q=>isWholesaleCompleted(q)&&!isFinishedOrder(q)&&workflowStage(q)!=='shipped'&&q.delivery_method==='courier');
+ const hasUnsent=q=>!adminPartialParcels(q).length||(q.items||[]).some(i=>i.fulfillment!=='sold_out'&&Math.max(0,Number(i.quantity)||0)>adminSentCount(i));
+ const nDelivery=count(q=>isWholesaleCompleted(q)&&!isFinishedOrder(q)&&workflowStage(q)!=='shipped'&&hasUnsent(q));
+ const nCourierDelivery=count(q=>isWholesaleCompleted(q)&&!isFinishedOrder(q)&&workflowStage(q)!=='shipped'&&q.delivery_method==='courier'&&hasUnsent(q));
  const nPickupDelivery=count(q=>isWholesaleCompleted(q)&&!isFinishedOrder(q)&&q.delivery_method==='pickup');
  const nFinished=count(isFinishedOrder);
  const nCourierShipped=count(q=>adminDeliveryListed(q,'delivery_shipped'));
@@ -10620,7 +10633,7 @@ function renderAdminQuotes(){
   filter==='other'?q.status==='quoted'&&['next_round','on_hold'].includes(q.purchase_intent):
   filter==='buy_now'?isRoundBuyer(q)&&!isFinishedOrder(q):
   filter==='preparing_orders'?adminOrderNeedsPaymentOrProcurement(q):
-  filter==='wholesale_completed'?isWholesaleCompleted(q)&&!isFinishedOrder(q)&&workflowStage(q)!=='shipped':
+  filter==='wholesale_completed'?isWholesaleCompleted(q)&&!isFinishedOrder(q)&&workflowStage(q)!=='shipped'&&hasUnsent(q):
   filter==='delivery_shipped'?adminDeliveryListed(q,filter):
   filter==='delivery_completed'?adminDeliveryListed(q,filter):
   filter==='next_round'?q.status==='quoted'&&q.purchase_intent==='next_round':

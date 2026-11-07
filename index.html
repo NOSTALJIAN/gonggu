@@ -10557,10 +10557,14 @@ function adminOrderNeedsPaymentOrProcurement(q){
  return q?.status==='confirmed'&&!isWholesaleCompleted(q)&&!isFinishedOrder(q);
 }
 /* Less common status filters are available in an on-demand dialog. */
+const ADMIN_ARCHIVED_MERGED_ORDER_IDS=new Set([
+ '04e14937-ddbd-4dc4-93ca-1d9db0686ee1',
+ 'bdab7d55-108a-4488-82b4-966f4e48f179'
+]);
+function adminVisibleOrders(){return (state.quotes||[]).filter(q=>!ADMIN_ARCHIVED_MERGED_ORDER_IDS.has(q.id));}
 function adminOrderAdvancedFilterEntries(){
- const all=state.quotes||[],count=fn=>all.filter(fn).length;
+ const all=adminVisibleOrders(),count=fn=>all.filter(fn).length;
  return [
-  ['cancellation_orders','취소 주문',count(q=>q.status==='cancelled'||!!q.cancel_requested_at)],
   ['needs_review','확인 필요한 주문',count(q=>q.status==='requested'||q.status==='quoted')],
   ['pricing','가격 확인 필요',count(q=>q.status==='requested'||(q.status==='quoted'&&quoteNeedsPriceInput(q)))],
   ['finished','완료',count(isFinishedOrder)],
@@ -10573,19 +10577,19 @@ function renderAdminOrderFilterModal(){
  const extras=adminOrderAdvancedFilterEntries().filter(([key,,num])=>num>0||key===current);
  const stages=['flow_new','flow_preparing','flow_pickup_ready','flow_shipped','flow_completed','flow_soldout_closed']
   .map(key=>[key,workflowLabels[key.slice(5)],
-   state.quotes.filter(q=>q.status==='confirmed'&&workflowStage(q)===key.slice(5)).length])
+   adminVisibleOrders().filter(q=>q.status==='confirmed'&&workflowStage(q)===key.slice(5)).length])
   .filter(([key,,num])=>num>0||key===current);
  const chips=rows=>rows.map(([key,label,num])=>`<button type="button" class="admin-filter-modal-choice ${current===key?'active':''}" data-filter="${esc(key)}" aria-pressed="${current===key}"><span>${esc(label)}</span><strong>${num}</strong></button>`).join('');
  return `<div class="admin-filter-modal" aria-label="주문 상세 필터">
    <p class="admin-filter-modal-hint">진행 전체는 필요할 때만 여기에서 열어볼 수 있어요.</p>
-   <button type="button" class="admin-filter-modal-all" data-filter="journey_all">진행 전체 보기 · ${state.quotes.length}건</button>
+   <button type="button" class="admin-filter-modal-all" data-filter="journey_all">진행 전체 보기 · ${adminVisibleOrders().length}건</button>
    <div class="admin-filter-modal-section"><strong>주문 상태</strong><div class="admin-filter-modal-chips">
     ${chips(extras)||'<p class="smallnote">추가로 분류된 주문이 없어요.</p>'}
    </div></div>
    <div class="admin-filter-modal-section"><strong>배송 · 완료 상태</strong><div class="admin-filter-modal-chips">
     ${chips(stages)||'<p class="smallnote">별도 진행 단계의 주문이 없어요.</p>'}
    </div></div>
-   <button type="button" class="admin-filter-modal-all" data-filter="all_history">전체 주문 보기 · ${state.quotes.length}건</button>
+   <button type="button" class="admin-filter-modal-all" data-filter="all_history">전체 주문 보기 · ${adminVisibleOrders().length}건</button>
   </div>`;
 }
 /* Main Orders opens the earliest active queue on first visit. */
@@ -10631,11 +10635,7 @@ function preferredAdminOrderFilter(){
 function renderAdminQuotes(){
  // Legacy cancelled rows belonging to the already consolidated Joo-yeon
  // pickup order are archival records, not separate active customer orders.
- const hiddenMergedJuyeonIds=new Set([
-  '04e14937-ddbd-4dc4-93ca-1d9db0686ee1',
-  'bdab7d55-108a-4488-82b4-966f4e48f179'
- ]);
- const all=state.quotes.filter(q=>!hiddenMergedJuyeonIds.has(q.id));
+ const all=adminVisibleOrders();
  const journeyMap=new Map(all.map(q=>[q.id,adminOrderJourneyStep(q)]));
  const journeyCounts=new Map(ADMIN_JOURNEY_STEPS.slice(1).map(([key])=>[key,0]));
  for(const q of all){

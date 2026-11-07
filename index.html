@@ -10571,9 +10571,9 @@ function adminOrderAdvancedFilterEntries(){
 function renderAdminOrderFilterModal(){
  const current=state.filter;
  const extras=adminOrderAdvancedFilterEntries().filter(([key,,num])=>num>0||key===current);
- const stages=['flow_new','flow_preparing','flow_pickup_ready','flow_shipped','flow_completed','flow_soldout_closed','cancelled']
-  .map(key=>[key,key==='cancelled'?'취소됨':workflowLabels[key.slice(5)],
-   state.quotes.filter(q=>key==='cancelled'?q.status==='cancelled':q.status==='confirmed'&&workflowStage(q)===key.slice(5)).length])
+ const stages=['flow_new','flow_preparing','flow_pickup_ready','flow_shipped','flow_completed','flow_soldout_closed']
+  .map(key=>[key,workflowLabels[key.slice(5)],
+   state.quotes.filter(q=>q.status==='confirmed'&&workflowStage(q)===key.slice(5)).length])
   .filter(([key,,num])=>num>0||key===current);
  const chips=rows=>rows.map(([key,label,num])=>`<button type="button" class="admin-filter-modal-choice ${current===key?'active':''}" data-filter="${esc(key)}" aria-pressed="${current===key}"><span>${esc(label)}</span><strong>${num}</strong></button>`).join('');
  return `<div class="admin-filter-modal" aria-label="주문 상세 필터">

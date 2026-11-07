@@ -5810,7 +5810,18 @@ function defaultHeroPhotoUrl(){
  return featured.find(p=>p.image_url&&!p.is_sold_out)?.image_url
   ||featured.find(p=>p.image_url)?.image_url||'';
 }
-function currentHeroPhotoUrl(){return state.heroPhotoUrl||defaultHeroPhotoUrl()}
+function currentHeroPhotoUrl(){
+ const configured=state.heroPhotoUrl||defaultHeroPhotoUrl();
+ // A 12+ MB animated homepage GIF is expensive to decode on mobile WebKit.
+ // Keep the uploaded GIF and administrator choice unchanged. Render a still
+ // already-uploaded product photo only on iOS to avoid tab memory exhaustion.
+ if(miniIOS()&&/\.gif(?:[?#]|$)/i.test(configured)){
+  const activeIds=new Set(state.stores.filter(st=>st.active).map(st=>st.id));
+  const still=state.products.find(p=>p.published&&!p.catalog_hidden&&!p.is_sold_out&&activeIds.has(p.store_id)&&/\.(?:jpe?g|png|webp)(?:[?#]|$)/i.test(p.image_url||''));
+  return still?.image_url||'';
+ }
+ return configured;
+}
 async function randomizeHeroPhoto(){
  if(!state.admin||!connected||!session)throw Error('관리자 로그인 후 메인 사진을 바꿀 수 있어요.');
  const activeStoreIds=new Set(state.stores.filter(st=>st.active).map(st=>st.id));

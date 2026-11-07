@@ -9280,8 +9280,10 @@ function renderOrderDepositControl(q,showFreightRequest=true){
    Keep the original finance, returns and workflow controls under an opt-in fold. */
 function renderAdminShippingFocus(q){
  const root=sharedShipment(q);
- const shipping={...q,tracking_carrier:root.tracking_carrier||q.tracking_carrier,
-  tracking_number:root.tracking_number||q.tracking_number,
+ const partial=adminPartialParcels(q);
+ const firstParcel=partial[0];
+ const shipping={...q,tracking_carrier:firstParcel?.carrier||root.tracking_carrier||q.tracking_carrier,
+  tracking_number:firstParcel?.tracking_number||root.tracking_number||q.tracking_number,
   shipment_tracking:root.shipment_tracking||q.shipment_tracking};
  const snapshot=validShipmentSnapshot(shipping)?shipping.shipment_tracking:null;
  const card=window.MiniPartialShipping?.adminTrackingMarkup?.(shipping,state.partialParcels||[],snapshot)||'';
@@ -9387,7 +9389,7 @@ function renderCollapsibleAdminOrder(group,section){
  const confirmedDue=canSumPayments?confirmedOrders.reduce((sum,q)=>sum+totalDue(q),0):0;
  const confirmedPaid=confirmedOrders.reduce((sum,q)=>sum+Math.max(0,Number(q.amount_paid||0)-Number(q.amount_refunded||0)),0);
  const shippingFocus=group.length===1&&group[0].status==='confirmed'&&group[0].delivery_method==='courier'&&
-  !(['delivery_shipped','journey_shipping'].includes(state.filter)&&adminPartialParcels(group[0]).length>0)&&(
+  (
   adminOrderJourneyStep(group[0])==='journey_shipping'||
   state.filter==='delivery_shipped'&&adminDeliveryListed(group[0],'delivery_shipped'))&&!(state.filter==='wholesale_completed'&&adminPartialParcels(group[0]).length);
  const showPaymentSummary=state.filter==='preparing_orders'&&confirmedOrders.length>0;

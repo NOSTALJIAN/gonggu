@@ -5951,9 +5951,9 @@ function estimatedProductPrice(p,detail=false){
  const fixed=p?.pricing_mode==='fixed_options';
  const range=fixed?fixedProductPriceRange(p):null;
  return `<div class="product-estimate ${detail?'product-estimate-detail':'product-estimate-card'} ${detail&&instantStorefront?'product-estimate-instant':''}">
-  <span class="product-estimate-label">${fixed?'확정가':instantStorefront?'판매가':'예상가'}</span><strong>${fixed||instantStorefront?'':'약 '}${money(storeEstimate(p))}${range&&range.max>range.min?'부터':''}</strong>
-  ${range&&range.max>range.min?'<span class="fixed-variant-price-note">색상·사이즈별 확정가 상이</span>':''}
-  ${githubStorefront&&fixed?'<span class="fixed-variant-price-note">도매배송비 포함 · 별도 청구 없음</span>':''}
+  <span class="product-estimate-label">${fixed&&!detail?'판매가':fixed?'확정가':instantStorefront?'판매가':'예상가'}</span><strong>${fixed||instantStorefront?'':'약 '}${money(storeEstimate(p))}${range&&range.max>range.min?'부터':''}</strong>
+  ${detail&&range&&range.max>range.min?'<span class="fixed-variant-price-note">색상·사이즈별 확정가 상이</span>':''}
+  ${detail&&githubStorefront&&fixed?'<span class="fixed-variant-price-note">도매배송비 포함 · 별도 청구 없음</span>':''}
  </div>`;
 }
 /* Product-specific public note, separate from the Namdaemun store's shared size chart. */

@@ -4968,6 +4968,9 @@ window.miniYenaOneSignalReady = new Promise(function(resolve) {
 </style><style id="own-inline-add-20261111">
 .own-inline-add{align-self:flex-start;margin:5px 0 0;background:#f4f4f4;border:1px solid #e4e4e4;color:#333;font-size:11px;font-weight:720;border-radius:7px;padding:6px 9px}
 .own-inline-add:disabled{opacity:.35}
+</style><style id="own-variant-summary-20261111">
+.supplier-order-option-total{display:flex;flex-direction:column;align-items:flex-end;gap:3px;white-space:nowrap}
+.supplier-order-option-total small{font-size:10px;color:#b07448;font-weight:700}
 </style></head>
 <body>
 <div id="app"><div class="loading">미니예나를 여는 중이에요…</div></div>
@@ -10879,6 +10882,11 @@ function ownCombinedRows(supplier){
  const own=ownPending(supplier).map(r=>({item:{product_id:r.product_id,store_name:r.store_name,product_name:r.product_name,color:r.color,size:r.size},vendor:supplier,qty:r.quantity,unit:r.unit_cost}));
  return [...buyers,...batches,...own];
 }
+function ownVariantQty(item,supplier){
+ return ownPending(supplier).filter(r=>r.product_id===item.product_id&&r.color===item.color&&r.size===item.size)
+ .reduce((n,r)=>n+Number(r.quantity||0),0);
+}
+function ownSupplierQty(supplier){return ownPending(supplier).reduce((n,r)=>n+Number(r.quantity||0),0)}
 function renderOwnPurchases(){
  if(!state.admin)return '';
  if(!state.ownPurchasesReady)return '<p class="noticefail">내 사입을 불러올 수 없어요. 새로고침해 주세요.</p>';
@@ -10939,7 +10947,8 @@ function renderSupplierPaymentCenter(){
    <summary><span><b>${esc(g.supplier)}</b><small>미발주 ${supplierOptionGroups(g.items).length}종 · ${g.qty}개 · 입금확인 ${g.ready.length}종</small><small class="admin-supplier-buyer-preview">${[...new Set(g.items.map(({q})=>q.buyer_name||'주문자'))].map(esc).join(' · ')}</small></span><span class="supplier-order-clean-progress">⌄</span></summary>
    <div class="supplier-order-clean-body">
     <p class="supplier-order-clean-note">실제 사입처 기준 · 기존 주문/바로구매 통합 · 배송비 재배분 없음</p>
-    ${supplierOptionGroups(g.items).map(group=>`<div class="supplier-order-option-group"><div class="supplier-order-option-head"><span class="supplier-order-option-desc"><b>${esc(group.item.store_name||'가게명 미입력')} · ${esc(group.item.product_name||'상품')}</b><small>${esc(group.item.color||'-')} / ${esc(group.item.size||'-')}</small><button type="button" class="own-inline-add" data-action="own-open" data-product="${esc(group.item.product_id||'')}" data-color="${esc(group.item.color||'')}" data-size="${esc(group.item.size||'')}" ${group.item.product_id?'':'disabled'}>＋ 내 수량</button></span><strong class="supplier-order-option-total">총 ${group.qty}개</strong></div>
+    ${ownSupplierQty(g.supplier)?'<p class="supplier-order-clean-note"><b>내 사입 '+ownSupplierQty(g.supplier)+'개</b>가 있어요. 합산 발주서는 위의 🔒 내 사입에서 복사하세요.</p>':''}
+    ${supplierOptionGroups(g.items).map(group=>`<div class="supplier-order-option-group"><div class="supplier-order-option-head"><span class="supplier-order-option-desc"><b>${esc(group.item.store_name||'가게명 미입력')} · ${esc(group.item.product_name||'상품')}</b><small>${esc(group.item.color||'-')} / ${esc(group.item.size||'-')}</small><button type="button" class="own-inline-add" data-action="own-open" data-product="${esc(group.item.product_id||'')}" data-color="${esc(group.item.color||'')}" data-size="${esc(group.item.size||'')}" ${group.item.product_id?'':'disabled'}>＋ 내 수량</button></span><strong class="supplier-order-option-total">${"총 "+(group.qty+ownVariantQty(group.item,g.supplier))+"개"+(ownVariantQty(group.item,g.supplier)?"<small>내 +"+ownVariantQty(group.item,g.supplier)+"개</small>":"")}</strong></div>
     <div class="supplier-order-option-buyers">${group.rows.map(({q,item})=>`<div class="supplier-order-option-buyer"><span class="supplier-order-option-buyer-name">${esc(q.buyer_name||'구매자')}</span><b class="supplier-order-option-buyer-qty">×${Number(item.quantity||0)}</b><small class="supplier-order-option-buyer-status ${instantDomesticEligible({q,item})?'is-ready':'is-pending'}">${instantDomesticEligible({q,item})?'입금 확인':'입금·변경 확인'}</small></div>`).join('')}</div></div>`).join('')}
     <div class="supplier-order-clean-actions">
      <button type="button" class="btn supplier-order-clean-copy" data-action="copy-instant-procurement" data-supplier="${esc(g.supplier)}" ${g.ready.length?'':'disabled'}>입금확인 발주서 복사</button>
@@ -10955,8 +10964,9 @@ function renderSupplierPaymentCenter(){
   <summary><span><b>${esc(b.supplier||'거래처')}</b><small>공구 · ${supplierOptionGroups(items).length}종 · ${qty}개 · 입금확인 ${ready}/${buyers}건</small><small class="admin-supplier-buyer-preview">${[...new Set(items.map(({q})=>q.buyer_name||'주문자'))].map(esc).join(' · ')}</small></span><span class="supplier-order-clean-progress">⌄</span></summary>
   <div class="supplier-order-clean-body">
    <p class="supplier-order-clean-note">입금 확인 ${eligible.length}종 · 확인 대기 ${items.length-eligible.length}종</p>
+   ${ownSupplierQty(b.supplier)?'<p class="supplier-order-clean-note"><b>내 사입 '+ownSupplierQty(b.supplier)+'개</b>가 있어요. 합산 발주서는 위의 🔒 내 사입에서 복사하세요.</p>':''}
    ${supplierOptionGroups(items).map(group=>`<div class="supplier-order-option-group">
-    <div class="supplier-order-option-head"><span class="supplier-order-option-desc"><b>${esc(group.item.store_name||'가게명 미입력')} · ${esc(group.item.product_name||'상품')}</b><small>${esc(group.item.color||'-')} / ${esc(group.item.size||'-')}</small><button type="button" class="own-inline-add" data-action="own-open" data-product="${esc(group.item.product_id||'')}" data-color="${esc(group.item.color||'')}" data-size="${esc(group.item.size||'')}" ${group.item.product_id?'':'disabled'}>＋ 내 수량</button></span><strong class="supplier-order-option-total">총 ${group.qty}개</strong></div>
+    <div class="supplier-order-option-head"><span class="supplier-order-option-desc"><b>${esc(group.item.store_name||'가게명 미입력')} · ${esc(group.item.product_name||'상품')}</b><small>${esc(group.item.color||'-')} / ${esc(group.item.size||'-')}</small><button type="button" class="own-inline-add" data-action="own-open" data-product="${esc(group.item.product_id||'')}" data-color="${esc(group.item.color||'')}" data-size="${esc(group.item.size||'')}" ${group.item.product_id?'':'disabled'}>＋ 내 수량</button></span><strong class="supplier-order-option-total">${"총 "+(group.qty+ownVariantQty(group.item,b.supplier))+"개"+(ownVariantQty(group.item,b.supplier)?"<small>내 +"+ownVariantQty(group.item,b.supplier)+"개</small>":"")}</strong></div>
     <div class="supplier-order-option-buyers">${group.rows.map(({q,item})=>`<div class="supplier-order-option-buyer"><span class="supplier-order-option-buyer-name">${esc(q.buyer_name||'구매자')}</span><b class="supplier-order-option-buyer-qty">×${Number(item.quantity||0)}</b><small class="supplier-order-option-buyer-status ${supplierOrderPaidForCopy(q)?'is-ready':'is-pending'}">${esc(supplierOrderRowStatus(q))}</small></div>`).join('')}</div>
    </div>`).join('')}
    <div class="supplier-order-clean-actions">

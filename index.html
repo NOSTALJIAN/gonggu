@@ -4690,26 +4690,15 @@ window.miniYenaOneSignalReady = new Promise(function(resolve) {
 .compact-manual-freight-locked{font-size:11px;color:#805b30;margin:10px 0;line-height:1.5}
 </style>
 <style>
-.admin-procurement-buyer-queue{margin:14px 0 24px}
-.admin-procurement-buyer-head{display:flex;justify-content:space-between;align-items:baseline;gap:9px;margin-bottom:7px}
-.admin-procurement-buyer-head h3{margin:0;font-size:17px;font-weight:800}
-.admin-procurement-buyer-head span{color:#636970;font-size:12px;font-weight:700}
-.admin-procurement-buyer-note{font-size:12px;line-height:1.6;color:#6b737c;margin:0 0 10px}
-.admin-procurement-buyer-list{display:grid;gap:10px}
-.admin-procurement-buyer-card{padding:14px;background:#fff;border:1px solid #e2e4e7;border-radius:13px}
-.admin-procurement-buyer-title{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:9px}
-.admin-procurement-buyer-title>span{min-width:0;flex:1}
-.admin-procurement-buyer-title b{font-size:15px}
-.admin-procurement-buyer-title small{display:block;color:#6b727b;font-size:11px;line-height:1.5;margin-top:4px}
-.admin-procurement-buyer-title>strong{font-size:11px;color:#36724d;background:#f1f7f2;border-radius:7px;padding:5px 7px;white-space:nowrap}
-.admin-procurement-buyer-count{font-size:12px;font-weight:750;color:#444e58;padding:9px 0;border-top:1px solid #edf0f2}
-.admin-procurement-buyer-item{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 0;border-top:1px solid #f1f2f3}
-.admin-procurement-buyer-item>span{min-width:0;flex:1}
-.admin-procurement-buyer-item b{font-size:12px;overflow-wrap:anywhere}
-.admin-procurement-buyer-item small{display:block;color:#747b82;font-size:11px;line-height:1.4;margin-top:3px}
-.admin-procurement-buyer-item .compact-order-source{font-size:11px;color:#506277;margin-top:5px}
-.admin-procurement-buyer-item .compact-order-source strong{display:inline;font-weight:800}
-.admin-procurement-buyer-item>strong{white-space:nowrap;font-size:12px}
+.admin-procurement-buyer-queue{margin:0 0 18px}
+.admin-procurement-buyer-queue .admin-orders-title-row{margin:2px 0 13px}
+.admin-procurement-buyer-queue .admin-price-section{margin-top:0}
+.admin-procurement-supplier-fold{margin:18px 0 8px;border-top:1px solid #e8e9eb;padding-top:12px}
+.admin-procurement-supplier-fold>summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 16px;background:#f6f7f8;color:#292c30;border-radius:12px;cursor:pointer;font-size:14px;font-weight:800}
+.admin-procurement-supplier-fold>summary::-webkit-details-marker{display:none}
+.admin-procurement-supplier-fold>summary span:last-child{font-size:14px;color:#72767b;transition:transform .18s}
+.admin-procurement-supplier-fold[open]>summary span:last-child{transform:rotate(180deg)}
+.admin-procurement-supplier-fold>.admin-supplier-payments-center{margin-top:14px}
 .supplier-order-clean-card .admin-supplier-buyer-preview{display:block;color:#4d5863;white-space:normal;overflow-wrap:anywhere;font-size:11px;font-weight:700;line-height:1.5;margin-top:5px}
 </style>
 </head>
@@ -7052,7 +7041,11 @@ function renderAdminPayments(){
     `${renderSupplierBulkManager()}
       ${all.length?`<details class="admin-optional-orders"><summary>미배분 관련 주문 보기 · ${all.length}건</summary>
       ${renderAdminQuoteFlatSection(sameRoundGroups(all),'')}</details>`:''}`:
-    renderProcurementBuyerQueue()+renderSupplierPaymentCenter()}
+    renderProcurementBuyerQueue()+
+     `<details class="admin-procurement-supplier-fold" data-fold-key="procurement-supplier-management">
+       <summary><span>도매처별 발주 처리</span><span aria-hidden="true">⌄</span></summary>
+       ${renderSupplierPaymentCenter()}
+      </details>`}
  </section>`;
 }
 
@@ -10473,32 +10466,19 @@ function instantDomesticOrderText(group){
  ].join('\n');
 }
 /* The third operational step shows customers before supplier-aggregated purchasing. */
+/* Reuse the exact collapsible buyer cards from step 2 to avoid a second,
+   expanded procurement-only representation of the same orders. */
 function renderProcurementBuyerQueue(){
  if(!state.admin||state.page!=='admin')return '';
- const rows=adminVisibleOrders().filter(q=>adminOrderJourneyStep(q)==='journey_procurement')
-   .sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')));
- const waitingItems=q=>(q.items||[]).filter(i=>
-   i.fulfillment!=='sold_out'&&!['received','delivered'].includes(i.fulfillment)&&
-   !q.supplier_ordered_at&&!i.supplier_ordered_at&&!supplierItemBatch(i.id)?.ordered_at);
- return `<section class="admin-procurement-buyer-queue" aria-label="입금 확인 후 발주 대기 주문자">
-   <div class="admin-procurement-buyer-head"><h3>발주 대기 주문자</h3><span>${rows.length}건 · ${new Set(rows.map(q=>buyerIdentity(q))).size}명</span></div>
-   <p class="admin-procurement-buyer-note">입금 확인된 주문자와 미발주 상품을 먼저 확인해 주세요. 아래 도매처별 발주에서 실제 발주 완료 처리할 수 있어요.</p>
-   ${rows.length?`<div class="admin-procurement-buyer-list">${rows.map(q=>{
-     const items=waitingItems(q);
-     const qty=items.reduce((sum,i)=>sum+Math.max(0,Number(i.quantity)||0),0);
-     return `<article class="admin-procurement-buyer-card">
-       <div class="admin-procurement-buyer-title">
-         <span><b>${esc(q.buyer_name||'주문자 미입력')} ${adminGithubOrderIcon(q)}</b><small>아기: ${esc(q.baby_name||'미입력')} · ${esc(deliveryLabel(q))}</small></span>
-         <strong>입금 확인</strong>
-       </div>
-       <div class="admin-procurement-buyer-count">미발주 ${items.length}종 · ${qty}개</div>
-       ${items.map(i=>`<div class="admin-procurement-buyer-item"><span><b>${esc(i.store_name||'브랜드 미입력')} · ${esc(i.product_name||'상품')}</b>
-        <small>${esc(i.color||'-')} / ${esc(i.size||'-')} · ${Number(i.quantity)||0}개</small>
-        ${adminActualSupplierLabel(i,q)}</span><strong>×${Number(i.quantity)||0}</strong></div>`).join('')||
-        '<p class="admin-procurement-buyer-note">미발주 품목이 확인되지 않아요. 발주 상태를 확인해 주세요.</p>'}
-     </article>`;
-   }).join('')}</div>`:'<p class="admin-procurement-buyer-note">현재 입금 확인 후 발주를 기다리는 주문은 없어요.</p>'}
-  </section>`;
+ const buyers=adminVisibleOrders().filter(q=>adminOrderJourneyStep(q)==='journey_procurement');
+ const groups=adminViewGroups(buyers);
+ return `<section class="admin-procurement-buyer-queue" aria-label="발주 대기 주문자">
+  <div class="admin-orders-title-row">
+   <div class="admin-orders-list-title"><strong>발주 대기</strong><span>${buyers.length}건</span></div>
+   <span class="admin-order-list-sort">최근 주문순</span>
+  </div>
+  ${groups.length?renderAdminQuoteFlatSection(groups,'','saved'):'<div class="empty">발주를 기다리는 주문자가 없어요.</div>'}
+ </section>`;
 }
 function renderSupplierPaymentCenter(){
   const domestic=state.supplierBatches.filter(b=>!b.ordered_at).map(b=>{

@@ -36,6 +36,34 @@ jobs:
           name: miniyena-cloudflare-upload
           path: cloudflare-dist/
           retention-days: 7
+      # Deploy to the existing miniyena.pages.dev Direct Upload project.
+      # Enabled automatically once both repository secrets have been configured.
+      - name: Check Cloudflare deployment credentials
+        id: cloudflare_credentials
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [[ -n "$CLOUDFLARE_ACCOUNT_ID" && -n "$CLOUDFLARE_API_TOKEN" ]]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Cloudflare auto-deploy is waiting for two repository secrets."
+          fi
+      - name: Publish Cloudflare Pages production
+        if: steps.cloudflare_credentials.outputs.ready == 'true'
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          # Use the *existing project's* production branch so this deploy
+          # never accidentally creates only a preview URL.
+          response="$(curl --fail-with-body --silent --show-error --retry 2 \
+            "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects/miniyena" \
+            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}")"
+          branch="$(printf '%s' "$response" | python3 -c 'import json,sys; x=json.load(sys.stdin); b=(x.get("result") or {}).get("production_branch"); assert x.get("success") and isinstance(b,str) and b, "Production branch not found"; print(b)')"
+          npx --yes wrangler@4 pages deploy cloudflare-dist --project-name=miniyena --branch="$branch" --commit-hash="$GITHUB_SHA"
       - name: Build public storefront without the Cloudflare admin page
         run: |
           python3 cloudflare_pages_build.py --github

@@ -4946,7 +4946,26 @@ window.miniYenaOneSignalReady = new Promise(function(resolve) {
  .buyer-track-clean .buyer-simple-product b{font-size:13px}
 }
 </style>
-</head>
+<style id="admin-own-wholesale-20261111">
+.own-purchase-panel{margin:12px 0;padding:12px;border:1px solid #e1e4e7;border-radius:13px;background:#fafafa}
+.own-panel-head{display:flex;align-items:center;justify-content:space-between;gap:8px}.own-panel-head>div{display:flex;flex-direction:column;gap:3px}.own-panel-head strong{font-size:14px}.own-panel-head small{font-size:11px;color:#777}.own-panel-head button{min-width:0;padding:8px;font-size:11px}
+.own-panel-total{font-size:12px;color:#666}.own-supplier{border:1px solid #eee;border-radius:10px;background:#fff;margin-top:9px;overflow:hidden}
+.own-supplier>summary{padding:12px 10px;display:flex;justify-content:space-between;gap:6px;font-size:12px;cursor:pointer}.own-supplier>summary span{font-size:11px;color:#666}
+.own-supplier-line{border-top:1px solid #eee;padding:9px;display:flex;justify-content:space-between;align-items:center;gap:6px}
+.own-supplier-line>div{display:flex;flex-direction:column;gap:4px;min-width:0}.own-supplier-line strong{font-size:11px;overflow-wrap:anywhere}.own-supplier-line small{font-size:10px;color:#777}
+.own-counter{flex-shrink:0;display:flex;gap:3px;align-items:center}.own-counter button{width:27px;height:29px;background:white;border:1px solid #ddd;border-radius:6px;font-size:15px}.own-counter button:disabled{opacity:.3}.own-counter b{font-size:12px;min-width:15px;text-align:center}
+.own-supplier-actions{border-top:1px solid #eee;padding:9px;display:grid;gap:7px}.own-supplier-actions small{font-size:11px;color:#777}.own-supplier-actions button{font-size:12px;width:100%}
+.own-history{margin-top:10px;font-size:11px}.own-history>div{padding:6px;border-bottom:1px solid #eee}
+.own-modal-body{padding:9px 1px 18px}.own-modal-body input[type=search]{width:100%;padding:11px;border-radius:9px;border:1px solid #ddd}
+.own-product-picker{max-height:57vh;overflow:auto;border:1px solid #eee;border-radius:10px;margin-top:9px}
+.own-product-picker>button{display:flex;flex-direction:column;gap:4px;width:100%;padding:10px;text-align:left;background:#fff;border:0;border-bottom:1px solid #eee}.own-product-picker>button[hidden]{display:none}
+.own-product-picker strong{font-size:12px}.own-product-picker small{font-size:11px;color:#777}
+.own-back{border:0;background:none;color:#777}.own-modal-body h3{font-size:17px;margin:10px 0}
+#own-purchase-form{display:grid;gap:10px}#own-purchase-form label{display:grid;gap:5px;font-size:12px;font-weight:700}
+#own-purchase-form select,#own-purchase-form input{width:100%;min-height:43px;border:1px solid #ddd;border-radius:9px;padding:10px;background:#fff}
+.own-cost{padding:12px;background:#f5f5f5;border-radius:10px;display:grid;gap:7px}.own-cost span{display:flex;justify-content:space-between;font-size:12px}.own-cost b{font-size:15px}
+@media(max-width:360px){.own-supplier-line{flex-wrap:wrap}.own-counter{margin-left:auto}}
+</style></head>
 <body>
 <div id="app"><div class="loading">미니예나를 여는 중이에요…</div></div>
 <script>
@@ -5108,7 +5127,7 @@ const CDN_SHARE_HOST=/^(?:rawcdn|raw)\.githack\.com$/i.test(location.hostname);
 const STOREFRONT_PATH=location.hostname.toLowerCase()==='nostaljian.github.io'?'/gonggu/':CDN_SHARE_HOST?location.pathname:'/';
 const dedicatedAdminPage=location.hostname.toLowerCase()==='miniyena.pages.dev'&&/^\/admin(?:\/index\.html|\/)?$/i.test(location.pathname);
 if(!dedicatedAdminPage&&p.get('page')==='admin')location.replace(ADMIN_HOME);
-const state={partialParcels:[],partialParcelsReady:false,page:dedicatedAdminPage?'admin':p.get('page')==='track'?'track':'shop',tab:'home',adminOrderSearch:'',adminOrderSearchMode:'all',adminDispatchSelection:new Set(),receiptSearch:'',receiptView:'pending',receiptGroupBy:'product',receiptStore:'all',stores:[],products:[],requests:[],quotes:[],cart:read(CART,[]),modal:null,search:'',shopCategory:'all',shopSort:'newest',shopStore:'all',shopFiltersOpen:false,shopVisibleCount:24,adminCategory:'all',trackId:p.get('id')||'',trackToken:p.get('token')||'',tracking:null,receipts:read(TRACK,[]),notice:'',filter:'pricing',orderViewFilter:null,admin:false,heroPhotoUrl:null,heroStoreId:null,dateGroupsOpen:{},orderCardsOpen:{},supplierBulkSelected:new Set(),supplierBulkStoreId:'',supplierBatches:[],supplierBatchesReady:false,supplierBatchesError:'',supplierPartialInvoices:[],trackSupplierPartial:[],lowerPriceReports:[],optionRequests:[],optionRequestsReady:false,optionRequestsError:'',requestStatusFilter:'pending',adminCatalogView:'products',adminCatalogFilter:'all',adminProductSort:'newest',adminProductSearch:'',productPrivate:{},productPrivateReady:false,emailSettings:null,emailSettingsReady:false,emailSettingsError:'',supplierFreightNotify:{},supplierFreightNotifyReady:false,adminPinIds:new Set(),phoneLookupReady:null,pinLookupNotice:''};
+const state={partialParcels:[],partialParcelsReady:false,page:dedicatedAdminPage?'admin':p.get('page')==='track'?'track':'shop',tab:'home',adminOrderSearch:'',adminOrderSearchMode:'all',adminDispatchSelection:new Set(),receiptSearch:'',receiptView:'pending',receiptGroupBy:'product',receiptStore:'all',stores:[],products:[],requests:[],quotes:[],cart:read(CART,[]),modal:null,search:'',shopCategory:'all',shopSort:'newest',shopStore:'all',shopFiltersOpen:false,shopVisibleCount:24,adminCategory:'all',trackId:p.get('id')||'',trackToken:p.get('token')||'',tracking:null,receipts:read(TRACK,[]),notice:'',filter:'pricing',orderViewFilter:null,admin:false,heroPhotoUrl:null,heroStoreId:null,dateGroupsOpen:{},orderCardsOpen:{},supplierBulkSelected:new Set(),supplierBulkStoreId:'',ownPurchases:[],ownPurchasesReady:false,supplierBatches:[],supplierBatchesReady:false,supplierBatchesError:'',supplierPartialInvoices:[],trackSupplierPartial:[],lowerPriceReports:[],optionRequests:[],optionRequestsReady:false,optionRequestsError:'',requestStatusFilter:'pending',adminCatalogView:'products',adminCatalogFilter:'all',adminProductSort:'newest',adminProductSearch:'',productPrivate:{},productPrivateReady:false,emailSettings:null,emailSettingsReady:false,emailSettingsError:'',supplierFreightNotify:{},supplierFreightNotifyReady:false,adminPinIds:new Set(),phoneLookupReady:null,pinLookupNotice:''};
 
 state.adminLoading=Boolean(connected&&state.page==='admin'&&session?.refresh_token);
 const PRODUCT_CATEGORIES=['바디수트','세트','상의','하의','아우터','원피스','스커트','모자','양말','악세서리','잡화'];
@@ -6012,6 +6031,14 @@ async function loadAdminLowerPriceReports(){
   state.lowerPriceReports=Array.isArray(reports)?reports:[];
  }catch(error){state.lowerPriceReports=[];console.warn('타 사이트 최저가 제보 조회 실패',error);}
 }
+async function loadOwnPurchases(){
+ if(!state.admin||!connected){state.ownPurchases=[];state.ownPurchasesReady=false;return}
+ try{
+  const rows=await api('/rest/v1/gq_admin_personal_purchase_items_v140?select=*&order=created_at.desc',{admin:true});
+  if(!Array.isArray(rows))throw Error('내 사입 기록 응답 오류');
+  state.ownPurchases=rows;state.ownPurchasesReady=true;
+ }catch(error){state.ownPurchasesReady=false;console.warn('관리자 개인 사입 목록 실패',error)}
+}
 async function loadAdmin(){
  if(!connected){
   state.adminLoading=false;state.admin=true;state.productPrivate={};state.productPrivateReady=false;
@@ -6019,7 +6046,7 @@ async function loadAdmin(){
   state.requests=clone(demo.requests||[]);state.lowerPriceReports=clone(demo.priceReports||[]);
   syncDemo();render();return;
  }
- if(!session){state.adminLoading=false;state.admin=false;state.productPrivate={};state.productPrivateReady=false;state.partialParcels=[];render();return;}
+ if(!session){state.adminLoading=false;state.admin=false;state.productPrivate={};state.productPrivateReady=false;state.partialParcels=[];state.ownPurchases=[];state.ownPurchasesReady=false;render();return;}
  try{
   const auth=await rpc('gq_is_admin',{},true);
   if(!auth)throw Error('관리자 권한이 없습니다');
@@ -6032,7 +6059,7 @@ async function loadAdmin(){
    api('/rest/v1/gq_quote_items?select=*&order=created_at.asc',{admin:true}),
    api('/rest/v1/gq_product_requests?select=*&order=created_at.desc',{admin:true}),
    loadAdminProductPrivate(),
-   loadAdminSupplierBatches()
+   loadAdminSupplierBatches(),loadOwnPurchases()
   ]);
   state.quotes=qq.map(q=>({...q,items:ii.filter(i=>i.quote_id===q.id)}));
   state.requests=rr;
@@ -10794,6 +10821,86 @@ function renderProcurementBuyerQueue(){
   ${groups.length?renderAdminQuoteFlatSection(groups,'','saved'):'<div class="empty">발주를 기다리는 주문자가 없어요.</div>'}
  </section>`;
 }
+
+/* Only authenticated admins can read this table. Never put these in gq_quotes. */
+function ownPending(supplier=''){
+ const name=String(supplier||'').trim().toLocaleLowerCase('ko-KR');
+ return state.admin&&state.ownPurchasesReady?state.ownPurchases.filter(r=>!r.ordered_at&&(!name||String(r.supplier_name).trim().toLocaleLowerCase('ko-KR')===name)):[];
+}
+function ownStore(p){return state.stores.find(x=>x.id===p?.store_id)?.name||'브랜드'}
+function ownAllowedProducts(){
+ return state.products.filter(p=>{
+  const m=state.productPrivate[p.id];return m?.source_type==='namdaemun'&&!!m.supplier_name&&
+  Object.entries(p.options||{}).some(([c,arr])=>Array.isArray(arr)&&arr.some(z=>adminWholesaleUnitCost({product_id:p.id,color:c,size:z},m)!==null));
+ }).sort((a,b)=>(ownStore(a)+' '+a.name).localeCompare(ownStore(b)+' '+b.name,'ko'));
+}
+function ownModalBody(m){
+ if(!state.ownPurchasesReady||!state.productPrivateReady)return '<p class="noticefail">관리자 원가 정보를 불러온 뒤 다시 확인해 주세요.</p>';
+ const p=state.products.find(x=>x.id===m.productId);
+ if(!p)return '<div class="own-modal-body"><p class="smallnote">상품을 선택하면 원가에 내 수량만 추가해요. 구매자에게는 보이지 않아요.</p>'+
+  '<input id="own-product-search" type="search" placeholder="상품명 · 브랜드 · 거래처 검색" autocomplete="off">'+
+  '<div class="own-product-picker">'+ownAllowedProducts().map(x=>{
+   const supplier=state.productPrivate[x.id]?.supplier_name||'';
+   return '<button type="button" data-action="own-choose-product" data-product="'+esc(x.id)+'" data-own-search="'+esc((ownStore(x)+' '+x.name+' '+supplier).toLocaleLowerCase('ko-KR'))+'"><strong>'+esc(ownStore(x)+' · '+x.name)+'</strong><small>'+esc(supplier)+'</small></button>';
+  }).join('')+'</div></div>';
+ const meta=state.productPrivate[p.id];
+ if(!meta||meta.source_type!=='namdaemun')return '<p>남대문 사입 상품을 선택해 주세요.</p>';
+ const colors=Object.keys(p.options||{}).filter(c=>Array.isArray(p.options[c])&&p.options[c].length);
+ const color=colors.includes(m.color)?m.color:colors[0],sizes=p.options[color]||[];
+ const size=sizes.includes(m.size)?m.size:sizes[0],unit=adminWholesaleUnitCost({product_id:p.id,color,size});
+ return '<div class="own-modal-body"><button type="button" class="own-back" data-action="own-back">‹ 다른 상품</button>'+
+  '<h3>'+esc(ownStore(p)+' · '+p.name)+'</h3><p class="smallnote">실제 사입처 '+esc(meta.supplier_name)+'</p>'+
+  '<form id="own-purchase-form" data-product="'+esc(p.id)+'">'+
+  '<label>색상<select name="color" id="own-color">'+colors.map(c=>'<option value="'+esc(c)+'"'+(c===color?' selected':'')+'>'+esc(c)+'</option>').join('')+'</select></label>'+
+  '<label>사이즈<select name="size" id="own-size">'+sizes.map(z=>'<option value="'+esc(z)+'"'+(z===size?' selected':'')+'>'+esc(z)+'</option>').join('')+'</select></label>'+
+  '<label>내 수량<input type="number" name="quantity" min="1" max="100" inputmode="numeric" value="1" required></label>'+
+  '<div class="own-cost"><span>개당 원가 <b data-own-unit>'+(unit===null?'원가 미등록':money(unit))+'</b></span><span>내 사입 합계 <b data-own-total>'+(unit===null?'원가 미등록':money(unit))+'</b></span></div>'+
+  '<button class="btn block" type="submit" data-own-submit '+(unit===null?'disabled':'')+'>내 수량 추가</button>'+
+  '<p class="smallnote">기존 구매자 결제금액·매출·발주상태는 변경되지 않아요.</p></form></div>';
+}
+function ownPreview(){
+ const f=app.querySelector('#own-purchase-form');if(!f)return;
+ const unit=adminWholesaleUnitCost({product_id:f.dataset.product,color:f.elements.color.value,size:f.elements.size.value});
+ const qty=Number(f.elements.quantity.value),valid=unit!==null&&Number.isInteger(qty)&&qty>=1&&qty<=100;
+ f.querySelector('[data-own-unit]').textContent=unit===null?'원가 미등록':money(unit);
+ f.querySelector('[data-own-total]').textContent=valid?money(unit*qty):'수량·원가 확인';
+ f.querySelector('[data-own-submit]').disabled=!valid;
+}
+function ownCombinedRows(supplier){
+ const key=String(supplier||'').trim().toLocaleLowerCase('ko-KR');
+ const buyers=instantDomesticPendingGroups().filter(g=>g.supplier.trim().toLocaleLowerCase('ko-KR')===key)
+  .flatMap(g=>g.ready.map(({q,item})=>({q,item,vendor:supplier,qty:Number(item.quantity)||0,unit:adminWholesaleUnitCost(item)})));
+ const batches=state.supplierBatches.filter(b=>!b.ordered_at&&String(b.supplier||'').trim().toLocaleLowerCase('ko-KR')===key)
+  .flatMap(b=>supplierPendingBatchItems(b).filter(({q})=>supplierOrderPaidForCopy(q))
+    .map(({q,item})=>({q,item,vendor:supplier,qty:Number(item.quantity)||0,unit:adminWholesaleUnitCost(item)})));
+ const own=ownPending(supplier).map(r=>({item:{product_id:r.product_id,store_name:r.store_name,product_name:r.product_name,color:r.color,size:r.size},vendor:supplier,qty:r.quantity,unit:r.unit_cost}));
+ return [...buyers,...batches,...own];
+}
+function renderOwnPurchases(){
+ if(!state.admin)return '';
+ if(!state.ownPurchasesReady)return '<p class="noticefail">내 사입을 불러올 수 없어요. 새로고침해 주세요.</p>';
+ const pending=ownPending(),groups=new Map(),history=state.ownPurchases.filter(r=>r.ordered_at);
+ for(const r of pending){if(!groups.has(r.supplier_name))groups.set(r.supplier_name,[]);groups.get(r.supplier_name).push(r)}
+ const qty=pending.reduce((n,r)=>n+r.quantity,0),cost=pending.reduce((n,r)=>n+r.quantity*r.unit_cost,0);
+ return '<section class="own-purchase-panel">'+
+  '<div class="own-panel-head"><div><strong>🔒 내 사입</strong><small>관리자만 · 구매자 주문/매출 제외</small></div>'+
+  '<button type="button" data-action="own-open" class="btn sm secondary">＋ 내 수량 추가</button></div>'+
+  (pending.length?'<p class="own-panel-total">미발주 <b>'+qty+'개</b> · 원가합계 <b>'+money(cost)+'</b></p>':
+    '<p class="smallnote">내가 주문할 상품은 여기서 수량만 추가하면 돼요.</p>')+
+  [...groups].sort(([a],[b])=>a.localeCompare(b,'ko')).map(([supplier,rows])=>{
+   const num=rows.reduce((n,r)=>n+r.quantity,0),value=rows.reduce((n,r)=>n+r.quantity*r.unit_cost,0);
+   const combined=ownCombinedRows(supplier),customer=combined.reduce((n,r)=>n+r.qty,0)-num;
+   return '<details class="own-supplier" open><summary><b>'+esc(supplier)+'</b><span>내 '+num+'개 · '+money(value)+'</span></summary>'+
+    rows.map(r=>'<div class="own-supplier-line"><div><strong>'+esc(r.store_name+' · '+r.product_name)+'</strong><small>'+esc(r.color+' / '+r.size)+' · '+money(r.unit_cost)+'</small></div>'+
+    '<span class="own-counter"><button data-action="own-qty" data-id="'+esc(r.id)+'" data-delta="-1" '+(r.quantity===1?'disabled':'')+'>−</button><b>'+r.quantity+'</b><button data-action="own-qty" data-id="'+esc(r.id)+'" data-delta="1">＋</button><button data-action="own-delete" data-id="'+esc(r.id)+'" aria-label="내 사입 삭제">×</button></span></div>').join('')+
+    '<div class="own-supplier-actions"><small>발주 가능 고객 '+customer+'개 + 내 '+num+'개</small>'+
+    '<button type="button" class="btn sm secondary" data-action="own-copy" data-supplier="'+esc(supplier)+'">고객+내 수량 합산 발주서 복사</button>'+
+    '<button type="button" class="btn sm" data-action="own-ordered" data-supplier="'+esc(supplier)+'">내 수량 발주 완료</button></div></details>';
+  }).join('')+
+  (history.length?'<details class="own-history"><summary>내 사입 발주완료 '+history.length+'건</summary>'+history.slice(0,30).map(r=>'<div>'+esc(r.supplier_name+' · '+r.product_name+' · '+r.color+' / '+r.size)+' ×'+r.quantity+'</div>').join('')+'</details>':'')+
+ '</section>';
+}
+
 function renderSupplierPaymentCenter(){
   const domestic=state.supplierBatches.filter(b=>!b.ordered_at).map(b=>{
     const items=supplierPendingBatchItems(b);
@@ -10807,10 +10914,11 @@ function renderSupplierPaymentCenter(){
   const china=chinaPendingProcurementGroups();
   const instant=instantDomesticPendingGroups();
   const chinaQty=china.reduce((n,g)=>n+g.qty,0);
-  const supplierCount=new Set([...domestic.map(({b})=>String(b.supplier||'').trim()),...instant.map(g=>g.supplier),...china.map(g=>g.supplier)].filter(Boolean)).size;
+  const supplierCount=new Set([...domestic.map(({b})=>String(b.supplier||'').trim()),...instant.map(g=>g.supplier),...china.map(g=>g.supplier),...ownPending().map(r=>r.supplier_name)].filter(Boolean)).size;
   return `<section class="admin-supplier-payments-center">
   <div class="supplier-order-clean-head admin-supplier-overview"><strong>발주할 도매처</strong><span>${supplierCount}곳</span></div>
 
+  ${renderOwnPurchases()}
   ${!state.productPrivateReady?'<p class="noticefail">사입 경로 정보를 불러오지 못했어요. 새로고침 후 확인해 주세요.</p>':''}
   ${china.length?`<div class="supplier-order-clean-list">${china.map(g=>`<details class="supplier-order-clean-card" data-fold-key="china-order-${esc(g.supplier)}">
     <summary><span><b>${esc(g.supplier)}</b><small>1688 · ${g.products.length}종 · ${g.qty}개 · ${g.buyers}건</small><small class="admin-supplier-buyer-preview">${[...new Set(g.items.map(({q})=>q.buyer_name||'주문자'))].map(esc).join(' · ')}</small></span><span class="supplier-order-clean-progress">⌄</span></summary>
@@ -10856,7 +10964,7 @@ function renderSupplierPaymentCenter(){
    ${!canOrder?'<p class="supplier-order-clean-finish-note">발주 완료 처리는 해당 거래처의 주문 확정과 상품대금 입금 확인이 모두 끝나야 활성화돼요.</p>':''}
   </div>
   </details>`).join('')}</div>`:''}
-  ${!domestic.length&&!instant.length&&!china.length&&state.supplierBatchesReady&&state.productPrivateReady?'<div class="admin-work-clear"><span aria-hidden="true">✓</span><span>현재 발주할 상품이 없어요.</span></div>':''}
+  ${!domestic.length&&!instant.length&&!china.length&&!ownPending().length&&state.supplierBatchesReady&&state.productPrivateReady?'<div class="admin-work-clear"><span aria-hidden="true">✓</span><span>현재 발주할 상품이 없어요.</span></div>':''}
   ${state.supplierBatches.some(b=>!b.ordered_at)?`<button type="button" class="admin-previous-orders-link" data-action="open-admin-wholesale-history"><span>진행 중 배분·입금 수정</span><strong>관리 <span aria-hidden="true">›</span></strong></button>`:''}
   </section>`;
 }
@@ -11503,6 +11611,7 @@ function updateAdminPricePopupTotals(form){
 }
 function modal(){const m=state.modal;if(!m)return '';const wrap=(title,body,stickyProductSave=false)=>stickyProductSave?`<div class="overlay" id="overlay"><div class="sheet sheet-product-editor product-editor-clean swipe-dismiss-sheet" role="dialog" aria-modal="true"><div class="sheet-drag-handle" aria-hidden="true"></div><div class="sheethead"><h2>${title}</h2><button class="close" data-action="close">×</button></div><div class="sheet-product-scroll">${body}</div><div class="sheet-product-save"><button class="btn block" type="submit" form="product-form">상품 저장</button></div></div></div>`:`<div class="overlay" id="overlay"><div class="sheet${['myquotes','suggest','cart','pick','product-photos','approve'].includes(m.type)?' swipe-dismiss-sheet':''}${m.type==='myquotes'?' myquotes-swipe-sheet':''}${m.type==='suggest'?' suggest-sheet':''}${m.type==='cart'?' cart-swipe-sheet':''}${m.type==='approve'?' approve-sheet':''}" role="dialog" aria-modal="true">${['myquotes','suggest','cart','pick','product-photos','approve'].includes(m.type)?'<div class="sheet-drag-handle" aria-hidden="true"></div>':''}<div class="sheethead"><h2>${title}</h2><button class="close" data-action="close">×</button></div>${body}</div></div>`;
 if(m.type==='payment-save-success'&&state.admin)return wrap('입금 처리 완료','<div style="padding:12px 4px 22px"><p style="font-size:18px;font-weight:700;margin:0 0 12px">'+esc(m.buyer)+'</p><p style="font-size:22px;font-weight:800;margin:0 0 12px">'+money(m.amount)+' 입금 확인 완료</p><p class="smallnote">'+(m.confirmed?'주문도 자동 확정됐어요.':'입금 내역이 저장됐어요.')+'</p><button type="button" class="btn block" data-action="close">확인</button></div>');
+if(m.type==='own-purchase'&&state.admin&&state.page==='admin')return wrap('내 사입 추가',ownModalBody(m));
 if(m.type==='entry-push')return wrap('신상·주문 알림 받기',renderEntryPushBody());
 if(m.type==='admin-delivery-queue'&&state.admin)return wrap('수령방식 변경 요청',renderAdminDeliveryQueue());
 if(m.type==='admin-dispatch-queue'&&state.admin)return wrap('전체·부분배송 요청',renderAdminDispatchQueue());

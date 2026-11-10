@@ -4748,6 +4748,28 @@ window.miniYenaOneSignalReady = new Promise(function(resolve) {
 .admin-procurement-supplier-fold .supplier-order-clean-card[open]>summary .supplier-order-clean-progress{transform:rotate(180deg)}
 .admin-procurement-supplier-fold .supplier-order-clean-note,.admin-procurement-supplier-fold .supplier-order-clean-hint{display:none}
 </style>
+<style>
+.admin-unified-stage{min-width:0}
+.admin-unified-stage .admin-procurement-buyer-queue{margin:0}
+.admin-unified-stage .admin-procurement-buyer-queue .admin-orders-title-row{margin:2px 0 10px}
+.admin-unified-stage .admin-procurement-buyer-queue .admin-price-section{margin:0!important}
+.admin-unified-stage .admin-procurement-supplier-fold,.admin-unified-stage .admin-receiving-product-tools{margin:18px 0 0;border:1px solid #e2e4e7;border-radius:11px;padding:0;background:#fff}
+.admin-unified-stage .admin-procurement-supplier-fold>summary,.admin-unified-stage .admin-receiving-product-tools>summary{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px 13px;background:#fff;border:0;border-radius:11px;font-size:13px;min-height:45px;font-weight:760;list-style:none;cursor:pointer;color:#444}
+.admin-unified-stage .admin-procurement-supplier-fold>summary::-webkit-details-marker,.admin-unified-stage .admin-receiving-product-tools>summary::-webkit-details-marker{display:none}
+.admin-unified-stage .admin-receiving-product-counter{font-size:11px;color:#888;font-weight:600;white-space:nowrap}
+.admin-unified-stage .admin-procurement-supplier-fold[open]>summary,.admin-unified-stage .admin-receiving-product-tools[open]>summary{border-bottom:1px solid #e9e9e9;background:#f8f9fa;border-radius:11px 11px 0 0}
+.admin-unified-stage .admin-procurement-supplier-fold .admin-subnav{padding:10px 12px}
+.admin-unified-stage .admin-procurement-supplier-fold>.admin-supplier-payments-center{padding:12px}
+.admin-unified-stage .admin-receiving-product-tools>.receipt-page{padding:12px}
+.admin-unified-stage .admin-receiving-product-tools .admin-page-heading{display:none}
+.admin-unified-stage .admin-receipt-buyer-top{font-size:12px;color:#777;padding:6px 0 12px}
+.admin-unified-stage .admin-receipt-buyer-top b{color:#30353a}
+.admin-unified-stage .admin-receipt-buyer-focus .receipt-person{padding:12px 10px;background:#fff;border:1px solid #e6e7e9;border-bottom:0}
+.admin-unified-stage .admin-receipt-buyer-focus .receipt-person:last-of-type{border-bottom:1px solid #e6e7e9}
+.admin-unified-stage .admin-receipt-buyer-focus .receipt-person-text strong{font-size:12px}
+.admin-unified-stage .admin-receipt-buyer-secondary{border-top:1px solid #eee;margin-top:12px;padding-top:10px}
+.admin-unified-stage .admin-receipt-buyer-secondary>summary{color:#777;font-size:11px;cursor:pointer}
+</style>
 </head>
 <body>
 <div id="app"><div class="loading">미니예나를 여는 중이에요…</div></div>
@@ -6494,7 +6516,7 @@ function render(){
   else el.open=false;
  });
  adminScrollPositions.forEach(([selector,left])=>{const el=app.querySelector(selector);if(el)el.scrollLeft=left;});
- if(state.page==='admin'&&state.tab==='quotes')updateAdminOrderSearch();
+ if(state.page==='admin'&&['quotes','payments','receipts'].includes(state.tab))updateAdminOrderSearch();
  if(state.page==='admin'&&state.tab==='receipts')updateReceiptSearch();
  const categoryList=app.querySelector('.shop-category-list');
  if(categoryList)categoryList.scrollLeft=categoryScrollBefore;
@@ -7067,37 +7089,49 @@ function renderAdminHome(){
  </section>`;
 }
 
+function renderSharedAdminOrdersToolbar(){
+ return `<div class="admin-orders-toolbar">
+  <div class="admin-orders-search">
+   <input type="search" id="admin-order-search" aria-label="주문 검색" autocomplete="off" placeholder="주문자 · 아기 · 상품명 검색" value="${esc(state.adminOrderSearch||'')}">
+   <button type="button" data-action="clear-admin-order-search" class="${state.adminOrderSearch?'':'hidden'}" aria-label="검색어 지우기">×</button>
+  </div>
+   <button type="button" class="admin-clean-utility" data-action="open-admin-order-filters" aria-label="상세 필터 열기"><span aria-hidden="true">☷</span><span>필터</span></button>
+  </div>`;
+}
+function renderAdminReceiptBuyerDetails(group){
+ const receiptIndex=new Map(receiptRows().map(x=>[x.i.id,x]));
+ const lines=group.flatMap(q=>(q.items||[]).map(i=>receiptIndex.get(i.id)).filter(Boolean));
+ const pending=lines.reduce((s,x)=>s+(x.i.fulfillment==='sold_out'?0:x.pending),0);
+ return `<div class="receipt-group admin-receipt-buyer-focus" data-receipt-group="buyer-${esc(group[0].id)}">
+   <div class="admin-receipt-buyer-top">미입고 <b>${pending}개</b> · ${lines.length}종</div>
+   ${lines.map(x=>renderReceiptRow(x,'buyer')).join('')||'<div class="smallnote">입고할 품목이 없어요.</div>'}
+   <details class="admin-receipt-buyer-secondary"><summary>주문 상세·기타 수정</summary>
+     ${group.map(q=>renderAdminQuoteCard(q)).join('')}
+   </details></div>`;
+}
 function renderAdminPayments(){
- // Shipping-fee allocation is an occasional task; when every current item
- // has an allocation, go straight to the day-to-day payment/order workspace.
  const ready=state.productPrivateReady&&state.supplierBatchesReady;
  const pending=ready?supplierFreightProgress().filter(p=>p.remaining>0):[];
  const hasAllocationWork=!ready||pending.length>0;
  if(ready&&!hasAllocationWork&&state.filter==='buy_now')state.filter='supplier_payments';
  const selected=hasAllocationWork&&state.filter==='buy_now'?'buy_now':'supplier_payments';
  const all=selected==='buy_now'?state.quotes.filter(q=>!q.instant_purchase&&isRoundBuyer(q)&&!isFinishedOrder(q)&&
-  (q.items||[]).some(item=>!!supplierItemStore(item)&&
-   item.fulfillment!=='sold_out'&&!item.supplier_ordered_at&&!q.supplier_ordered_at&&
-   !supplierItemBatch(item.id))):[];
- return `<section class="admin-procurement-page">
-  <div class="admin-page-heading"><h3>도매 입금·발주</h3></div>
-  ${hasAllocationWork?`<nav class="admin-subnav" aria-label="도매 관리 메뉴">
-   <button type="button" data-filter="buy_now" class="${selected==='buy_now'?'active':''}">배송비 배분${ready?' · '+pending.length+'곳':''}</button>
-   <button type="button" data-filter="supplier_payments" class="${selected==='supplier_payments'?'active':''}">입금·발주</button>
-  </nav>`:''}
-  ${selected==='buy_now'?
-    `${renderSupplierBulkManager()}
-      ${all.length?`<details class="admin-optional-orders"><summary>미배분 관련 주문 보기 · ${all.length}건</summary>
-      ${renderAdminQuoteFlatSection(sameRoundGroups(all),'')}</details>`:''}`:
-    renderProcurementBuyerQueue()+
-     `<details class="admin-procurement-supplier-fold" data-fold-key="procurement-supplier-management">
-       <summary><span>도매처별 발주 처리</span><span aria-hidden="true">⌄</span></summary>
-       ${renderSupplierPaymentCenter()}
-      </details>`}
- </section>`;
+  (q.items||[]).some(item=>!!supplierItemStore(item)&&item.fulfillment!=='sold_out'&&!item.supplier_ordered_at&&!q.supplier_ordered_at&&!supplierItemBatch(item.id))):[];
+ return `<section class="admin-quote-workspace admin-orders-page admin-unified-stage admin-procurement-page">
+   ${renderSharedAdminOrdersToolbar()}
+   ${renderProcurementBuyerQueue()}
+   <details class="admin-procurement-supplier-fold" data-fold-key="procurement-supplier-management">
+    <summary><span>도매처별 발주 처리</span><span aria-hidden="true">⌄</span></summary>
+    ${hasAllocationWork?`<nav class="admin-subnav" aria-label="도매 관리 메뉴">
+      <button type="button" data-filter="buy_now" class="${selected==='buy_now'?'active':''}">배송비 배분${ready?' · '+pending.length+'곳':''}</button>
+      <button type="button" data-filter="supplier_payments" class="${selected==='supplier_payments'?'active':''}">입금·발주</button></nav>`:''}
+    ${selected==='buy_now'?renderSupplierBulkManager()+
+      (all.length?`<details class="admin-optional-orders"><summary>미배분 관련 주문 보기 · ${all.length}건</summary>${renderAdminQuoteFlatSection(sameRoundGroups(all),'')}</details>`:''):renderSupplierPaymentCenter()}
+   </details>
+   <div id="admin-order-search-empty" class="empty hidden">검색 결과가 없어요.</div>
+   <div id="admin-order-search-match" class="admin-orders-match" role="status"></div>
+  </section>`;
 }
-
-
 function receiptRows(){
  const rows=[];
  for(const q of state.quotes){
@@ -7128,11 +7162,11 @@ function receiptVisibleRows(){
    (state.receiptView==='all'||(state.receiptView==='pending'&&x.pending>0)||
      (state.receiptView==='received'&&x.received>0&&x.pending===0)));
 }
-function renderReceiptRow(x){
+function renderReceiptRow(x,context=''){
  const q=x.q,i=x.i;
  const done=x.pending===0&&i.fulfillment!=='sold_out';
  const sold=i.fulfillment==='sold_out';
- const who=state.receiptGroupBy==='buyer'?i.product_name+' · '+i.color+' / '+i.size:q.buyer_name+' · '+(q.baby_name||'아기 이름 미입력');
+ const who=context==='buyer'?(i.store_name||'브랜드')+' · '+(i.product_name||'상품')+' · '+i.color+' / '+i.size:state.receiptGroupBy==='buyer'?i.product_name+' · '+i.color+' / '+i.size:q.buyer_name+' · '+(q.baby_name||'아기 이름 미입력');
  const method=state.receiptGroupBy==='buyer'?x.vendor:q.delivery_method==='pickup'?'직접수령':q.delivery_method==='courier'?'택배':'수령 미설정';
  let action='<span class="receipt-label">품절</span>';
  if(!sold&&x.qty===1){
@@ -7152,7 +7186,7 @@ function renderReceiptRow(x){
   '<small>'+(sold?'품절':done?'입고 완료':i.fulfillment==='delayed'?'미송':x.received?'부분입고':'미입고')+(i.supplier_ordered_at?' · 발주완료':' · 발주 여부 확인')+'</small></div>'+
   '<div class="receipt-person-buttons">'+action+extra+'</div></div>';
 }
-function renderAdminReceipts(){
+function renderAdminReceiptProducts(){
  const all=receiptRows(),tot=receiptTotals(),vendors=[...new Set(all.map(x=>x.vendor))].sort((a,b)=>a.localeCompare(b,'ko'));
  const rows=receiptVisibleRows(),groups=new Map();
  for(const x of rows){const k=receiptKey(x);if(!groups.has(k))groups.set(k,[]);groups.get(k).push(x);}
@@ -7186,10 +7220,25 @@ function renderAdminReceipts(){
  html+='<div class="receipt-search-empty hidden">검색 결과가 없어요.</div></section>';
  return html;
 }
+function renderAdminReceipts(){
+ const buyers=adminVisibleOrders().filter(q=>adminOrderJourneyStep(q)==='journey_receiving');
+ const groups=adminViewGroups(buyers),tot=receiptTotals();
+ return `<section class="admin-quote-workspace admin-orders-page admin-unified-stage admin-receiving-stage">
+  ${renderSharedAdminOrdersToolbar()}
+  <div class="admin-orders-title-row"><div class="admin-orders-list-title"><strong>입고 대기</strong><span>${buyers.length}건</span></div><span class="admin-order-list-sort">최근 주문순</span></div>
+  ${groups.length?renderAdminQuoteFlatSection(groups,'','saved'):'<div class="empty">입고를 기다리는 주문이 없어요.</div>'}
+  <details class="admin-receiving-product-tools" data-fold-key="receiving-product-tools">
+   <summary><span>상품별 입고 체크 · 일괄 처리</span><span class="admin-receiving-product-counter">미입고 ${tot.pending}개　⌄</span></summary>
+   ${renderAdminReceiptProducts()}
+  </details>
+  <div id="admin-order-search-empty" class="empty hidden">검색 결과가 없어요.</div>
+  <div id="admin-order-search-match" class="admin-orders-match" role="status"></div>
+ </section>`;
+}
 function updateReceiptSearch(){
  const query=String(state.receiptSearch||'').trim().toLocaleLowerCase('ko-KR');
  let rowCount=0,groupCount=0;
- for(const group of app.querySelectorAll('.receipt-group')){
+ for(const group of app.querySelectorAll('.receipt-page .receipt-group')){
   let matched=0;
   for(const row of group.querySelectorAll('[data-receipt-row]')){
    const show=!query||String(row.dataset.receiptSearch||'').includes(query);
@@ -9537,11 +9586,11 @@ function renderCollapsibleAdminOrder(group,section){
    <span class="admin-order-fold-chevron" aria-hidden="true"></span>
   </summary>
   <div class="admin-order-fold-body">
-   ${!shippingFocus&&group.some(q=>q.delivery_method==='courier')?`<details class="admin-courier-address" ${state.filter==='wholesale_completed'&&state.adminShippingMethod==='courier'?'open':''}>
+   ${state.tab!=='receipts'&&!shippingFocus&&group.some(q=>q.delivery_method==='courier')?`<details class="admin-courier-address" ${state.filter==='wholesale_completed'&&state.adminShippingMethod==='courier'?'open':''}>
       <summary>📍 배송지 보기 · ${esc((group.find(q=>q.delivery_method==='courier')||root).recipient_name||root.buyer_name||'수령인')}</summary>
       ${group.filter(q=>q.delivery_method==='courier').filter((q,i,rows)=>rows.findIndex(x=>String(x.postal_code||'')+'|'+String(x.address_line1||'')+'|'+String(x.address_line2||'')===String(q.postal_code||'')+'|'+String(q.address_line1||'')+'|'+String(q.address_line2||''))===i).map(q=>`<div class="admin-courier-address-info"><strong>${esc(q.recipient_name||q.buyer_name||'받는 사람 미입력')}</strong><span>${esc(q.contact||'연락처 미입력')}</span><p>${esc(q.postal_code||'우편번호 미입력')} · ${esc([q.address_line1,q.address_line2].filter(Boolean).join(' ')||'주소 미입력')}</p>${q.delivery_note?`<small>배송 요청사항 · ${esc(q.delivery_note)}</small>`:''}</div>`).join('')}
      </details>`:''}
-   ${shippingFocus?renderAdminShippingFocus(group[0]):group.length===1&&['delivery_shipped','delivery_completed','journey_shipping','journey_done'].includes(state.filter)&&['new','preparing'].includes(workflowStage(group[0]))&&adminPartialParcels(group[0]).length?renderAdminShippingFocus(group[0]):group.length>1?(isAdminViewGroup(group)?renderAdminViewGroupCard(group):group.every(q=>workflowStage(q)==='completed'&&q.delivery_method==='courier'&&String(q.tracking_number||'').replace(/[\\s-]/g,'')===String(group[0].tracking_number||'').replace(/[\\s-]/g,''))?
+   ${state.tab==='receipts'?renderAdminReceiptBuyerDetails(group):shippingFocus?renderAdminShippingFocus(group[0]):group.length===1&&['delivery_shipped','delivery_completed','journey_shipping','journey_done'].includes(state.filter)&&['new','preparing'].includes(workflowStage(group[0]))&&adminPartialParcels(group[0]).length?renderAdminShippingFocus(group[0]):group.length>1?(isAdminViewGroup(group)?renderAdminViewGroupCard(group):group.every(q=>workflowStage(q)==='completed'&&q.delivery_method==='courier'&&String(q.tracking_number||'').replace(/[\\s-]/g,'')===String(group[0].tracking_number||'').replace(/[\\s-]/g,''))?
     '<div class="admin-completed-group"><p class="smallnote">동일 송장으로 배송 완료 · '+esc(group[0].tracking_number||'')+' · 원주문 '+group.length+'건</p>'+
     renderAdminShippingFocus({...group[0],items:group.flatMap(q=>q.items||[])})+
     '<details class="admin-view-group-original"><summary>원주문 '+group.length+'건 · 개별 수정</summary>'+

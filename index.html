@@ -8093,10 +8093,14 @@ function adminOrderItemName(i){
  return (store?esc(store)+' · ':'')+esc(i.product_name||'상품명 미입력');
 }
 /* Real purchasing supplier is administrator-only metadata, never buyer-facing. */
-function adminActualSupplierLabel(item){
+function adminActualSupplierLabel(item,quote=null){
  if(!state.admin||state.page!=='admin')return '';
  if(!state.productPrivateReady)return '<small class="compact-order-source">실제 사입처 · 조회 중</small>';
- const supplier=String(state.productPrivate?.[item.product_id]?.supplier_name||'').trim();
+ // Display-only supplier clarification for this specific order. Keep the brand, product
+ // sourcing record and wholesale allocation metadata unchanged.
+ const isJieunSonataHat=quote?.id==='63858c44-6fdc-4963-b1a0-7060dc482a41'
+   &&item?.product_id==='d563930d-4cf5-4428-abaf-dd4db08a967b';
+ const supplier=isJieunSonataHat?'소나타':String(state.productPrivate?.[item.product_id]?.supplier_name||'').trim();
  return '<small class="compact-order-source">실제 사입처 · <strong>'+esc(supplier||'미등록')+'</strong></small>';
 }
 function renderNamedBuyerManualFreight(q){
@@ -8686,7 +8690,7 @@ function renderAdminPickupProductSection(q){
  const pending=(q.items||[]).filter(i=>i.fulfillment!=='delivered');
  const renderLines=items=>items.map(i=>'<div class="compact-order-product">'+
   '<span><b>'+adminOrderItemName(i)+'</b><small>'+esc(i.color)+' / '+esc(i.size)+' · '+Number(i.quantity||0)+
-  '개'+(i.fulfillment==='sold_out'?' · 품절':i.fulfillment==='received'?' · 입고완료':'')+'</small></span>'+
+  '개'+(i.fulfillment==='sold_out'?' · 품절':i.fulfillment==='received'?' · 입고완료':'')+'</small>'+adminActualSupplierLabel(i,q)+'</span>'+
   '<strong>'+ (i.unit_price==null?'가격 미정':money(Number(i.unit_price)*Number(i.quantity||0)))+'</strong></div>').join('');
  return '<div class="compact-order-products">'+(renderLines(pending)||'<p class="smallnote">남은 상품이 없어요.</p>')+'</div>'+
   (done.length?'<details class="admin-early-pickup-done"><summary>✓ 먼저 픽업 완료 '+done.length+'종</summary><div class="compact-order-products">'+renderLines(done)+'</div></details>':'')+
@@ -8725,7 +8729,7 @@ function renderAdminQuoteCard(q){
   ${renderAdminDispatchNotice(q)}
   ${q.status==='confirmed'&&q.delivery_method==='pickup'?renderAdminPickupProductSection(q):
   adminPartialParcels(q).length&&['new','preparing'].includes(workflowStage(q))?adminSplitInventoryMarkup(q):`<div class="compact-order-products">${(q.items||[]).map(i=>`<div class="compact-order-product">
-   <span><b>${adminOrderItemName(i)}</b><small>${esc(i.color)} / ${esc(i.size)} · ${Number(i.quantity)||0}개${i.fulfillment==='sold_out'?' · 품절':''}</small>${adminActualSupplierLabel(i)}</span>
+   <span><b>${adminOrderItemName(i)}</b><small>${esc(i.color)} / ${esc(i.size)} · ${Number(i.quantity)||0}개${i.fulfillment==='sold_out'?' · 품절':''}</small>${adminActualSupplierLabel(i,q)}</span>
    <strong>${i.unit_price==null?'가격 미정':money(Number(i.unit_price)*(Number(i.quantity)||0))}</strong>${window.MiniPartialShipping&&window.MiniPartialShipping.sentQty(i.id,state.partialParcels||[])>0?'<small class="tiny">📦 먼저 발송 '+window.MiniPartialShipping.sentQty(i.id,state.partialParcels||[])+'개</small>':''}
   </div>`).join('')}</div>`}
   ${q.status==='confirmed'?adminReadyCourierActions([q]):''}

@@ -4965,6 +4965,9 @@ window.miniYenaOneSignalReady = new Promise(function(resolve) {
 #own-purchase-form select,#own-purchase-form input{width:100%;min-height:43px;border:1px solid #ddd;border-radius:9px;padding:10px;background:#fff}
 .own-cost{padding:12px;background:#f5f5f5;border-radius:10px;display:grid;gap:7px}.own-cost span{display:flex;justify-content:space-between;font-size:12px}.own-cost b{font-size:15px}
 @media(max-width:360px){.own-supplier-line{flex-wrap:wrap}.own-counter{margin-left:auto}}
+</style><style id="own-inline-add-20261111">
+.own-inline-add{align-self:flex-start;margin:5px 0 0;background:#f4f4f4;border:1px solid #e4e4e4;color:#333;font-size:11px;font-weight:720;border-radius:7px;padding:6px 9px}
+.own-inline-add:disabled{opacity:.35}
 </style></head>
 <body>
 <div id="app"><div class="loading">미니예나를 여는 중이에요…</div></div>
@@ -10936,7 +10939,7 @@ function renderSupplierPaymentCenter(){
    <summary><span><b>${esc(g.supplier)}</b><small>미발주 ${supplierOptionGroups(g.items).length}종 · ${g.qty}개 · 입금확인 ${g.ready.length}종</small><small class="admin-supplier-buyer-preview">${[...new Set(g.items.map(({q})=>q.buyer_name||'주문자'))].map(esc).join(' · ')}</small></span><span class="supplier-order-clean-progress">⌄</span></summary>
    <div class="supplier-order-clean-body">
     <p class="supplier-order-clean-note">실제 사입처 기준 · 기존 주문/바로구매 통합 · 배송비 재배분 없음</p>
-    ${supplierOptionGroups(g.items).map(group=>`<div class="supplier-order-option-group"><div class="supplier-order-option-head"><span class="supplier-order-option-desc"><b>${esc(group.item.store_name||'가게명 미입력')} · ${esc(group.item.product_name||'상품')}</b><small>${esc(group.item.color||'-')} / ${esc(group.item.size||'-')}</small></span><strong class="supplier-order-option-total">총 ${group.qty}개</strong></div>
+    ${supplierOptionGroups(g.items).map(group=>`<div class="supplier-order-option-group"><div class="supplier-order-option-head"><span class="supplier-order-option-desc"><b>${esc(group.item.store_name||'가게명 미입력')} · ${esc(group.item.product_name||'상품')}</b><small>${esc(group.item.color||'-')} / ${esc(group.item.size||'-')}</small><button type="button" class="own-inline-add" data-action="own-open" data-product="${esc(group.item.product_id||'')}" data-color="${esc(group.item.color||'')}" data-size="${esc(group.item.size||'')}" ${group.item.product_id?'':'disabled'}>＋ 내 수량</button></span><strong class="supplier-order-option-total">총 ${group.qty}개</strong></div>
     <div class="supplier-order-option-buyers">${group.rows.map(({q,item})=>`<div class="supplier-order-option-buyer"><span class="supplier-order-option-buyer-name">${esc(q.buyer_name||'구매자')}</span><b class="supplier-order-option-buyer-qty">×${Number(item.quantity||0)}</b><small class="supplier-order-option-buyer-status ${instantDomesticEligible({q,item})?'is-ready':'is-pending'}">${instantDomesticEligible({q,item})?'입금 확인':'입금·변경 확인'}</small></div>`).join('')}</div></div>`).join('')}
     <div class="supplier-order-clean-actions">
      <button type="button" class="btn supplier-order-clean-copy" data-action="copy-instant-procurement" data-supplier="${esc(g.supplier)}" ${g.ready.length?'':'disabled'}>입금확인 발주서 복사</button>
@@ -10953,7 +10956,7 @@ function renderSupplierPaymentCenter(){
   <div class="supplier-order-clean-body">
    <p class="supplier-order-clean-note">입금 확인 ${eligible.length}종 · 확인 대기 ${items.length-eligible.length}종</p>
    ${supplierOptionGroups(items).map(group=>`<div class="supplier-order-option-group">
-    <div class="supplier-order-option-head"><span class="supplier-order-option-desc"><b>${esc(group.item.store_name||'가게명 미입력')} · ${esc(group.item.product_name||'상품')}</b><small>${esc(group.item.color||'-')} / ${esc(group.item.size||'-')}</small></span><strong class="supplier-order-option-total">총 ${group.qty}개</strong></div>
+    <div class="supplier-order-option-head"><span class="supplier-order-option-desc"><b>${esc(group.item.store_name||'가게명 미입력')} · ${esc(group.item.product_name||'상품')}</b><small>${esc(group.item.color||'-')} / ${esc(group.item.size||'-')}</small><button type="button" class="own-inline-add" data-action="own-open" data-product="${esc(group.item.product_id||'')}" data-color="${esc(group.item.color||'')}" data-size="${esc(group.item.size||'')}" ${group.item.product_id?'':'disabled'}>＋ 내 수량</button></span><strong class="supplier-order-option-total">총 ${group.qty}개</strong></div>
     <div class="supplier-order-option-buyers">${group.rows.map(({q,item})=>`<div class="supplier-order-option-buyer"><span class="supplier-order-option-buyer-name">${esc(q.buyer_name||'구매자')}</span><b class="supplier-order-option-buyer-qty">×${Number(item.quantity||0)}</b><small class="supplier-order-option-buyer-status ${supplierOrderPaidForCopy(q)?'is-ready':'is-pending'}">${esc(supplierOrderRowStatus(q))}</small></div>`).join('')}</div>
    </div>`).join('')}
    <div class="supplier-order-clean-actions">
@@ -13431,7 +13434,64 @@ async function click(e){
  if(e.target.matches?.('[data-product-store-search]')){productStoreSearchResults(e.target,true);return;}
  if(!e.target.closest?.('[data-product-store-picker]'))closeProductStoreSearch(app.querySelector('#product-form'));
  const pg=e.target.closest('[data-page]');if(pg){goto(pg.dataset.page);if(pg.classList.contains('brand-home'))window.scrollTo({top:0,behavior:'auto'});return}const b=e.target.closest('[data-action]');if(!b)return;const a=b.dataset.action,id=b.dataset.id;try{
- if(a==='open-partial-shipping'){
+ 
+if(a==='own-open'){
+ if(!state.admin||state.page!=='admin')throw Error('관리자 전용 기능이에요.');
+ const product=state.products.find(p=>p.id===b.dataset.product);
+ state.modal={type:'own-purchase',productId:product?.id||'',color:String(b.dataset.color||''),size:String(b.dataset.size||'')};
+ render();return;
+}
+if(a==='own-choose-product'){
+ if(!state.admin||state.modal?.type!=='own-purchase')throw Error('관리자 전용 기능이에요.');
+ state.modal.productId=String(b.dataset.product||'');state.modal.color='';state.modal.size='';
+ render();return;
+}
+if(a==='own-back'){
+ if(state.admin&&state.modal?.type==='own-purchase'){state.modal.productId='';state.modal.color='';state.modal.size='';render();}
+ return;
+}
+if(a==='own-copy'){
+ if(!state.admin||!state.productPrivateReady||!state.ownPurchasesReady)throw Error('관리자 내 사입 정보가 필요해요.');
+ const supplier=String(b.dataset.supplier||''),rows=ownCombinedRows(supplier);
+ if(!rows.length||rows.some(r=>r.unit===null||r.unit===undefined))throw Error('발주 원가를 확인해 주세요.');
+ await copy(formatWholesaleOrderCopy(rows,true,'실제 사입처',true));
+ notif('고객 주문과 내 원가 사입을 합쳐서 복사했어요.');return;
+}
+if(a==='own-qty'){
+ if(!state.admin||!state.ownPurchasesReady)throw Error('관리자 내 사입을 새로고침해 주세요.');
+ if(busy)return;
+ const row=ownPending().find(r=>r.id===id),delta=Number(b.dataset.delta);
+ if(!row||![-1,1].includes(delta)||row.quantity+delta<1||row.quantity+delta>100)throw Error('내 수량이 올바르지 않아요.');
+ busy=true;
+ try{
+  const changed=await api('/rest/v1/gq_admin_personal_purchase_items_v140?id=eq.'+encodeURIComponent(id)+'&quantity=eq.'+row.quantity+'&ordered_at=is.null',{
+   method:'PATCH',admin:true,body:{quantity:row.quantity+delta}});
+  if(!Array.isArray(changed)||changed.length!==1)throw Error('다른 화면에서 수량이 변경됐어요. 새로고침해 주세요.');
+  await loadOwnPurchases();render();
+ }finally{busy=false}
+ return;
+}
+if(a==='own-delete'){
+ if(!state.admin||!state.ownPurchasesReady)throw Error('관리자 전용 기능이에요.');
+ const row=ownPending().find(r=>r.id===id);
+ if(!row)throw Error('이미 발주했거나 삭제한 상품이에요.');
+ if(!window.confirm('내 사입 '+row.product_name+' '+row.quantity+'개를 삭제할까요?'))return;
+ const result=await api('/rest/v1/gq_admin_personal_purchase_items_v140?id=eq.'+encodeURIComponent(id)+'&ordered_at=is.null',{method:'DELETE',admin:true});
+ if(!Array.isArray(result)||result.length!==1)throw Error('삭제 결과를 확인하지 못했어요.');
+ await loadOwnPurchases();render();notif('내 사입을 삭제했어요.');return;
+}
+if(a==='own-ordered'){
+ if(!state.admin||!state.ownPurchasesReady)throw Error('관리자 전용 기능이에요.');
+ const supplier=String(b.dataset.supplier||''),rows=ownPending(supplier),ids=rows.map(r=>r.id);
+ if(!rows.length)throw Error('이 거래처에 미발주 내 사입이 없어요.');
+ const qty=rows.reduce((n,r)=>n+r.quantity,0);
+ if(!window.confirm(supplier+' 내 사입 '+qty+'개를 실제로 발주 완료했나요?\n\n고객 주문 상태는 변경하지 않아요.'))return;
+ const result=await api('/rest/v1/gq_admin_personal_purchase_items_v140?id=in.('+ids.join(',')+')&ordered_at=is.null',{
+  method:'PATCH',admin:true,body:{ordered_at:new Date().toISOString()}});
+ if(!Array.isArray(result)||result.length!==ids.length)throw Error('일부 발주완료 기록을 확인하지 못했어요. 새로고침해 주세요.');
+ await loadOwnPurchases();render();notif('내 사입 '+qty+'개 발주 완료로 표시했어요.');return;
+}
+if(a==='open-partial-shipping'){
   if(!state.admin||state.page!=='admin'||!window.MiniPartialShipping)throw Error('관리자 부분배송 기능을 새로고침해 주세요.');
   const quote=state.quotes.find(q=>q.id===id);
   if(!quote)throw Error('주문을 찾지 못했어요.');
@@ -14892,7 +14952,7 @@ async function submit(e){const f=e.target;
 // All in-app forms are handled by JavaScript. Never allow a native browser GET
 // to replace ?page=admin and appear to sign the administrator out.
 e.preventDefault();
-if(!f.dataset.lowerPriceReport&&!f.dataset.sizeChartForm&&!f.dataset.customerEmail&&!['new-arrival-push-form','gmail-settings-form','hero-photo-form','reject-request-form','admin-pin-form','pin-register-form','pin-lookup-form','import-track-form','pick','request','store-form','product-form','login','suggest-form','approve-form','bundle-form','merge-shipping-form','admin-early-pickup-form','edit-delivery-form','bulk-supplier-shipping-form','admin-payment-popup-form','admin-bundle-refund-form','admin-price-popup-form','admin-option-decision-form'].includes(f.id)&&!f.dataset.itemOptions&&!f.dataset.buyerOptionRequest&&!f.dataset.price&&!f.dataset.payment&&!f.dataset.shipping&&!f.dataset.supplierShipping&&!f.dataset.ship&&!f.dataset.bundleShip)return;if(busy)return;busy=true;
+if(!f.dataset.lowerPriceReport&&!f.dataset.sizeChartForm&&!f.dataset.customerEmail&&!['new-arrival-push-form','gmail-settings-form','hero-photo-form','reject-request-form','admin-pin-form','pin-register-form','pin-lookup-form','import-track-form','pick','request','store-form','product-form','login','suggest-form','approve-form','bundle-form','merge-shipping-form','admin-early-pickup-form','edit-delivery-form','bulk-supplier-shipping-form','admin-payment-popup-form','admin-bundle-refund-form','admin-price-popup-form','admin-option-decision-form','own-purchase-form'].includes(f.id)&&!f.dataset.itemOptions&&!f.dataset.buyerOptionRequest&&!f.dataset.price&&!f.dataset.payment&&!f.dataset.shipping&&!f.dataset.supplierShipping&&!f.dataset.ship&&!f.dataset.bundleShip)return;if(busy)return;busy=true;
 const isLoginSubmit=f.id==='login';
 if(isLoginSubmit){
  const submitButton=f.querySelector('button[type="submit"]');
@@ -14901,7 +14961,22 @@ if(isLoginSubmit){
  const loginStatus=f.querySelector('[data-login-status]');
  if(loginStatus){loginStatus.classList.remove('is-error');loginStatus.textContent='로그인 확인 및 주문 정보 불러오는 중…';}
 }
-const data=new FormData(f);try{if(f.id==='admin-bundle-refund-form'){
+const data=new FormData(f);try{if(f.id==='own-purchase-form'){
+ if(!state.admin||state.page!=='admin'||state.modal?.type!=='own-purchase'||!state.ownPurchasesReady||!state.productPrivateReady)throw Error('관리자 전용 사입 입력에서 다시 시도해 주세요.');
+ const p=state.products.find(x=>x.id===f.dataset.product),meta=p?state.productPrivate[p.id]:null;
+ const color=String(data.get('color')||''),size=String(data.get('size')||''),qty=Number(data.get('quantity'));
+ if(!p||meta?.source_type!=='namdaemun'||!String(meta.supplier_name||'').trim()||
+  !Array.isArray(p.options?.[color])||!p.options[color].includes(size))throw Error('상품·색상·사이즈를 확인해 주세요.');
+ if(!Number.isSafeInteger(qty)||qty<1||qty>100)throw Error('내 수량을 1~100개로 입력해 주세요.');
+ const cost=adminWholesaleUnitCost({product_id:p.id,color,size},meta);
+ if(cost===null)throw Error('선택한 옵션의 원가가 등록되어 있지 않아요.');
+ const row={product_id:p.id,supplier_name:meta.supplier_name,store_name:ownStore(p),product_name:p.name,
+  color,size,quantity:qty,unit_cost:cost};
+ const saved=await api('/rest/v1/gq_admin_personal_purchase_items_v140',{method:'POST',admin:true,body:row});
+ if(!Array.isArray(saved)||saved.length!==1)throw Error('내 사입 저장 결과를 확인할 수 없어요.');
+ state.modal=null;await loadOwnPurchases();render();
+ notif('내 사입 '+qty+'개 · 원가 '+money(qty*cost)+' 추가했어요. 구매자에게는 표시되지 않아요.');
+}else if(f.id==='admin-bundle-refund-form'){
  if(!connected||!state.admin||state.page!=='admin'||state.modal?.type!=='admin-bundle-refund'||
     state.modal.id!==f.dataset.rootId)throw Error('관리자 환불 확인 창에서 다시 시도해 주세요.');
  if(!data.has('transferred'))throw Error('실제 환불을 완료한 경우에만 체크해 주세요.');
@@ -15348,6 +15423,13 @@ else if(f.dataset.payment){
  busy=false;
 }}
 async function change(e){const x=e.target;
+if(state.admin&&state.modal?.type==='own-purchase'&&x.id==='own-color'){
+ const p=state.products.find(p=>p.id===state.modal.productId),sizes=Array.isArray(p?.options?.[x.value])?p.options[x.value]:[];
+ const select=app.querySelector('#own-size');
+ if(select)select.innerHTML=sizes.map(z=>'<option value="'+esc(z)+'">'+esc(z)+'</option>').join('');
+ ownPreview();return;
+}
+if(state.admin&&state.modal?.type==='own-purchase'&&x.id==='own-size'){ownPreview();return;}
 if(state.page==='admin'&&state.admin&&x.matches?.('[data-admin-pickup-store]')){
  const group=x.closest('.admin-early-pickup-group');
  group?.querySelectorAll('input[name="pickup_item_id"]').forEach(box=>box.checked=x.checked);
@@ -15521,6 +15603,12 @@ function updateShopSearchResults(){
  setupShopMoreObserver();
 }
 function input(e){
+ if(state.admin&&state.modal?.type==='own-purchase'&&e.target.id==='own-product-search'){
+  const key=e.target.value.trim().toLocaleLowerCase('ko-KR');
+  app.querySelectorAll('.own-product-picker>button').forEach(row=>{row.hidden=!!key&&!String(row.dataset.ownSearch||'').includes(key)});
+  return;
+ }
+ if(state.admin&&state.modal?.type==='own-purchase'&&e.target.matches?.('#own-purchase-form input[name="quantity"]')){ownPreview();return;}
  if(e.target.id==='receipt-search'&&state.admin&&state.tab==='receipts'){
   state.receiptSearch=e.target.value;updateReceiptSearch();return;
  }

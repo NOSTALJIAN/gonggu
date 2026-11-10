@@ -7059,7 +7059,7 @@ function renderTrack(){
   // A product photo comes from the public catalog only. Do not expose private supplier information.
   const photoProduct=state.products.find(p=>p.id===i.product_id);
   const images=photoProduct?productPhotoUrls(photoProduct):[];
-  const photo=images.find(src=>!/\\.gif(?:[?#]|$)/i.test(src))||images[0]||'';
+  const photo=images.find(src=>!/\.gif(?:[?#]|$)/i.test(src))||images[0]||'';
   const thumb=photo?'<img class="buyer-track-item-thumb" src="'+esc(photo)+'" alt="" loading="lazy" decoding="async" width="62" height="62">'
    :'<span class="buyer-track-item-thumb buyer-track-item-thumb-empty" aria-hidden="true">사진 없음</span>';
   return '<article class="buyer-simple-item">'+

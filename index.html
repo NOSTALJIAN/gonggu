@@ -4911,7 +4911,13 @@ window.miniYenaOneSignalReady = new Promise(function(resolve) {
  .admin-procurement-item-row{padding:9px 8px}
 }
 </style>
-</head>
+<style id="admin-direct-procurement-20261111">
+.admin-procurement-page .admin-supplier-payments-center{padding:10px 9px}
+.admin-procurement-page .supplier-order-clean-card>summary{padding:11px 12px;min-height:0}
+.admin-procurement-page .supplier-order-clean-actions{gap:7px}
+.admin-procurement-page .supplier-order-clean-actions .btn{min-width:0;white-space:normal}
+@media(max-width:390px){.admin-procurement-page .supplier-order-clean-actions{grid-template-columns:1fr}}
+</style></head>
 <body>
 <div id="app"><div class="loading">미니예나를 여는 중이에요…</div></div>
 <script>
@@ -7291,27 +7297,18 @@ function renderAdminReceiptBuyerDetails(group){
    </details></div>`;
 }
 function renderAdminPayments(){
- const ready=state.productPrivateReady&&state.supplierBatchesReady;
- const pending=ready?supplierFreightProgress().filter(p=>p.remaining>0):[];
- const hasAllocationWork=!ready||pending.length>0;
- if(ready&&!hasAllocationWork&&state.filter==='buy_now')state.filter='supplier_payments';
- const selected=hasAllocationWork&&state.filter==='buy_now'?'buy_now':'supplier_payments';
- const all=selected==='buy_now'?state.quotes.filter(q=>!q.instant_purchase&&isRoundBuyer(q)&&!isFinishedOrder(q)&&
-  (q.items||[]).some(item=>!!supplierItemStore(item)&&item.fulfillment!=='sold_out'&&!item.supplier_ordered_at&&!q.supplier_ordered_at&&!supplierItemBatch(item.id))):[];
+ // Existing freight receipts/batches remain unchanged. No new allocation gate.
+ if(state.filter==='buy_now')state.filter='supplier_payments';
  return `<section class="admin-quote-workspace admin-orders-page admin-unified-stage admin-procurement-page">
-   ${renderSharedAdminOrdersToolbar()}
-   ${renderProcurementBuyerQueue()}
-   <details class="admin-procurement-supplier-fold" data-fold-key="procurement-supplier-management">
-    <summary><span>도매처별 발주 처리</span><span aria-hidden="true">⌄</span></summary>
-    ${hasAllocationWork?`<nav class="admin-subnav" aria-label="도매 관리 메뉴">
-      <button type="button" data-filter="buy_now" class="${selected==='buy_now'?'active':''}">배송비 배분${ready?' · '+pending.length+'곳':''}</button>
-      <button type="button" data-filter="supplier_payments" class="${selected==='supplier_payments'?'active':''}">입금·발주</button></nav>`:''}
-    ${selected==='buy_now'?renderSupplierBulkManager()+
-      (all.length?`<details class="admin-optional-orders"><summary>미배분 관련 주문 보기 · ${all.length}건</summary>${renderAdminQuoteFlatSection(sameRoundGroups(all),'')}</details>`:''):renderSupplierPaymentCenter()}
-   </details>
-   <div id="admin-order-search-empty" class="empty hidden">검색 결과가 없어요.</div>
-   <div id="admin-order-search-match" class="admin-orders-match" role="status"></div>
-  </section>`;
+  ${renderSharedAdminOrdersToolbar()}
+  ${renderProcurementBuyerQueue()}
+  <details class="admin-procurement-supplier-fold" data-fold-key="procurement-supplier-management">
+   <summary><span>도매처별 발주 처리</span><span aria-hidden="true">⌄</span></summary>
+   ${renderSupplierPaymentCenter()}
+  </details>
+  <div id="admin-order-search-empty" class="empty hidden">검색 결과가 없어요.</div>
+  <div id="admin-order-search-match" class="admin-orders-match" role="status"></div>
+ </section>`;
 }
 function receiptRows(){
  const rows=[];
@@ -10706,7 +10703,7 @@ function instantDomesticPendingRows(){
  if(!state.admin||!state.productPrivateReady)return [];
  const rows=[];
  for(const q of state.quotes){
-  if(!q.instant_purchase||q.status!=='confirmed'||q.supplier_ordered_at)continue;
+  if(q.status!=='confirmed'||q.supplier_ordered_at)continue;
   for(const item of q.items||[]){
    if(item.supplier_ordered_at||supplierItemBatch(item.id)||!['ordered','delayed'].includes(item.fulfillment))continue;
    const meta=state.productPrivate[item.product_id];
@@ -10720,7 +10717,7 @@ function instantDomesticPendingRows(){
 }
 function instantDomesticEligible(row){
  const {q,item}=row;
- return q.status==='confirmed'&&q.instant_purchase&&supplierOrderPaidForCopy(q)&&
+ return q.status==='confirmed'&&supplierOrderPaidForCopy(q)&&
   !q.cancel_requested_at&&!q.delivery_change_requested_at&&!pendingItemOptionRequests(q).length&&
   ['new','preparing'].includes(workflowStage(q))&&!item.supplier_ordered_at;
 }
@@ -10733,25 +10730,15 @@ function instantDomesticPendingGroups(){
  return [...grouped].sort(([a],[b])=>a.localeCompare(b,'ko')).map(([supplier,rows])=>{
   const items=sortSupplierOptionRows(rows);
   const ready=items.filter(instantDomesticEligible);
-  return {supplier,items,ready,qty:items.reduce((n,r)=>n+Number(r.item.quantity||0),0)};
+  return {supplier,items,ready,readyInstant:ready.filter(r=>r.q.instant_purchase),readyLegacy:ready.filter(r=>!r.q.instant_purchase),qty:items.reduce((n,r)=>n+Number(r.item.quantity||0),0)};
  });
 }
 function instantDomesticOrderText(group){
- const map=new Map();
- for(const {q,item} of group.items){
-  const key=JSON.stringify([item.store_name,item.product_name,item.color,item.size]);
-  if(!map.has(key))map.set(key,{item,qty:0,buyers:[],waiting:0});
-  const record=map.get(key),qty=Number(item.quantity)||0;
-  record.qty+=qty;
-  record.buyers.push((q.buyer_name||'구매자')+' ×'+qty);
-  if(!instantDomesticEligible({q,item}))record.waiting++;
- }
- return ['[남대문 즉시구매 발주 목록]','거래처: '+group.supplier,
-  ...[...map.values()].map(({item,qty,buyers,waiting})=>
-   [item.store_name,item.product_name,item.color,item.size,qty+'개'].join(' | ')+
-   '\n주문자: '+buyers.join(' · ')+(waiting?' (미입금/확인 대기 포함)':'')),
-  '※ 새 주소 구매 건입니다. 도매배송비는 상품 판매가에 포함돼 있으며 별도 고객 청구하지 않습니다.'
- ].join('\n');
+ const records=supplierOptionGroups(group.ready);
+ return ['[남대문 발주서 · 입금확인 상품만]','실제 사입처: '+group.supplier,
+  ...records.map(g=>[g.item.store_name,g.item.product_name,g.item.color,g.item.size,g.qty+'개'].join(' | ')+
+    '\n주문자: '+g.rows.map(r=>(r.q.buyer_name||'구매자')+' ×'+r.item.quantity).join(' · ')),
+  '※ 미입금 상품은 제외. 이미 기록한 배송비와 입금액은 변경하지 않습니다.'].join('\n');
 }
 /* The third operational step shows customers before supplier-aggregated purchasing. */
 /* Reuse the exact collapsible buyer cards from step 2 to avoid a second,
@@ -10781,8 +10768,9 @@ function renderSupplierPaymentCenter(){
   const china=chinaPendingProcurementGroups();
   const instant=instantDomesticPendingGroups();
   const chinaQty=china.reduce((n,g)=>n+g.qty,0);
+  const supplierCount=new Set([...domestic.map(({b})=>String(b.supplier||'').trim()),...instant.map(g=>g.supplier),...china.map(g=>g.supplier)].filter(Boolean)).size;
   return `<section class="admin-supplier-payments-center">
-  <div class="supplier-order-clean-head admin-supplier-overview"><strong>발주할 도매처</strong><span>${domestic.length+instant.length+china.length}곳</span></div>
+  <div class="supplier-order-clean-head admin-supplier-overview"><strong>발주할 도매처</strong><span>${supplierCount}곳</span></div>
 
   ${!state.productPrivateReady?'<p class="noticefail">사입 경로 정보를 불러오지 못했어요. 새로고침 후 확인해 주세요.</p>':''}
   ${china.length?`<div class="supplier-order-clean-list">${china.map(g=>`<details class="supplier-order-clean-card" data-fold-key="china-order-${esc(g.supplier)}">
@@ -10798,16 +10786,17 @@ function renderSupplierPaymentCenter(){
   </details>`).join('')}</div>`:''}
 
   ${instant.length?`<div class="supplier-order-clean-list">${instant.map(g=>`<details class="supplier-order-clean-card" data-fold-key="instant-domestic-${esc(g.supplier)}">
-   <summary><span><b>${esc(g.supplier)}</b><small>새주소 · ${supplierOptionGroups(g.items).length}종 · ${g.qty}개 · 발주가능 ${g.ready.length}종</small><small class="admin-supplier-buyer-preview">${[...new Set(g.items.map(({q})=>q.buyer_name||'주문자'))].map(esc).join(' · ')}</small></span><span class="supplier-order-clean-progress">⌄</span></summary>
+   <summary><span><b>${esc(g.supplier)}</b><small>미발주 ${supplierOptionGroups(g.items).length}종 · ${g.qty}개 · 입금확인 ${g.ready.length}종</small><small class="admin-supplier-buyer-preview">${[...new Set(g.items.map(({q})=>q.buyer_name||'주문자'))].map(esc).join(' · ')}</small></span><span class="supplier-order-clean-progress">⌄</span></summary>
    <div class="supplier-order-clean-body">
-    <p class="supplier-order-clean-note">새 주소 주문 · 구매자 도매배송비 추가 청구 없음</p>
+    <p class="supplier-order-clean-note">실제 사입처 기준 · 기존 주문/바로구매 통합 · 배송비 재배분 없음</p>
     ${supplierOptionGroups(g.items).map(group=>`<div class="supplier-order-option-group"><div class="supplier-order-option-head"><span class="supplier-order-option-desc"><b>${esc(group.item.store_name||'가게명 미입력')} · ${esc(group.item.product_name||'상품')}</b><small>${esc(group.item.color||'-')} / ${esc(group.item.size||'-')}</small></span><strong class="supplier-order-option-total">총 ${group.qty}개</strong></div>
     <div class="supplier-order-option-buyers">${group.rows.map(({q,item})=>`<div class="supplier-order-option-buyer"><span class="supplier-order-option-buyer-name">${esc(q.buyer_name||'구매자')}</span><b class="supplier-order-option-buyer-qty">×${Number(item.quantity||0)}</b><small class="supplier-order-option-buyer-status ${instantDomesticEligible({q,item})?'is-ready':'is-pending'}">${instantDomesticEligible({q,item})?'입금 확인':'입금·변경 확인'}</small></div>`).join('')}</div></div>`).join('')}
     <div class="supplier-order-clean-actions">
-     <button type="button" class="btn supplier-order-clean-copy" data-action="copy-instant-procurement" data-supplier="${esc(g.supplier)}">발주서 복사</button>
-     <button type="button" class="btn supplier-order-clean-finish" data-action="complete-instant-procurement" data-supplier="${esc(g.supplier)}" ${g.ready.length?'':'disabled'}>입금확인 ${g.ready.length}종 발주 완료</button>
+     <button type="button" class="btn supplier-order-clean-copy" data-action="copy-instant-procurement" data-supplier="${esc(g.supplier)}" ${g.ready.length?'':'disabled'}>입금확인 발주서 복사</button>
+     ${g.readyInstant.length?'<button type="button" class="btn supplier-order-clean-finish" data-action="complete-instant-procurement" data-supplier="'+esc(g.supplier)+'">바로구매 '+g.readyInstant.length+'종 발주 완료</button>':''}
+     ${g.readyLegacy.length?'<button type="button" class="btn supplier-order-clean-finish" data-action="complete-legacy-domestic-procurement" data-supplier="'+esc(g.supplier)+'">기존 주문 '+g.readyLegacy.length+'종 발주 완료</button>':''}
     </div>
-    ${g.items.length!==g.ready.length?'<p class="supplier-order-clean-finish-note">미입금 상품은 발주 완료에서 자동 제외돼요.</p>':''}
+    ${g.items.length!==g.ready.length?'<p class="supplier-order-clean-finish-note">입금·변경 확인이 필요한 상품은 발주서 및 발주 완료에서 제외돼요.</p>':''}
    </div>
   </details>`).join('')}</div>`:''}
 
@@ -13727,9 +13716,9 @@ if(a==='complete-instant-procurement'){
  if(!state.admin||state.page!=='admin'||state.tab!=='payments')throw Error('관리자 도매관리에서 확인해 주세요.');
  if(busy)return;
  const group=instantDomesticPendingGroups().find(x=>x.supplier===String(b.dataset.supplier||''));
- if(!group||!group.ready.length)throw Error('입금 확인된 발주 상품이 없어요.');
- const ids=group.ready.map(r=>r.item.id);
- const count=group.ready.reduce((n,r)=>n+Number(r.item.quantity||0),0);
+ if(!group||!group.readyInstant.length)throw Error('입금 확인된 바로구매 상품이 없어요.');
+ const ids=group.readyInstant.map(r=>r.item.id);
+ const count=group.readyInstant.reduce((n,r)=>n+Number(r.item.quantity||0),0);
  if(!window.confirm(group.supplier+' 즉시구매 상품 '+count+'개를 실제로 발주 완료했나요?\n\n입금 확인된 '+ids.length+'종만 완료 처리해요. 미입금 상품과 다른 주문은 그대로 유지됩니다.'))return;
  busy=true;b.disabled=true;
  try{
@@ -13737,6 +13726,38 @@ if(a==='complete-instant-procurement'){
   if(Number(result?.updated)!==ids.length)throw Error('처리 결과를 확인하지 못했어요. 새로고침 후 확인해 주세요.');
   await loadAdmin();
   notif(group.supplier+' 새 주소 상품 '+count+'개를 발주 완료 처리했어요.');
+ }catch(error){try{await loadAdmin()}catch(_){}throw error}
+ finally{busy=false;if(b.isConnected)b.disabled=false}
+ return;
+}
+if(a==='complete-legacy-domestic-procurement'){
+ e.preventDefault();
+ if(!state.admin||state.page!=='admin'||state.tab!=='payments'||!state.productPrivateReady)throw Error('관리자 도매 관리에서 확인해 주세요.');
+ if(busy)return;
+ const name=String(b.dataset.supplier||'');
+ const group=instantDomesticPendingGroups().find(g=>g.supplier===name);
+ const ready=group?.readyLegacy||[],ids=ready.map(r=>String(r.item.id));
+ if(!ids.length||ids.some(id=>!/^[0-9a-f-]{36}$/i.test(id)))throw Error('입금확인된 기존 주문 상품이 없어요.');
+ const count=ready.reduce((n,r)=>n+Number(r.item.quantity||0),0);
+ if(!window.confirm(name+'에 '+ready.length+'종 · '+count+'개를 실제로 발주 완료했나요?\n\n입금확인 상품만 처리하고 미입금 상품·기존 배송비는 그대로 둡니다.'))return;
+ busy=true;b.disabled=true;
+ try{
+  // Recheck both item/order status and payment before writing.
+  const latest=await api('/rest/v1/gq_quote_items?select=id,supplier_ordered_at,fulfillment&id=in.('+ids.join(',')+')',{admin:true});
+  if(!Array.isArray(latest)||latest.length!==ids.length||latest.some(i=>i.supplier_ordered_at||!['ordered','delayed'].includes(i.fulfillment)))throw Error('상품 발주 상태가 변경됐어요. 새로고침 후 다시 확인해 주세요.');
+  const qids=[...new Set(ready.map(r=>String(r.q.id)))];
+  const current=await api('/rest/v1/gq_quotes?select=id,status,amount_paid,amount_refunded,payment_waived_amount,workflow_stage,cancel_requested_at,delivery_change_requested_at,supplier_ordered_at,supplier_shipping_total&id=in.('+qids.join(',')+')',{admin:true});
+  const byId=new Map(Array.isArray(current)?current.map(q=>[String(q.id),q]):[]);
+  for(const {q} of ready){
+   const now=byId.get(String(q.id));
+   if(!now||now.status!=='confirmed'||now.supplier_ordered_at||now.cancel_requested_at||now.delivery_change_requested_at||!['new','preparing'].includes(now.workflow_stage||'new'))throw Error('주문 확정·변경 상태가 달라졌어요. 새로고침해 주세요.');
+   const goods=(q.items||[]).filter(i=>i.fulfillment!=='sold_out').reduce((a,i)=>a+Number(i.unit_price||0)*Number(i.quantity||0),0);
+   const due=goods+Math.max(0,Number(now.supplier_shipping_total||0));
+   if(Number(now.amount_paid||0)-Number(now.amount_refunded||0)+Number(now.payment_waived_amount||0)<due)throw Error('입금 미확인 주문이 있어요. 먼저 확인해 주세요.');
+  }
+  const changed=await api('/rest/v1/gq_quote_items?id=in.('+ids.join(',')+')&supplier_ordered_at=is.null&fulfillment=in.(ordered,delayed)',{method:'PATCH',admin:true,body:{supplier_ordered_at:new Date().toISOString()}});
+  if(!Array.isArray(changed)||changed.length!==ids.length)throw Error('발주 처리 결과 일부가 확인되지 않았어요. 새로고침해서 확인해 주세요.');
+  await loadAdmin();notif(name+' 기존 주문 '+count+'개 발주 완료 처리했어요.');
  }catch(error){try{await loadAdmin()}catch(_){}throw error}
  finally{busy=false;if(b.isConnected)b.disabled=false}
  return;

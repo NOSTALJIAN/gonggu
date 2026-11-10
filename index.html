@@ -6490,7 +6490,7 @@ function header(){
  if(admin)return '';
  return `<header class="hero ${admin?'is-admin-header':'is-shop-header'}"><div class="headrow">
  <div class="brand-lockup"><div class="brand-text"><button class="logo brand-home" type="button" data-page="shop" aria-label="미니예나 첫 화면으로 이동">MINIYENA</button></div></div>
- <div class="header-actions">${admin?'<button class="heroaction" data-page="shop" type="button"><span>쇼핑몰</span></button>':''}</div></div>
+ <div class="header-actions">${state.shopOwnMode?'<button type="button" class="shop-own-mode-flag" data-action="own-mode-exit" title="일반 쇼핑으로 돌아가기">🔒 내 사입 · 종료</button>':''}${admin?'<button class="heroaction" data-page="shop" type="button"><span>쇼핑몰</span></button>':''}</div></div>
  <nav class="header-nav" aria-label="사이트 메뉴">
  ${state.page==='shop'?'<a href="#catalog">전체상품</a>':'<button data-page="shop" type="button">전체상품</button>'}
  <button type="button" data-action="my-quotes">주문조회</button>
@@ -6509,7 +6509,7 @@ function shopBottomNav(){
   orders:'<svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>'
  };
  return `<nav class="shop-bottom-nav" aria-label="하단 메뉴">
- <button class="nav-item" type="button" data-action="open-cart"><span class="nav-symbol">${icons.cart}${cartCount()?`<span class="nav-count">${cartCount()}</span>`:''}</span><span>장바구니</span></button>
+ <button class="nav-item" type="button" data-action="open-cart"><span class="nav-symbol">${icons.cart}${cartCount()?`<span class="nav-count">${cartCount()}</span>`:''}</span><span>${state.shopOwnMode?'내 장바구니':'장바구니'}</span></button>
  <button class="nav-item nav-register" type="button" data-action="suggest-product"><span class="nav-symbol">${icons.request}</span><span>상품등록</span></button>
  <button class="nav-item ${state.page==='track'?'active':''}" type="button" data-action="my-quotes"><span class="nav-symbol">${icons.orders}</span><span>주문조회</span></button>
  </nav>`;
@@ -12003,15 +12003,14 @@ if(m.type==='pick'){
   <label class="label">수량<input type="number" name="qty" value="1" min="1" max="20" required></label>
   <button class="btn block" type="submit">장바구니 담기</button>
  </form>
- ${state.shopOwnAuthorized&&state.productPrivateReady&&state.ownPurchasesReady&&ownAllowedProducts().some(x=>x.id===p.id)?`<div class="shop-own-tools"><button type="button" class="shop-own-add" data-action="own-open" data-product="${esc(p.id)}">🔒 내 원가로 수량 추가</button></div>`:''}
- ${sizeGuide?`<details class="pick-size-details" open><summary>사이즈 안내 <span aria-hidden="true">⌄</span></summary>${sizeGuide}</details>`:''}`);
+  ${sizeGuide?`<details class="pick-size-details" open><summary>사이즈 안내 <span aria-hidden="true">⌄</span></summary>${sizeGuide}</details>`:''}`);
 }
 if(m.type==='product-photos'){
  const p=selectedProd(m.id);
  if(!p||!p.published||!state.stores.some(st=>st.id===p.store_id&&st.active))return '';
  return wrap('상품 사진',`<div class="mini-product-detail-head"><h3>${esc(p.name)}</h3>${miniProductShareButton(p)}</div>${productGallery(p)}${estimatedProductPrice(p,true)}${publicProductNote(p)}${productSizeChart(p)}${p.is_sold_out?'<div class="smallnote">현재 품절된 상품이에요.</div>':`<button type="button" class="btn block" data-action="pick-product" data-id="${esc(p.id)}">옵션 선택하기</button>`}`);
 }
-if(m.type==='cart'){return wrap(instantStorefront?'주문 장바구니':'견적 요청 장바구니',`<div class="cart-review-toolbar"><strong>담은 상품 <span id="cart-review-count">${cartCount()}</span>개</strong><button type="button" id="cart-review-clear" class="cart-review-clear ${state.cart.length?'':'hidden'}" data-action="cart-clear">전체 비우기</button></div><section class="cart-estimate-summary ${state.cart.length?'':'hidden'}" id="cart-estimate-summary" aria-label="장바구니 총 예상견적">${cartEstimateMarkup()}</section><div class="cart-review-list" id="cart-review-list">${state.cart.map(renderCartReviewItem).join('')}</div><div class="cart-review-undo hidden" id="cart-review-undo" role="status"><span data-cart-undo-text>상품을 삭제했어요.</span><button type="button" data-action="cart-undo">↶ 되돌리기</button></div><div id="cart-review-empty" class="cart-review-empty ${state.cart.length?'hidden':''}"><b>장바구니가 비었어요.</b><p>상품을 선택해서 장바구니에 담아 주세요.</p><button type="button" class="btn block secondary" data-action="cart-continue">상품 보러 가기</button></div>${state.cart.length?`<div id="cart-review-checkout"><button type="button" class="btn block cart-review-proceed" data-action="cart-checkout">${instantStorefront?'주문자·수령 정보 입력':'견적 요청 정보 입력'}</button></div>`:''}`)}
+if(m.type==='cart'){return wrap(state.shopOwnMode?'🔒 내 사입 장바구니':instantStorefront?'주문 장바구니':'견적 요청 장바구니',`<div class="cart-review-toolbar"><strong>담은 상품 <span id="cart-review-count">${cartCount()}</span>개</strong><button type="button" id="cart-review-clear" class="cart-review-clear ${state.cart.length?'':'hidden'}" data-action="cart-clear">전체 비우기</button></div><section class="cart-estimate-summary ${state.cart.length?'':'hidden'}" id="cart-estimate-summary" aria-label="장바구니 총 예상견적">${cartEstimateMarkup()}</section><div class="cart-review-list" id="cart-review-list">${state.cart.map(renderCartReviewItem).join('')}</div><div class="cart-review-undo hidden" id="cart-review-undo" role="status"><span data-cart-undo-text>상품을 삭제했어요.</span><button type="button" data-action="cart-undo">↶ 되돌리기</button></div><div id="cart-review-empty" class="cart-review-empty ${state.cart.length?'hidden':''}"><b>장바구니가 비었어요.</b><p>상품을 선택해서 장바구니에 담아 주세요.</p><button type="button" class="btn block secondary" data-action="cart-continue">상품 보러 가기</button></div>${state.cart.length?`<div id="cart-review-checkout"><button type="button" class="btn block cart-review-proceed" data-action="${state.shopOwnMode?'own-cart-submit':'cart-checkout'}" ${state.shopOwnMode&&!shopOwnCartInfo().ready?'disabled':''}>${state.shopOwnMode?'내 사입 추가':instantStorefront?'주문자·수령 정보 입력':'견적 요청 정보 입력'}</button></div>`:''}`)}
 if(m.type==='cart-checkout'){
  if(!state.cart.length)return wrap('장바구니 확인','<p>장바구니가 비었어요.</p><button class="btn block" type="button" data-action="cart-back">장바구니로 돌아가기</button>');
  return wrap(instantStorefront?'주문·수령 정보':'견적 요청 정보',`<div class="cart-checkout-meta"><button type="button" data-action="cart-back" class="cart-checkout-back">‹ 장바구니로</button><span>상품 ${cartCount()}개</span></div>
@@ -12173,6 +12172,7 @@ function renderModal(){return modal()}
 // form values or the six-digit lookup PIN in localStorage.
 let lastCartRemoved=null;
 function renderCartReviewItem(c,i){
+  const ownerLine=state.shopOwnMode?shopOwnCartLine(c):null;
   const p=selectedProd(c.product_id),unavailable=!p||!p.published||p.is_sold_out||!state.stores.some(st=>st.id===p.store_id&&st.active);
  return `<article class="cart-review-item" data-cart-item>
   <div class="cart-review-main">
@@ -12181,7 +12181,7 @@ function renderCartReviewItem(c,i){
     <div class="cart-review-store">${esc(storeName(c.store_id))}</div>
     <b class="cart-review-name">${esc(c.product_name)}</b>
     <div class="cart-review-option">${esc(c.color)} / ${esc(c.size)} · ${Math.max(1,Number(c.quantity)||1)}개</div>
-    <div class="cart-review-item-price">${!unavailable&&productOptionSalePrice(p,c.color,c.size)!==null?(p?.pricing_mode==='fixed_options'?'확정가 ':instantStorefront?'':'예상 ')+money(productOptionSalePrice(p,c.color,c.size)*Math.max(1,Math.floor(Number(c.quantity)||1))):(p?.pricing_mode==='fixed_options'||instantStorefront?'판매가 확인 필요':'예상가 확인 필요')}</div>
+    <div class="cart-review-item-price">${ownerLine?(ownerLine.ok?'원가 '+money(ownerLine.total):'확인 필요 · '+esc(ownerLine.reason)):!unavailable&&productOptionSalePrice(p,c.color,c.size)!==null?(p?.pricing_mode==='fixed_options'?'확정가 ':instantStorefront?'':'예상 ')+money(productOptionSalePrice(p,c.color,c.size)*Math.max(1,Math.floor(Number(c.quantity)||1))):(p?.pricing_mode==='fixed_options'||instantStorefront?'판매가 확인 필요':'예상가 확인 필요')}</div>
     ${!unavailable?'<button type="button" class="cart-review-option-edit" data-action="cart-option-edit" aria-label="'+esc(c.product_name)+' 옵션 변경">옵션 변경</button>':''}
    </div>
    <button type="button" class="cart-review-remove" data-action="cart-remove" data-i="${i}" aria-label="${esc(c.product_name)} ${esc(c.color)} ${esc(c.size)} 장바구니에서 삭제" title="상품 삭제">
@@ -12312,6 +12312,12 @@ function cartEstimateTotals(){
  return {knownTotal,unpricedCount,unavailableCount,fixedCount,estimatedCount};
 }
 function cartEstimateMarkup(){
+ if(state.shopOwnMode){
+  const x=shopOwnCartInfo(),invalid=x.lines.filter(row=>!row.ok).length;
+  return '<div class="cart-estimate-top"><span>🔒 내 사입 · 원가 합계</span><strong>'+
+   (invalid?'원가 확인 필요':money(x.total))+'</strong></div>'+
+   (invalid?'<div class="cart-estimate-unknown">원가·옵션 확인이 필요한 상품 '+invalid+'개가 있어요.</div>':'');
+ }
  const e=cartEstimateTotals();
  if(instantStorefront)return `<div class="cart-estimate-top"><span>상품 합계 · 확정 판매가</span><strong>${e.unpricedCount||e.unavailableCount?'가격 확인 필요':money(e.knownTotal)}</strong></div>
   ${e.unpricedCount?`<div class="cart-estimate-unknown">판매가 미등록 ${e.unpricedCount}종 · 주문 불가</div>`:''}
@@ -12368,6 +12374,8 @@ function syncCartReview(){
  if(estimate){estimate.classList.toggle('hidden',!state.cart.length);estimate.innerHTML=cartEstimateMarkup();}
  const empty=app.querySelector('#cart-review-empty');if(empty)empty.classList.toggle('hidden',!!state.cart.length);
  const checkout=app.querySelector('#cart-review-checkout');if(checkout)checkout.classList.toggle('hidden',!state.cart.length);
+ const ownerSubmit=checkout?.querySelector('[data-action="own-cart-submit"]');
+ if(ownerSubmit)ownerSubmit.disabled=!shopOwnCartInfo().ready;
  instantCheckoutShowTotal(app.querySelector('#deliveryMethod')?.value);
  const mainBadge=app.querySelector('[data-cart-count]');
  if(mainBadge)mainBadge.textContent=String(cartCount());

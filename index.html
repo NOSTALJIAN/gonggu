@@ -5121,7 +5121,7 @@ window.GONGGU_CONFIG = {
 const $=(s,r=document)=>r.querySelector(s),esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),money=n=>n==null?'가격 미정':Number(n).toLocaleString('ko-KR')+'원',uuid=()=>crypto?.randomUUID?crypto.randomUUID():'demo-'+Date.now()+'-'+Math.random().toString(16).slice(2),now=()=>new Date().toISOString(),clone=x=>JSON.parse(JSON.stringify(x));
 const conf=window.GONGGU_CONFIG||{},url=String(conf.supabaseUrl||'').replace(/\/$/,''),key=String(conf.publishableKey||''),connected=/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(url)&&key.length>20;
 const PHOTO_PRIVATE='gq-request-photos',PHOTO_PUBLIC='gq-product-photos',HERO_META_PREFIX='__MINIYENA_HERO_V1__:',requestImageCache=new Map();
-const DEMO='gonggu-quote-v3-demo',CART='gonggu-quote-v3-cart',SESS='gonggu-quote-v3-session',AUTO_ADMIN='gonggu-quote-v3-auto-admin-device',TRACK='gonggu-quote-v3-tracks',CUSTOMER='gonggu-quote-v7-customer-key';
+const DEMO='gonggu-quote-v3-demo',CART='gonggu-quote-v3-cart',OWN_CART='gonggu-quote-v3-owner-cart',SESS='gonggu-quote-v3-session',AUTO_ADMIN='gonggu-quote-v3-auto-admin-device',TRACK='gonggu-quote-v3-tracks',CUSTOMER='gonggu-quote-v7-customer-key';
 const read=(k,f)=>{try{return JSON.parse(localStorage.getItem(k))??f}catch{return f}};
 // Tracking links should never require localStorage or randomUUID support just to open.
 const customerKey=(()=>{
@@ -5247,7 +5247,7 @@ const CDN_SHARE_HOST=/^(?:rawcdn|raw)\.githack\.com$/i.test(location.hostname);
 const STOREFRONT_PATH=location.hostname.toLowerCase()==='nostaljian.github.io'?'/gonggu/':CDN_SHARE_HOST?location.pathname:'/';
 const dedicatedAdminPage=location.hostname.toLowerCase()==='miniyena.pages.dev'&&/^\/admin(?:\/index\.html|\/)?$/i.test(location.pathname);
 if(!dedicatedAdminPage&&p.get('page')==='admin')location.replace(ADMIN_HOME);
-const state={partialParcels:[],partialParcelsReady:false,page:dedicatedAdminPage?'admin':p.get('page')==='track'?'track':'shop',tab:'home',adminOrderSearch:'',adminOrderSearchMode:'all',adminDispatchSelection:new Set(),receiptSearch:'',receiptView:'pending',receiptGroupBy:'product',receiptStore:'all',stores:[],products:[],requests:[],quotes:[],cart:read(CART,[]),modal:null,search:'',shopCategory:'all',shopSort:'newest',shopStore:'all',shopFiltersOpen:false,shopVisibleCount:24,adminCategory:'all',trackId:p.get('id')||'',trackToken:p.get('token')||'',tracking:null,receipts:read(TRACK,[]),notice:'',filter:'pricing',orderViewFilter:null,admin:false,shopOwnAuthorized:false,heroPhotoUrl:null,heroStoreId:null,dateGroupsOpen:{},orderCardsOpen:{},supplierBulkSelected:new Set(),supplierBulkStoreId:'',ownPurchases:[],ownPurchasesReady:false,supplierBatches:[],supplierBatchesReady:false,supplierBatchesError:'',supplierPartialInvoices:[],trackSupplierPartial:[],lowerPriceReports:[],optionRequests:[],optionRequestsReady:false,optionRequestsError:'',requestStatusFilter:'pending',adminCatalogView:'products',adminCatalogFilter:'all',adminProductSort:'newest',adminProductSearch:'',productPrivate:{},productPrivateReady:false,emailSettings:null,emailSettingsReady:false,emailSettingsError:'',supplierFreightNotify:{},supplierFreightNotifyReady:false,adminPinIds:new Set(),phoneLookupReady:null,pinLookupNotice:''};
+const state={partialParcels:[],partialParcelsReady:false,page:dedicatedAdminPage?'admin':p.get('page')==='track'?'track':'shop',tab:'home',adminOrderSearch:'',adminOrderSearchMode:'all',adminDispatchSelection:new Set(),receiptSearch:'',receiptView:'pending',receiptGroupBy:'product',receiptStore:'all',stores:[],products:[],requests:[],quotes:[],cart:read(CART,[]),modal:null,search:'',shopCategory:'all',shopSort:'newest',shopStore:'all',shopFiltersOpen:false,shopVisibleCount:24,adminCategory:'all',trackId:p.get('id')||'',trackToken:p.get('token')||'',tracking:null,receipts:read(TRACK,[]),notice:'',filter:'pricing',orderViewFilter:null,admin:false,shopOwnAuthorized:false,shopOwnMode:false,heroPhotoUrl:null,heroStoreId:null,dateGroupsOpen:{},orderCardsOpen:{},supplierBulkSelected:new Set(),supplierBulkStoreId:'',ownPurchases:[],ownPurchasesReady:false,supplierBatches:[],supplierBatchesReady:false,supplierBatchesError:'',supplierPartialInvoices:[],trackSupplierPartial:[],lowerPriceReports:[],optionRequests:[],optionRequestsReady:false,optionRequestsError:'',requestStatusFilter:'pending',adminCatalogView:'products',adminCatalogFilter:'all',adminProductSort:'newest',adminProductSearch:'',productPrivate:{},productPrivateReady:false,emailSettings:null,emailSettingsReady:false,emailSettingsError:'',supplierFreightNotify:{},supplierFreightNotifyReady:false,adminPinIds:new Set(),phoneLookupReady:null,pinLookupNotice:''};
 
 state.adminLoading=Boolean(connected&&state.page==='admin'&&session?.refresh_token);
 const PRODUCT_CATEGORIES=['바디수트','세트','상의','하의','아우터','원피스','스커트','모자','양말','악세서리','잡화'];
@@ -5559,7 +5559,20 @@ async function checkAdminProductRequestUpdates(){
 }
 const notif=s=>{const el=$('#toasts');if(!el)return;el.innerHTML=`<div class="toast">${esc(s)}</div>`;clearTimeout(notif.t);notif.t=setTimeout(()=>el.innerHTML='',3500)};
 const errorText=e=>(e?.message||String(e)).replace(/^JSON object requested, multiple \(or no\) rows returned$/, '정보를 찾을 수 없어요.');
-const saveCart=()=>localStorage.setItem(CART,JSON.stringify(state.cart));
+// Owner-only wholesale basket and ordinary buyer basket are stored separately.
+const saveCart=()=>localStorage.setItem(state.shopOwnMode?OWN_CART:CART,JSON.stringify(state.cart));
+function setShopOwnMode(enabled,show=true){
+ const next=!!enabled;
+ if(next&&(!state.admin||!state.shopOwnAuthorized||!state.productPrivateReady||!state.ownPurchasesReady))
+  throw Error('관리자 인증 또는 원가 조회를 다시 확인해 주세요.');
+ if(state.shopOwnMode!==next){
+  saveCart();
+  state.shopOwnMode=next;
+  state.cart=read(next?OWN_CART:CART,[]);
+ }
+ state.modal=null;
+ if(show){render();notif(next?'🔒 내 사입 모드 · 상품을 장바구니에 담아 주세요.':'일반 쇼핑으로 돌아왔어요.');}
+}
 const saveTracks=()=>localStorage.setItem(TRACK,JSON.stringify(state.receipts));
 const publicLink=()=>location.origin+STOREFRONT_PATH+'?page=shop';
 // Public product links are limited to the existing GitHub storefront.
@@ -12240,6 +12253,51 @@ function saveCartOptionEdit(button){
  notif(other>=0?'같은 옵션 상품과 수량을 합쳤어요.':'옵션을 변경했어요.');
 }
 
+// PRIVATE: use the same validated domestic wholesale cost as existing personal purchases.
+// Never create buyer quotes, payments, or revenue entries for these records.
+function shopOwnCartLine(item){
+ const p=state.products.find(p=>p.id===item?.product_id);
+ const meta=p&&state.productPrivate?.[p.id];
+ const qty=Number(item?.quantity);
+ const invalid=reason=>({ok:false,reason,product:p,unit:null,total:null,quantity:qty,row:null});
+ if(!state.shopOwnMode||!state.shopOwnAuthorized||!state.admin||!state.productPrivateReady)return invalid('원가 인증 필요');
+ if(!p||!p.published||p.is_sold_out||!state.stores.some(st=>st.id===p.store_id&&st.active))return invalid('현재 발주 불가');
+ if(!Array.isArray(p.options?.[item.color])||!p.options[item.color].includes(item.size))return invalid('상품 옵션 확인 필요');
+ if(!Number.isSafeInteger(qty)||qty<1||qty>100)return invalid('수량 1~100개 확인');
+ if(meta?.source_type!=='namdaemun'||!String(meta?.supplier_name||'').trim()||/^1688$/i.test(String(meta?.supplier_name||'').trim()))
+  return invalid('남대문 원가 사입 대상 아님');
+ const unit=adminWholesaleUnitCost({product_id:p.id,color:item.color,size:item.size},meta);
+ if(unit===null)return invalid('옵션 원가 미등록');
+ return {ok:true,reason:'',product:p,unit,total:unit*qty,quantity:qty,
+  row:{product_id:p.id,supplier_name:meta.supplier_name,store_name:ownStore(p),product_name:p.name,
+    color:item.color,size:item.size,quantity:qty,unit_cost:unit}};
+}
+function shopOwnCartInfo(){
+ const lines=state.cart.map(shopOwnCartLine);
+ return {lines,ready:lines.length>0&&lines.every(x=>x.ok),total:lines.reduce((s,x)=>s+(x.total||0),0),
+  quantity:lines.reduce((s,x)=>s+(Number.isSafeInteger(x.quantity)?x.quantity:0),0)};
+}
+let shopOwnCartSaving=false;
+async function submitShopOwnCart(button){
+ if(shopOwnCartSaving)return;
+ if(state.page!=='shop'||state.modal?.type!=='cart'||!state.shopOwnMode||!state.shopOwnAuthorized||!state.admin)
+  throw Error('내 사입 장바구니에서 다시 시도해 주세요.');
+ if(!state.productPrivateReady||!state.ownPurchasesReady)throw Error('관리자 원가 정보를 다시 확인해 주세요.');
+ const info=shopOwnCartInfo();
+ if(!info.ready)throw Error(info.lines.find(x=>!x.ok)?.reason||'원가와 상품 옵션을 확인해 주세요.');
+ if(!window.confirm('내 사입 '+info.quantity+'개 · 원가 '+money(info.total)+'을 발주 수량에 추가할까요?\n구매자 주문·매출에는 포함되지 않아요.'))return;
+ shopOwnCartSaving=true;
+ button.disabled=true;
+ try{
+  const rows=info.lines.map(x=>x.row);
+  const saved=await api('/rest/v1/gq_admin_personal_purchase_items_v140',{method:'POST',admin:true,body:rows});
+  if(!Array.isArray(saved)||saved.length!==rows.length)throw Error('내 수량 저장을 확인하지 못했어요. 다시 누르기 전에 관리자 화면을 확인해 주세요.');
+  state.cart=[];saveCart();lastCartRemoved=null;
+  await loadOwnPurchases();
+  state.modal=null;render();
+  notif('🔒 내 사입 '+info.quantity+'개 · '+money(info.total)+' 저장했어요. 고객 주문에는 나타나지 않아요.');
+ }finally{shopOwnCartSaving=false;if(button.isConnected)button.disabled=false;}
+}
 function cartEstimateTotals(){
  let knownTotal=0,unpricedCount=0,unavailableCount=0,fixedCount=0,estimatedCount=0;
  for(const item of state.cart){

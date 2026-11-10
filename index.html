@@ -4770,6 +4770,40 @@ window.miniYenaOneSignalReady = new Promise(function(resolve) {
 .admin-unified-stage .admin-receipt-buyer-secondary{border-top:1px solid #eee;margin-top:12px;padding-top:10px}
 .admin-unified-stage .admin-receipt-buyer-secondary>summary{color:#777;font-size:11px;cursor:pointer}
 </style>
+<style>
+/* Compact and overflow-safe receipt lines inside the standard order accordion. */
+.admin-receiving-stage .admin-order-fold-body{min-width:0!important;max-width:100%;box-sizing:border-box}
+.admin-receiving-stage .admin-receipt-buyer-focus{min-width:0;max-width:100%;width:100%;box-sizing:border-box;margin:0;border:0!important;border-radius:0!important;background:transparent!important;overflow:visible}
+.admin-receiving-stage .admin-receipt-buyer-top{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;color:#767c83;padding:4px 1px 11px}
+.admin-receiving-stage .admin-receipt-buyer-top b{font-size:12px;color:#222}
+.admin-receiving-stage .admin-receipt-buyer-list{min-width:0;width:100%;box-sizing:border-box;background:#fff;border:1px solid #e5e6e8;border-radius:10px;overflow:visible}
+.admin-receiving-stage .receipt-buyer-item{min-width:0;max-width:100%;box-sizing:border-box;display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:7px!important;padding:11px 12px!important;border:0!important;border-bottom:1px solid #eceef0!important;background:#fff!important;margin:0!important;border-radius:0!important}
+.admin-receiving-stage .receipt-buyer-item:first-child{border-radius:10px 10px 0 0!important}
+.admin-receiving-stage .receipt-buyer-item:last-child{border-bottom:0!important;border-radius:0 0 10px 10px!important}
+.admin-receiving-stage .receipt-buyer-item:only-child{border-radius:10px!important}
+.admin-receiving-stage .receipt-buyer-item .receipt-person-text{min-width:0;max-width:100%;display:flex;flex-direction:column;align-items:flex-start;gap:4px;overflow-wrap:anywhere;word-break:break-word}
+.admin-receiving-stage .receipt-buyer-item .receipt-person-text strong{display:block;font-size:12px;font-weight:770;line-height:1.45;white-space:normal;overflow-wrap:anywhere}
+.admin-receiving-stage .receipt-buyer-item .receipt-person-text span{font-size:11px;line-height:1.4;color:#737980}
+.admin-receiving-stage .receipt-buyer-item .receipt-person-text small{font-size:10px;color:#90969c;line-height:1.4}
+.admin-receiving-stage .receipt-buyer-item .receipt-person-buttons{display:flex;justify-content:flex-end;align-items:center;gap:7px;min-width:0;width:100%;box-sizing:border-box;flex-wrap:wrap;margin-top:2px}
+.admin-receiving-stage .receipt-buyer-item .receipt-check{min-width:100px;max-width:100%;min-height:36px;font-size:11px;border-radius:8px;padding:7px 11px;line-height:1.35}
+.admin-receiving-stage .receipt-buyer-item .receipt-other>summary{min-width:36px;min-height:36px;font-size:18px;padding:0;border-radius:8px}
+.admin-receiving-stage .receipt-buyer-item .receipt-stepper{max-width:100%}
+.admin-receiving-stage .receipt-buyer-item .receipt-stepper button{height:36px;min-width:35px}
+.admin-receiving-stage .receipt-buyer-item .receipt-other[open]>div{z-index:70;box-sizing:border-box}
+.admin-receiving-stage .admin-receipt-empty{padding:13px;font-size:11px;color:#777}
+.admin-receiving-stage .admin-receipt-buyer-completed,.admin-receiving-stage .admin-receipt-buyer-secondary{border:0!important;border-top:1px solid #eceef0!important;margin:12px 0 0!important;padding:0!important;max-width:100%;box-sizing:border-box}
+.admin-receiving-stage .admin-receipt-buyer-completed>summary,.admin-receiving-stage .admin-receipt-buyer-secondary>summary{display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:40px;padding:10px 2px!important;list-style:none;cursor:pointer;color:#6c737b;font-size:11px;line-height:1.35;font-weight:680;background:transparent;border:0}
+.admin-receiving-stage .admin-receipt-buyer-completed>summary::-webkit-details-marker,.admin-receiving-stage .admin-receipt-buyer-secondary>summary::-webkit-details-marker{display:none}
+.admin-receiving-stage .admin-receipt-buyer-completed>summary span{font-size:15px;color:#8e949a}
+.admin-receiving-stage .admin-receipt-buyer-completed[open]>summary span{transform:rotate(180deg)}
+.admin-receiving-stage .admin-receipt-buyer-completed .admin-receipt-buyer-list{margin-bottom:6px}
+.admin-receiving-stage .admin-receipt-buyer-secondary .compact-order-card{max-width:100%;box-sizing:border-box}
+@media(min-width:560px){
+ .admin-receiving-stage .receipt-buyer-item{grid-template-columns:minmax(0,1fr) auto!important;align-items:center}
+ .admin-receiving-stage .receipt-buyer-item .receipt-person-buttons{width:auto}
+}
+</style>
 </head>
 <body>
 <div id="app"><div class="loading">미니예나를 여는 중이에요…</div></div>
@@ -7101,11 +7135,19 @@ function renderSharedAdminOrdersToolbar(){
 function renderAdminReceiptBuyerDetails(group){
  const receiptIndex=new Map(receiptRows().map(x=>[x.i.id,x]));
  const lines=group.flatMap(q=>(q.items||[]).map(i=>receiptIndex.get(i.id)).filter(Boolean));
- const pending=lines.reduce((s,x)=>s+(x.i.fulfillment==='sold_out'?0:x.pending),0);
+ const waiting=lines.filter(x=>x.pending>0&&x.i.fulfillment!=='sold_out');
+ const others=lines.filter(x=>!(x.pending>0&&x.i.fulfillment!=='sold_out'));
+ const pending=waiting.reduce((s,x)=>s+x.pending,0);
  return `<div class="receipt-group admin-receipt-buyer-focus" data-receipt-group="buyer-${esc(group[0].id)}">
-   <div class="admin-receipt-buyer-top">미입고 <b>${pending}개</b> · ${lines.length}종</div>
-   ${lines.map(x=>renderReceiptRow(x,'buyer')).join('')||'<div class="smallnote">입고할 품목이 없어요.</div>'}
-   <details class="admin-receipt-buyer-secondary"><summary>주문 상세·기타 수정</summary>
+   <div class="admin-receipt-buyer-top"><span>미입고 <b>${pending}개</b></span><span>전체 ${lines.length}종</span></div>
+   <div class="admin-receipt-buyer-list">
+     ${waiting.map(x=>renderReceiptRow(x,'buyer')).join('')||'<div class="admin-receipt-empty">현재 미입고 상품이 없어요.</div>'}
+   </div>
+   ${others.length?`<details class="admin-receipt-buyer-completed" data-fold-key="receipt-completed-${esc(group[0].id)}">
+     <summary>입고완료·품절 상품 ${others.length}종 <span aria-hidden="true">⌄</span></summary>
+     <div class="admin-receipt-buyer-list">${others.map(x=>renderReceiptRow(x,'buyer')).join('')}</div>
+   </details>`:''}
+   <details class="admin-receipt-buyer-secondary" data-fold-key="receipt-other-${esc(group[0].id)}"><summary>주문 상세·기타 수정</summary>
      ${group.map(q=>renderAdminQuoteCard(q)).join('')}
    </details></div>`;
 }
@@ -7180,6 +7222,14 @@ function renderReceiptRow(x,context=''){
  if(x.pending>0&&workflowStage(q)==='preparing'){
   extra='<details class="receipt-other"><summary>⋯</summary><div><button type="button" data-action="receipt-delay" data-id="'+esc(i.id)+'">'+(i.fulfillment==='delayed'?'미송 해제':'미송 표시')+'</button>'+
    (x.received===0?'<button type="button" data-action="receipt-soldout" data-id="'+esc(i.id)+'">품절 처리</button>':'')+'</div></details>';
+ }
+ if(context==='buyer'){
+  const stateText=sold?'품절':done?'입고 완료':i.fulfillment==='delayed'?'미송':x.received?'부분입고':'미입고';
+  return '<div class="receipt-person receipt-buyer-item" data-receipt-row data-receipt-search="'+esc(x.search)+'">'+
+   '<div class="receipt-person-text"><strong>'+esc((i.store_name||'브랜드')+' · '+(i.product_name||'상품'))+'</strong>'+
+   '<span>'+esc([i.color,i.size].filter(Boolean).join(' / ')||'옵션 미입력')+' · 주문 '+x.qty+'개'+(x.received?' · 입고 '+x.received+'개':'')+'</span>'+
+   '<small>'+esc(stateText)+' · '+(i.supplier_ordered_at?'발주완료':'발주 확인 필요')+'</small></div>'+
+   '<div class="receipt-person-buttons">'+action+extra+'</div></div>';
  }
  return '<div class="receipt-person" data-receipt-row data-receipt-search="'+esc(x.search)+'"><div class="receipt-person-text"><strong>'+esc(who)+'</strong>'+
   '<span>'+esc(method)+' · 주문 '+x.qty+'개 · 도착 '+x.received+'개'+(q.bundle_parent_id||q.bundle_applied?' · 합배송':'')+'</span>'+

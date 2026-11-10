@@ -4863,6 +4863,54 @@ window.miniYenaOneSignalReady = new Promise(function(resolve) {
  .admin-receiving-stage .receipt-buyer-item .receipt-other>summary{min-width:32px}
 }
 </style>
+
+<style id="admin-partial-procurement-fix-20261111">
+/* Show unplaced procurement lines without empty receipt-like action space. */
+.admin-procurement-page .admin-order-fold-heading{
+ display:grid;grid-template-columns:minmax(0,1fr) auto 13px;
+ gap:7px;align-items:center;padding:11px 12px;min-height:0
+}
+.admin-procurement-page .admin-order-fold-left{grid-column:1;grid-row:1;gap:3px;min-width:0}
+.admin-procurement-page .admin-order-fold-right{
+ grid-column:2;grid-row:1;max-width:112px;width:auto;
+ display:flex;justify-content:flex-end;text-align:right;gap:0
+}
+.admin-procurement-page .admin-order-fold-chevron{grid-column:3;grid-row:1;justify-self:end}
+.admin-procurement-page .admin-order-fold-body{padding:8px 10px 9px}
+.admin-procurement-page .admin-date-orders>.admin-order-fold{margin-bottom:8px}
+.admin-procurement-buyer-details{min-width:0;width:100%;box-sizing:border-box}
+.admin-procurement-buyer-summary{display:flex;justify-content:space-between;gap:8px;padding:3px 1px 8px;color:#747b82;font-size:11px}
+.admin-procurement-buyer-summary b{color:#222;font-size:12px}
+.admin-procurement-item-list{overflow:hidden;border:1px solid #e5e6e8;border-radius:10px;background:#fff}
+.admin-procurement-item-row{
+ display:flex;align-items:center;justify-content:space-between;
+ gap:9px;padding:11px 12px;border-bottom:1px solid #eceef0;background:#fff
+}
+.admin-procurement-item-row:last-child{border-bottom:0}
+.admin-procurement-item-row .receipt-person-text{
+ flex:1;min-width:0;display:flex;flex-direction:column;gap:4px;
+ overflow-wrap:anywhere;word-break:break-word
+}
+.admin-procurement-item-row .receipt-person-text strong{font-size:12px;line-height:1.4}
+.admin-procurement-item-row .receipt-person-text span{font-size:11px;line-height:1.4;color:#747b82}
+.admin-procurement-item-status{
+ flex:0 0 auto;white-space:nowrap;font-size:11px;font-weight:750;color:#555;
+ border-radius:6px;background:#f4f5f6;padding:6px 8px
+}
+.admin-procurement-others{margin-top:8px;border-top:1px solid #eceef0;min-width:0}
+.admin-procurement-others>summary{
+ list-style:none;display:flex;justify-content:space-between;align-items:center;
+ min-height:35px;padding:8px 2px;font-size:11px;line-height:1.35;
+ font-weight:700;color:#747b82;cursor:pointer
+}
+.admin-procurement-others>summary::-webkit-details-marker{display:none}
+.admin-procurement-others[open]>summary span{transform:rotate(180deg)}
+@media(max-width:360px){
+ .admin-procurement-page .admin-order-fold-heading{padding:10px 9px;gap:5px}
+ .admin-procurement-page .admin-order-fold-body{padding:7px 7px 8px}
+ .admin-procurement-item-row{padding:9px 8px}
+}
+</style>
 </head>
 <body>
 <div id="app"><div class="loading">미니예나를 여는 중이에요…</div></div>
@@ -7191,6 +7239,38 @@ function renderSharedAdminOrdersToolbar(){
    <button type="button" class="admin-clean-utility" data-action="open-admin-order-filters" aria-label="상세 필터 열기"><span aria-hidden="true">☷</span><span>필터</span></button>
   </div>`;
 }
+/* An order may contain already received items and still have unplaced items. */
+function adminItemSupplierOrdered(q,i){
+ return !!(i.supplier_ordered_at||q.supplier_ordered_at||
+  supplierItemBatch(i.id)?.ordered_at||
+  ['received','delivered'].includes(i.fulfillment)||
+  Number(i.received_qty||0)>0);
+}
+function adminAwaitingSupplierOrderItems(q){
+ return (q.items||[]).filter(i=>i.fulfillment!=='sold_out'&&
+  Math.max(0,Number(i.quantity)||0)>0&&!adminItemSupplierOrdered(q,i));
+}
+function renderAdminProcurementBuyerDetails(group){
+ const waiting=group.flatMap(q=>adminAwaitingSupplierOrderItems(q).map(i=>({q,i})));
+ if(!waiting.length)return group.map(q=>renderAdminQuoteCard(q)).join('');
+ const others=group.flatMap(q=>(q.items||[])
+  .filter(i=>!adminAwaitingSupplierOrderItems(q).some(w=>w.id===i.id))
+  .map(i=>({q,i})));
+ const row=({i},isWaiting)=>'<div class="receipt-person admin-procurement-item-row">'+
+  '<div class="receipt-person-text"><strong>'+esc((i.store_name||'브랜드')+' · '+(i.product_name||'상품'))+'</strong>'+
+  '<span>'+esc([i.color,i.size].filter(Boolean).join(' / ')||'옵션 미입력')+' · 주문 '+(Number(i.quantity)||0)+'개</span>'+
+  '</div><span class="admin-procurement-item-status">'+
+  (isWaiting?'발주 전':i.fulfillment==='sold_out'?'품절':(['received','delivered'].includes(i.fulfillment)||Number(i.received_qty||0)>0)?'입고 완료':'발주 완료')+
+  '</span></div>';
+ const total=group.reduce((n,q)=>n+(q.items||[]).length,0);
+ return '<div class="admin-procurement-buyer-details">'+
+  '<div class="admin-procurement-buyer-summary"><span>미발주 <b>'+waiting.length+'종</b></span><span>전체 '+total+'종</span></div>'+
+  '<div class="admin-procurement-item-list">'+waiting.map(x=>row(x,true)).join('')+'</div>'+
+  (others.length?'<details class="admin-procurement-others" data-fold-key="procurement-done-'+esc(group[0].id)+'"><summary>발주완료·입고완료·품절 상품 '+others.length+'종 <span aria-hidden="true">⌄</span></summary><div class="admin-procurement-item-list">'+others.map(x=>row(x,false)).join('')+'</div></details>':'')+
+  '<details class="admin-procurement-others" data-fold-key="procurement-detail-'+esc(group[0].id)+'"><summary>주문 상세·기타 수정 <span aria-hidden="true">⌄</span></summary>'+
+  group.map(q=>renderAdminQuoteCard(q)).join('')+'</details></div>';
+}
+
 function renderAdminReceiptBuyerDetails(group){
  const receiptIndex=new Map(receiptRows().map(x=>[x.i.id,x]));
  const lines=group.flatMap(q=>(q.items||[]).map(i=>receiptIndex.get(i.id)).filter(Boolean));
@@ -7238,6 +7318,7 @@ function receiptRows(){
  for(const q of state.quotes){
   if(q.status!=='confirmed'||!['new','preparing','pickup_ready'].includes(workflowStage(q)))continue;
   for(const i of q.items||[]){
+   if(!adminItemSupplierOrdered(q,i))continue;
    const qty=Number(i.quantity)||0;
    const received=Math.min(qty,Math.max(0,Number(i.received_qty??(['received','delivered'].includes(i.fulfillment)?qty:0))||0));
    const vendor=String(i.store_name||'거래처 미확인');
@@ -9656,7 +9737,8 @@ function renderCollapsibleAdminOrder(group,section){
   const left=(group[0].items||[]).reduce((n,i)=>n+(i.fulfillment==='sold_out'?0:Math.max(0,(Number(i.quantity)||0)-adminSentCount(i))),0);
   if(left>0)next='📦 입고 대기 · 미발송 '+left+'개';
  }
- const nextShort=next.replace(/^[✓🚚📦]\s*/u,'')
+ const pendingSupplierLines=group.reduce((n,q)=>n+adminAwaitingSupplierOrderItems(q).length,0);
+ const nextShort=state.tab==='payments'&&pendingSupplierLines?('발주 전 '+pendingSupplierLines+'종'):next.replace(/^[✓🚚📦]\s*/u,'')
  .replace(' · 송장 등록 완료','')
  .replace(' · 남은 상품 입고 대기','')
  .replace('발주 완료 · 입고 관리','입고 대기')
@@ -9699,7 +9781,7 @@ function renderCollapsibleAdminOrder(group,section){
       <summary>📍 배송지 보기 · ${esc((group.find(q=>q.delivery_method==='courier')||root).recipient_name||root.buyer_name||'수령인')}</summary>
       ${group.filter(q=>q.delivery_method==='courier').filter((q,i,rows)=>rows.findIndex(x=>String(x.postal_code||'')+'|'+String(x.address_line1||'')+'|'+String(x.address_line2||'')===String(q.postal_code||'')+'|'+String(q.address_line1||'')+'|'+String(q.address_line2||''))===i).map(q=>`<div class="admin-courier-address-info"><strong>${esc(q.recipient_name||q.buyer_name||'받는 사람 미입력')}</strong><span>${esc(q.contact||'연락처 미입력')}</span><p>${esc(q.postal_code||'우편번호 미입력')} · ${esc([q.address_line1,q.address_line2].filter(Boolean).join(' ')||'주소 미입력')}</p>${q.delivery_note?`<small>배송 요청사항 · ${esc(q.delivery_note)}</small>`:''}</div>`).join('')}
      </details>`:''}
-   ${state.tab==='receipts'?renderAdminReceiptBuyerDetails(group):shippingFocus?renderAdminShippingFocus(group[0]):group.length===1&&['delivery_shipped','delivery_completed','journey_shipping','journey_done'].includes(state.filter)&&['new','preparing'].includes(workflowStage(group[0]))&&adminPartialParcels(group[0]).length?renderAdminShippingFocus(group[0]):group.length>1?(isAdminViewGroup(group)?renderAdminViewGroupCard(group):group.every(q=>workflowStage(q)==='completed'&&q.delivery_method==='courier'&&String(q.tracking_number||'').replace(/[\\s-]/g,'')===String(group[0].tracking_number||'').replace(/[\\s-]/g,''))?
+   ${state.tab==='receipts'?renderAdminReceiptBuyerDetails(group):state.tab==='payments'?renderAdminProcurementBuyerDetails(group):shippingFocus?renderAdminShippingFocus(group[0]):group.length===1&&['delivery_shipped','delivery_completed','journey_shipping','journey_done'].includes(state.filter)&&['new','preparing'].includes(workflowStage(group[0]))&&adminPartialParcels(group[0]).length?renderAdminShippingFocus(group[0]):group.length>1?(isAdminViewGroup(group)?renderAdminViewGroupCard(group):group.every(q=>workflowStage(q)==='completed'&&q.delivery_method==='courier'&&String(q.tracking_number||'').replace(/[\\s-]/g,'')===String(group[0].tracking_number||'').replace(/[\\s-]/g,''))?
     '<div class="admin-completed-group"><p class="smallnote">동일 송장으로 배송 완료 · '+esc(group[0].tracking_number||'')+' · 원주문 '+group.length+'건</p>'+
     renderAdminShippingFocus({...group[0],items:group.flatMap(q=>q.items||[])})+
     '<details class="admin-view-group-original"><summary>원주문 '+group.length+'건 · 개별 수정</summary>'+
@@ -10909,6 +10991,7 @@ function adminOrderJourneyStep(q){
  if((stage==='pickup_ready'||allReceived(q)||arrived)&&adminCanReleaseGroup(q))return 'journey_dispatch';
  const ordered=!!q.supplier_ordered_at||active.some(i=>!!i.supplier_ordered_at||
   ['received','delivered'].includes(i.fulfillment)||!!supplierItemBatch(i.id)?.ordered_at);
+ if(adminAwaitingSupplierOrderItems(q).length&&balanceDue(q)<=0)return 'journey_procurement';
  if(ordered)return 'journey_receiving';
  if(balanceDue(q)>0)return 'journey_payment';
  return 'journey_procurement';

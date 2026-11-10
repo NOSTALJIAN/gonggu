@@ -4671,6 +4671,24 @@ window.miniYenaOneSignalReady = new Promise(function(resolve) {
 });
 </script>
 
+<style>
+.compact-order-product .compact-order-source{display:block;font-size:11px;color:#596672;margin-top:4px;line-height:1.45}
+.compact-order-source strong{display:inline;font:inherit;font-weight:800;color:#37485b}
+.compact-manual-freight{margin:12px 0;padding:13px 14px;border:1px solid #dfe4e8;border-radius:12px;background:#fbfcfd}
+.compact-manual-freight-title{display:block;font-size:13px;font-weight:800;color:#28313b;margin-bottom:9px}
+.compact-manual-freight-form{display:grid;gap:8px;min-width:0}
+.compact-manual-freight-form label{font-size:12px;font-weight:750;color:#39424b}
+.compact-manual-freight-fields{display:flex;gap:8px;align-items:stretch}
+.compact-manual-freight-fields input{flex:1;min-width:0;width:0;min-height:42px;border:1px solid #cfd5d9;border-radius:9px;background:white;padding:0 12px;font-size:15px;font-weight:700;color:#222}
+.compact-manual-freight-fields button{border:0;border-radius:9px;background:#25292e;color:white;font-size:12px;font-weight:800;min-height:42px;padding:0 14px;white-space:nowrap}
+.compact-manual-freight-form small{font-size:11px;line-height:1.5;color:#68737c}
+.compact-manual-freight-status{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px;font-weight:750;color:#394d41}
+.compact-manual-freight-status b{font-size:13px}
+.compact-manual-freight details{margin-top:7px}
+.compact-manual-freight details summary{cursor:pointer;font-size:11px;color:#626b76}
+.compact-manual-freight details .compact-manual-freight-form{margin-top:12px}
+.compact-manual-freight-locked{font-size:11px;color:#805b30;margin:10px 0;line-height:1.5}
+</style>
 </head>
 <body>
 <div id="app"><div class="loading">미니예나를 여는 중이에요…</div></div>
@@ -8074,6 +8092,26 @@ function adminOrderItemName(i){
  const store=String(i.store_name||'').trim();
  return (store?esc(store)+' · ':'')+esc(i.product_name||'상품명 미입력');
 }
+/* Real purchasing supplier is administrator-only metadata, never buyer-facing. */
+function adminActualSupplierLabel(item){
+ if(!state.admin||state.page!=='admin')return '';
+ if(!state.productPrivateReady)return '<small class="compact-order-source">실제 사입처 · 조회 중</small>';
+ const supplier=String(state.productPrivate?.[item.product_id]?.supplier_name||'').trim();
+ return '<small class="compact-order-source">실제 사입처 · <strong>'+esc(supplier||'미등록')+'</strong></small>';
+}
+function renderNamedBuyerManualFreight(q){
+ if(!state.admin||state.page!=='admin'||q.status!=='confirmed'||!['임지은','진지희'].includes(String(q.buyer_name||'').trim()))return '';
+ if(supplierBatchesForQuote(q).length)return '<p class="compact-manual-freight-locked">이 주문은 거래처별로 배송비가 이미 배분됐어요. 수정은 배분 내역에서 해 주세요.</p>';
+ const recorded=!!q.supplier_shipping_manual_confirmed_at,amount=supplierShippingShare(q);
+ const form=`<form class="compact-manual-freight-form" data-supplier-shipping="${esc(q.id)}">
+  <label for="manual-freight-${esc(q.id)}">이 주문의 도매배송비 (직접 나눈 금액, 원)</label>
+  <div class="compact-manual-freight-fields"><input id="manual-freight-${esc(q.id)}" name="supplier_total" type="number" min="0" max="1000000" step="1" inputmode="numeric" placeholder="금액 입력" value="${recorded?amount:''}" required><input name="supplier_people" type="hidden" value="1"><button type="submit">${recorded?'금액 수정 저장':'배송비 저장'}</button></div>
+  <small>주문별 금액을 한 번만 입력해요. 저장하면 결제금액과 미입금에 반영돼요.</small>
+ </form>`;
+ return recorded
+  ?`<div class="compact-manual-freight is-recorded"><div class="compact-manual-freight-status"><span>✓ 도매배송비 입력 완료</span><b>${money(amount)}</b></div><details><summary>입력 금액 수정</summary>${form}</details></div>`
+  :`<div class="compact-manual-freight"><b class="compact-manual-freight-title">도매배송비 직접 입력</b>${form}</div>`;
+}
 function adminConfirmEligible(q){
  return Boolean(state.admin&&q&&q.status==='quoted'&&
   !['next_round','on_hold'].includes(q.purchase_intent)&&
@@ -8687,7 +8725,7 @@ function renderAdminQuoteCard(q){
   ${renderAdminDispatchNotice(q)}
   ${q.status==='confirmed'&&q.delivery_method==='pickup'?renderAdminPickupProductSection(q):
   adminPartialParcels(q).length&&['new','preparing'].includes(workflowStage(q))?adminSplitInventoryMarkup(q):`<div class="compact-order-products">${(q.items||[]).map(i=>`<div class="compact-order-product">
-   <span><b>${adminOrderItemName(i)}</b><small>${esc(i.color)} / ${esc(i.size)} · ${Number(i.quantity)||0}개${i.fulfillment==='sold_out'?' · 품절':''}</small></span>
+   <span><b>${adminOrderItemName(i)}</b><small>${esc(i.color)} / ${esc(i.size)} · ${Number(i.quantity)||0}개${i.fulfillment==='sold_out'?' · 품절':''}</small>${adminActualSupplierLabel(i)}</span>
    <strong>${i.unit_price==null?'가격 미정':money(Number(i.unit_price)*(Number(i.quantity)||0))}</strong>${window.MiniPartialShipping&&window.MiniPartialShipping.sentQty(i.id,state.partialParcels||[])>0?'<small class="tiny">📦 먼저 발송 '+window.MiniPartialShipping.sentQty(i.id,state.partialParcels||[])+'개</small>':''}
   </div>`).join('')}</div>`}
   ${q.status==='confirmed'?adminReadyCourierActions([q]):''}
@@ -8705,6 +8743,7 @@ function renderAdminQuoteCard(q){
    <div class="compact-order-balance"><span>남은 금액</span><b>${finalReady?money(balanceDue(q)):'입금 요청 전'}</b></div>
    ${priced&&paid>due?`<p class="compact-order-warning">초과 입금 ${money(paid-due)} · 환불 여부 확인</p>`:''}
   </div>
+  ${renderNamedBuyerManualFreight(q)}
   <div class="compact-order-next ${urgent?'is-urgent':''}">
    ${finalReady&&balanceDue(q)>0&&!q.cancel_requested_at&&!q.delivery_change_requested_at?`<div class="compact-payment-request-row"><span class="compact-payment-request-caption">미입금 <b>${money(balanceDue(q))}</b></span><button type="button" class="compact-payment-request-btn" data-action="send-final-payment-request" data-id="${esc(q.id)}">${paymentGroup.length>1?"합산 "+money(paymentRequestAmount)+" 입금 요청":"입금 요청 보내기"} <span aria-hidden="true">→</span></button></div>`:`<strong>${esc(task.text)}</strong>${task.action==='copy-final-payment-notice'||task.action==='send-final-payment-request'?'':`<button type="button" class="compact-order-next-btn" ${command}>${esc(task.label)} →</button>`}`}
    ${purchaseChoicePending(q)&&!purchaseChoiceReminderRecent(q)?`<button type="button" class="compact-choice-link" data-action="copy-customer-link" data-id="${esc(q.id)}">고객 확인 링크 복사</button>`:''}

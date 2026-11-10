@@ -6123,15 +6123,17 @@ const buyerLabel=q=>String(q.buyer_name||'이름 미입력')+' · '+(q.baby_name
    Keep the recorded technical price_channel unchanged; this is a display label. */
 function adminGithubOrderIcon(q){
  if(!state.admin||!q)return '';
- if(q.instant_purchase)return '<span class="admin-order-direct-badge" title="확정가 즉시구매">바로구매</span>';
+ // Channel badge represents where the customer ordered, not the payment-flow flag.
  if(q.price_channel==='github')return '<span class="admin-order-gh-badge" title="기존 깃허브 구매 링크">맘❤️</span>';
+ if(q.instant_purchase)return '<span class="admin-order-direct-badge" title="새 주소 바로구매">바로구매</span>';
  return '';
 }
 function adminGithubGroupIcon(quotes){
  if(!state.admin||!Array.isArray(quotes)||!quotes.length)return '';
- const direct=quotes.some(q=>q.instant_purchase),github=quotes.some(q=>q.price_channel==='github');
- return (direct?'<span class="admin-order-direct-badge" title="확정가 즉시구매">바로구매</span>':'')+
-  (github?'<span class="admin-order-gh-badge" title="기존 깃허브 구매 링크">맘❤️</span>':'');
+ const github=quotes.some(q=>q.price_channel==='github');
+ const direct=quotes.some(q=>q.instant_purchase&&q.price_channel!=='github');
+ return (github?'<span class="admin-order-gh-badge" title="기존 깃허브 구매 링크">맘❤️</span>':'')+
+  (direct?'<span class="admin-order-direct-badge" title="새 주소 바로구매">바로구매</span>':'');
 }
 
 const normKey=x=>String(x||'').trim().replace(/\s+/g,'').toLowerCase();

@@ -10947,7 +10947,7 @@ function ownModalBody(m){
    '<div class="own-product-picker" role="list" aria-label="내 사입 상품 목록">'+available.map(x=>{
     const supplier=String(state.productPrivate[x.id]?.supplier_name||'');
     const images=productPhotoUrls(x);
-    const picture=images.find(v=>!/\\.gif(?:[?#]|$)/i.test(v))||images[0]||'';
+    const picture=images.find(v=>!/\.gif(?:[?#]|$)/i.test(v))||images[0]||'';
     const thumb=picture?'<img class="own-product-thumb" src="'+esc(picture)+'" alt="" loading="lazy" decoding="async" width="48" height="48">':
        '<span class="own-product-thumb own-thumb-empty" aria-hidden="true">사진 없음</span>';
     return '<button type="button" class="own-product-choice" role="listitem" data-action="own-choose-product" data-product="'+esc(x.id)+'" data-own-search="'+esc((ownStore(x)+' '+x.name+' '+supplier).toLocaleLowerCase('ko-KR'))+'">'+

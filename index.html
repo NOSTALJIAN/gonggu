@@ -4804,6 +4804,65 @@ window.miniYenaOneSignalReady = new Promise(function(resolve) {
  .admin-receiving-stage .receipt-buyer-item .receipt-person-buttons{width:auto}
 }
 </style>
+
+<style id="admin-receiving-compact-spacing-20261111">
+/* Receiving stage only: keep the order, inventory and action controls, but reduce empty space. */
+.admin-receiving-stage .admin-date-orders>.admin-order-fold{margin-bottom:8px}
+.admin-receiving-stage .admin-order-fold-heading{
+ display:grid;grid-template-columns:minmax(0,1fr) auto 13px;
+ align-items:center;gap:7px;min-height:0;padding:11px 12px;
+}
+.admin-receiving-stage .admin-order-fold-left{
+ grid-column:1;grid-row:1;min-width:0;gap:3px
+}
+.admin-receiving-stage .admin-order-fold-right{
+ grid-column:2;grid-row:1;min-width:0;max-width:115px;width:auto;
+ justify-content:flex-end;align-items:center;gap:0;text-align:right
+}
+.admin-receiving-stage .admin-order-fold-chevron{
+ grid-column:3;grid-row:1;justify-self:end;align-self:center
+}
+.admin-receiving-stage .admin-order-fold-meta{font-size:10px;line-height:1.4}
+.admin-receiving-stage .admin-order-fold-body{padding:8px 10px 9px}
+.admin-receiving-stage .admin-receipt-buyer-top{padding:2px 1px 7px}
+.admin-receiving-stage .receipt-buyer-item{
+ display:grid!important;
+ grid-template-columns:minmax(0,1fr) auto!important;
+ align-items:center!important;
+ gap:9px!important;
+ padding:10px 11px!important
+}
+.admin-receiving-stage .receipt-buyer-item .receipt-person-text{gap:2px}
+.admin-receiving-stage .receipt-buyer-item .receipt-person-text strong{line-height:1.35}
+.admin-receiving-stage .receipt-buyer-item .receipt-person-text span,
+.admin-receiving-stage .receipt-buyer-item .receipt-person-text small{line-height:1.35}
+.admin-receiving-stage .receipt-buyer-item .receipt-person-buttons{
+ width:auto;max-width:139px;min-width:0;
+ flex-wrap:nowrap;justify-content:flex-end;gap:5px;margin-top:0
+}
+.admin-receiving-stage .receipt-buyer-item .receipt-check{
+ min-width:85px;max-width:95px;min-height:38px;
+ padding:7px 8px;font-size:11px;white-space:nowrap
+}
+.admin-receiving-stage .receipt-buyer-item .receipt-other>summary{
+ min-width:35px;min-height:38px
+}
+.admin-receiving-stage .receipt-buyer-item .receipt-stepper button{height:38px;min-width:32px}
+.admin-receiving-stage .admin-receipt-buyer-completed,
+.admin-receiving-stage .admin-receipt-buyer-secondary{margin-top:7px!important}
+.admin-receiving-stage .admin-receipt-buyer-completed>summary,
+.admin-receiving-stage .admin-receipt-buyer-secondary>summary{
+ min-height:34px;padding:7px 2px!important
+}
+@media(max-width:360px){
+ .admin-receiving-stage .admin-order-fold-heading{padding:10px 9px;gap:5px}
+ .admin-receiving-stage .admin-order-fold-body{padding:7px 7px 8px}
+ .admin-receiving-stage .receipt-buyer-item{padding:9px 8px!important;gap:6px!important}
+ .admin-receiving-stage .receipt-buyer-item .receipt-person-buttons{gap:4px}
+ .admin-receiving-stage .receipt-buyer-item .receipt-check{min-width:77px;max-width:85px;padding:7px 5px;font-size:10px}
+ .admin-receiving-stage .receipt-buyer-item .receipt-other>summary{min-width:32px}
+}
+</style>
 </head>
 <body>
 <div id="app"><div class="loading">미니예나를 여는 중이에요…</div></div>

@@ -4917,7 +4917,36 @@ window.miniYenaOneSignalReady = new Promise(function(resolve) {
 .admin-procurement-page .supplier-order-clean-actions{gap:7px}
 .admin-procurement-page .supplier-order-clean-actions .btn{min-width:0;white-space:normal}
 @media(max-width:390px){.admin-procurement-page .supplier-order-clean-actions{grid-template-columns:1fr}}
-</style></head>
+</style>
+<style id="buyer-tracking-product-thumb-20261111">
+/* Order lookup: small visual previews, while item titles and totals remain legible. */
+.buyer-track-clean .buyer-simple-item{padding:12px 2px}
+.buyer-track-item-main{display:grid;grid-template-columns:62px minmax(0,1fr);gap:12px;align-items:start}
+.buyer-track-item-thumb{
+ width:62px;height:62px;display:block;object-fit:cover;object-position:center;
+ border:1px solid #ececec;border-radius:9px;background:#f5f5f5;
+ box-sizing:border-box;overflow:hidden
+}
+.buyer-track-item-thumb-empty{
+ display:flex;align-items:center;justify-content:center;
+ color:#999;font-size:10px;font-weight:650;text-align:center;
+}
+.buyer-track-item-info{min-width:0}
+.buyer-track-clean .buyer-simple-product{align-items:flex-start;gap:7px;line-height:1.38}
+.buyer-track-clean .buyer-simple-product b{font-size:14px;min-width:0;font-weight:760}
+.buyer-track-clean .buyer-simple-product>span{flex-shrink:0;font-size:11px;line-height:1.5}
+.buyer-track-clean .buyer-simple-variant{font-size:12px;line-height:1.45;margin:4px 0 5px}
+.buyer-track-clean .buyer-simple-unit{font-size:15px;line-height:1.35;margin-top:3px}
+.buyer-track-clean .buyer-track-product-state{font-size:11px;line-height:1.4;margin-top:5px}
+.buyer-track-clean .buyer-simple-item>.option-request-card,
+.buyer-track-clean .buyer-simple-item>.buyer-hint{margin-top:10px}
+@media(max-width:350px){
+ .buyer-track-item-main{grid-template-columns:56px minmax(0,1fr);gap:9px}
+ .buyer-track-item-thumb{width:56px;height:56px}
+ .buyer-track-clean .buyer-simple-product b{font-size:13px}
+}
+</style>
+</head>
 <body>
 <div id="app"><div class="loading">미니예나를 여는 중이에요…</div></div>
 <script>
@@ -7027,11 +7056,19 @@ function renderTrack(){
  const itemMarkup=(q.items||[]).map(i=>{
   const progress=buyerTrackItemLabel(q,i);
   const action=q.status!=='confirmed'?buyerOptionRequest(q,i):i.option_request?.status==='pending'?buyerOptionRequest(q,i):'';
+  // A product photo comes from the public catalog only. Do not expose private supplier information.
+  const photoProduct=state.products.find(p=>p.id===i.product_id);
+  const images=photoProduct?productPhotoUrls(photoProduct):[];
+  const photo=images.find(src=>!/\\.gif(?:[?#]|$)/i.test(src))||images[0]||'';
+  const thumb=photo?'<img class="buyer-track-item-thumb" src="'+esc(photo)+'" alt="" loading="lazy" decoding="async" width="62" height="62">'
+   :'<span class="buyer-track-item-thumb buyer-track-item-thumb-empty" aria-hidden="true">사진 없음</span>';
   return '<article class="buyer-simple-item">'+
+   '<div class="buyer-track-item-main">'+thumb+'<div class="buyer-track-item-info">'+
    '<div class="buyer-simple-product"><b>'+esc(i.store_name)+' · '+esc(i.product_name)+'</b><span>'+Number(i.quantity)+'개</span></div>'+
    '<div class="buyer-simple-variant">'+esc(i.color)+' / '+esc(i.size)+'</div>'+
    '<div class="buyer-simple-unit">'+(i.unit_price==null?'가격 확인 중':money(Number(i.unit_price)*Number(i.quantity)))+'</div>'+
-   (progress?'<div class="buyer-track-product-state">'+esc(progress)+'</div>':'')+action+'</article>';
+   (progress?'<div class="buyer-track-product-state">'+esc(progress)+'</div>':'')+
+   '</div></div>'+action+'</article>';
  }).join('');
  const finalValue=q.status==='requested'?'가격 확인 중':q.status==='quoted'&&!settledBuyerTotal(q)?'배송비 계산 중':!readyQuote(q)?'금액 확인 중':money(totalDue(q));
  const due=buyerFinalPaymentReady(q)&&readyQuote(q)?balanceDue(q):null;
@@ -15652,7 +15689,9 @@ window.addEventListener('popstate',()=>{const pp=new URLSearchParams(location.se
    // A slow product catalog must never block a customer's emailed quote link.
    render();
    await reloadTracking();
-   loadCatalog().catch(e=>console.warn('주문조회 중 상품 목록 지연:',e));
+   // Fetch the public catalog separately; repaint thumbnails when photo data arrives.
+   loadCatalog().then(()=>{if(state.page==='track'&&state.trackId&&state.tracking)render()})
+    .catch(e=>console.warn('주문조회 중 상품 목록 지연:',e));
   }else await loadPublic();
  }catch(e){
   console.error('미니예나 초기 로딩 오류:',e);

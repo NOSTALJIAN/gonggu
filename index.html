@@ -4968,6 +4968,13 @@ window.miniYenaOneSignalReady = new Promise(function(resolve) {
 </style><style id="own-inline-add-20261111">
 .own-inline-add{align-self:flex-start;margin:5px 0 0;background:#f4f4f4;border:1px solid #e4e4e4;color:#333;font-size:11px;font-weight:720;border-radius:7px;padding:6px 9px}
 .own-inline-add:disabled{opacity:.35}
+.shop-own-tools{display:flex;justify-content:flex-end;margin:8px 0 0}
+.shop-own-tools .shop-own-add{border:1px solid #e5e5e5;border-radius:8px;padding:8px 11px;background:#f8f8f8;color:#656565;font-size:11px;font-weight:730}
+.shop-own-tools .shop-own-add:active{background:#ededed}
+.shop-own-login{display:grid;gap:12px;padding:5px 2px 14px}
+.shop-own-login label{display:grid;gap:6px;font-size:12px;font-weight:700}
+.shop-own-login input{min-height:44px;width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:9px;font-size:16px}
+.shop-own-login p{margin:0;color:#888;font-size:11px;line-height:1.55}
 </style><style id="own-variant-summary-20261111">
 .supplier-order-option-total{display:flex;flex-direction:column;align-items:flex-end;gap:3px;white-space:nowrap}
 .supplier-order-option-total small{font-size:10px;color:#b07448;font-weight:700}
@@ -5217,7 +5224,7 @@ const CDN_SHARE_HOST=/^(?:rawcdn|raw)\.githack\.com$/i.test(location.hostname);
 const STOREFRONT_PATH=location.hostname.toLowerCase()==='nostaljian.github.io'?'/gonggu/':CDN_SHARE_HOST?location.pathname:'/';
 const dedicatedAdminPage=location.hostname.toLowerCase()==='miniyena.pages.dev'&&/^\/admin(?:\/index\.html|\/)?$/i.test(location.pathname);
 if(!dedicatedAdminPage&&p.get('page')==='admin')location.replace(ADMIN_HOME);
-const state={partialParcels:[],partialParcelsReady:false,page:dedicatedAdminPage?'admin':p.get('page')==='track'?'track':'shop',tab:'home',adminOrderSearch:'',adminOrderSearchMode:'all',adminDispatchSelection:new Set(),receiptSearch:'',receiptView:'pending',receiptGroupBy:'product',receiptStore:'all',stores:[],products:[],requests:[],quotes:[],cart:read(CART,[]),modal:null,search:'',shopCategory:'all',shopSort:'newest',shopStore:'all',shopFiltersOpen:false,shopVisibleCount:24,adminCategory:'all',trackId:p.get('id')||'',trackToken:p.get('token')||'',tracking:null,receipts:read(TRACK,[]),notice:'',filter:'pricing',orderViewFilter:null,admin:false,heroPhotoUrl:null,heroStoreId:null,dateGroupsOpen:{},orderCardsOpen:{},supplierBulkSelected:new Set(),supplierBulkStoreId:'',ownPurchases:[],ownPurchasesReady:false,supplierBatches:[],supplierBatchesReady:false,supplierBatchesError:'',supplierPartialInvoices:[],trackSupplierPartial:[],lowerPriceReports:[],optionRequests:[],optionRequestsReady:false,optionRequestsError:'',requestStatusFilter:'pending',adminCatalogView:'products',adminCatalogFilter:'all',adminProductSort:'newest',adminProductSearch:'',productPrivate:{},productPrivateReady:false,emailSettings:null,emailSettingsReady:false,emailSettingsError:'',supplierFreightNotify:{},supplierFreightNotifyReady:false,adminPinIds:new Set(),phoneLookupReady:null,pinLookupNotice:''};
+const state={partialParcels:[],partialParcelsReady:false,page:dedicatedAdminPage?'admin':p.get('page')==='track'?'track':'shop',tab:'home',adminOrderSearch:'',adminOrderSearchMode:'all',adminDispatchSelection:new Set(),receiptSearch:'',receiptView:'pending',receiptGroupBy:'product',receiptStore:'all',stores:[],products:[],requests:[],quotes:[],cart:read(CART,[]),modal:null,search:'',shopCategory:'all',shopSort:'newest',shopStore:'all',shopFiltersOpen:false,shopVisibleCount:24,adminCategory:'all',trackId:p.get('id')||'',trackToken:p.get('token')||'',tracking:null,receipts:read(TRACK,[]),notice:'',filter:'pricing',orderViewFilter:null,admin:false,shopOwnAuthorized:false,heroPhotoUrl:null,heroStoreId:null,dateGroupsOpen:{},orderCardsOpen:{},supplierBulkSelected:new Set(),supplierBulkStoreId:'',ownPurchases:[],ownPurchasesReady:false,supplierBatches:[],supplierBatchesReady:false,supplierBatchesError:'',supplierPartialInvoices:[],trackSupplierPartial:[],lowerPriceReports:[],optionRequests:[],optionRequestsReady:false,optionRequestsError:'',requestStatusFilter:'pending',adminCatalogView:'products',adminCatalogFilter:'all',adminProductSort:'newest',adminProductSearch:'',productPrivate:{},productPrivateReady:false,emailSettings:null,emailSettingsReady:false,emailSettingsError:'',supplierFreightNotify:{},supplierFreightNotifyReady:false,adminPinIds:new Set(),phoneLookupReady:null,pinLookupNotice:''};
 
 state.adminLoading=Boolean(connected&&state.page==='admin'&&session?.refresh_token);
 const PRODUCT_CATEGORIES=['바디수트','세트','상의','하의','아우터','원피스','스커트','모자','양말','악세서리','잡화'];
@@ -5575,6 +5582,7 @@ function goto(page){
  if(dedicatedAdminPage){location.assign(location.origin+STOREFRONT_PATH+(page==='track'?'?page=track':''));return;}
  state.page=page;state.modal=null;
  history.pushState({},'',location.pathname+'?page='+page);render();
+ if(page==='shop'&&session)unlockShopOwn().catch(error=>console.warn('비공개 내 수량 버튼 연결 실패',error));
 }
 async function getToken(){if(!session)return null;if(session.expires_at>Date.now()/1000+60)return session.access_token;if(refreshing)return refreshing;refreshing=(async()=>{try{const r=await fetch(url+'/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:{apikey:key,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:session.refresh_token})});const j=await r.json();if(!r.ok)throw Error(j.error_description||'로그인 만료');session={...j,expires_at:Math.floor(Date.now()/1000)+j.expires_in};localStorage.setItem(SESS,JSON.stringify(session));return j.access_token}catch(e){session=null;localStorage.removeItem(SESS);throw e}finally{refreshing=null}})();return refreshing}
 async function api(path,{method='GET',body,admin=false,signal}={}){if(!connected)throw Error('온라인 연결 전 체험 모드입니다');const token=admin?await getToken():null;if(admin&&!token)throw Error('관리자 로그인이 필요해요');const h={apikey:key};if(token)h.Authorization='Bearer '+token;if(body!==undefined)h['Content-Type']='application/json';if(admin&&method!=='GET')h['Prefer']='return=representation';const r=await fetch(url+path,{method,headers:h,body:body===undefined?undefined:JSON.stringify(body),signal});const txt=await r.text();let j;try{j=txt?JSON.parse(txt):null}catch{j=txt};if(!r.ok){const error=Error(j?.message||j?.error_description||'서버 오류 '+r.status);error.code=j?.code;error.status=r.status;throw error}
@@ -6179,6 +6187,18 @@ async function loadAdmin(){
  }
 }
 async function loadPublic(){await loadCatalog(false);render();miniOpenLinkedProduct()}
+async function unlockShopOwn(show=true){
+ if(!connected||!session||dedicatedAdminPage||state.page!=='shop')return false;
+ let allowed=false;
+ try{allowed=await rpc('gq_is_admin',{},true)}catch(error){console.warn('쇼핑몰 개인 사입 권한 확인 실패',error);return false}
+ if(allowed!==true){state.shopOwnAuthorized=false;return false}
+ state.admin=true;
+ await Promise.all([loadAdminProductPrivate(),loadOwnPurchases()]);
+ if(!state.productPrivateReady||!state.ownPurchasesReady){state.shopOwnAuthorized=false;state.admin=false;return false}
+ state.shopOwnAuthorized=true;
+ if(show&&state.page==='shop')render();
+ return true;
+}
 async function uploadHeroGif(file){
  if(!connected||!state.admin)throw Error('관리자 로그인 후 GIF를 등록해 주세요.');
  if(file.type!=='image/gif'||!file.size||file.size>15*1024*1024)throw Error('15MB 이하 GIF 파일만 등록할 수 있어요.');
@@ -11731,7 +11751,13 @@ function updateAdminPricePopupTotals(form){
 }
 function modal(){const m=state.modal;if(!m)return '';const wrap=(title,body,stickyProductSave=false)=>stickyProductSave?`<div class="overlay" id="overlay"><div class="sheet sheet-product-editor product-editor-clean swipe-dismiss-sheet" role="dialog" aria-modal="true"><div class="sheet-drag-handle" aria-hidden="true"></div><div class="sheethead"><h2>${title}</h2><button class="close" data-action="close">×</button></div><div class="sheet-product-scroll">${body}</div><div class="sheet-product-save"><button class="btn block" type="submit" form="product-form">상품 저장</button></div></div></div>`:`<div class="overlay" id="overlay"><div class="sheet${['myquotes','suggest','cart','pick','product-photos','approve'].includes(m.type)?' swipe-dismiss-sheet':''}${m.type==='myquotes'?' myquotes-swipe-sheet':''}${m.type==='suggest'?' suggest-sheet':''}${m.type==='cart'?' cart-swipe-sheet':''}${m.type==='approve'?' approve-sheet':''}${m.type==='own-purchase'?' own-purchase-sheet':''}" role="dialog" aria-modal="true">${['myquotes','suggest','cart','pick','product-photos','approve'].includes(m.type)?'<div class="sheet-drag-handle" aria-hidden="true"></div>':''}<div class="sheethead"><h2>${title}</h2><button class="close" data-action="close">×</button></div>${body}</div></div>`;
 if(m.type==='payment-save-success'&&state.admin)return wrap('입금 처리 완료','<div style="padding:12px 4px 22px"><p style="font-size:18px;font-weight:700;margin:0 0 12px">'+esc(m.buyer)+'</p><p style="font-size:22px;font-weight:800;margin:0 0 12px">'+money(m.amount)+' 입금 확인 완료</p><p class="smallnote">'+(m.confirmed?'주문도 자동 확정됐어요.':'입금 내역이 저장됐어요.')+'</p><button type="button" class="btn block" data-action="close">확인</button></div>');
-if(m.type==='own-purchase'&&state.admin&&state.page==='admin')return wrap('내 사입 추가',ownModalBody(m));
+if(m.type==='shop-own-login'&&state.page==='shop')return wrap('비공개 · 내 사입 로그인',
+ '<form id="shop-own-login-form" class="shop-own-login">'+
+ '<label>관리자 이메일<input type="email" name="email" autocomplete="username" required></label>'+
+ '<label>비밀번호<input type="password" name="password" autocomplete="current-password" required></label>'+
+ '<button class="btn block" type="submit">내 사입 모드 열기</button>'+
+ '<p>관리자 권한을 확인한 뒤에만 상품 원가와 내 수량 버튼을 표시해요.</p></form>');
+ if(m.type==='own-purchase'&&state.admin&&(state.page==='admin'||state.page==='shop'&&state.shopOwnAuthorized))return wrap('내 사입 추가',ownModalBody(m));
 if(m.type==='entry-push')return wrap('신상·주문 알림 받기',renderEntryPushBody());
 if(m.type==='admin-delivery-queue'&&state.admin)return wrap('수령방식 변경 요청',renderAdminDeliveryQueue());
 if(m.type==='admin-dispatch-queue'&&state.admin)return wrap('전체·부분배송 요청',renderAdminDispatchQueue());
@@ -11941,6 +11967,7 @@ if(m.type==='pick'){
   <label class="label">수량<input type="number" name="qty" value="1" min="1" max="20" required></label>
   <button class="btn block" type="submit">장바구니 담기</button>
  </form>
+ ${state.shopOwnAuthorized&&state.productPrivateReady&&state.ownPurchasesReady&&ownAllowedProducts().some(x=>x.id===p.id)?`<div class="shop-own-tools"><button type="button" class="shop-own-add" data-action="own-open" data-product="${esc(p.id)}">🔒 내 원가로 수량 추가</button></div>`:''}
  ${sizeGuide?`<details class="pick-size-details" open><summary>사이즈 안내 <span aria-hidden="true">⌄</span></summary>${sizeGuide}</details>`:''}`);
 }
 if(m.type==='product-photos'){
@@ -13540,7 +13567,19 @@ function manualKoreanAddress(button){
  zip.focus();notif('우편번호와 기본주소를 직접 입력할 수 있어요');
 }
 
+let shopOwnLogoTaps=0,shopOwnLogoAt=0;
 async function click(e){
+ const logo=e.target.closest?.('.brand-home');
+ if(logo&&state.page==='shop'){
+  const t=Date.now();shopOwnLogoTaps=t-shopOwnLogoAt<3000?shopOwnLogoTaps+1:1;shopOwnLogoAt=t;
+  if(shopOwnLogoTaps>=5){
+   shopOwnLogoTaps=0;
+   if(state.shopOwnAuthorized)notif('상품 옵션에서 🔒 내 원가로 수량 추가를 선택해 주세요.');
+   else{state.modal={type:'shop-own-login'};render()}
+   return;
+  }
+  window.scrollTo({top:0,behavior:'auto'});return;
+ }
  const galleryChoice=e.target.closest?.('[data-action="catalog-photo-index"]');
  if(galleryChoice){
   const track=galleryChoice.closest('[data-catalog-gallery]')?.querySelector('.catalog-photo-track');
@@ -13553,9 +13592,10 @@ async function click(e){
  const pg=e.target.closest('[data-page]');if(pg){goto(pg.dataset.page);if(pg.classList.contains('brand-home'))window.scrollTo({top:0,behavior:'auto'});return}const b=e.target.closest('[data-action]');if(!b)return;const a=b.dataset.action,id=b.dataset.id;try{
  
 if(a==='own-open'){
- if(!state.admin||state.page!=='admin')throw Error('관리자 전용 기능이에요.');
+ if(!state.admin||!(state.page==='admin'||state.page==='shop'&&state.shopOwnAuthorized))throw Error('관리자 전용 기능이에요.');
  const product=state.products.find(p=>p.id===b.dataset.product);
- state.modal={type:'own-purchase',productId:product?.id||'',color:String(b.dataset.color||''),size:String(b.dataset.size||'')};
+ const pick=state.page==='shop'?app.querySelector('#pick'):null;
+ state.modal={type:'own-purchase',productId:product?.id||'',color:pick?.elements?.color?.value||String(b.dataset.color||''),size:pick?.elements?.size?.value||String(b.dataset.size||'')};
  render();return;
 }
 if(a==='own-choose-product'){
@@ -15064,12 +15104,12 @@ else if(a==='delete-product-request'){
  state.orderCardsOpen[q.bundle_parent_id||q.id]=true;
  await loadAdmin();
  notif('1688 도매배송비 0원 확정 완료! 구매자에게 최종 주문을 안내할 수 있어요.');
- }else if(a==='publish-quote'){const direct=isDirect1688Admin(state.quotes.find(q=>q.id===id));if(!window.confirm(direct?'1688 상품 가격과 배송비를 확인했나요? 견적 발송 후 구매자가 바로 주문을 확정할 수 있어요.':'상품 가격을 확인했나요? 고객에게 먼저 견적을 보내고 이번 회차 구매·다음 회차 구매·보류 선택을 받을게요. 배송비는 답변을 받은 뒤 계산해요.'))return;await adminPublish(id);await loadAdmin();notif(direct?'1688 견적을 보냈어요. 구매자가 바로 주문을 확정할 수 있어요.':'견적을 보냈어요. 구매 회차 선택을 받은 후 배송비를 배분해 주세요.')}else if(a==='confirm-quote'){if(!window.confirm('이 견적으로 최종 주문을 확정할까요?'))return;await confirmFinalQuote();notif('최종 주문이 확정됐어요!')}else if(a==='export-csv'){csv()}else if(a==='copy-vendors'){await copy(vendorText())}else if(a==='logout'){session=null;localStorage.removeItem(SESS);setAutoAdminDevice(false);state.admin=false;state.productPrivate={};state.productPrivateReady=false;render()} }catch(ex){notif(errorText(ex))}}
+ }else if(a==='publish-quote'){const direct=isDirect1688Admin(state.quotes.find(q=>q.id===id));if(!window.confirm(direct?'1688 상품 가격과 배송비를 확인했나요? 견적 발송 후 구매자가 바로 주문을 확정할 수 있어요.':'상품 가격을 확인했나요? 고객에게 먼저 견적을 보내고 이번 회차 구매·다음 회차 구매·보류 선택을 받을게요. 배송비는 답변을 받은 뒤 계산해요.'))return;await adminPublish(id);await loadAdmin();notif(direct?'1688 견적을 보냈어요. 구매자가 바로 주문을 확정할 수 있어요.':'견적을 보냈어요. 구매 회차 선택을 받은 후 배송비를 배분해 주세요.')}else if(a==='confirm-quote'){if(!window.confirm('이 견적으로 최종 주문을 확정할까요?'))return;await confirmFinalQuote();notif('최종 주문이 확정됐어요!')}else if(a==='export-csv'){csv()}else if(a==='copy-vendors'){await copy(vendorText())}else if(a==='logout'){session=null;localStorage.removeItem(SESS);setAutoAdminDevice(false);state.admin=false;state.shopOwnAuthorized=false;state.productPrivate={};state.productPrivateReady=false;render()} }catch(ex){notif(errorText(ex))}}
 async function submit(e){const f=e.target;
 // All in-app forms are handled by JavaScript. Never allow a native browser GET
 // to replace ?page=admin and appear to sign the administrator out.
 e.preventDefault();
-if(!f.dataset.lowerPriceReport&&!f.dataset.sizeChartForm&&!f.dataset.customerEmail&&!['new-arrival-push-form','gmail-settings-form','hero-photo-form','reject-request-form','admin-pin-form','pin-register-form','pin-lookup-form','import-track-form','pick','request','store-form','product-form','login','suggest-form','approve-form','bundle-form','merge-shipping-form','admin-early-pickup-form','edit-delivery-form','bulk-supplier-shipping-form','admin-payment-popup-form','admin-bundle-refund-form','admin-price-popup-form','admin-option-decision-form','own-purchase-form'].includes(f.id)&&!f.dataset.itemOptions&&!f.dataset.buyerOptionRequest&&!f.dataset.price&&!f.dataset.payment&&!f.dataset.shipping&&!f.dataset.supplierShipping&&!f.dataset.ship&&!f.dataset.bundleShip)return;if(busy)return;busy=true;
+if(!f.dataset.lowerPriceReport&&!f.dataset.sizeChartForm&&!f.dataset.customerEmail&&!['shop-own-login-form','new-arrival-push-form','gmail-settings-form','hero-photo-form','reject-request-form','admin-pin-form','pin-register-form','pin-lookup-form','import-track-form','pick','request','store-form','product-form','login','suggest-form','approve-form','bundle-form','merge-shipping-form','admin-early-pickup-form','edit-delivery-form','bulk-supplier-shipping-form','admin-payment-popup-form','admin-bundle-refund-form','admin-price-popup-form','admin-option-decision-form','own-purchase-form'].includes(f.id)&&!f.dataset.itemOptions&&!f.dataset.buyerOptionRequest&&!f.dataset.price&&!f.dataset.payment&&!f.dataset.shipping&&!f.dataset.supplierShipping&&!f.dataset.ship&&!f.dataset.bundleShip)return;if(busy)return;busy=true;
 const isLoginSubmit=f.id==='login';
 if(isLoginSubmit){
  const submitButton=f.querySelector('button[type="submit"]');
@@ -15078,8 +15118,26 @@ if(isLoginSubmit){
  const loginStatus=f.querySelector('[data-login-status]');
  if(loginStatus){loginStatus.classList.remove('is-error');loginStatus.textContent='로그인 확인 및 주문 정보 불러오는 중…';}
 }
-const data=new FormData(f);try{if(f.id==='own-purchase-form'){
- if(!state.admin||state.page!=='admin'||state.modal?.type!=='own-purchase'||!state.ownPurchasesReady||!state.productPrivateReady)throw Error('관리자 전용 사입 입력에서 다시 시도해 주세요.');
+const data=new FormData(f);try{if(f.id==='shop-own-login-form'){
+ if(state.page!=='shop'||state.modal?.type!=='shop-own-login'||!connected)throw Error('쇼핑몰 로그인 화면에서 다시 시도해 주세요.');
+ const previousSession=session;
+ const response=await fetch(url+'/auth/v1/token?grant_type=password',{method:'POST',headers:{apikey:key,'Content-Type':'application/json'},body:JSON.stringify({email:data.get('email'),password:data.get('password')})});
+ const auth=await response.json();
+ if(!response.ok)throw Error(auth.error_description||auth.message||'로그인에 실패했어요.');
+ session={...auth,expires_at:Math.floor(Date.now()/1000)+auth.expires_in};
+ localStorage.setItem(SESS,JSON.stringify(session));
+ let unlocked=false;
+ try{unlocked=await unlockShopOwn(false)}catch(error){console.warn('쇼핑몰 개인 사입 로딩 실패',error)}
+ if(!unlocked){
+  session=previousSession;
+  if(session)localStorage.setItem(SESS,JSON.stringify(session));else localStorage.removeItem(SESS);
+  state.admin=false;state.shopOwnAuthorized=false;state.productPrivate={};state.productPrivateReady=false;
+  state.ownPurchases=[];state.ownPurchasesReady=false;
+  throw Error('관리자 권한이나 비공개 원가 정보를 확인하지 못했어요.');
+ }
+ state.modal=null;render();notif('쇼핑몰에서 내 원가 수량을 추가할 수 있어요.');
+ }else if(f.id==='own-purchase-form'){
+ if(!state.admin||!(state.page==='admin'||state.page==='shop'&&state.shopOwnAuthorized)||state.modal?.type!=='own-purchase'||!state.ownPurchasesReady||!state.productPrivateReady)throw Error('관리자 전용 사입 입력에서 다시 시도해 주세요.');
  const p=state.products.find(x=>x.id===f.dataset.product),meta=p?state.productPrivate[p.id]:null;
  const color=String(data.get('color')||''),size=String(data.get('size')||''),qty=Number(data.get('quantity'));
  if(!p||meta?.source_type!=='namdaemun'||!String(meta.supplier_name||'').trim()||
@@ -16012,7 +16070,7 @@ window.addEventListener('popstate',()=>{const pp=new URLSearchParams(location.se
    // Fetch the public catalog separately; repaint thumbnails when photo data arrives.
    loadCatalog().then(()=>{if(state.page==='track'&&state.trackId&&state.tracking)render()})
     .catch(e=>console.warn('주문조회 중 상품 목록 지연:',e));
-  }else await loadPublic();
+  }else{await loadPublic();if(session)unlockShopOwn().catch(error=>console.warn('비공개 내 수량 버튼 연결 실패',error));}
  }catch(e){
   console.error('미니예나 초기 로딩 오류:',e);
   try{render()}catch(renderError){

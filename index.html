@@ -13462,7 +13462,7 @@ if(a==='set-purchase-intent'){
  return;
 }
 if(a==='open-admin-order-filters'){
- if(!state.admin||state.page!=='admin'||state.tab!=='quotes')throw Error('관리자 주문 화면에서 상세 필터를 열어 주세요.');
+ if(!state.admin||state.page!=='admin'||!['quotes','payments','receipts'].includes(state.tab))throw Error('관리자 주문 화면에서 상세 필터를 열어 주세요.');
  modalOpen('admin-order-filters');return;
 }
 if(a==='open-admin-wholesale-history'){
@@ -15308,7 +15308,7 @@ app.addEventListener('click',e=>{
  if(filter){
   const next=filter.dataset.filter;
   const inAdvanced=state.modal?.type==='admin-order-filters';
-  if(inAdvanced)state.modal=null;
+  if(inAdvanced){state.modal=null;if(['payments','receipts'].includes(state.tab))state.tab='quotes';}
   if(state.tab==='quotes'&&!inAdvanced&&['supplier_payments','buy_now'].includes(next)){
    state.tab='payments';
   }

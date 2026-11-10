@@ -4701,6 +4701,38 @@ window.miniYenaOneSignalReady = new Promise(function(resolve) {
 .admin-procurement-supplier-fold>.admin-supplier-payments-center{margin-top:14px}
 .supplier-order-clean-card .admin-supplier-buyer-preview{display:block;color:#4d5863;white-space:normal;overflow-wrap:anywhere;font-size:11px;font-weight:700;line-height:1.5;margin-top:5px}
 </style>
+<style>
+/* MINIYENA clean compact receiving screen. Data and receipt buttons unchanged. */
+.receipt-page .receipt-stats{display:flex;align-items:center;flex-wrap:wrap;gap:8px 15px;padding:10px 12px;margin:10px 0;background:#f7f7f8;border-radius:10px}
+.receipt-page .receipt-stats>div{display:flex;align-items:center;gap:4px;padding:0;border:0;background:transparent;border-radius:0}
+.receipt-page .receipt-stats small{font-size:11px}
+.receipt-page .receipt-stats strong{font-size:13px;letter-spacing:0}
+.receipt-page .receipt-stats strong em{font-size:11px}
+.receipt-page .receipt-stats span{display:none}
+.receipt-page .receipt-hint{display:none}
+.receipt-page .receipt-tools{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;margin:11px 0}
+.receipt-page .receipt-tools>label{min-width:0}
+.receipt-page .receipt-tools>label input{min-width:0;height:44px}
+.receipt-page .receipt-tool-filter-fold{position:relative}
+.receipt-page .receipt-tool-filter-fold>summary{display:grid;box-sizing:border-box;place-items:center;min-height:44px;padding:0 13px;border:1px solid #ddd;border-radius:9px;background:#fff;list-style:none;cursor:pointer;font-size:12px;font-weight:800}
+.receipt-page .receipt-tool-filter-fold>summary::-webkit-details-marker{display:none}
+.receipt-page .receipt-tool-filter-fold .receipt-tool-selects{position:absolute;right:0;top:49px;z-index:40;width:min(300px,calc(100vw - 55px));padding:13px;box-sizing:border-box;display:grid;gap:10px;background:#fff;box-shadow:0 8px 22px #0002;border:1px solid #ddd;border-radius:11px}
+.receipt-page .receipt-filter-tabs{margin:10px 0}
+.receipt-page .receipt-filter-tabs button{min-height:40px}
+.receipt-page .receipt-count{margin:9px 0 12px}
+.receipt-page details.receipt-group{margin:0 0 8px;overflow:visible}
+.receipt-page .receipt-group-head{display:flex;align-items:center;justify-content:space-between;gap:10px;list-style:none;cursor:pointer;background:#fff;border-bottom:0;padding:13px 14px;border-radius:11px}
+.receipt-page .receipt-group-head::-webkit-details-marker{display:none}
+.receipt-page .receipt-group-head h3{font-size:14px;margin:3px 0!important}
+.receipt-page .receipt-group-head p{font-size:11px}
+.receipt-page .receipt-chevron{font-size:18px;color:#666;transition:transform .2s}
+.receipt-page details.receipt-group[open] .receipt-chevron{transform:rotate(180deg)}
+.receipt-page details.receipt-group[open] .receipt-group-head{border-bottom:1px solid #eee;border-radius:11px 11px 0 0}
+.receipt-page .receipt-bulk-row{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:#fafafa}
+.receipt-page .receipt-bulk-row>span{font-size:11px;color:#666}
+.receipt-page .receipt-bulk{min-height:34px;padding:6px 9px}
+.receipt-page .receipt-person{padding:10px 11px}
+</style>
 </head>
 <body>
 <div id="app"><div class="loading">미니예나를 여는 중이에요…</div></div>
@@ -6442,6 +6474,7 @@ function render(){
  const adminScrollPositions=['.admin-main-tabs','.admin-product-filter-list','.admin-category-list','.admin-quote-primary-filters','.admin-orders-filterbar'].map(selector=>[selector,app.querySelector(selector)?.scrollLeft||0]);
  app.querySelectorAll("details[data-fold-key]").forEach(el=>adminFoldState.set(el.dataset.foldKey,el.open));cancelAdminPhotoDrag();app.innerHTML=`<main class="shell ${state.page==='admin'?'is-admin-shell':''}">${header()}${demoNotice()}${state.page==='admin'?renderAdmin():state.page==='track'?renderTrack():renderShop()}${shopBottomNav()}${renderOpenChatBanner()}<div class="floating-actions" aria-label="화면 바로가기"><button class="floating-refresh" type="button" data-action="reload-app" aria-label="최신 화면으로 새로고침" title="새로고침"><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8.1 8.1 0 0 0-15.5-2"/><path d="M4 4v5h5"/><path d="M4 13a8.1 8.1 0 0 0 15.5 2"/><path d="M20 20v-5h-5"/></svg><span>새로고침</span></button><button class="back-to-top" type="button" data-action="scroll-top" aria-label="맨 위로 이동" aria-hidden="true" tabindex="-1"><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 13 7-7 7 7M12 6v12"/></svg><span>위로</span></button></div></main>${renderModal()}`;prepareMiniDeferredPhotos();app.querySelectorAll("details[data-fold-key]").forEach(el=>{
   if(adminFoldState.has(el.dataset.foldKey))el.open=adminFoldState.get(el.dataset.foldKey)===true;
+  else if(state.page==='admin'&&state.tab==='receipts'&&el.classList.contains('receipt-group')&&el.hasAttribute('data-receipt-first'))el.open=true;
   else if(state.page==='admin'&&['quotes','payments'].includes(state.tab)&&state.filter==='supplier_payments'&&el.classList.contains('supplier-bulk-batch'))el.open=el.hasAttribute('open');
   else el.open=false;
  });
@@ -7113,12 +7146,12 @@ function renderAdminReceipts(){
   '<div class="receipt-stats"><div><small>대기</small><strong>'+tot.pending+'<em>개</em></strong><span>'+tot.pendingRows+'종</span></div>'+
   '<div><small>완료</small><strong>'+tot.received+'<em>개</em></strong><span>체크된 수량</span></div>'+
   '<div><small>부분입고</small><strong>'+tot.partial+'<em>종</em></strong><span>일부 도착</span></div></div>'+
-  '<p class="receipt-hint">같은 상품·색상·사이즈 주문을 모아서 체크해요. 직접수령은 마지막 품목까지 입고되면 픽업 대기로 자동 변경될 수 있어요.</p>'+
+  ''+
   '<div class="receipt-tools"><label>검색<input id="receipt-search" type="search" autocomplete="off" placeholder="상품 · 색상 · 사이즈 · 주문자 · 아기 이름" value="'+esc(state.receiptSearch||'')+'"></label>'+
-  '<div class="receipt-tool-selects"><label>거래처<select id="receipt-store"><option value="all">전체 거래처</option>';
+  '<details class="receipt-tool-filter-fold" data-fold-key="receipt-extra-filters"><summary>필터</summary><div class="receipt-tool-selects"><label>거래처<select id="receipt-store"><option value="all">전체 거래처</option>';
  for(const v of vendors)html+='<option value="'+esc(v)+'" '+(state.receiptStore===v?'selected':'')+'>'+esc(v)+'</option>';
  html+='</select></label><label>묶어 보기<select id="receipt-group-by"><option value="product" '+(state.receiptGroupBy==='product'?'selected':'')+'>상품·옵션별</option>'+
-  '<option value="buyer" '+(state.receiptGroupBy==='buyer'?'selected':'')+'>주문자별</option></select></label></div></div>'+
+  '<option value="buyer" '+(state.receiptGroupBy==='buyer'?'selected':'')+'>주문자별</option></select></label></div></details></div>'+
   '<div class="receipt-filter-tabs">';
  for(const [key,label] of [['pending','미입고'],['received','입고완료'],['all','전체']])
   html+='<button type="button" data-action="receipt-view" data-view="'+key+'" class="'+(state.receiptView===key?'active':'')+'">'+label+'</button>';
@@ -7129,10 +7162,10 @@ function renderAdminReceipts(){
   const eyebrow=buyer?'주문자':first.vendor;
   const subtitle=buyer?[...new Set(items.map(x=>x.vendor))].join(' · '):first.i.color+' / '+first.i.size;
   const missing=items.filter(x=>x.pending>0&&x.i.fulfillment!=='sold_out');
-  html+='<section class="receipt-group" data-receipt-group="'+esc(k)+'"><div class="receipt-group-head"><div><small>'+esc(eyebrow)+'</small><h3>'+esc(title)+'</h3>'+
-   '<p>'+esc(subtitle)+' · '+items.length+'건'+(missing.length?' · 남은 '+missing.reduce((n,x)=>n+x.pending,0)+'개':'')+'</p></div>'+
-   (missing.length>1?'<button type="button" class="receipt-bulk" data-action="receipt-bulk" data-group="'+esc(k)+'">전부 입고</button>':'')+'</div>'+
-   '<div class="receipt-group-rows">'+items.sort((a,b)=>b.pending-a.pending||String(a.q.buyer_name).localeCompare(String(b.q.buyer_name),'ko')).map(renderReceiptRow).join('')+'</div></section>';
+  html+='<details class="receipt-group" data-fold-key="receipt-row-'+encodeURIComponent(k)+'" data-receipt-group="'+esc(k)+'" '+(ordered[0][0]===k?'data-receipt-first':'')+'><summary class="receipt-group-head"><div><small>'+esc(eyebrow)+'</small><h3>'+esc(title)+'</h3>'+
+   '<p>'+esc(subtitle)+' · '+items.length+'건'+(missing.length?' · 남은 '+missing.reduce((n,x)=>n+x.pending,0)+'개':'')+'</p></div><span class="receipt-chevron">⌄</span></summary>'+
+   (missing.length>1?'<div class="receipt-bulk-row"><span>미입고 '+missing.reduce((n,x)=>n+x.pending,0)+'개</span><button type="button" class="receipt-bulk" data-action="receipt-bulk" data-group="'+esc(k)+'">전부 입고</button></div>':'')+
+   '<div class="receipt-group-rows">'+items.sort((a,b)=>b.pending-a.pending||String(a.q.buyer_name).localeCompare(String(b.q.buyer_name),'ko')).map(renderReceiptRow).join('')+'</div></details>';
  }
  if(!ordered.length)html+='<div class="receipt-empty">조건에 맞는 상품이 없어요.</div>';
  html+='<div class="receipt-search-empty hidden">검색 결과가 없어요.</div></section>';
@@ -7147,7 +7180,7 @@ function updateReceiptSearch(){
    const show=!query||String(row.dataset.receiptSearch||'').includes(query);
    row.classList.toggle('hidden',!show);if(show)matched++;
   }
-  group.classList.toggle('hidden',matched===0);if(matched){groupCount++;rowCount+=matched;}
+  group.classList.toggle('hidden',matched===0);if(matched){groupCount++;rowCount+=matched;if(query)group.open=true;}
  }
  const counter=app.querySelector('.receipt-count');
  if(counter)counter.textContent=groupCount+'묶음 · '+rowCount+'종';

@@ -5082,6 +5082,9 @@ window.miniYenaOneSignalReady = new Promise(function(resolve) {
 .cart-checkout-footer .instant-checkout-total{margin:0 0 9px;padding:9px 11px;border:1px solid #e8eee9;border-radius:8px;background:#f5f8f6;color:#264735;font-size:11px;line-height:1.4}
 .cart-checkout-footer .cart-checkout-submit{width:100%;min-height:48px;margin:0;background:#111;color:#fff;border-radius:7px;font-size:14px;font-weight:780}
 @media(min-width:640px){.overlay .sheet.cart-checkout-sheet{height:min(88dvh,760px);border-radius:18px}}
+</style><style id="mini-owner-long-press-20261111">
+/* Disable iOS double-tap zoom, text selection and context callout on the hidden admin gesture. */
+button.brand-home{touch-action:manipulation;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
 </style></head>
 <body>
 <div id="app"><div class="loading">미니예나를 여는 중이에요…</div></div>
@@ -13590,17 +13593,44 @@ function manualKoreanAddress(button){
  zip.focus();notif('우편번호와 기본주소를 직접 입력할 수 있어요');
 }
 
-let shopOwnLogoTaps=0,shopOwnLogoAt=0;
+// Hold the shop logo for 1.5 seconds; ordinary taps still return to the shop top.
+let shopOwnLogoPress=null,shopOwnLogoSuppressClickUntil=0;
+function cancelShopOwnLogoPress(){shopOwnLogoPress=null;}
+function shopOwnLogoOpen(){
+ if(state.page!=='shop')return;
+ state.modal=state.shopOwnAuthorized
+  ?{type:'own-purchase',productId:'',color:'',size:''}
+  :{type:'shop-own-login'};
+ renderShopProductSheetOnly();
+}
+app.addEventListener('pointerdown',e=>{
+ const logo=e.target.closest?.('button.brand-home');
+ if(!logo||state.page!=='shop'||!e.isPrimary||e.pointerType==='mouse'&&e.button!==0)return;
+ shopOwnLogoPress={id:e.pointerId,x:e.clientX,y:e.clientY,started:Date.now()};
+});
+app.addEventListener('pointermove',e=>{
+ const press=shopOwnLogoPress;
+ if(press&&press.id===e.pointerId&&(Math.abs(e.clientX-press.x)>12||Math.abs(e.clientY-press.y)>12))cancelShopOwnLogoPress();
+});
+app.addEventListener('pointerup',e=>{
+ const press=shopOwnLogoPress;
+ if(!press||press.id!==e.pointerId)return;
+ cancelShopOwnLogoPress();
+ if(Date.now()-press.started>=1500){
+  shopOwnLogoSuppressClickUntil=Date.now()+1000;
+  e.preventDefault();
+  shopOwnLogoOpen();
+ }
+});
+app.addEventListener('pointercancel',cancelShopOwnLogoPress);
+app.addEventListener('contextmenu',e=>{
+ if(e.target.closest?.('button.brand-home')&&state.page==='shop')e.preventDefault();
+});
+window.addEventListener('blur',cancelShopOwnLogoPress);
 async function click(e){
  const logo=e.target.closest?.('.brand-home');
  if(logo&&state.page==='shop'){
-  const t=Date.now();shopOwnLogoTaps=t-shopOwnLogoAt<3000?shopOwnLogoTaps+1:1;shopOwnLogoAt=t;
-  if(shopOwnLogoTaps>=5){
-   shopOwnLogoTaps=0;
-   if(state.shopOwnAuthorized)notif('상품 옵션에서 🔒 내 원가로 수량 추가를 선택해 주세요.');
-   else{state.modal={type:'shop-own-login'};render()}
-   return;
-  }
+  if(Date.now()<shopOwnLogoSuppressClickUntil)return;
   window.scrollTo({top:0,behavior:'auto'});return;
  }
  const galleryChoice=e.target.closest?.('[data-action="catalog-photo-index"]');
@@ -15162,7 +15192,7 @@ const data=new FormData(f);try{if(f.id==='shop-own-login-form'){
   state.ownPurchases=[];state.ownPurchasesReady=false;
   throw Error('관리자 권한이나 비공개 원가 정보를 확인하지 못했어요.');
  }
- state.modal=null;render();notif('쇼핑몰에서 내 원가 수량을 추가할 수 있어요.');
+ state.modal={type:'own-purchase',productId:'',color:'',size:''};renderShopProductSheetOnly();notif('내 원가 사입 상품을 선택해 주세요.');
  }else if(f.id==='own-purchase-form'){
  if(!state.admin||!(state.page==='admin'||state.page==='shop'&&state.shopOwnAuthorized)||state.modal?.type!=='own-purchase'||!state.ownPurchasesReady||!state.productPrivateReady)throw Error('관리자 전용 사입 입력에서 다시 시도해 주세요.');
  const p=state.products.find(x=>x.id===f.dataset.product),meta=p?state.productPrivate[p.id]:null;

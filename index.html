@@ -11014,8 +11014,8 @@ function instantDomesticOrderText(group){
  // Only verified paid, unplaced items belong in this supplier-facing message.
  const options=supplierOptionGroups(group.ready);
  if(!options.length)throw Error('입금 확인된 발주 상품이 없어요.');
- const sameStore=(a,b)=>String(a||'').normalize('NFKC').replace(/\\s+/g,'').toLocaleLowerCase('ko')===
-   String(b||'').normalize('NFKC').replace(/\\s+/g,'').toLocaleLowerCase('ko');
+ const sameStore=(a,b)=>String(a||'').normalize('NFKC').replace(/\s+/g,'').toLocaleLowerCase('ko')===
+   String(b||'').normalize('NFKC').replace(/\s+/g,'').toLocaleLowerCase('ko');
  const products=new Map();
  for(const row of options){
   const item=row.item||{};
@@ -11038,7 +11038,7 @@ function instantDomesticOrderText(group){
   }
  }
  lines.push('','상품 '+products.size+'종 · 총 '+total+'개');
- return lines.join('\\n');
+ return lines.join('\n');
 }
 /* The third operational step shows customers before supplier-aggregated purchasing. */
 /* Reuse the exact collapsible buyer cards from step 2 to avoid a second,

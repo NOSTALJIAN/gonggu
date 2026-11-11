@@ -13985,7 +13985,7 @@ if(a==='own-ordered'){
  const qty=rows.reduce((n,r)=>n+Number(r.quantity||0),0);
  if(!window.confirm(supplier+' 내 주문 '+qty+'개를 실제로 발주 완료했나요?\n\n구매자 주문·매출은 변경하지 않아요.'))return;
  busy=true;b.disabled=true;
- try{const saved=await markPersonalSupplierOrdered(supplier,rows);render();notif('내 주문 '+saved+'개 발주 완료로 표시했어요.');}
+ try{const saved=await markPersonalSupplierOrdered(supplier,rows);if(state.modal?.type==='procurement-finish-choose')state.modal=null;render();notif('내 주문 '+saved+'개 발주 완료로 표시했어요.');}
  finally{busy=false;if(b.isConnected)b.disabled=false;}
  return;
 }
@@ -14438,15 +14438,17 @@ if(a==='complete-instant-procurement'){
  const group=instantDomesticPendingGroups().find(x=>x.supplier===String(b.dataset.supplier||''));
  if(!group||!group.readyInstant.length)throw Error('입금 확인된 바로구매 상품이 없어요.');
  const ids=group.readyInstant.map(r=>r.item.id);
+ const personalRows=ownPending(group.supplier),personalQty=personalRows.reduce((n,r)=>n+Number(r.quantity||0),0);
  const count=group.readyInstant.reduce((n,r)=>n+Number(r.item.quantity||0),0);
- if(!window.confirm(group.supplier+' 즉시구매 상품 '+count+'개를 실제로 발주 완료했나요?\n\n입금 확인된 '+ids.length+'종만 완료 처리해요. 미입금 상품과 다른 주문은 그대로 유지됩니다.'))return;
+ if(!window.confirm(group.supplier+' 즉시구매 상품 '+count+'개를 실제로 발주 완료했나요?\n\n입금 확인된 '+ids.length+'종만 완료 처리해요. 미입금 상품과 다른 주문은 그대로 유지됩니다.'+(personalQty?'\n내 주문 '+personalQty+'개도 함께 발주 완료 처리해요.':'')))return;
  busy=true;b.disabled=true;
  try{
   const result=await rpc('gq_admin_mark_instant_items_ordered_v104',{p_item_ids:ids},true);
   if(Number(result?.updated)!==ids.length)throw Error('처리 결과를 확인하지 못했어요. 새로고침 후 확인해 주세요.');
+  const personalCompleted=await markPersonalSupplierOrdered(group.supplier,personalRows);
   await loadAdmin();
   if(state.modal?.type==='procurement-finish-choose'){state.modal=null;render();}
-  notif(group.supplier+' 새 주소 상품 '+count+'개를 발주 완료 처리했어요.');
+  notif(group.supplier+' 새 주소 상품 '+count+'개'+(personalCompleted?' · 내 주문 '+personalCompleted+'개':'')+' 발주 완료 처리했어요.');
  }catch(error){try{await loadAdmin()}catch(_){}throw error}
  finally{busy=false;if(b.isConnected)b.disabled=false}
  return;
@@ -14459,8 +14461,9 @@ if(a==='complete-legacy-domestic-procurement'){
  const group=instantDomesticPendingGroups().find(g=>g.supplier===name);
  const ready=group?.readyLegacy||[],ids=ready.map(r=>String(r.item.id));
  if(!ids.length||ids.some(id=>!/^[0-9a-f-]{36}$/i.test(id)))throw Error('입금확인된 기존 주문 상품이 없어요.');
+ const personalRows=ownPending(name),personalQty=personalRows.reduce((n,r)=>n+Number(r.quantity||0),0);
  const count=ready.reduce((n,r)=>n+Number(r.item.quantity||0),0);
- if(!window.confirm(name+'에 '+ready.length+'종 · '+count+'개를 실제로 발주 완료했나요?\n\n입금확인 상품만 처리하고 미입금 상품·기존 배송비는 그대로 둡니다.'))return;
+ if(!window.confirm(name+'에 '+ready.length+'종 · '+count+'개를 실제로 발주 완료했나요?\n\n입금확인 상품만 처리하고 미입금 상품·기존 배송비는 그대로 둡니다.'+(personalQty?'\n내 주문 '+personalQty+'개도 함께 발주 완료 처리해요.':'')))return;
  busy=true;b.disabled=true;
  try{
   // Recheck both item/order status and payment before writing.
@@ -14478,7 +14481,8 @@ if(a==='complete-legacy-domestic-procurement'){
   }
   const changed=await api('/rest/v1/gq_quote_items?id=in.('+ids.join(',')+')&supplier_ordered_at=is.null&fulfillment=in.(ordered,delayed)',{method:'PATCH',admin:true,body:{supplier_ordered_at:new Date().toISOString()}});
   if(!Array.isArray(changed)||changed.length!==ids.length)throw Error('발주 처리 결과 일부가 확인되지 않았어요. 새로고침해서 확인해 주세요.');
-  await loadAdmin();if(state.modal?.type==='procurement-finish-choose'){state.modal=null;render();}notif(name+' 기존 주문 '+count+'개 발주 완료 처리했어요.');
+  const personalCompleted=await markPersonalSupplierOrdered(name,personalRows);
+  await loadAdmin();if(state.modal?.type==='procurement-finish-choose'){state.modal=null;render();}notif(name+' 기존 주문 '+count+'개'+(personalCompleted?' · 내 주문 '+personalCompleted+'개':'')+' 발주 완료 처리했어요.');
  }catch(error){try{await loadAdmin()}catch(_){}throw error}
  finally{busy=false;if(b.isConnected)b.disabled=false}
  return;
@@ -14806,10 +14810,12 @@ if(a==='supplier-bulk-ordered'){
  const stalePartialRequests=(batch.payers||[]).map(p=>supplierPartialInvoice(batch.id,p.buyer_key)).filter(invoice=>invoice&&!invoice.paid_at);
  if(stalePartialRequests.length&&!window.confirm('이전 선입금 요청 '+stalePartialRequests.length+'건이 미입금 표시로 남아 있어요.\n현재 주문 전체 입금은 확인되어 발주할 수 있지만, 예전 선입금 요청은 자동 취소되지 않아요.\n고객 중복 입금 안내 방지를 위해 별도로 취소해 주세요.\n\n도매 발주 완료 처리를 계속할까요?'))return;
  if(!window.confirm('‘'+batch.supplier+'’ 거래처에 선택한 상품 '+batch.item_ids.length+'종을 실제로 발주 완료했나요?\n\n확인하면 선택된 이 거래처 상품만 발주 완료로 표시해요. 다른 거래처 상품이나 고객 배송 완료 상태는 변경하지 않아요.'))return;
+ const personalRows=personalDomesticAnchor(batch)?ownPending(batch.supplier):[];
  const result=await adminMarkSupplierBatchOrdered(id);
  if(!result?.ordered)throw Error('거래처별 도매 발주 완료 처리 결과가 올바르지 않아요.');
+ const personalCompleted=await markPersonalSupplierOrdered(batch.supplier,personalRows);
  await loadAdmin();
- notif('‘'+batch.supplier+'’ 거래처 상품 '+Number(result.items||0)+'종을 도매 발주 완료 처리했어요.');
+ notif('‘'+batch.supplier+'’ 거래처 상품 '+Number(result.items||0)+'종'+(personalCompleted?' · 내 주문 '+personalCompleted+'개':'')+' 도매 발주 완료 처리했어요.');
  return;
 }
 if(a==='mark-order-payment-part'){

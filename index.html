@@ -11033,10 +11033,11 @@ function instantDomesticOrderText(group){
   if(!product.variants.has(variantKey))product.variants.set(variantKey,{color,size,qty:0});
   product.variants.get(variantKey).qty+=Number(row.qty)||0;
  }
- const lines=['[남대문 발주서]','실제 사입처: '+group.supplier];
+ const lines=[];
  let total=0;
  for(const product of products.values()){
-  lines.push('',(product.brand&&!sameStore(product.brand,group.supplier)?product.brand+' · ':'')+product.name);
+  if(lines.length)lines.push('');
+  lines.push((product.brand&&!sameStore(product.brand,group.supplier)?product.brand+' · ':'')+product.name);
   for(const option of product.variants.values()){
    lines.push('  - '+option.color+' / '+option.size+' ×'+option.qty);
    total+=option.qty;
@@ -11044,8 +11045,8 @@ function instantDomesticOrderText(group){
  }
  lines.push('','상품 '+products.size+'종 · 총 '+total+'개');
  lines.push(missingWholesaleQty
-  ?'총 매입금액: 확인 필요 (도매가 미등록 '+missingWholesaleQty+'개 · 등록 단가 소계 '+money(wholesaleTotal)+')'
-  :'총 매입금액: '+money(wholesaleTotal));
+  ?'총액: 확인 필요 (도매가 미등록 '+missingWholesaleQty+'개 · 등록 단가 소계 '+money(wholesaleTotal)+')'
+  :'총액: '+money(wholesaleTotal));
  return lines.join('\n');
 }
 /* The third operational step shows customers before supplier-aggregated purchasing. */

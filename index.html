@@ -11010,11 +11010,35 @@ function instantDomesticPendingGroups(){
  });
 }
 function instantDomesticOrderText(group){
- const records=supplierOptionGroups(group.ready);
- return ['[남대문 발주서 · 입금확인 상품만]','실제 사입처: '+group.supplier,
-  ...records.map(g=>[g.item.store_name,g.item.product_name,g.item.color,g.item.size,g.qty+'개'].join(' | ')+
-    '\n주문자: '+g.rows.map(r=>(r.q.buyer_name||'구매자')+' ×'+r.item.quantity).join(' · ')),
-  '※ 미입금 상품은 제외. 이미 기록한 배송비와 입금액은 변경하지 않습니다.'].join('\n');
+ // A copy to the wholesale shop is NOT an internal buyer ledger.
+ // Only verified paid, unplaced items belong in this supplier-facing message.
+ const options=supplierOptionGroups(group.ready);
+ if(!options.length)throw Error('입금 확인된 발주 상품이 없어요.');
+ const sameStore=(a,b)=>String(a||'').normalize('NFKC').replace(/\\s+/g,'').toLocaleLowerCase('ko')===
+   String(b||'').normalize('NFKC').replace(/\\s+/g,'').toLocaleLowerCase('ko');
+ const products=new Map();
+ for(const row of options){
+  const item=row.item||{};
+  const brand=String(item.store_name||'').trim(),name=String(item.product_name||'상품명 미등록').trim();
+  const productKey=JSON.stringify([brand,name]);
+  if(!products.has(productKey))products.set(productKey,{brand,name,variants:new Map()});
+  const product=products.get(productKey);
+  const color=String(item.color||'-').trim(),size=String(item.size||'-').trim();
+  const variantKey=JSON.stringify([color,size]);
+  if(!product.variants.has(variantKey))product.variants.set(variantKey,{color,size,qty:0});
+  product.variants.get(variantKey).qty+=Number(row.qty)||0;
+ }
+ const lines=['[남대문 발주서]','실제 사입처: '+group.supplier];
+ let total=0;
+ for(const product of products.values()){
+  lines.push('',(product.brand&&!sameStore(product.brand,group.supplier)?product.brand+' · ':'')+product.name);
+  for(const option of product.variants.values()){
+   lines.push('  - '+option.color+' / '+option.size+' ×'+option.qty);
+   total+=option.qty;
+  }
+ }
+ lines.push('','상품 '+products.size+'종 · 총 '+total+'개');
+ return lines.join('\\n');
 }
 /* The third operational step shows customers before supplier-aggregated purchasing. */
 /* Reuse the exact collapsible buyer cards from step 2 to avoid a second,

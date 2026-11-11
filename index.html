@@ -5135,6 +5135,19 @@ button.brand-home{touch-action:manipulation;-webkit-touch-callout:none;-webkit-u
 .admin-procurement-page .own-supplier>summary{padding:9px 10px}
 @media(max-width:370px){.admin-procurement-page .supplier-order-option-buyer{gap:5px}.admin-procurement-page .supplier-order-option-total{padding:4px;font-size:10px}}
 </style>
+<style id="admin-supplier-finish-popup-20261111">
+/* Two concise procurement actions; checkout channels are chosen from a popup. */
+.admin-procurement-page .supplier-order-clean-actions{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:7px!important;margin-top:10px}
+.admin-procurement-page .supplier-order-clean-actions>.btn{width:100%;min-width:0;min-height:38px;padding:8px 5px;border-radius:7px;font-size:11px;font-weight:780;line-height:1.25;white-space:normal;text-align:center}
+.procurement-complete-popup{display:grid;gap:9px;padding:5px 2px 12px}
+.procurement-complete-name{font-size:17px;line-height:1.4}
+.procurement-complete-popup p{font-size:12px;line-height:1.5;color:#666;margin:0 0 5px}
+.procurement-complete-choice{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:48px;padding:12px;border:1px solid #e4e4e4;border-radius:9px;background:white;color:#222;text-align:left;font-size:13px;cursor:pointer}
+.procurement-complete-choice span{font-size:13px;font-weight:700}
+.procurement-complete-choice b{font-size:12px;white-space:nowrap}
+.procurement-complete-choice:active{background:#f6f6f6}
+.procurement-complete-cancel{width:100%;margin-top:5px;min-height:38px;background:#f5f5f5;color:#666;border:0;border-radius:8px;font-size:12px}
+</style>
 </head>
 <body>
 <div id="app"><div class="loading">미니예나를 여는 중이에요…</div></div>
@@ -11175,8 +11188,7 @@ function renderSupplierPaymentCenter(){
     <div class="supplier-order-option-buyers">${group.rows.map(({q,item})=>`<div class="supplier-order-option-buyer"><span class="supplier-order-option-buyer-name">${esc(q.buyer_name||'구매자')}</span><b class="supplier-order-option-buyer-qty">×${Number(item.quantity||0)}</b><small class="supplier-order-option-buyer-status ${instantDomesticEligible({q,item})?'is-ready':'is-pending'}">${instantDomesticEligible({q,item})?'입금 확인':'입금·변경 확인'}</small></div>`).join('')}</div></div>`).join('')}
     <div class="supplier-order-clean-actions">
      <button type="button" class="btn supplier-order-clean-copy" data-action="copy-instant-procurement" data-supplier="${esc(g.supplier)}" ${g.ready.length?'':'disabled'}>입금확인 발주서 복사</button>
-     ${g.readyInstant.length?'<button type="button" class="btn supplier-order-clean-finish" data-action="complete-instant-procurement" data-supplier="'+esc(g.supplier)+'">바로구매 '+g.readyInstant.length+'종 발주 완료</button>':''}
-     ${g.readyLegacy.length?'<button type="button" class="btn supplier-order-clean-finish" data-action="complete-legacy-domestic-procurement" data-supplier="'+esc(g.supplier)+'">기존 주문 '+g.readyLegacy.length+'종 발주 완료</button>':''}
+     ${(g.readyInstant.length||g.readyLegacy.length)?'<button type="button" class="btn supplier-order-clean-finish" data-action="procurement-finish-choose" data-supplier="'+esc(g.supplier)+'">발주 완료</button>':''}
     </div>
     ${g.items.length!==g.ready.length?'<p class="supplier-order-clean-finish-note">입금·변경 확인이 필요한 상품은 발주서 및 발주 완료에서 제외돼요.</p>':''}
    </div>
@@ -11846,6 +11858,18 @@ function updateAdminPricePopupTotals(form){
   '게릴라 제외 · 상품판매금액 − 등록 사입원가 · 배송비·기타 비용 제외';
 }
 function modal(){const m=state.modal;if(!m)return '';const wrap=(title,body,stickyProductSave=false)=>stickyProductSave?`<div class="overlay" id="overlay"><div class="sheet sheet-product-editor product-editor-clean swipe-dismiss-sheet" role="dialog" aria-modal="true"><div class="sheet-drag-handle" aria-hidden="true"></div><div class="sheethead"><h2>${title}</h2><button class="close" data-action="close">×</button></div><div class="sheet-product-scroll">${body}</div><div class="sheet-product-save"><button class="btn block" type="submit" form="product-form">상품 저장</button></div></div></div>`:`<div class="overlay" id="overlay"><div class="sheet${['myquotes','suggest','cart','cart-checkout','pick','product-photos','approve'].includes(m.type)?' swipe-dismiss-sheet':''}${m.type==='myquotes'?' myquotes-swipe-sheet':''}${m.type==='suggest'?' suggest-sheet':''}${m.type==='cart'?' cart-swipe-sheet':''}${m.type==='cart-checkout'?' cart-checkout-sheet':''}${m.type==='approve'?' approve-sheet':''}${m.type==='own-purchase'?' own-purchase-sheet':''}" role="dialog" aria-modal="true">${['myquotes','suggest','cart','cart-checkout','pick','product-photos','approve'].includes(m.type)?'<div class="sheet-drag-handle" aria-hidden="true"></div>':''}<div class="sheethead"><h2>${title}</h2><button class="close" data-action="close">×</button></div>${body}</div></div>`;
+if(m.type==='procurement-finish-choose'&&state.admin&&state.page==='admin'){
+ const supplier=String(m.id||'');
+ const group=instantDomesticPendingGroups().find(g=>g.supplier===supplier);
+ if(!group||(group.readyInstant.length+group.readyLegacy.length)===0)return wrap('발주 완료','<p class="smallnote">발주할 상품이 없어요. 발주 목록을 확인해 주세요.</p><button type="button" class="btn block secondary" data-action="close">닫기</button>');
+ return wrap('발주 완료',`<div class="procurement-complete-popup">
+ <strong class="procurement-complete-name">${esc(supplier)}</strong>
+ <p>실제로 발주한 항목만 선택하세요. 입금 미확인 상품은 제외돼요.</p>
+ ${group.readyInstant.length?`<button type="button" class="procurement-complete-choice" data-action="complete-instant-procurement" data-supplier="${esc(supplier)}"><span>바로구매</span><b>${group.readyInstant.length}종 발주 완료</b></button>`:''}
+ ${group.readyLegacy.length?`<button type="button" class="procurement-complete-choice" data-action="complete-legacy-domestic-procurement" data-supplier="${esc(supplier)}"><span>기존 주문</span><b>${group.readyLegacy.length}종 발주 완료</b></button>`:''}
+ <button type="button" class="procurement-complete-cancel" data-action="close">닫기</button>
+ </div>`);
+}
 if(m.type==='payment-save-success'&&state.admin)return wrap('입금 처리 완료','<div style="padding:12px 4px 22px"><p style="font-size:18px;font-weight:700;margin:0 0 12px">'+esc(m.buyer)+'</p><p style="font-size:22px;font-weight:800;margin:0 0 12px">'+money(m.amount)+' 입금 확인 완료</p><p class="smallnote">'+(m.confirmed?'주문도 자동 확정됐어요.':'입금 내역이 저장됐어요.')+'</p><button type="button" class="btn block" data-action="close">확인</button></div>');
 if(m.type==='shop-own-login'&&state.page==='shop')return wrap('비공개 · 내 사입 로그인',
  '<form id="shop-own-login-form" class="shop-own-login">'+
@@ -14280,6 +14304,14 @@ if(a==='copy-instant-procurement'){
  await copy(instantDomesticOrderText(group));
  return;
 }
+if(a==='procurement-finish-choose'){
+ if(!state.admin||state.page!=='admin'||state.tab!=='payments')throw Error('관리자 발주 화면에서만 사용할 수 있어요.');
+ const supplier=String(b.dataset.supplier||'');
+ const group=instantDomesticPendingGroups().find(g=>g.supplier===supplier);
+ if(!group||(group.readyInstant.length+group.readyLegacy.length)===0)throw Error('발주 가능한 상품이 없어요.');
+ modalOpen('procurement-finish-choose',supplier);
+ return;
+}
 if(a==='complete-instant-procurement'){
  if(!state.admin||state.page!=='admin'||state.tab!=='payments')throw Error('관리자 도매관리에서 확인해 주세요.');
  if(busy)return;
@@ -14293,6 +14325,7 @@ if(a==='complete-instant-procurement'){
   const result=await rpc('gq_admin_mark_instant_items_ordered_v104',{p_item_ids:ids},true);
   if(Number(result?.updated)!==ids.length)throw Error('처리 결과를 확인하지 못했어요. 새로고침 후 확인해 주세요.');
   await loadAdmin();
+  if(state.modal?.type==='procurement-finish-choose'){state.modal=null;render();}
   notif(group.supplier+' 새 주소 상품 '+count+'개를 발주 완료 처리했어요.');
  }catch(error){try{await loadAdmin()}catch(_){}throw error}
  finally{busy=false;if(b.isConnected)b.disabled=false}
@@ -14325,7 +14358,7 @@ if(a==='complete-legacy-domestic-procurement'){
   }
   const changed=await api('/rest/v1/gq_quote_items?id=in.('+ids.join(',')+')&supplier_ordered_at=is.null&fulfillment=in.(ordered,delayed)',{method:'PATCH',admin:true,body:{supplier_ordered_at:new Date().toISOString()}});
   if(!Array.isArray(changed)||changed.length!==ids.length)throw Error('발주 처리 결과 일부가 확인되지 않았어요. 새로고침해서 확인해 주세요.');
-  await loadAdmin();notif(name+' 기존 주문 '+count+'개 발주 완료 처리했어요.');
+  await loadAdmin();if(state.modal?.type==='procurement-finish-choose'){state.modal=null;render();}notif(name+' 기존 주문 '+count+'개 발주 완료 처리했어요.');
  }catch(error){try{await loadAdmin()}catch(_){}throw error}
  finally{busy=false;if(b.isConnected)b.disabled=false}
  return;

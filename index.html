@@ -5148,6 +5148,18 @@ button.brand-home{touch-action:manipulation;-webkit-touch-callout:none;-webkit-u
 .procurement-complete-choice:active{background:#f6f6f6}
 .procurement-complete-cancel{width:100%;margin-top:5px;min-height:38px;background:#f5f5f5;color:#666;border:0;border-radius:8px;font-size:12px}
 </style>
+<style id="miniyena-personal-inline-supplier-20261112">
+.admin-procurement-page .supplier-personal-header-actions{display:inline-flex;align-items:center;gap:9px}
+.admin-procurement-page .supplier-personal-header-add{background:#f6f6f6;border:1px solid #e5e5e5;border-radius:6px;padding:5px 8px;font-size:11px;color:#333;font-weight:700}
+.admin-procurement-page .supplier-personal-header-add:disabled{opacity:.4}
+.admin-procurement-page .supplier-personal-line{display:flex;align-items:center;gap:7px;background:#f7f7f7;border-radius:6px;padding:5px 7px}
+.admin-procurement-page .supplier-personal-line .supplier-order-option-buyer-name{font-size:10px;font-weight:800;color:#333}
+.admin-procurement-page .supplier-personal-line .supplier-order-option-buyer-qty{font-size:11px;margin-left:auto}
+.admin-procurement-page .supplier-personal-adjust{display:inline-flex;gap:3px;align-items:center}
+.admin-procurement-page .supplier-personal-adjust button{width:24px;height:26px;border:1px solid #dedede;border-radius:5px;background:#fff;color:#555;font-size:12px}
+.admin-procurement-page .supplier-personal-adjust button:disabled{opacity:.3}
+.admin-procurement-page .supplier-personal-only{border-top:1px solid #efefef}
+</style>
 </head>
 <body>
 <div id="app"><div class="loading">미니예나를 여는 중이에요…</div></div>
@@ -11234,11 +11246,18 @@ function renderSupplierPaymentCenter(){
   const china=chinaPendingProcurementGroups();
   const instant=instantDomesticPendingGroups();
   const chinaQty=china.reduce((n,g)=>n+g.qty,0);
+  const supplierKey=name=>String(name||'').normalize('NFKC').replace(/\\s+/g,'').toLocaleLowerCase('ko');
+  const domesticOwnAnchor=batch=>!instant.some(g=>supplierKey(g.supplier)===supplierKey(batch.supplier))&&
+    domestic.find(x=>supplierKey(x.b.supplier)===supplierKey(batch.supplier))?.b.id===batch.id;
+  const ownOnlySuppliers=[...new Set(ownPending().map(r=>r.supplier_name))]
+    .filter(name=>!instant.some(g=>supplierKey(g.supplier)===supplierKey(name))&&
+      !domestic.some(x=>supplierKey(x.b.supplier)===supplierKey(name)))
+    .sort((a,b)=>a.localeCompare(b,'ko'));
   const supplierCount=new Set([...domestic.map(({b})=>String(b.supplier||'').trim()),...instant.map(g=>g.supplier),...china.map(g=>g.supplier),...ownPending().map(r=>r.supplier_name)].filter(Boolean)).size;
   return `<section class="admin-supplier-payments-center">
-  <div class="supplier-order-clean-head admin-supplier-overview"><strong>발주할 도매처</strong><span>${supplierCount}곳</span></div>
+  <div class="supplier-order-clean-head admin-supplier-overview"><strong>발주할 도매처</strong><span class="supplier-personal-header-actions"><button type="button" data-action="own-open" class="supplier-personal-header-add" ${!state.ownPurchasesReady?'disabled':''}>＋ 내 주문</button><span>${supplierCount}곳</span></span></div>
 
-  ${renderOwnPurchases()}
+  ${!state.ownPurchasesReady?'<p class="noticefail">내 주문 정보를 불러오지 못했어요. 새로고침해 주세요.</p>':''}
   ${!state.productPrivateReady?'<p class="noticefail">사입 경로 정보를 불러오지 못했어요. 새로고침 후 확인해 주세요.</p>':''}
   ${china.length?`<div class="supplier-order-clean-list">${china.map(g=>`<details class="supplier-order-clean-card" data-fold-key="china-order-${esc(g.supplier)}">
     <summary><span><b>${esc(g.supplier)}</b><small>1688 · ${g.products.length}종 · ${g.qty}개 · ${g.buyers}건</small><small class="admin-supplier-buyer-preview">${[...new Set(g.items.map(({q})=>q.buyer_name||'주문자'))].map(esc).join(' · ')}</small></span><span class="supplier-order-clean-progress">⌄</span></summary>
@@ -11253,15 +11272,16 @@ function renderSupplierPaymentCenter(){
   </details>`).join('')}</div>`:''}
 
   ${instant.length?`<div class="supplier-order-clean-list">${instant.map(g=>`<details class="supplier-order-clean-card" data-fold-key="instant-domestic-${esc(g.supplier)}">
-   <summary><span><b>${esc(g.supplier)}</b><small>미발주 ${supplierOptionGroups(g.items).length}종 · ${g.qty}개 · 입금확인 ${g.ready.length}종</small><small class="admin-supplier-buyer-preview">${[...new Set(g.items.map(({q})=>q.buyer_name||'주문자'))].map(esc).join(' · ')}</small></span><span class="supplier-order-clean-progress">⌄</span></summary>
+   <summary><span><b>${esc(g.supplier)}</b><small>미발주 ${supplierOptionGroups(g.items).length}종 · ${g.qty+ownSupplierQty(g.supplier)}개${ownSupplierQty(g.supplier)?' (내 '+ownSupplierQty(g.supplier)+'개)':''} · 입금확인 ${g.ready.length}종</small><small class="admin-supplier-buyer-preview">${[...new Set(g.items.map(({q})=>q.buyer_name||'주문자'))].map(esc).join(' · ')}</small></span><span class="supplier-order-clean-progress">⌄</span></summary>
    <div class="supplier-order-clean-body">
     <p class="supplier-order-clean-note">실제 사입처 기준 · 기존 주문/바로구매 통합 · 배송비 재배분 없음</p>
-    ${ownSupplierQty(g.supplier)?'<p class="supplier-order-clean-note"><b>내 사입 '+ownSupplierQty(g.supplier)+'개</b>가 있어요. 합산 발주서는 위의 🔒 내 사입에서 복사하세요.</p>':''}
+    
     ${supplierOptionGroups(g.items).map(group=>`<div class="supplier-order-option-group"><div class="supplier-order-option-head"><span class="supplier-order-option-desc"><b>${esc(supplierOrderProductTitle(group.item,g.supplier))}</b><small>${esc(group.item.color||'-')} / ${esc(group.item.size||'-')}</small><button type="button" class="own-inline-add" data-action="own-open" data-product="${esc(group.item.product_id||'')}" data-color="${esc(group.item.color||'')}" data-size="${esc(group.item.size||'')}" ${group.item.product_id?'':'disabled'}>＋ 내 수량</button></span><strong class="supplier-order-option-total">${"총 "+(group.qty+ownVariantQty(group.item,g.supplier))+"개"+(ownVariantQty(group.item,g.supplier)?"<small>내 +"+ownVariantQty(group.item,g.supplier)+"개</small>":"")}</strong></div>
-    <div class="supplier-order-option-buyers">${group.rows.map(({q,item})=>`<div class="supplier-order-option-buyer"><span class="supplier-order-option-buyer-name">${esc(q.buyer_name||'구매자')}</span><b class="supplier-order-option-buyer-qty">×${Number(item.quantity||0)}</b><small class="supplier-order-option-buyer-status ${instantDomesticEligible({q,item})?'is-ready':'is-pending'}">${instantDomesticEligible({q,item})?'입금 확인':'입금·변경 확인'}</small></div>`).join('')}</div></div>`).join('')}
+    <div class="supplier-order-option-buyers">${group.rows.map(({q,item})=>`<div class="supplier-order-option-buyer"><span class="supplier-order-option-buyer-name">${esc(q.buyer_name||'구매자')}</span><b class="supplier-order-option-buyer-qty">×${Number(item.quantity||0)}</b><small class="supplier-order-option-buyer-status ${instantDomesticEligible({q,item})?'is-ready':'is-pending'}">${instantDomesticEligible({q,item})?'입금 확인':'입금·변경 확인'}</small></div>`).join('')}${renderPersonalSupplierOptionRows(group.item,g.supplier)}</div></div>`).join('')}
+    ${renderPersonalSupplierExtraRows(g.supplier,g.items)}
     <div class="supplier-order-clean-actions">
-     <button type="button" class="btn supplier-order-clean-copy" data-action="copy-instant-procurement" data-supplier="${esc(g.supplier)}" ${g.ready.length?'':'disabled'}>입금확인 발주서 복사</button>
-     ${(g.readyInstant.length||g.readyLegacy.length)?'<button type="button" class="btn supplier-order-clean-finish" data-action="procurement-finish-choose" data-supplier="'+esc(g.supplier)+'">발주 완료</button>':''}
+     <button type="button" class="btn supplier-order-clean-copy" data-action="copy-instant-procurement" data-supplier="${esc(g.supplier)}" ${(g.ready.length||ownSupplierQty(g.supplier))?'':'disabled'}>입금확인 발주서 복사</button>
+     ${(g.readyInstant.length||g.readyLegacy.length||ownSupplierQty(g.supplier))?'<button type="button" class="btn supplier-order-clean-finish" data-action="procurement-finish-choose" data-supplier="'+esc(g.supplier)+'">발주 완료</button>':''}
     </div>
     ${g.items.length!==g.ready.length?'<p class="supplier-order-clean-finish-note">입금·변경 확인이 필요한 상품은 발주서 및 발주 완료에서 제외돼요.</p>':''}
    </div>
@@ -11269,22 +11289,33 @@ function renderSupplierPaymentCenter(){
 
   ${!state.supplierBatchesReady?'<p class="noticefail">남대문 배송비 배분 내역을 불러오지 못했어요. 새로고침해 주세요.</p>':''}
   ${domestic.length?`<div class="supplier-order-clean-list">${domestic.map(({b,items,eligible,qty,buyers,ready,canOrder})=>`<details class="supplier-order-clean-card" data-fold-key="supplier-order-clean-${esc(b.id)}">
-  <summary><span><b>${esc(b.supplier||'거래처')}</b><small>공구 · ${supplierOptionGroups(items).length}종 · ${qty}개 · 입금확인 ${ready}/${buyers}건</small><small class="admin-supplier-buyer-preview">${[...new Set(items.map(({q})=>q.buyer_name||'주문자'))].map(esc).join(' · ')}</small></span><span class="supplier-order-clean-progress">⌄</span></summary>
+  <summary><span><b>${esc(b.supplier||'거래처')}</b><small>공구 · ${supplierOptionGroups(items).length}종 · ${qty+(domesticOwnAnchor(b)?ownSupplierQty(b.supplier):0)}개${domesticOwnAnchor(b)&&ownSupplierQty(b.supplier)?' (내 '+ownSupplierQty(b.supplier)+'개)':''} · 입금확인 ${ready}/${buyers}건</small><small class="admin-supplier-buyer-preview">${[...new Set(items.map(({q})=>q.buyer_name||'주문자'))].map(esc).join(' · ')}</small></span><span class="supplier-order-clean-progress">⌄</span></summary>
   <div class="supplier-order-clean-body">
    <p class="supplier-order-clean-note">입금 확인 ${eligible.length}종 · 확인 대기 ${items.length-eligible.length}종</p>
-   ${ownSupplierQty(b.supplier)?'<p class="supplier-order-clean-note"><b>내 사입 '+ownSupplierQty(b.supplier)+'개</b>가 있어요. 합산 발주서는 위의 🔒 내 사입에서 복사하세요.</p>':''}
+   
    ${supplierOptionGroups(items).map(group=>`<div class="supplier-order-option-group">
-    <div class="supplier-order-option-head"><span class="supplier-order-option-desc"><b>${esc(supplierOrderProductTitle(group.item,b.supplier))}</b><small>${esc(group.item.color||'-')} / ${esc(group.item.size||'-')}</small><button type="button" class="own-inline-add" data-action="own-open" data-product="${esc(group.item.product_id||'')}" data-color="${esc(group.item.color||'')}" data-size="${esc(group.item.size||'')}" ${group.item.product_id?'':'disabled'}>＋ 내 수량</button></span><strong class="supplier-order-option-total">${"총 "+(group.qty+ownVariantQty(group.item,b.supplier))+"개"+(ownVariantQty(group.item,b.supplier)?"<small>내 +"+ownVariantQty(group.item,b.supplier)+"개</small>":"")}</strong></div>
-    <div class="supplier-order-option-buyers">${group.rows.map(({q,item})=>`<div class="supplier-order-option-buyer"><span class="supplier-order-option-buyer-name">${esc(q.buyer_name||'구매자')}</span><b class="supplier-order-option-buyer-qty">×${Number(item.quantity||0)}</b><small class="supplier-order-option-buyer-status ${supplierOrderPaidForCopy(q)?'is-ready':'is-pending'}">${esc(supplierOrderRowStatus(q))}</small></div>`).join('')}</div>
+    <div class="supplier-order-option-head"><span class="supplier-order-option-desc"><b>${esc(supplierOrderProductTitle(group.item,b.supplier))}</b><small>${esc(group.item.color||'-')} / ${esc(group.item.size||'-')}</small><button type="button" class="own-inline-add" data-action="own-open" data-product="${esc(group.item.product_id||'')}" data-color="${esc(group.item.color||'')}" data-size="${esc(group.item.size||'')}" ${group.item.product_id?'':'disabled'}>＋ 내 수량</button></span><strong class="supplier-order-option-total">${"총 "+(group.qty+(domesticOwnAnchor(b)?ownVariantQty(group.item,b.supplier):0))+"개"+(domesticOwnAnchor(b)&&ownVariantQty(group.item,b.supplier)?"<small>내 +"+ownVariantQty(group.item,b.supplier)+"개</small>":"")}</strong></div>
+    <div class="supplier-order-option-buyers">${group.rows.map(({q,item})=>`<div class="supplier-order-option-buyer"><span class="supplier-order-option-buyer-name">${esc(q.buyer_name||'구매자')}</span><b class="supplier-order-option-buyer-qty">×${Number(item.quantity||0)}</b><small class="supplier-order-option-buyer-status ${supplierOrderPaidForCopy(q)?'is-ready':'is-pending'}">${esc(supplierOrderRowStatus(q))}</small></div>`).join('')}${domesticOwnAnchor(b)?renderPersonalSupplierOptionRows(group.item,b.supplier):''}</div>
    </div>`).join('')}
+   ${domesticOwnAnchor(b)?renderPersonalSupplierExtraRows(b.supplier,items):''}
    <div class="supplier-order-clean-actions">
     <button type="button" class="btn supplier-order-clean-copy" data-action="copy-supplier-pending-procurement" data-id="${esc(b.id)}" ${items.length&&state.productPrivateReady?'':'disabled'}>발주서 복사</button>
     <button type="button" class="btn supplier-order-clean-finish" data-action="supplier-bulk-ordered" data-id="${esc(b.id)}" ${canOrder?'':'disabled'}>발주 완료</button>
    </div>
-   <p class="supplier-order-clean-hint">발주서에는 확정 대기 이후의 미발주 상품 ${supplierOptionGroups(items).length}옵션 · ${qty}개가 모두 포함돼요. 입금 여부는 상관없어요.</p>
+   <p class="supplier-order-clean-hint">발주서에는 확정 대기 이후의 미발주 상품 ${supplierOptionGroups(items).length}옵션 · ${qty}개가 포함돼요. 입금 여부와 별개로 같은 거래처 내 주문도 합산해요.</p>
    ${!canOrder?'<p class="supplier-order-clean-finish-note">발주 완료 처리는 해당 거래처의 주문 확정과 상품대금 입금 확인이 모두 끝나야 활성화돼요.</p>':''}
   </div>
   </details>`).join('')}</div>`:''}
+  ${ownOnlySuppliers.length?`<div class="supplier-order-clean-list">${ownOnlySuppliers.map(supplier=>`<details class="supplier-order-clean-card" data-fold-key="own-only-${esc(supplier)}">
+  <summary><span><b>${esc(supplier)}</b><small>내 주문 · ${ownSupplierQty(supplier)}개</small></span><span class="supplier-order-clean-progress">⌄</span></summary>
+  <div class="supplier-order-clean-body">
+   ${renderPersonalSupplierExtraRows(supplier,[])}
+   <div class="supplier-order-clean-actions">
+    <button type="button" class="btn supplier-order-clean-copy" data-action="copy-supplier-own-procurement" data-supplier="${esc(supplier)}">발주서 복사</button>
+    <button type="button" class="btn supplier-order-clean-finish" data-action="own-ordered" data-supplier="${esc(supplier)}">발주 완료</button>
+   </div>
+  </div>
+ </details>`).join('')}</div>`:''}
   ${!domestic.length&&!instant.length&&!china.length&&!ownPending().length&&state.supplierBatchesReady&&state.productPrivateReady?'<div class="admin-work-clear"><span aria-hidden="true">✓</span><span>현재 발주할 상품이 없어요.</span></div>':''}
   ${state.supplierBatches.some(b=>!b.ordered_at)?`<button type="button" class="admin-previous-orders-link" data-action="open-admin-wholesale-history"><span>진행 중 배분·입금 수정</span><strong>관리 <span aria-hidden="true">›</span></strong></button>`:''}
   </section>`;

@@ -11017,8 +11017,13 @@ function instantDomesticOrderText(group){
  const sameStore=(a,b)=>String(a||'').normalize('NFKC').replace(/\s+/g,'').toLocaleLowerCase('ko')===
    String(b||'').normalize('NFKC').replace(/\s+/g,'').toLocaleLowerCase('ko');
  const products=new Map();
+ let wholesaleTotal=0,missingWholesaleQty=0;
  for(const row of options){
   const item=row.item||{};
+  const itemQty=Number(row.qty)||0;
+  const wholesaleUnit=adminWholesaleUnitCost(item);
+  if(wholesaleUnit===null)missingWholesaleQty+=itemQty;
+  else wholesaleTotal+=wholesaleUnit*itemQty;
   const brand=String(item.store_name||'').trim(),name=String(item.product_name||'상품명 미등록').trim();
   const productKey=JSON.stringify([brand,name]);
   if(!products.has(productKey))products.set(productKey,{brand,name,variants:new Map()});
@@ -11038,6 +11043,9 @@ function instantDomesticOrderText(group){
   }
  }
  lines.push('','상품 '+products.size+'종 · 총 '+total+'개');
+ lines.push(missingWholesaleQty
+  ?'총 매입금액: 확인 필요 (도매가 미등록 '+missingWholesaleQty+'개 · 등록 단가 소계 '+money(wholesaleTotal)+')'
+  :'총 매입금액: '+money(wholesaleTotal));
  return lines.join('\n');
 }
 /* The third operational step shows customers before supplier-aggregated purchasing. */

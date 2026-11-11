@@ -5096,6 +5096,45 @@ button.brand-home{touch-action:manipulation;-webkit-touch-callout:none;-webkit-u
 #pick .pick-cart-feedback[hidden]{display:none}
 #pick .pick-cart-feedback button{padding:5px 0;border:0;background:transparent;color:#111;text-decoration:underline;font:inherit;white-space:nowrap;cursor:pointer}
 </style>
+<style id="admin-supplier-order-dense-20261111">
+/* Admin-only supplier procurement layout, retaining purchase counts and actions */
+.admin-procurement-page .admin-supplier-payments-center{padding:8px 9px!important}
+.admin-procurement-page .supplier-order-clean-head{margin:1px 1px 8px;font-size:13px}
+.admin-procurement-page .supplier-order-clean-head span{font-size:11px}
+.admin-procurement-page .supplier-order-clean-list{gap:6px}
+.admin-procurement-page .supplier-order-clean-card{border-radius:9px}
+.admin-procurement-page .supplier-order-clean-card>summary{padding:9px 10px;gap:6px}
+.admin-procurement-page .supplier-order-clean-card>summary>span:first-child{gap:2px;min-width:0}
+.admin-procurement-page .supplier-order-clean-card>summary b{font-size:13px;line-height:1.35}
+.admin-procurement-page .supplier-order-clean-card>summary small{font-size:10px;line-height:1.4}
+.admin-procurement-page .supplier-order-clean-body{padding:0 10px 9px}
+.admin-procurement-page .supplier-order-option-group{padding:8px 0;border-top:1px solid #ededed}
+.admin-procurement-page .supplier-order-option-head{align-items:flex-start;gap:6px}
+.admin-procurement-page .supplier-order-option-desc{display:flex;flex-wrap:wrap;align-items:center;gap:1px 8px;flex:1;min-width:0}
+.admin-procurement-page .supplier-order-option-desc>b{flex:0 0 100%;font-size:12px;line-height:1.35;font-weight:760}
+.admin-procurement-page .supplier-order-option-desc>small{font-size:11px;line-height:1.35}
+.admin-procurement-page .supplier-order-option-desc>.own-inline-add{align-self:center;display:inline;width:auto;min-width:0;min-height:0;margin:0!important;padding:0 0 0 8px!important;background:none!important;border:0!important;border-left:1px solid #ddd!important;border-radius:0;color:#777;font-size:10px;font-weight:650;line-height:1.3;white-space:nowrap}
+.admin-procurement-page .supplier-order-option-total{padding:4px 6px;font-size:11px;line-height:1.4;border-radius:5px}
+.admin-procurement-page .supplier-order-option-total small{font-size:9px}
+.admin-procurement-page .supplier-order-option-buyers{gap:3px;margin-top:5px}
+.admin-procurement-page .supplier-order-option-buyer{grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:7px;font-size:11px;line-height:1.3}
+.admin-procurement-page .supplier-order-option-buyer-name{color:#646464}
+.admin-procurement-page .supplier-order-option-buyer-status{font-size:10px;line-height:1.3}
+.admin-procurement-page .own-purchase-panel{display:block;margin:1px 0 10px;padding:0;border:1px solid #e3e5e7;border-radius:9px;background:#fff;overflow:hidden}
+.admin-procurement-page .own-purchase-panel>summary{display:flex;justify-content:space-between;align-items:center;list-style:none;gap:10px;padding:10px 11px;cursor:pointer}
+.admin-procurement-page .own-purchase-panel>summary::-webkit-details-marker{display:none}
+.admin-procurement-page .own-compact-summary>span:first-child{display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px;min-width:0}
+.admin-procurement-page .own-compact-summary b{font-size:12px;color:#2b2b2b}
+.admin-procurement-page .own-compact-summary small{font-size:11px;color:#777}
+.admin-procurement-page .own-compact-chevron{font-size:15px;color:#777;transition:transform .15s}
+.admin-procurement-page .own-purchase-panel[open] .own-compact-chevron{transform:rotate(180deg)}
+.admin-procurement-page .own-purchase-expanded{border-top:1px solid #eee;padding:9px 10px 10px}
+.admin-procurement-page .own-purchase-expanded .own-panel-head{gap:6px}
+.admin-procurement-page .own-purchase-expanded .own-panel-head>small{font-size:10px;line-height:1.4;color:#777}
+.admin-procurement-page .own-purchase-expanded .own-panel-head button{padding:6px 9px;font-size:11px;min-height:0}
+.admin-procurement-page .own-supplier>summary{padding:9px 10px}
+@media(max-width:370px){.admin-procurement-page .supplier-order-option-buyer{gap:5px}.admin-procurement-page .supplier-order-option-total{padding:4px;font-size:10px}}
+</style>
 </head>
 <body>
 <div id="app"><div class="loading">미니예나를 여는 중이에요…</div></div>
@@ -11073,11 +11112,11 @@ function renderOwnPurchases(){
  const pending=ownPending(),groups=new Map(),history=state.ownPurchases.filter(r=>r.ordered_at);
  for(const r of pending){if(!groups.has(r.supplier_name))groups.set(r.supplier_name,[]);groups.get(r.supplier_name).push(r)}
  const qty=pending.reduce((n,r)=>n+r.quantity,0),cost=pending.reduce((n,r)=>n+r.quantity*r.unit_cost,0);
- return '<section class="own-purchase-panel">'+
-  '<div class="own-panel-head"><div><strong>🔒 내 사입</strong><small>관리자만 · 구매자 주문/매출 제외</small></div>'+
+ return '<details class="own-purchase-panel" data-fold-key="own-personal-procurement">'+
+  '<summary class="own-compact-summary"><span><b>🔒 내 사입</b><small>미발주 '+qty+'개 · '+money(cost)+'</small></span><span class="own-compact-chevron" aria-hidden="true">⌄</span></summary>'+
+  '<div class="own-purchase-expanded"><div class="own-panel-head"><small>관리자 전용 · 구매자 주문/매출 제외</small>'+
   '<button type="button" data-action="own-open" class="btn sm secondary">＋ 내 수량 추가</button></div>'+
-  (pending.length?'<p class="own-panel-total">미발주 <b>'+qty+'개</b> · 원가합계 <b>'+money(cost)+'</b></p>':
-    '<p class="smallnote">내가 주문할 상품은 여기서 수량만 추가하면 돼요.</p>')+
+  (pending.length?'':'<p class="smallnote">상품 추가는 위 버튼에서 할 수 있어요.</p>')+
   [...groups].sort(([a],[b])=>a.localeCompare(b,'ko')).map(([supplier,rows])=>{
    const num=rows.reduce((n,r)=>n+r.quantity,0),value=rows.reduce((n,r)=>n+r.quantity*r.unit_cost,0);
    const combined=ownCombinedRows(supplier),customer=combined.reduce((n,r)=>n+r.qty,0)-num;
@@ -11089,9 +11128,13 @@ function renderOwnPurchases(){
     '<button type="button" class="btn sm" data-action="own-ordered" data-supplier="'+esc(supplier)+'">내 수량 발주 완료</button></div></details>';
   }).join('')+
   (history.length?'<details class="own-history"><summary>내 사입 발주완료 '+history.length+'건</summary>'+history.slice(0,30).map(r=>'<div>'+esc(r.supplier_name+' · '+r.product_name+' · '+r.color+' / '+r.size)+' ×'+r.quantity+'</div>').join('')+'</details>':'')+
- '</section>';
+ '</div></details>';
 }
 
+function supplierOrderProductTitle(item,supplier){
+ const shop=String(item.store_name||'').trim(),name=String(item.product_name||'상품').trim();
+ return shop&&shop!==String(supplier||'').trim()?shop+' · '+name:name;
+}
 function renderSupplierPaymentCenter(){
   const domestic=state.supplierBatches.filter(b=>!b.ordered_at).map(b=>{
     const items=supplierPendingBatchItems(b);
@@ -11128,7 +11171,7 @@ function renderSupplierPaymentCenter(){
    <div class="supplier-order-clean-body">
     <p class="supplier-order-clean-note">실제 사입처 기준 · 기존 주문/바로구매 통합 · 배송비 재배분 없음</p>
     ${ownSupplierQty(g.supplier)?'<p class="supplier-order-clean-note"><b>내 사입 '+ownSupplierQty(g.supplier)+'개</b>가 있어요. 합산 발주서는 위의 🔒 내 사입에서 복사하세요.</p>':''}
-    ${supplierOptionGroups(g.items).map(group=>`<div class="supplier-order-option-group"><div class="supplier-order-option-head"><span class="supplier-order-option-desc"><b>${esc(group.item.store_name||'가게명 미입력')} · ${esc(group.item.product_name||'상품')}</b><small>${esc(group.item.color||'-')} / ${esc(group.item.size||'-')}</small><button type="button" class="own-inline-add" data-action="own-open" data-product="${esc(group.item.product_id||'')}" data-color="${esc(group.item.color||'')}" data-size="${esc(group.item.size||'')}" ${group.item.product_id?'':'disabled'}>＋ 내 수량</button></span><strong class="supplier-order-option-total">${"총 "+(group.qty+ownVariantQty(group.item,g.supplier))+"개"+(ownVariantQty(group.item,g.supplier)?"<small>내 +"+ownVariantQty(group.item,g.supplier)+"개</small>":"")}</strong></div>
+    ${supplierOptionGroups(g.items).map(group=>`<div class="supplier-order-option-group"><div class="supplier-order-option-head"><span class="supplier-order-option-desc"><b>${esc(supplierOrderProductTitle(group.item,g.supplier))}</b><small>${esc(group.item.color||'-')} / ${esc(group.item.size||'-')}</small><button type="button" class="own-inline-add" data-action="own-open" data-product="${esc(group.item.product_id||'')}" data-color="${esc(group.item.color||'')}" data-size="${esc(group.item.size||'')}" ${group.item.product_id?'':'disabled'}>＋ 내 수량</button></span><strong class="supplier-order-option-total">${"총 "+(group.qty+ownVariantQty(group.item,g.supplier))+"개"+(ownVariantQty(group.item,g.supplier)?"<small>내 +"+ownVariantQty(group.item,g.supplier)+"개</small>":"")}</strong></div>
     <div class="supplier-order-option-buyers">${group.rows.map(({q,item})=>`<div class="supplier-order-option-buyer"><span class="supplier-order-option-buyer-name">${esc(q.buyer_name||'구매자')}</span><b class="supplier-order-option-buyer-qty">×${Number(item.quantity||0)}</b><small class="supplier-order-option-buyer-status ${instantDomesticEligible({q,item})?'is-ready':'is-pending'}">${instantDomesticEligible({q,item})?'입금 확인':'입금·변경 확인'}</small></div>`).join('')}</div></div>`).join('')}
     <div class="supplier-order-clean-actions">
      <button type="button" class="btn supplier-order-clean-copy" data-action="copy-instant-procurement" data-supplier="${esc(g.supplier)}" ${g.ready.length?'':'disabled'}>입금확인 발주서 복사</button>
@@ -11146,7 +11189,7 @@ function renderSupplierPaymentCenter(){
    <p class="supplier-order-clean-note">입금 확인 ${eligible.length}종 · 확인 대기 ${items.length-eligible.length}종</p>
    ${ownSupplierQty(b.supplier)?'<p class="supplier-order-clean-note"><b>내 사입 '+ownSupplierQty(b.supplier)+'개</b>가 있어요. 합산 발주서는 위의 🔒 내 사입에서 복사하세요.</p>':''}
    ${supplierOptionGroups(items).map(group=>`<div class="supplier-order-option-group">
-    <div class="supplier-order-option-head"><span class="supplier-order-option-desc"><b>${esc(group.item.store_name||'가게명 미입력')} · ${esc(group.item.product_name||'상품')}</b><small>${esc(group.item.color||'-')} / ${esc(group.item.size||'-')}</small><button type="button" class="own-inline-add" data-action="own-open" data-product="${esc(group.item.product_id||'')}" data-color="${esc(group.item.color||'')}" data-size="${esc(group.item.size||'')}" ${group.item.product_id?'':'disabled'}>＋ 내 수량</button></span><strong class="supplier-order-option-total">${"총 "+(group.qty+ownVariantQty(group.item,b.supplier))+"개"+(ownVariantQty(group.item,b.supplier)?"<small>내 +"+ownVariantQty(group.item,b.supplier)+"개</small>":"")}</strong></div>
+    <div class="supplier-order-option-head"><span class="supplier-order-option-desc"><b>${esc(supplierOrderProductTitle(group.item,b.supplier))}</b><small>${esc(group.item.color||'-')} / ${esc(group.item.size||'-')}</small><button type="button" class="own-inline-add" data-action="own-open" data-product="${esc(group.item.product_id||'')}" data-color="${esc(group.item.color||'')}" data-size="${esc(group.item.size||'')}" ${group.item.product_id?'':'disabled'}>＋ 내 수량</button></span><strong class="supplier-order-option-total">${"총 "+(group.qty+ownVariantQty(group.item,b.supplier))+"개"+(ownVariantQty(group.item,b.supplier)?"<small>내 +"+ownVariantQty(group.item,b.supplier)+"개</small>":"")}</strong></div>
     <div class="supplier-order-option-buyers">${group.rows.map(({q,item})=>`<div class="supplier-order-option-buyer"><span class="supplier-order-option-buyer-name">${esc(q.buyer_name||'구매자')}</span><b class="supplier-order-option-buyer-qty">×${Number(item.quantity||0)}</b><small class="supplier-order-option-buyer-status ${supplierOrderPaidForCopy(q)?'is-ready':'is-pending'}">${esc(supplierOrderRowStatus(q))}</small></div>`).join('')}</div>
    </div>`).join('')}
    <div class="supplier-order-clean-actions">

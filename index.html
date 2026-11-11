@@ -11233,6 +11233,14 @@ function supplierOrderProductTitle(item,supplier){
  const shop=String(item.store_name||'').trim(),name=String(item.product_name||'상품').trim();
  return shop&&shop!==String(supplier||'').trim()?shop+' · '+name:name;
 }
+function personalDomesticAnchor(batch){
+ if(!batch||batch.ordered_at)return false;
+ const normalize=name=>String(name||'').normalize('NFKC').replace(/\s+/g,'').toLocaleLowerCase('ko');
+ const key=normalize(batch.supplier);
+ if(instantDomesticPendingGroups().some(g=>normalize(g.supplier)===key))return false;
+ const first=state.supplierBatches.find(b=>!b.ordered_at&&normalize(b.supplier)===key&&supplierPendingBatchItems(b).length>0);
+ return first?.id===batch.id;
+}
 function renderSupplierPaymentCenter(){
   const domestic=state.supplierBatches.filter(b=>!b.ordered_at).map(b=>{
     const items=supplierPendingBatchItems(b);
@@ -11246,7 +11254,7 @@ function renderSupplierPaymentCenter(){
   const china=chinaPendingProcurementGroups();
   const instant=instantDomesticPendingGroups();
   const chinaQty=china.reduce((n,g)=>n+g.qty,0);
-  const supplierKey=name=>String(name||'').normalize('NFKC').replace(/\\s+/g,'').toLocaleLowerCase('ko');
+  const supplierKey=name=>String(name||'').normalize('NFKC').replace(/\s+/g,'').toLocaleLowerCase('ko');
   const domesticOwnAnchor=batch=>!instant.some(g=>supplierKey(g.supplier)===supplierKey(batch.supplier))&&
     domestic.find(x=>supplierKey(x.b.supplier)===supplierKey(batch.supplier))?.b.id===batch.id;
   const ownOnlySuppliers=[...new Set(ownPending().map(r=>r.supplier_name))]
@@ -11965,12 +11973,13 @@ function modal(){const m=state.modal;if(!m)return '';const wrap=(title,body,stic
 if(m.type==='procurement-finish-choose'&&state.admin&&state.page==='admin'){
  const supplier=String(m.id||'');
  const group=instantDomesticPendingGroups().find(g=>g.supplier===supplier);
- if(!group||(group.readyInstant.length+group.readyLegacy.length)===0)return wrap('발주 완료','<p class="smallnote">발주할 상품이 없어요. 발주 목록을 확인해 주세요.</p><button type="button" class="btn block secondary" data-action="close">닫기</button>');
+ if(!group||(group.readyInstant.length+group.readyLegacy.length+ownSupplierQty(supplier))===0)return wrap('발주 완료','<p class="smallnote">발주할 상품이 없어요. 발주 목록을 확인해 주세요.</p><button type="button" class="btn block secondary" data-action="close">닫기</button>');
  return wrap('발주 완료',`<div class="procurement-complete-popup">
  <strong class="procurement-complete-name">${esc(supplier)}</strong>
- <p>실제로 발주한 항목만 선택하세요. 입금 미확인 상품은 제외돼요.</p>
+ <p>실제로 발주한 항목만 선택하세요. 입금 미확인 상품은 제외돼요.${ownSupplierQty(supplier)?' 내 주문 '+ownSupplierQty(supplier)+'개도 함께 포함돼요.':''}</p>
  ${group.readyInstant.length?`<button type="button" class="procurement-complete-choice" data-action="complete-instant-procurement" data-supplier="${esc(supplier)}"><span>바로구매</span><b>${group.readyInstant.length}종 발주 완료</b></button>`:''}
  ${group.readyLegacy.length?`<button type="button" class="procurement-complete-choice" data-action="complete-legacy-domestic-procurement" data-supplier="${esc(supplier)}"><span>기존 주문</span><b>${group.readyLegacy.length}종 발주 완료</b></button>`:''}
+ ${ownSupplierQty(supplier)&&!group.readyInstant.length&&!group.readyLegacy.length?`<button type="button" class="procurement-complete-choice" data-action="own-ordered" data-supplier="${esc(supplier)}"><span>내 주문</span><b>${ownSupplierQty(supplier)}개 발주 완료</b></button>`:''}
  <button type="button" class="procurement-complete-cancel" data-action="close">닫기</button>
  </div>`);
 }
@@ -14402,6 +14411,12 @@ if(a==='admin-complete-wholesale'){
  return;
 }
 
+if(a==='copy-supplier-own-procurement'){
+ if(!state.admin||state.page!=='admin'||state.tab!=='payments'||!state.ownPurchasesReady)throw Error('관리자 거래처 발주 화면에서 확인해 주세요.');
+ const supplier=String(b.dataset.supplier||'');
+ await copy(vendorSupplierOrderText(supplier,personalSupplierRows(supplier)));
+ notif(supplier+' 내 주문 발주서를 복사했어요.');return;
+}
 if(a==='copy-instant-procurement'){
  if(!state.admin||state.page!=='admin'||state.tab!=='payments')throw Error('관리자 도매관리에서 확인해 주세요.');
  const group=instantDomesticPendingGroups().find(x=>x.supplier===String(b.dataset.supplier||''));
@@ -14413,7 +14428,7 @@ if(a==='procurement-finish-choose'){
  if(!state.admin||state.page!=='admin'||state.tab!=='payments')throw Error('관리자 발주 화면에서만 사용할 수 있어요.');
  const supplier=String(b.dataset.supplier||'');
  const group=instantDomesticPendingGroups().find(g=>g.supplier===supplier);
- if(!group||(group.readyInstant.length+group.readyLegacy.length)===0)throw Error('발주 가능한 상품이 없어요.');
+ if(!group||(group.readyInstant.length+group.readyLegacy.length+ownSupplierQty(supplier))===0)throw Error('발주 가능한 상품이 없어요.');
  modalOpen('procurement-finish-choose',supplier);
  return;
 }
@@ -14510,7 +14525,8 @@ if(a==='copy-supplier-pending-procurement'){
  if(!pendingIds.size)throw Error('이 거래처에 확정 대기 이후의 미발주 상품이 없어요.');
  const rows=supplierBatchProcurementRows(batch).filter(r=>pendingIds.has(r.item.id));
  if(rows.length!==pendingIds.size)throw Error('복사할 상품 내역이 달라졌어요. 화면을 새로고침한 뒤 확인해 주세요.');
- await copy(formatWholesaleOrderCopy(rows,true,'도매처',true));
+ const personal=personalDomesticAnchor(batch)?personalSupplierRows(batch.supplier):[];
+ await copy(vendorSupplierOrderText(batch.supplier,[...rows,...personal]));
  const missing=rows.filter(r=>r.unit===null).length;
  const unpaid=rows.filter(r=>!supplierOrderPaidForCopy(r.q)).length;
  notif('‘'+batch.supplier+'’ 거래처 확정 대기 이후 상품 '+rows.length+'종 · '+rows.reduce((n,r)=>n+r.qty,0)+'개 복사 완료.'+(unpaid?' 입금 미확인/확정 대기 '+unpaid+'종 포함.':'')+(missing?' 도매가 미등록 '+missing+'종을 확인해 주세요.':''));
@@ -14529,7 +14545,8 @@ if(a==='copy-supplier-batch-procurement'){
  const invalid=rows.filter(r=>r.q.status==='cancelled'||r.item.fulfillment==='sold_out');
  if(invalid.length&&!window.confirm('취소·품절 처리된 상품 '+invalid.length+'종이 포함되어 있어요. 원래 배분된 전체 상품으로 발주서를 복사할까요?'))return;
  const missing=rows.filter(r=>r.unit===null).length;
- await copy(formatWholesaleOrderCopy(rows,true,'도매처',true));
+ const personal=!batch.ordered_at&&personalDomesticAnchor(batch)?personalSupplierRows(batch.supplier):[];
+ await copy(vendorSupplierOrderText(batch.supplier,[...rows,...personal]));
  notif('‘'+batch.supplier+'’ 거래처 발주서 '+rows.reduce((n,r)=>n+r.qty,0)+'개 복사 완료.'+(missing?' 단가 미등록 '+missing+'종을 확인해 주세요.':''));
  return;
 }

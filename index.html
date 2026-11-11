@@ -8592,7 +8592,7 @@ function groupedAdminQuoteItems(q,bundle=false){
 function adminCancelledReasonMarkup(q){
  if(q.status!=='cancelled')return '';
  const reason=String(q.cancel_reason||'').trim()||'사유 미입력';
- return `<div class="admin-cancelled-reason" role="note"><b>취소 완료 · 고객 요청 사유</b><div class="admin-cancelled-reason-text">${esc(reason)}</div></div>`;
+ return `<div class="admin-cancelled-reason" role="note"><b>취소 완료 · 취소 사유</b><div class="admin-cancelled-reason-text">${esc(reason)}</div></div>`;
 }
 function renderBundleLedger(q,idx,root){
  const child=q.id!==root.id;

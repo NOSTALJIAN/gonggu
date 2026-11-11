@@ -11009,45 +11009,85 @@ function instantDomesticPendingGroups(){
   return {supplier,items,ready,readyInstant:ready.filter(r=>r.q.instant_purchase),readyLegacy:ready.filter(r=>!r.q.instant_purchase),qty:items.reduce((n,r)=>n+Number(r.item.quantity||0),0)};
  });
 }
-function instantDomesticOrderText(group){
- // A copy to the wholesale shop is NOT an internal buyer ledger.
- // Only verified paid, unplaced items belong in this supplier-facing message.
- const options=supplierOptionGroups(group.ready);
- if(!options.length)throw Error('입금 확인된 발주 상품이 없어요.');
- const sameStore=(a,b)=>String(a||'').normalize('NFKC').replace(/\s+/g,'').toLocaleLowerCase('ko')===
-   String(b||'').normalize('NFKC').replace(/\s+/g,'').toLocaleLowerCase('ko');
+function personalSupplierItem(r){
+ return {product_id:r.product_id,store_name:r.store_name,product_name:r.product_name,color:r.color,size:r.size};
+}
+function personalSupplierRows(supplier){
+ return ownPending(supplier).map(r=>({item:personalSupplierItem(r),qty:Number(r.quantity)||0,unit:Number(r.unit_cost)}));
+}
+function vendorSupplierOrderText(supplier,rows){
  const products=new Map();
- let wholesaleTotal=0,missingWholesaleQty=0;
- for(const row of options){
-  const item=row.item||{};
-  const itemQty=Number(row.qty)||0;
-  const wholesaleUnit=adminWholesaleUnitCost(item);
-  if(wholesaleUnit===null)missingWholesaleQty+=itemQty;
-  else wholesaleTotal+=wholesaleUnit*itemQty;
+ const normalize=value=>String(value||'').normalize('NFKC').replace(/\s+/g,'').toLocaleLowerCase('ko');
+ let total=0,wholesale=0,missing=0;
+ for(const row of [...rows].sort((a,b)=>supplierOptionCompare(a.item,b.item))){
+  const item=row.item||{},qty=Number(row.qty)||0;
+  if(!Number.isInteger(qty)||qty<=0)continue;
   const brand=String(item.store_name||'').trim(),name=String(item.product_name||'상품명 미등록').trim();
-  const productKey=JSON.stringify([brand,name]);
-  if(!products.has(productKey))products.set(productKey,{brand,name,variants:new Map()});
-  const product=products.get(productKey);
-  const color=String(item.color||'-').trim(),size=String(item.size||'-').trim();
-  const variantKey=JSON.stringify([color,size]);
-  if(!product.variants.has(variantKey))product.variants.set(variantKey,{color,size,qty:0});
-  product.variants.get(variantKey).qty+=Number(row.qty)||0;
+  const pKey=JSON.stringify([brand,name]),vKey=JSON.stringify([String(item.color||'-'),String(item.size||'-')]);
+  if(!products.has(pKey))products.set(pKey,{brand,name,variants:new Map()});
+  const product=products.get(pKey);
+  if(!product.variants.has(vKey))product.variants.set(vKey,{color:String(item.color||'-'),size:String(item.size||'-'),qty:0});
+  product.variants.get(vKey).qty+=qty;
+  const cost=row.unit===undefined?adminWholesaleUnitCost(item):row.unit;
+  if(cost===null||!Number.isFinite(Number(cost)))missing+=qty;
+  else wholesale+=Number(cost)*qty;
+  total+=qty;
  }
+ if(!total)throw Error('복사할 발주 상품이 없어요.');
  const lines=[];
- let total=0;
  for(const product of products.values()){
   if(lines.length)lines.push('');
-  lines.push((product.brand&&!sameStore(product.brand,group.supplier)?product.brand+' · ':'')+product.name);
-  for(const option of product.variants.values()){
-   lines.push('  - '+option.color+' / '+option.size+' ×'+option.qty);
-   total+=option.qty;
-  }
+  lines.push((product.brand&&normalize(product.brand)!==normalize(supplier)?product.brand+' · ':'')+product.name);
+  for(const option of product.variants.values())lines.push('  - '+option.color+' / '+option.size+' ×'+option.qty);
  }
  lines.push('','상품 '+products.size+'종 · 총 '+total+'개');
- lines.push(missingWholesaleQty
-  ?'총액: 확인 필요 (도매가 미등록 '+missingWholesaleQty+'개 · 등록 단가 소계 '+money(wholesaleTotal)+')'
-  :'총액: '+money(wholesaleTotal));
+ lines.push(missing?'총액: 확인 필요 (도매가 미등록 '+missing+'개 · 확인된 금액 '+money(wholesale)+')':'총액: '+money(wholesale));
  return lines.join('\n');
+}
+async function markPersonalSupplierOrdered(supplier,sourceRows=null){
+ if(!state.admin||!state.ownPurchasesReady)throw Error('내 주문 정보를 먼저 새로고침해 주세요.');
+ const rows=sourceRows||ownPending(supplier);
+ if(!rows.length)return 0;
+ const ids=rows.map(r=>r.id);
+ if(ids.some(id=>!/^[0-9a-f-]{36}$/i.test(String(id))))throw Error('내 주문 식별값을 확인해 주세요.');
+ const updated=await api('/rest/v1/gq_admin_personal_purchase_items_v140?id=in.('+ids.join(',')+')&ordered_at=is.null',{
+  method:'PATCH',admin:true,body:{ordered_at:new Date().toISOString()}
+ });
+ if(!Array.isArray(updated)||updated.length!==ids.length)
+  throw Error('내 주문 발주완료 저장이 일부 실패했어요. 관리자 화면에서 남은 내 주문을 확인해 주세요.');
+ await loadOwnPurchases();
+ return rows.reduce((n,r)=>n+Number(r.quantity||0),0);
+}
+function renderPersonalSupplierControls(r){
+ return '<div class="supplier-order-option-buyer supplier-personal-line"><span class="supplier-order-option-buyer-name">내 주문</span><b class="supplier-order-option-buyer-qty">×'+Number(r.quantity||0)+'</b>'+
+  '<span class="supplier-personal-adjust"><button type="button" data-action="own-qty" data-id="'+esc(r.id)+'" data-delta="-1" aria-label="내 수량 줄이기" '+(r.quantity<=1?'disabled':'')+'>−</button>'+
+  '<button type="button" data-action="own-qty" data-id="'+esc(r.id)+'" data-delta="1" aria-label="내 수량 늘리기">＋</button>'+
+  '<button type="button" data-action="own-delete" data-id="'+esc(r.id)+'" aria-label="내 수량 삭제">×</button></span></div>';
+}
+function renderPersonalSupplierOptionRows(item,supplier){
+ return ownPending(supplier).filter(r=>String(r.product_id)===String(item.product_id)&&r.color===item.color&&r.size===item.size)
+  .map(renderPersonalSupplierControls).join('');
+}
+function renderPersonalSupplierExtraRows(supplier,buyerRows){
+ const existing=new Set((buyerRows||[]).map(r=>JSON.stringify([String(r.item.product_id),r.item.color,r.item.size])));
+ const seen=new Set(),result=[];
+ for(const r of ownPending(supplier)){
+  const key=JSON.stringify([String(r.product_id),r.color,r.size]);
+  if(existing.has(key)||seen.has(key))continue;
+  seen.add(key);
+  const item=personalSupplierItem(r),qty=ownVariantQty(item,supplier);
+  result.push('<div class="supplier-order-option-group supplier-personal-only"><div class="supplier-order-option-head">'+
+   '<span class="supplier-order-option-desc"><b>'+esc(supplierOrderProductTitle(item,supplier))+'</b>'+
+   '<small>'+esc(item.color||'-')+' / '+esc(item.size||'-')+'</small>'+
+   '<button type="button" class="own-inline-add" data-action="own-open" data-product="'+esc(r.product_id)+'" data-color="'+esc(r.color)+'" data-size="'+esc(r.size)+'">＋ 내 수량</button></span>'+
+   '<strong class="supplier-order-option-total">총 '+qty+'개</strong></div>'+
+   '<div class="supplier-order-option-buyers">'+renderPersonalSupplierOptionRows(item,supplier)+'</div></div>');
+ }
+ return result.join('');
+}
+function instantDomesticOrderText(group){
+ const buyerRows=group.ready.map(({item})=>({item,qty:Number(item.quantity)||0,unit:adminWholesaleUnitCost(item)}));
+ return vendorSupplierOrderText(group.supplier,[...buyerRows,...personalSupplierRows(group.supplier)]);
 }
 /* The third operational step shows customers before supplier-aggregated purchasing. */
 /* Reuse the exact collapsible buyer cards from step 2 to avoid a second,
@@ -13899,14 +13939,15 @@ if(a==='own-delete'){
 }
 if(a==='own-ordered'){
  if(!state.admin||!state.ownPurchasesReady)throw Error('관리자 전용 기능이에요.');
- const supplier=String(b.dataset.supplier||''),rows=ownPending(supplier),ids=rows.map(r=>r.id);
- if(!rows.length)throw Error('이 거래처에 미발주 내 사입이 없어요.');
- const qty=rows.reduce((n,r)=>n+r.quantity,0);
- if(!window.confirm(supplier+' 내 사입 '+qty+'개를 실제로 발주 완료했나요?\n\n고객 주문 상태는 변경하지 않아요.'))return;
- const result=await api('/rest/v1/gq_admin_personal_purchase_items_v140?id=in.('+ids.join(',')+')&ordered_at=is.null',{
-  method:'PATCH',admin:true,body:{ordered_at:new Date().toISOString()}});
- if(!Array.isArray(result)||result.length!==ids.length)throw Error('일부 발주완료 기록을 확인하지 못했어요. 새로고침해 주세요.');
- await loadOwnPurchases();render();notif('내 사입 '+qty+'개 발주 완료로 표시했어요.');return;
+ if(busy)return;
+ const supplier=String(b.dataset.supplier||''),rows=ownPending(supplier);
+ if(!rows.length)throw Error('이 거래처에 미발주 내 주문이 없어요.');
+ const qty=rows.reduce((n,r)=>n+Number(r.quantity||0),0);
+ if(!window.confirm(supplier+' 내 주문 '+qty+'개를 실제로 발주 완료했나요?\n\n구매자 주문·매출은 변경하지 않아요.'))return;
+ busy=true;b.disabled=true;
+ try{const saved=await markPersonalSupplierOrdered(supplier,rows);render();notif('내 주문 '+saved+'개 발주 완료로 표시했어요.');}
+ finally{busy=false;if(b.isConnected)b.disabled=false;}
+ return;
 }
 if(a==='open-partial-shipping'){
   if(!state.admin||state.page!=='admin'||!window.MiniPartialShipping)throw Error('관리자 부분배송 기능을 새로고침해 주세요.');

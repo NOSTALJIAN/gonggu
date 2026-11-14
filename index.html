@@ -5332,7 +5332,7 @@ const CDN_SHARE_HOST=/^(?:rawcdn|raw)\.githack\.com$/i.test(location.hostname);
 const STOREFRONT_PATH=location.hostname.toLowerCase()==='nostaljian.github.io'?'/gonggu/':CDN_SHARE_HOST?location.pathname:'/';
 const dedicatedAdminPage=location.hostname.toLowerCase()==='miniyena.pages.dev'&&/^\/admin(?:\/index\.html|\/)?$/i.test(location.pathname);
 if(!dedicatedAdminPage&&p.get('page')==='admin')location.replace(ADMIN_HOME);
-const state={partialParcels:[],partialParcelsReady:false,page:dedicatedAdminPage?'admin':p.get('page')==='track'?'track':'shop',tab:'home',adminOrderSearch:'',adminOrderSearchMode:'all',adminDispatchSelection:new Set(),receiptSearch:'',receiptView:'pending',receiptGroupBy:'product',receiptStore:'all',stores:[],products:[],requests:[],quotes:[],cart:read(CART,[]),modal:null,search:'',shopCategory:'all',shopSort:'newest',shopStore:'all',shopFiltersOpen:false,shopVisibleCount:24,adminCategory:'all',trackId:p.get('id')||'',trackToken:p.get('token')||'',tracking:null,receipts:read(TRACK,[]),notice:'',filter:'pricing',orderViewFilter:null,admin:false,shopOwnAuthorized:false,shopOwnMode:false,heroPhotoUrl:null,heroStoreId:null,dateGroupsOpen:{},orderCardsOpen:{},supplierBulkSelected:new Set(),supplierBulkStoreId:'',ownPurchases:[],ownPurchasesReady:false,supplierBatches:[],supplierBatchesReady:false,supplierBatchesError:'',supplierPartialInvoices:[],trackSupplierPartial:[],lowerPriceReports:[],optionRequests:[],optionRequestsReady:false,optionRequestsError:'',requestStatusFilter:'pending',adminCatalogView:'products',adminCatalogFilter:'all',adminProductSort:'newest',adminProductSearch:'',productPrivate:{},productPrivateReady:false,emailSettings:null,emailSettingsReady:false,emailSettingsError:'',supplierFreightNotify:{},supplierFreightNotifyReady:false,adminPinIds:new Set(),phoneLookupReady:null,pinLookupNotice:''};
+const state={partialParcels:[],partialParcelsReady:false,page:dedicatedAdminPage?'admin':p.get('page')==='track'?'track':'shop',tab:'home',adminOrderSearch:'',adminOrderSearchMode:'all',adminDispatchSelection:new Set(),receiptSearch:'',receiptView:'pending',receiptGroupBy:'product',receiptStore:'all',stores:[],products:[],requests:[],quotes:[],cart:read(CART,[]),modal:null,search:'',shopCategory:'all',shopSort:'daily-random',shopStore:'all',shopFiltersOpen:false,shopVisibleCount:24,adminCategory:'all',trackId:p.get('id')||'',trackToken:p.get('token')||'',tracking:null,receipts:read(TRACK,[]),notice:'',filter:'pricing',orderViewFilter:null,admin:false,shopOwnAuthorized:false,shopOwnMode:false,heroPhotoUrl:null,heroStoreId:null,dateGroupsOpen:{},orderCardsOpen:{},supplierBulkSelected:new Set(),supplierBulkStoreId:'',ownPurchases:[],ownPurchasesReady:false,supplierBatches:[],supplierBatchesReady:false,supplierBatchesError:'',supplierPartialInvoices:[],trackSupplierPartial:[],lowerPriceReports:[],optionRequests:[],optionRequestsReady:false,optionRequestsError:'',requestStatusFilter:'pending',adminCatalogView:'products',adminCatalogFilter:'all',adminProductSort:'newest',adminProductSearch:'',productPrivate:{},productPrivateReady:false,emailSettings:null,emailSettingsReady:false,emailSettingsError:'',supplierFreightNotify:{},supplierFreightNotifyReady:false,adminPinIds:new Set(),phoneLookupReady:null,pinLookupNotice:''};
 
 state.adminLoading=Boolean(connected&&state.page==='admin'&&session?.refresh_token);
 const PRODUCT_CATEGORIES=['바디수트','세트','상의','하의','아우터','원피스','스커트','모자','양말','악세서리','잡화'];
@@ -6992,17 +6992,43 @@ function updateProcurementSchedule(){
  document.querySelectorAll('[data-next-order]').forEach(el=>el.textContent=scheduleEventText(order));
  document.querySelectorAll('[data-order-countdown]').forEach(el=>el.textContent=scheduleRemaining(order,now));
 }
+// One daily shuffled order, shared by all visitors. Korea does not use DST.
+function shopSeoulDayKey(){return new Date(Date.now()+9*60*60*1000).toISOString().slice(0,10);}
+function shopDailyRank(id,day){
+ const key=day+'|'+String(id||'');
+ let h=2166136261;
+ for(let i=0;i<key.length;i++)h=Math.imul(h^key.charCodeAt(i),16777619);
+ h^=h>>>16;h=Math.imul(h,0x7feb352d);
+ h^=h>>>15;h=Math.imul(h,0x846ca68b);
+ return (h^(h>>>16))>>>0;
+}
+let lastShopRenderDay=shopSeoulDayKey();
+function refreshShopDailySort(){
+ if(state.page!=='shop'||document.hidden)return;
+ const today=shopSeoulDayKey();
+ if(lastShopRenderDay===today)return;
+ const previousScroll=window.scrollY;
+ render();
+ window.scrollTo({top:previousScroll,behavior:'auto'});
+}
 function renderShop(){
  // Only active, published, catalogue-visible products appear in browse/search. Link-only items can still be opened by product URL.
  const catalogue=state.stores.filter(st=>st.active).flatMap(st=>state.products.filter(p=>p.published&&!p.catalog_hidden&&p.store_id===st.id).map(p=>({p,store:st})));
  const activeCategory=categoryFilterKeys.includes(state.shopCategory)?state.shopCategory:'all';
  // Sort only using public product information, never private wholesale pricing.
  const activeStore=state.stores.some(st=>st.active&&st.id===state.shopStore)?state.shopStore:'all';
- const activeSort=['newest','oldest','price-low','price-high','name'].includes(state.shopSort)?state.shopSort:'newest';
+ const activeSort=['daily-random','newest','oldest','price-low','price-high','name'].includes(state.shopSort)?state.shopSort:'daily-random';
+ const shopDay=shopSeoulDayKey();
+ lastShopRenderDay=shopDay;
+ const dailyRanks=activeSort==='daily-random'?new Map(catalogue.map(({p})=>[String(p.id),shopDailyRank(p.id,shopDay)])):null;
  const products=catalogue.filter(({p,store})=>
    matchesCategory(p,activeCategory)&&(activeStore==='all'||store.id===activeStore)
    &&(!state.search||p.name.includes(state.search)))
   .sort((a,b)=>{
+   if(activeSort==='daily-random'){
+    const diff=dailyRanks.get(String(a.p.id))-dailyRanks.get(String(b.p.id));
+    return diff||String(a.p.id).localeCompare(String(b.p.id));
+   }
    const da=Date.parse(a.p.created_at)||0,db=Date.parse(b.p.created_at)||0;
    if(activeSort==='oldest'&&da!==db)return da-db;
    if(activeSort==='name'){
@@ -7038,6 +7064,7 @@ function renderShop(){
  </div>
  <div class="shop-filter-panel ${state.shopFiltersOpen?'is-open':''}" id="shop-filter-panel" ${state.shopFiltersOpen?'':'hidden'} role="group" aria-label="정렬 및 거래처 선택">
   <label><span>정렬</span><select id="shop-sort" aria-label="상품 정렬">
+   <option value="daily-random" ${activeSort==='daily-random'?'selected':''}>오늘의 랜덤순</option>
    <option value="newest" ${activeSort==='newest'?'selected':''}>최신 등록순</option>
    <option value="oldest" ${activeSort==='oldest'?'selected':''}>오래된 등록순</option>
    <option value="price-low" ${activeSort==='price-low'?'selected':''}>가격 낮은순</option>
@@ -16060,7 +16087,7 @@ if(x.matches?.('[data-cart-option-color]')){
 }
 if(x.id==='shop-sort'||x.id==='shop-store'){
  if(state.page!=='shop')return;
- if(x.id==='shop-sort')state.shopSort=['newest','oldest','price-low','price-high','name'].includes(x.value)?x.value:'newest';
+ if(x.id==='shop-sort')state.shopSort=['daily-random','newest','oldest','price-low','price-high','name'].includes(x.value)?x.value:'daily-random';
  else state.shopStore=state.stores.some(st=>st.active&&st.id===x.value)?x.value:'all';
  state.shopVisibleCount=24;
  const previousScroll=window.scrollY;
@@ -16454,11 +16481,13 @@ app.addEventListener('keydown',keyAdminPhotoMove);
 window.addEventListener('scroll',updateScrollTop,{passive:true});
 document.addEventListener('visibilitychange',()=>{
  if(!document.hidden){
+  refreshShopDailySort();
   updateProcurementSchedule();
   checkAdminProductRequestUpdates();
   checkAdminQuoteUpdates();
  }
 });
+setInterval(refreshShopDailySort,60000);
 setInterval(updateProcurementSchedule,60000);
 setInterval(checkAdminProductRequestUpdates,25000);
 setInterval(checkAdminQuoteUpdates,25000);

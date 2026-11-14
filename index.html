@@ -5805,7 +5805,7 @@ async function savePrivateProduct(productId,info){
  const product=state.products.find(x=>x.id===productId);
  if(product){
  product.estimated_price=yuan!==null?Math.round(yuan*650):wholesale>0?Math.round(wholesale*1.4/100)*100:null;
- product.github_estimated_price=yuan!==null?Math.round(yuan*550):wholesale>0?Math.ceil(wholesale*1.2/100)*100:null;
+ product.github_estimated_price=yuan!==null?Math.round(yuan*550):wholesale>0?Math.ceil(wholesale*1.24/100)*100:null;
  }
 }
 // Admin-only comparison across both storefronts; never change customer-facing price rules.
@@ -5828,7 +5828,7 @@ function adminDualEstimates(product,privateMeta){
   const cost=n(meta.wholesale_price);
   if(cost!==null){
    if(regular===null)regular=Math.round(cost*1.4/100)*100;
-   if(github===null)github=Math.ceil(cost*1.2/100)*100;
+   if(github===null)github=Math.ceil(cost*1.24/100)*100;
   }
  }
  return {regular,github};
@@ -5842,7 +5842,7 @@ function sourcingPreviewText(source,rawDomestic,rawYuan){
  }
  const wholesale=Number(rawDomestic);
  if(!String(rawDomestic).trim()||!Number.isFinite(wholesale)||wholesale<=0)return '도매가를 입력하면 고객 예상가를 계산해요.';
- return '도매가 '+money(wholesale)+' · 일반 예상가 약 '+money(Math.round(wholesale*1.4/100)*100)+' (×1.4, 100원 반올림) · 깃허브 예상가 약 '+money(Math.ceil(wholesale*1.2/100)*100)+' (×1.2, 100원 올림)';
+ return '도매가 '+money(wholesale)+' · 일반 예상가 약 '+money(Math.round(wholesale*1.4/100)*100)+' (×1.4, 100원 반올림) · 깃허브 예상가 약 '+money(Math.ceil(wholesale*1.24/100)*100)+' (×1.24, 100원 올림)';
 }
 function privateSupplierStoreName(existingId){
  const product=state.products.find(p=>p.id===existingId);
@@ -5929,7 +5929,7 @@ function privateProductFields(existingId,compact=false){
   ${privateSupplierFields(existingId)}
   <div data-sourcing-domestic class="${source==='1688'?'hidden':''}">
    <label class="label">남대문 도매가 (원 · 비공개)<input name="private_cost" type="number" inputmode="numeric" min="0" max="100000000" step="1" value="${source==='namdaemun'?domestic:''}" placeholder="예: 12500"></label>
-   <div class="smallnote">남대문: 도매가 × 1.4, 100원 단위 반올림한 판매가를 새 주소에 표시해요. 깃허브 판매가는 × 1.3를 적용하고 100원 단위 올림해요. 남대문 도매배송비는 판매가에 포함돼요.</div>
+   <div class="smallnote">남대문: 도매가 × 1.4, 100원 단위 반올림한 판매가를 새 주소에 표시해요. 깃허브 판매가는 × 1.24를 적용하고 100원 단위 올림해요. 남대문 도매배송비는 판매가에 포함돼요.</div>
   </div>
   <div data-sourcing-1688 class="${source==='1688'?'':'hidden'}">
    <label class="label">1688 상품 가격 (위안 ¥ · 비공개)<input name="private_yuan" type="number" inputmode="decimal" min="0.01" max="100000" step="0.01" value="${yuan}" placeholder="예: 12.5"></label>
@@ -8491,7 +8491,7 @@ function adminEstimatedUnitPrice(item){
   return yuan!==null&&Number.isFinite(yuan)&&yuan>0?Math.round(yuan*(githubStorefront?550:650)):null;
  }
  const wholesale=meta.wholesale_price==null?null:Number(meta.wholesale_price);
- return wholesale!==null&&Number.isFinite(wholesale)&&wholesale>0?(githubStorefront?Math.ceil(wholesale*1.2/100)*100:Math.round(wholesale*1.4/100)*100):null;
+ return wholesale!==null&&Number.isFinite(wholesale)&&wholesale>0?(githubStorefront?Math.ceil(wholesale*1.24/100)*100:Math.round(wholesale*1.4/100)*100):null;
 }
 /* Admin-only preview: total item selling value minus registered sourcing cost.
    Sold-out items and delivery charges are excluded, and missing values are never zeroed. */
@@ -13056,8 +13056,8 @@ function updateColorWholesalePreviews(form){
   if(!preview)continue;
   const raw=String(field.value||'').trim(),cost=Number(raw);
   preview.textContent=/^[1-9][0-9]{0,8}$/.test(raw)&&cost<=100000000
-   ?'일반 '+money(Math.round(cost*1.4/100)*100)+' · 깃허브 '+money(Math.ceil(cost*1.2/100)*100)
-   :'도매가 입력 시 일반 ×1.4 / 깃허브 ×1.2 (100원 올림) 자동 계산';
+   ?'일반 '+money(Math.round(cost*1.4/100)*100)+' · 깃허브 '+money(Math.ceil(cost*1.24/100)*100)
+   :'도매가 입력 시 일반 ×1.4 / 깃허브 ×1.24 (100원 올림) 자동 계산';
  }
 }
 function fixedOptionPriceEditor(product){
@@ -13074,7 +13074,7 @@ function fixedOptionPriceEditor(product){
   '<div class="fixed-price-panel '+(fixed?'':'hidden')+'" data-fixed-option-panel>'+
   '<div class="'+(auto?'':'hidden')+'" data-fixed-wholesale-panel>'+
   '<div class="fixed-price-heading"><strong>색상별 도매가 (원)</strong><span>XS·S·M 등 같은 색상은 동일 가격</span></div>'+
-  '<p class="smallnote">색상마다 도매가 한 번만 입력하세요. 일반 판매가 ×1.4 (100원 반올림), 깃허브 ×1.3 (100원 올림)으로 계산됩니다.</p>'+
+  '<p class="smallnote">색상마다 도매가 한 번만 입력하세요. 일반 판매가 ×1.4 (100원 반올림), 깃허브 ×1.24 (100원 올림)으로 계산됩니다.</p>'+
   '<div class="fixed-price-rows" data-fixed-wholesale-rows>'+fixedWholesaleColorRows(product?.options,existing,auto)+'</div>'+
   '</div>'+
   '<div class="'+(fixed&&!auto?'':'hidden')+'" data-fixed-manual-panel>'+
@@ -13133,7 +13133,7 @@ function parseFixedProductPricing(form,options){
    const raw=String(field?.value||'').trim(),cost=Number(raw);
    if(!/^[1-9][0-9]{0,8}$/.test(raw)||cost>100000000)
     throw Error(color+' 색상의 도매가를 입력해 주세요 (1~1억원).');
-   const regPrice=Math.round(cost*1.4/100)*100,ghPrice=Math.ceil(cost*1.2/100)*100;
+   const regPrice=Math.round(cost*1.4/100)*100,ghPrice=Math.ceil(cost*1.24/100)*100;
    if(regPrice>100000000||ghPrice>100000000)throw Error(color+' 색상 판매가가 허용 범위를 넘어요.');
    costs[color]=Object.fromEntries(sizes.map(size=>[size,cost]));
    for(const size of sizes){regular[color][size]=regPrice;github[color][size]=ghPrice;}

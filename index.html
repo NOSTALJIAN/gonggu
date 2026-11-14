@@ -3319,19 +3319,16 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 .admin-manager-actions{display:flex;gap:7px}
 .admin-manager-actions button{height:37px;width:39px;border-radius:10px;border:1px solid #e5e5e9;background:white;color:#52525b;font-size:20px;font-weight:600}
 .admin-manager-actions button.active{background:#222;color:#fff}
-.admin-manager-actions .admin-new-arrival-link{width:auto;min-width:0;height:34px;padding:0 9px;font-size:11px;font-weight:750;white-space:nowrap;border-radius:9px;background:#212127;color:#fff;border-color:#212127}
-/* The mobile admin button rule below sets every button to 35px wide.
-   Override it with a more specific masthead selector, without affecting Settings. */
+
+/* Compact bell-only broadcast button, including the narrow iPhone header. */
 .shell.is-admin-shell .admin-reorganized .admin-manager-actions .admin-new-arrival-link{
- display:inline-flex;align-items:center;justify-content:center;gap:5px;
- flex:0 0 auto;width:auto;min-width:58px;max-width:none;
- height:32px;min-height:32px;box-sizing:border-box;
- padding:0 10px;border:1px solid #212127;border-radius:8px;
- font-size:11px;font-weight:750;line-height:1;letter-spacing:0;
- white-space:nowrap;background:#212127;color:#fff;overflow:visible;
+ display:inline-flex;align-items:center;justify-content:center;
+ flex:0 0 35px;width:35px;min-width:35px;max-width:35px;
+ height:35px;min-height:35px;box-sizing:border-box;
+ margin:0;padding:0;border:1px solid #e5e5e9;border-radius:9px;
+ font-size:20px;font-weight:400;line-height:1;
+ white-space:nowrap;background:#fff;color:#222;overflow:hidden;
 }
-.shell.is-admin-shell .admin-reorganized .admin-manager-actions .admin-new-arrival-link svg{display:block;width:14px;height:14px;flex:0 0 14px}
-.shell.is-admin-shell .admin-reorganized .admin-manager-actions .admin-new-arrival-link span{font:inherit;white-space:nowrap}
 .admin-manager-nav{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px;margin:0 0 21px;padding:4px;border:1px solid #eaeaf0;border-radius:13px;background:#f4f4f7}
 .admin-manager-nav button{border:0;min-width:0;border-radius:9px;min-height:40px;background:transparent;font-size:12px;font-weight:730;color:#6a6a74;position:relative;white-space:nowrap;padding:6px 2px}
 .admin-manager-nav button.active{background:#fff;box-shadow:0 1px 5px #00000012;color:#222}
@@ -7775,7 +7772,7 @@ function renderAdmin(){
   <header class="admin-manager-heading">
    <div><small>MINIYENA</small><h1>관리자</h1></div>
    <div class="admin-manager-actions">
-    <button type="button" class="admin-new-arrival-link" data-action="admin-new-arrival" aria-label="신상알림 발송"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg><span>알림</span></button>
+    <button type="button" class="admin-new-arrival-link" data-action="admin-new-arrival" aria-label="신상알림 발송" title="신상알림 발송">🔔</button>
     <button type="button" class="admin-settings-link ${page==='settings'?'active':''}" data-tab="settings" aria-label="관리자 설정">설정</button>
    </div>
   </header>

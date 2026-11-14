@@ -3319,6 +3319,7 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 .admin-manager-actions{display:flex;gap:7px}
 .admin-manager-actions button{height:37px;width:39px;border-radius:10px;border:1px solid #e5e5e9;background:white;color:#52525b;font-size:20px;font-weight:600}
 .admin-manager-actions button.active{background:#222;color:#fff}
+.admin-manager-actions .admin-new-arrival-link{width:auto;min-width:104px;padding:0 11px;font-size:12px;font-weight:760;white-space:nowrap;background:#212127;color:#fff;border-color:#212127}
 .admin-manager-nav{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px;margin:0 0 21px;padding:4px;border:1px solid #eaeaf0;border-radius:13px;background:#f4f4f7}
 .admin-manager-nav button{border:0;min-width:0;border-radius:9px;min-height:40px;background:transparent;font-size:12px;font-weight:730;color:#6a6a74;position:relative;white-space:nowrap;padding:6px 2px}
 .admin-manager-nav button.active{background:#fff;box-shadow:0 1px 5px #00000012;color:#222}
@@ -7762,6 +7763,7 @@ function renderAdmin(){
   <header class="admin-manager-heading">
    <div><small>MINIYENA</small><h1>관리자</h1></div>
    <div class="admin-manager-actions">
+    <button type="button" class="admin-new-arrival-link" data-action="admin-new-arrival" aria-label="신상알림 발송">🔔 신상알림</button>
     <button type="button" class="admin-settings-link ${page==='settings'?'active':''}" data-tab="settings" aria-label="관리자 설정">설정</button>
    </div>
   </header>
@@ -8216,7 +8218,6 @@ function renderAdminProducts(){
  const storeSearchQuery=String(state.adminStoreSearch||'').trim().toLocaleLowerCase('ko-KR');
  const matchingStores=state.stores.filter(st=>String(st.name||'').toLocaleLowerCase('ko-KR').includes(storeSearchQuery));
  return `<section class="admin-catalog-panel" id="admin-catalog">
-<details class="card" style="margin:12px 0"><summary style="cursor:pointer;font-weight:800;padding:8px 0">🔔 신상 알림 보내기</summary><form id="new-arrival-push-form" style="margin-top:14px"><p class="smallnote">기존 주소와 새 주소에서 알림을 허용한 모든 기기에 보내요. 두 주소 모두 구독했다면 각각 받을 수 있어요.</p><label class="label">알림 제목<input name="title" maxlength="60" required value="미니예나 신상 업데이트"></label><label class="label">알림 내용<textarea name="message" maxlength="200" required>새로운 아기옷이 올라왔어요. 미니예나에서 구경해 보세요!</textarea></label><p class="smallnote">알림을 누르면 해당 주소의 상품 목록으로 이동해요.</p><button type="submit" class="btn block">신상 알림 보내기</button><p id="new-arrival-push-result" class="smallnote" role="status" aria-live="polite"></p></form></details>
   <div class="admin-catalog-switch" role="group" aria-label="관리자 상품 및 거래처 화면 전환">
    <button type="button" class="admin-catalog-switch-btn ${!storesView?'active':''}" data-action="catalog-view" data-view="products" aria-pressed="${!storesView}">상품 <span>${all.length}</span></button>
    <button type="button" class="admin-catalog-switch-btn ${storesView?'active':''}" data-action="catalog-view" data-view="stores" aria-pressed="${storesView}">거래처 <span>${state.stores.length}</span></button>
@@ -11992,6 +11993,15 @@ if(m.type==='shop-own-login'&&state.page==='shop')return wrap('비공개 · 내 
  '<p>관리자 권한을 확인한 뒤에만 상품 원가와 내 수량 버튼을 표시해요.</p></form>');
  if(m.type==='own-purchase'&&state.admin&&(state.page==='admin'||state.page==='shop'&&state.shopOwnAuthorized))return wrap('내 사입 추가',ownModalBody(m));
 if(m.type==='entry-push')return wrap('신상·주문 알림 받기',renderEntryPushBody());
+if(m.type==='admin-new-arrival'&&state.admin&&state.page==='admin')return wrap('🔔 신상알림 발송',`<form id="new-arrival-push-form" class="admin-new-arrival-form">
+ <p class="smallnote">기존 주소와 새 주소에서 알림을 허용한 기기에 보내요. 양쪽 모두 구독했다면 각각 받을 수 있어요.</p>
+ <label class="label">알림 제목<input name="title" maxlength="60" required value="미니예나 신상 업데이트"></label>
+ <label class="label">알림 내용<textarea name="message" maxlength="200" rows="4" required>새로운 아기옷이 올라왔어요. 미니예나에서 구경해 보세요!</textarea></label>
+ <p class="smallnote">알림을 누르면 해당 주소의 상품 목록으로 이동해요. 발송 전에 확인창이 한 번 더 떠요.</p>
+ <button type="submit" class="btn block">신상 알림 보내기</button>
+ <p id="new-arrival-push-result" class="smallnote" role="status" aria-live="polite"></p>
+ <button type="button" class="btn block secondary" data-action="close">닫기</button>
+ </form>`);
 if(m.type==='admin-delivery-queue'&&state.admin)return wrap('수령방식 변경 요청',renderAdminDeliveryQueue());
 if(m.type==='admin-dispatch-queue'&&state.admin)return wrap('전체·부분배송 요청',renderAdminDispatchQueue());
 if(m.type==='admin-dispatch-review'&&state.admin){
@@ -13931,6 +13941,10 @@ async function click(e){
  if(!e.target.closest?.('[data-product-store-picker]'))closeProductStoreSearch(app.querySelector('#product-form'));
  const pg=e.target.closest('[data-page]');if(pg){goto(pg.dataset.page);if(pg.classList.contains('brand-home'))window.scrollTo({top:0,behavior:'auto'});return}const b=e.target.closest('[data-action]');if(!b)return;const a=b.dataset.action,id=b.dataset.id;try{
  
+if(a==='admin-new-arrival'){
+ if(!state.admin||state.page!=='admin')throw Error('관리자 전용 기능이에요.');
+ modalOpen('admin-new-arrival');return;
+}
 if(a==='own-open'){
  if(!state.admin||!(state.page==='admin'||state.page==='shop'&&state.shopOwnAuthorized))throw Error('관리자 전용 기능이에요.');
  const product=state.products.find(p=>p.id===b.dataset.product);

@@ -7002,11 +7002,27 @@ function shopDailyRank(id,day){
  h^=h>>>15;h=Math.imul(h,0x846ca68b);
  return (h^(h>>>16))>>>0;
 }
+const SHOP_NEW_ARRIVAL_MS=24*60*60*1000;
+function shopFirstListingTime(p){
+ // First public catalog appearance; created_at is a legacy fallback.
+ const time=Date.parse(p?.catalog_first_listed_at||p?.created_at||'');
+ return Number.isFinite(time)?time:0;
+}
+function shopIsNewArrival(p,now){
+ const first=shopFirstListingTime(p);
+ return first>0&&first<=now&&now-first<SHOP_NEW_ARRIVAL_MS;
+}
+function shopFreshSignature(now){
+ const activeStores=new Set(state.stores.filter(st=>st.active).map(st=>st.id));
+ return state.products.filter(p=>p.published&&!p.catalog_hidden&&activeStores.has(p.store_id)&&shopIsNewArrival(p,now))
+  .map(p=>String(p.id)).sort().join('|');
+}
 let lastShopRenderDay=shopSeoulDayKey();
+let lastShopFreshSignature='';
 function refreshShopDailySort(){
- if(state.page!=='shop'||document.hidden)return;
+ if(state.page!=='shop'||document.hidden||state.shopSort!=='daily-random')return;
  const today=shopSeoulDayKey();
- if(lastShopRenderDay===today)return;
+ if(lastShopRenderDay===today&&lastShopFreshSignature===shopFreshSignature(Date.now()))return;
  const previousScroll=window.scrollY;
  render();
  window.scrollTo({top:previousScroll,behavior:'auto'});
@@ -7019,13 +7035,21 @@ function renderShop(){
  const activeStore=state.stores.some(st=>st.active&&st.id===state.shopStore)?state.shopStore:'all';
  const activeSort=['daily-random','newest','oldest','price-low','price-high','name'].includes(state.shopSort)?state.shopSort:'daily-random';
  const shopDay=shopSeoulDayKey();
+ const shopNow=Date.now();
  lastShopRenderDay=shopDay;
+ lastShopFreshSignature=shopFreshSignature(shopNow);
  const dailyRanks=activeSort==='daily-random'?new Map(catalogue.map(({p})=>[String(p.id),shopDailyRank(p.id,shopDay)])):null;
  const products=catalogue.filter(({p,store})=>
    matchesCategory(p,activeCategory)&&(activeStore==='all'||store.id===activeStore)
    &&(!state.search||p.name.includes(state.search)))
   .sort((a,b)=>{
    if(activeSort==='daily-random'){
+    const freshA=shopIsNewArrival(a.p,shopNow),freshB=shopIsNewArrival(b.p,shopNow);
+    if(freshA!==freshB)return freshA?-1:1;
+    if(freshA){
+     const dateDiff=shopFirstListingTime(b.p)-shopFirstListingTime(a.p);
+     if(dateDiff)return dateDiff;
+    }
     const diff=dailyRanks.get(String(a.p.id))-dailyRanks.get(String(b.p.id));
     return diff||String(a.p.id).localeCompare(String(b.p.id));
    }
@@ -7064,7 +7088,7 @@ function renderShop(){
  </div>
  <div class="shop-filter-panel ${state.shopFiltersOpen?'is-open':''}" id="shop-filter-panel" ${state.shopFiltersOpen?'':'hidden'} role="group" aria-label="정렬 및 거래처 선택">
   <label><span>정렬</span><select id="shop-sort" aria-label="상품 정렬">
-   <option value="daily-random" ${activeSort==='daily-random'?'selected':''}>오늘의 랜덤순</option>
+   <option value="daily-random" ${activeSort==='daily-random'?'selected':''}>신상품 우선 · 랜덤순</option>
    <option value="newest" ${activeSort==='newest'?'selected':''}>최신 등록순</option>
    <option value="oldest" ${activeSort==='oldest'?'selected':''}>오래된 등록순</option>
    <option value="price-low" ${activeSort==='price-low'?'selected':''}>가격 낮은순</option>

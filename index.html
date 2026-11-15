@@ -7537,7 +7537,6 @@ function renderAdminHome(){
  const pendingBuyers=all.filter(q=>q.status==='quoted'&&(!q.purchase_intent||q.purchase_intent==='undecided')&&!quoteNeedsPriceInput(q)).length;
  const pendingFinal=all.filter(q=>q.status==='quoted'&&q.purchase_intent==='buy_now'&&!quoteNeedsPriceInput(q)).length;
  const preparing=all.filter(adminOrderNeedsPaymentOrProcurement).length;
- const shipping=all.filter(q=>isWholesaleCompleted(q)&&!isFinishedOrder(q)&&workflowStage(q)!=='shipped').length;
  const shippingInTransit=all.filter(q=>adminDeliveryListed(q,'delivery_shipped')).length;
  const deliveryChanges=all.filter(q=>q.delivery_change_requested_at).length;
  const dispatchRequests=all.filter(q=>q.dispatch_request_status==='pending').length;
@@ -7550,7 +7549,6 @@ function renderAdminHome(){
   {name:'확인 필요한 주문',count:all.filter(q=>q.status==='requested'||q.status==='quoted').length,attrs:'data-tab="quotes" data-nav-filter="needs_review"'},
   {name:'입금·발주 대기',count:preparing,attrs:`data-action="home-preparing-toggle" aria-expanded="${state.homePreparingOpen===true}" aria-controls="admin-home-preparing-list"`},
   {name:'입고 체크',count:receiptTotals().pendingRows,attrs:'data-tab="receipts"'},
-  {name:'입고·배송',count:shipping,attrs:'data-tab="quotes" data-nav-filter="wholesale_completed"'},
   {name:'배송 중',count:shippingInTransit,attrs:'data-tab="quotes" data-nav-filter="delivery_shipped"'}
  ];
  const active=stages.filter(x=>x.count>0),empty=stages.filter(x=>x.count===0);
@@ -7576,7 +7574,6 @@ function renderAdminHome(){
     ${optionChanges?`<button type="button" data-action="show-pending-item-options"><span>옵션 변경 요청</span><strong>${optionChanges}건</strong></button>`:''}
    </div>`:''}
   <div class="admin-home-shortcuts">
-   <button type="button" data-tab="receipts">📦 입고 체크 <b>${receiptTotals().pendingRows}종 대기</b></button>
    <button type="button" data-tab="payments" data-nav-filter="supplier_payments">거래처별 입금·발주 <b>남대문 ${state.supplierBatches.filter(b=>!b.ordered_at).length}곳${chinaPendingProcurementRows().length?' · 중국 '+chinaPendingProcurementRows().reduce((n,r)=>n+Number(r.item.quantity||0),0)+'개':''}</b></button>
    <button type="button" data-tab="requests">상품 등록 신청 <b>${requests}건</b></button>
    <button type="button" data-tab="products" data-nav-view="products">상품 관리 <b>${state.products.length}개</b></button>
@@ -8386,8 +8383,7 @@ function adminWorkflow(q){
  const itemWaiting=saleItems(q).filter(i=>!['received','delivered'].includes(i.fulfillment)).length;
  const payback=refundDue(q);
  const actions=[];
- if(stage==='new')actions.push(`<button class="btn" data-action="set-workflow" data-id="${q.id}" data-stage="preparing">상품 준비 시작</button>`);
- else if(stage==='preparing'){
+ if(stage==='preparing'){
   if(sold){actions.push(`<button class="btn" data-action="set-workflow" data-id="${q.id}" data-stage="soldout_closed" ${payback>0?'disabled':''}>품절·환불 정산 완료</button>`)}
   else if(ready&&q.delivery_method==='pickup'&&adminCanReleaseGroup(q))actions.push('<span class="workflow-stage">전체 입고 완료 · 픽업 대기 자동 전환 중</span>');
   else if(q.delivery_method==='courier'&&saleItems(q).length>0&&ready&&adminCanReleaseGroup(q)&&!(state.partialParcels||[]).some(p=>(p.items||[]).some(i=>i.quote_id===q.id)))actions.push(`<form class="workflow-ship" data-ship="${q.id}"><label class="label">택배사<input required name="carrier" placeholder="롯데택배" maxlength="60" value="${esc(q.tracking_carrier||'롯데택배')}"></label><label class="label">송장번호<input required name="tracking" placeholder="롯데택배 운송장번호" maxlength="80" inputmode="numeric" value="${esc(q.tracking_number||'')}"></label><button class="btn" type="submit">송장 등록 · 배송 중</button><div class="lotte-tip">🚚 롯데택배 송장 등록 시 자동 배송조회 대상이 됩니다. 추적 서버 설치·인증이 끝나 있어야 자동으로 배송 완료 처리돼요. 그 외 택배사는 수동으로 완료해 주세요.</div></form>`);
@@ -8395,7 +8391,7 @@ function adminWorkflow(q){
  if(stage==='pickup_ready'&&adminCanReleaseGroup(q))actions.push(`<button class="btn" data-action="set-workflow" data-id="${q.id}" data-stage="completed">픽업 완료</button>`);
  if(stage==='shipped')actions.push(`<button class="btn" data-action="set-workflow" data-id="${q.id}" data-stage="completed">배송 완료</button>`);
  if(stage!=='new')actions.push(`<button class="btn sm outline" data-action="set-workflow" data-id="${q.id}" data-stage="preparing">상품 준비 중으로 되돌리기</button>`);
- const note=sold?(payback>0?'입금액과 실제 환불액을 정산한 뒤 완료 처리할 수 있어요.':'전부 품절되었어요. 실제 환불할 돈이 남지 않았다면 정산 완료하세요.'):
+ const note=stage==='new'?'거래처 발주를 완료하면 자동으로 입고 대기로 넘어가요. 입고 체크에서 상품별 수량을 관리하세요.':sold?(payback>0?'입금액과 실제 환불액을 정산한 뒤 완료 처리할 수 있어요.':'전부 품절되었어요. 실제 환불할 돈이 남지 않았다면 정산 완료하세요.'):
    itemWaiting>0&&q.delivery_method==='pickup'?`아직 입고되지 않은 품목 ${itemWaiting}종이 있어요. 마지막 상품까지 입고완료 체크하면 자동으로 ‘픽업 대기 중’으로 넘어가요.`:
   historical?'기존 주문의 수령방식이 미설정이에요. 구매자의 수령방식·주소 변경 요청을 받아 승인한 뒤 배송 또는 픽업 단계로 이동할 수 있어요.':
     q.delivery_method==='courier'&&stage==='preparing'?`입고되지 않은 상품 ${itemWaiting}종 · 위 주문 상품에서 '입고완료 체크'로 입고를 기록하세요. 실제 출고 시 송장을 등록하면 배송 중으로 변경돼요.`:
@@ -8506,7 +8502,7 @@ function bundleWorkControls(group){
   action=`<button class="btn" data-action="bundle-sync-shipment" data-id="${root.id}">묶음배송 전체에 송장·배송 중 적용</button>`;
  }else if(allPreparing){
   if(stages.some(st=>st==='new')){
-   action=`<button class="btn" data-action="bundle-stage" data-id="${root.id}" data-stage="preparing">묶음 상품 준비 시작</button>`;
+   note='발주가 완료되면 자동으로 입고 대기로 넘어가요.';
   }else if(method==='courier' && group.some(q=>saleItems(q).length>0)){
    action=`<form data-bundle-ship="${root.id}" class="workflow-ship"><label class="label">택배사<input name="carrier" required maxlength="60" value="롯데택배" placeholder="롯데택배"></label><label class="label">송장번호<input name="tracking" required maxlength="80" placeholder="송장번호를 입력하세요"></label><button type="submit" class="btn">묶음 송장 등록 · 배송 중</button></form>`;
   }else if(method==='pickup' && group.every(allReceived)){
@@ -9168,7 +9164,7 @@ function compactQuoteNextTask(q){
   }
   if(pendingBatch)return {text:paymentWaiver(q)?'차액 인정 완료 · 거래처 발주 대기':'입금 완료 · 거래처 발주 대기',label:'거래처 발주 처리',filter:'supplier_payments'};
   if(!supplierDone)return {text:'입금 완료 · 발주 준비',label:'거래처 발주 화면',filter:'supplier_payments'};
-  if(stage==='new')return {text:'발주 완료 · 상품 준비 시작',label:'상품 준비 시작',action:'set-workflow',stage:'preparing'};
+  if(stage==='new')return {text:'발주 완료 · 입고 대기',label:'입고 체크',tool:'shipping'};
   if(stage==='preparing'){
    if(!adminCanReleaseGroup(q)&&allReceived(q))return {text:'다른 주문 입고 대기 · 함께 전달 예정',label:'입고 관리',tool:'shipping'};
    const waiting=active.filter(i=>!['received','delivered'].includes(i.fulfillment)).length;

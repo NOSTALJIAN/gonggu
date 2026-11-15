@@ -11667,7 +11667,9 @@ function renderAdminQuotes(){
   filter==='on_hold'?q.status==='quoted'&&q.purchase_intent==='on_hold':
   filter==='undecided'?q.status==='quoted'&&(!q.purchase_intent||q.purchase_intent==='undecided'):
   filter==='cancel_requested'?!!q.cancel_requested_at&&q.status!=='cancelled':
-  filter.startsWith('flow_')?q.status==='confirmed'&&workflowStage(q)===filter.slice(5):q.status===filter)
+  filter==='flow_preparing'?journeyMap.get(q.id)==='journey_dispatch'&&q.delivery_method==='courier':
+   filter==='flow_pickup_ready'?journeyMap.get(q.id)==='journey_dispatch'&&q.delivery_method==='pickup':
+   filter.startsWith('flow_')?q.status==='confirmed'&&workflowStage(q)===filter.slice(5):q.status===filter)
  .filter(q=>filter!=='wholesale_completed'||!state.adminShippingMethod||state.adminShippingMethod==='all'||q.delivery_method===state.adminShippingMethod);
  const groups=['delivery_completed','journey_done'].includes(filter)?adminCompletedGroups(qq):
   filter==='delivery_shipped'?qq.map(q=>[q]):

@@ -11370,7 +11370,7 @@ function renderSupplierPaymentCenter(){
     ${renderPersonalSupplierExtraRows(g.supplier,g.items)}
     <div class="supplier-order-clean-actions">
      <button type="button" class="btn supplier-order-clean-copy" data-action="copy-instant-procurement" data-supplier="${esc(g.supplier)}" ${(g.ready.length||ownSupplierQty(g.supplier))?'':'disabled'}>입금확인 발주서 복사</button>
-     ${(g.readyInstant.length||g.readyLegacy.length||ownSupplierQty(g.supplier))?'<button type="button" class="btn supplier-order-clean-finish" data-action="procurement-finish-choose" data-supplier="'+esc(g.supplier)+'">발주 완료</button>':''}
+     ${(g.readyInstant.length||g.readyLegacy.length||ownSupplierQty(g.supplier))?'<button type="button" class="btn supplier-order-clean-finish" data-action="'+(g.readyInstant.length&&!g.readyLegacy.length?'complete-instant-procurement':!g.readyInstant.length&&g.readyLegacy.length?'complete-legacy-domestic-procurement':'procurement-finish-choose')+'" data-supplier="'+esc(g.supplier)+'">발주 완료</button>':''}
     </div>
     ${g.items.length!==g.ready.length?'<p class="supplier-order-clean-finish-note">입금·변경 확인이 필요한 상품은 발주서 및 발주 완료에서 제외돼요.</p>':''}
    </div>

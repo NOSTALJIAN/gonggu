@@ -9672,7 +9672,7 @@ function renderAdminViewGroupCard(group){
  const goods=group.reduce((n,q)=>n+previewOrderSum(q),0);
  const freight=group.reduce((n,q)=>n+supplierShippingShare(q),0);
  const shipping=group.reduce((n,q)=>n+appliedShipping(q),0);
- const margins=group.map(adminQuoteGoodsMargin);
+ const margins=group.map(q=>adminQuoteGoodsMargin(q));
  const margin=margins.every(m=>m.margin!==null)?margins.reduce((n,m)=>n+m.margin,0):null;
  const ready=group.every(q=>q.delivery_method==='pickup'&&workflowStage(q)==='pickup_ready'&&adminCanReleaseGroup(q));
  const line=(label,value,cls='')=>'<div class="'+cls+'"><span>'+label+'</span><b>'+value+'</b></div>';

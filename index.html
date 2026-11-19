@@ -9665,29 +9665,39 @@ function adminViewGroupItems(group){
  return {pending,released,soldout};
 }
 function renderAdminViewGroupCard(group){
- const split=adminViewGroupItems(group),count=rows=>rows.reduce((n,row)=>n+row.quantity,0);
- const due=group.every(readyQuote)?money(group.reduce((sum,q)=>sum+totalDue(q),0)):'금액 확인 필요';
- const paid=group.reduce((sum,q)=>sum+Number(q.amount_paid||0)-Number(q.amount_refunded||0),0);
- const itemLines=rows=>rows.map(({i,quantity})=>'<div><span>'+(i.store_name?'<small class="admin-view-store">'+esc(i.store_name)+' · </small>':'')+esc(i.product_name||'상품')+
-  ' · '+esc([i.color,i.size].filter(Boolean).join('/')||'옵션 없음')+'</span><b>×'+quantity+'</b></div>').join('');
- return '<div class="admin-view-group-card">'+
-  '<div class="admin-view-group-head"><strong>상품 '+split.pending.length+'종 · '+count(split.pending)+'개</strong></div>'+
-  '<div class="admin-view-group-items">'+(itemLines(split.pending)||'<p class="smallnote">남은 상품이 없어요.</p>')+'</div>'+
-  (group.every(q=>q.delivery_method==='pickup'&&workflowStage(q)==='pickup_ready'&&adminCanReleaseGroup(q))
-   ?'<div class="admin-view-group-pickup"><strong>픽업 대기 중</strong><div class="row wrap">'+
-     '<button type="button" class="btn" data-action="complete-pickup-group" data-ids="'+esc(group.map(q=>q.id).join(','))+'">픽업 완료 처리</button></div></div>'
-   :'')+
-  adminPickupForm(group.filter(q=>q.delivery_method==='pickup'))+
-  adminReadyCourierActions(group)+
-  (split.released.length?'<section class="admin-view-group-separated"><strong>먼저 발송·픽업한 상품 '+count(split.released)+'개</strong>'+
-   '<div class="admin-view-group-items">'+split.released.map(({i,quantity,type})=>
-    '<div><span>'+esc(type==='pickup'?'픽업 완료 · ':'선발송 · ')+(i.store_name?'<small class="admin-view-store">'+esc(i.store_name)+' · </small>':'')+esc(i.product_name||'상품')+
-    ' · '+esc([i.color,i.size].filter(Boolean).join('/')||'옵션 없음')+'</span><b>×'+quantity+'</b></div>').join('')+'</div></section>':'')+
-  (split.soldout.length?'<details class="admin-view-group-original"><summary>품절 '+count(split.soldout)+'개</summary><div class="admin-view-group-items">'+itemLines(split.soldout)+'</div></details>':'')+
-  '<div class="admin-view-group-totals"><span>전체 주문금액 '+due+'</span><span>입금 기록 '+money(paid)+'</span></div>'+
-  '<details class="admin-view-group-original"><summary>주문별 수정 (필요할 때만)</summary>'+
-   group.map((q,idx)=>'<details><summary>'+(idx+1)+'번째 주문 · '+esc(fmtDate(q.created_at))+' · '+esc(deliveryLabel(q))+'</summary>'+renderAdminQuoteCard(q)+'</details>').join('')+
-  '</details></div>';
+ const items=group.flatMap(q=>(q.items||[]).map(i=>({q,i})));
+ const qty=items.reduce((n,{i})=>n+Number(i.quantity||0),0);
+ const due=group.every(readyQuote)?group.reduce((n,q)=>n+totalDue(q),0):null;
+ const paid=group.reduce((n,q)=>n+Number(q.amount_paid||0)-Number(q.amount_refunded||0),0);
+ const goods=group.reduce((n,q)=>n+previewOrderSum(q),0);
+ const freight=group.reduce((n,q)=>n+supplierShippingShare(q),0);
+ const shipping=group.reduce((n,q)=>n+appliedShipping(q),0);
+ const margins=group.map(adminQuoteGoodsMargin);
+ const margin=margins.every(m=>m.margin!==null)?margins.reduce((n,m)=>n+m.margin,0):null;
+ const ready=group.every(q=>q.delivery_method==='pickup'&&workflowStage(q)==='pickup_ready'&&adminCanReleaseGroup(q));
+ const line=(label,value,cls='')=>'<div class="'+cls+'"><span>'+label+'</span><b>'+value+'</b></div>';
+ return '<div class="card ordercard compact-order-card admin-view-group-compact">'+
+  '<div class="compact-order-top"><strong>'+items.length+'종 · '+qty+'개</strong><span>직접수령 · 픽업 대기</span></div>'+
+  '<div class="compact-order-products">'+items.map(({q,i})=>'<div class="compact-order-product"><span><b>'+adminOrderItemName(i)+'</b><small>'+esc(i.color||'-')+' / '+esc(i.size||'-')+' · '+Number(i.quantity||0)+'개 · '+(i.fulfillment==='received'?'입고완료':esc(i.fulfillment||'상품 준비 중'))+'</small>'+adminActualSupplierLabel(i,q)+'</span><strong>'+ (i.unit_price==null?'가격 미정':money(Number(i.unit_price)*Number(i.quantity||0)))+'</strong></div>').join('')+'</div>'+
+  '<div class="compact-order-money">'+
+   '<div class="compact-order-cost-lines">'+line('상품값',money(goods))+
+    (shipping>0?line('택배비',money(shipping)):'')+
+    (freight>0?line('도매 배송비',money(freight)):'')+
+    line('예상 상품마진<small>게릴라 제외 · 상품판매금액 − 사입원가</small>',margin===null?'원가 확인 필요':money(margin),'compact-order-margin')+'</div>'+
+   line('최종 결제금액',due===null?'금액 확인 필요':money(due))+
+   line('받은 금액',money(paid))+
+   '<div class="compact-order-payment-status">상품대금 입금 '+(due!==null&&paid>=due?'완료':'확인 필요')+'</div>'+
+   line('남은 금액',due===null?'금액 확인 필요':money(Math.max(0,due-paid)),'compact-order-balance')+
+  '</div>'+
+  '<div class="compact-order-next"><strong>픽업 대기 중</strong>'+
+   (ready?'<button type="button" class="compact-order-next-btn" data-action="complete-pickup-group" data-ids="'+esc(group.map(q=>q.id).join(','))+'">픽업 완료 처리 →</button>':'<span>입고 상태 확인 필요</span>')+
+  '</div>'+
+  '<div class="compact-order-tools">'+
+   [['가격·옵션 수정','prices'],['입금·환불','payment'],['입고·배송','shipping'],['기타 관리','advanced']].map(([label,tool])=>
+    '<details class="compact-order-tool"><summary>'+label+'</summary><div class="compact-tool-content">'+
+     group.map((q,idx)=>'<details class="admin-view-group-original"><summary>'+(idx+1)+'번째 주문 · '+esc(fmtDate(q.created_at))+'</summary>'+renderAdminQuoteCard(q)+'</details>').join('')+
+    '</div></details>').join('')+
+  '</div></div>';
 }
 function renderMergeShippingBody(m){
  const opened=state.quotes.find(q=>q.id===m.id);
@@ -10137,7 +10147,7 @@ function renderCollapsibleAdminOrder(group,section){
       <summary>📍 배송지 보기 · ${esc((group.find(q=>q.delivery_method==='courier')||root).recipient_name||root.buyer_name||'수령인')}</summary>
       ${group.filter(q=>q.delivery_method==='courier').filter((q,i,rows)=>rows.findIndex(x=>String(x.postal_code||'')+'|'+String(x.address_line1||'')+'|'+String(x.address_line2||'')===String(q.postal_code||'')+'|'+String(q.address_line1||'')+'|'+String(q.address_line2||''))===i).map(q=>`<div class="admin-courier-address-info"><strong>${esc(q.recipient_name||q.buyer_name||'받는 사람 미입력')}</strong><span>${esc(q.contact||'연락처 미입력')}</span><p>${esc(q.postal_code||'우편번호 미입력')} · ${esc([q.address_line1,q.address_line2].filter(Boolean).join(' ')||'주소 미입력')}</p>${q.delivery_note?`<small>배송 요청사항 · ${esc(q.delivery_note)}</small>`:''}</div>`).join('')}
      </details>`:''}
-   ${state.tab==='receipts'?renderAdminReceiptBuyerDetails(group):state.tab==='payments'?renderAdminProcurementBuyerDetails(group):shippingFocus?renderAdminShippingFocus(group[0]):group.length===1&&['delivery_shipped','delivery_completed','journey_shipping','journey_done'].includes(state.filter)&&['new','preparing'].includes(workflowStage(group[0]))&&adminPartialParcels(group[0]).length?renderAdminShippingFocus(group[0]):group.length===1&&group[0].status==='confirmed'&&group[0].delivery_method==='pickup'&&workflowStage(group[0])==='pickup_ready'?renderAdminViewGroupCard(group):group.length>1?(isAdminViewGroup(group)?renderAdminViewGroupCard(group):group.every(q=>workflowStage(q)==='completed'&&q.delivery_method==='courier'&&String(q.tracking_number||'').replace(/[\\s-]/g,'')===String(group[0].tracking_number||'').replace(/[\\s-]/g,''))?
+   ${state.tab==='receipts'?renderAdminReceiptBuyerDetails(group):state.tab==='payments'?renderAdminProcurementBuyerDetails(group):shippingFocus?renderAdminShippingFocus(group[0]):group.length===1&&['delivery_shipped','delivery_completed','journey_shipping','journey_done'].includes(state.filter)&&['new','preparing'].includes(workflowStage(group[0]))&&adminPartialParcels(group[0]).length?renderAdminShippingFocus(group[0]):group.length>1?(isAdminViewGroup(group)?renderAdminViewGroupCard(group):group.every(q=>workflowStage(q)==='completed'&&q.delivery_method==='courier'&&String(q.tracking_number||'').replace(/[\\s-]/g,'')===String(group[0].tracking_number||'').replace(/[\\s-]/g,''))?
     '<div class="admin-completed-group"><p class="smallnote">동일 송장으로 배송 완료 · '+esc(group[0].tracking_number||'')+' · 원주문 '+group.length+'건</p>'+
     renderAdminShippingFocus({...group[0],items:group.flatMap(q=>q.items||[])})+
     '<details class="admin-view-group-original"><summary>원주문 '+group.length+'건 · 개별 수정</summary>'+

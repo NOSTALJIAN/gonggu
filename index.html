@@ -11679,7 +11679,7 @@ function renderAdminQuotes(){
  .filter(q=>filter!=='wholesale_completed'||!state.adminShippingMethod||state.adminShippingMethod==='all'||q.delivery_method===state.adminShippingMethod);
  const groups=['delivery_completed','journey_done'].includes(filter)?adminCompletedGroups(qq):
   filter==='delivery_shipped'?qq.map(q=>[q]):
-  ['active_orders','preparing_orders','all_history','cancellation_orders'].includes(filter)||filter.startsWith('journey_')?adminViewGroups(qq):
+  ['active_orders','preparing_orders','all_history','cancellation_orders'].includes(filter)||filter.startsWith('journey_')||filter.startsWith('flow_')?adminViewGroups(qq):
   ['finished','wholesale_completed'].includes(filter)?bundledQuoteGroups(qq,filter==='finished'):sameRoundGroups(qq);
  const preparingRows=filter==='preparing_orders'?qq.filter(readyQuote):[];
  const preparingMissing=filter==='preparing_orders'?qq.length-preparingRows.length:0;

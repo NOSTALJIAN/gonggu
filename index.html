@@ -9633,7 +9633,10 @@ function adminCompletedGroups(visible){
 function adminViewGroups(visible){
  const byKey=new Map();
  for(const q of visible){
-  const key=adminViewCanCombine(q)?'confirmed:'+adminOrderGroupKey(q):'single:'+q.id;
+  const pickupKey=q.delivery_method==='pickup'&&normKey(q.buyer_name)&&normKey(q.baby_name)
+   ?'pickup:'+normKey(q.buyer_name)+'|'+normKey(q.baby_name)
+   :adminOrderGroupKey(q);
+  const key=adminViewCanCombine(q)?'confirmed:'+pickupKey:'single:'+q.id;
   if(!byKey.has(key))byKey.set(key,[]);
   byKey.get(key).push(q);
  }
@@ -9641,7 +9644,10 @@ function adminViewGroups(visible){
   .sort((a,b)=>String(b[b.length-1]?.created_at||'').localeCompare(String(a[a.length-1]?.created_at||'')));
 }
 function isAdminViewGroup(group){
- return group.length>1&&group.every(q=>adminViewCanCombine(q)&&adminOrderGroupKey(q)===adminOrderGroupKey(group[0]));
+ return group.length>1&&group.every(q=>adminViewCanCombine(q)&&(
+  q.delivery_method==='pickup'&&group[0].delivery_method==='pickup'
+   ?normKey(q.buyer_name)===normKey(group[0].buyer_name)&&normKey(q.baby_name)===normKey(group[0].baby_name)
+   :adminOrderGroupKey(q)===adminOrderGroupKey(group[0])));
 }
 function adminViewGroupItems(group){
  const pending=[],released=[],soldout=[];

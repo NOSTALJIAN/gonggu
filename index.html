@@ -9673,6 +9673,11 @@ function renderAdminViewGroupCard(group){
  return '<div class="admin-view-group-card">'+
   '<div class="admin-view-group-head"><strong>상품 '+split.pending.length+'종 · '+count(split.pending)+'개</strong></div>'+
   '<div class="admin-view-group-items">'+(itemLines(split.pending)||'<p class="smallnote">남은 상품이 없어요.</p>')+'</div>'+
+  (group.every(q=>q.delivery_method==='pickup'&&workflowStage(q)==='pickup_ready'&&adminCanReleaseGroup(q))
+   ?'<div class="admin-view-group-pickup"><strong>픽업 대기 중</strong><div class="row wrap">'+
+     group.map((q,idx)=>'<button type="button" class="btn" data-action="set-workflow" data-id="'+esc(q.id)+'" data-stage="completed">'+
+       (group.length>1?(idx+1)+'번째 주문 픽업 완료 처리':'픽업 완료 처리')+'</button>').join('')+'</div></div>'
+   :'')+
   adminPickupForm(group.filter(q=>q.delivery_method==='pickup'))+
   adminReadyCourierActions(group)+
   (split.released.length?'<section class="admin-view-group-separated"><strong>먼저 발송·픽업한 상품 '+count(split.released)+'개</strong>'+

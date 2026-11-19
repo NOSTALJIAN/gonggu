@@ -9675,8 +9675,7 @@ function renderAdminViewGroupCard(group){
   '<div class="admin-view-group-items">'+(itemLines(split.pending)||'<p class="smallnote">남은 상품이 없어요.</p>')+'</div>'+
   (group.every(q=>q.delivery_method==='pickup'&&workflowStage(q)==='pickup_ready'&&adminCanReleaseGroup(q))
    ?'<div class="admin-view-group-pickup"><strong>픽업 대기 중</strong><div class="row wrap">'+
-     group.map((q,idx)=>'<button type="button" class="btn" data-action="set-workflow" data-id="'+esc(q.id)+'" data-stage="completed">'+
-       (group.length>1?(idx+1)+'번째 주문 픽업 완료 처리':'픽업 완료 처리')+'</button>').join('')+'</div></div>'
+     '<button type="button" class="btn" data-action="complete-pickup-group" data-ids="'+esc(group.map(q=>q.id).join(','))+'">픽업 완료 처리</button></div></div>'
    :'')+
   adminPickupForm(group.filter(q=>q.delivery_method==='pickup'))+
   adminReadyCourierActions(group)+
@@ -15390,6 +15389,21 @@ if(a==='mark-item-received'){
   const updated=state.quotes.find(x=>x.id===q.id);
   notif(q.delivery_method==='pickup'&&updated&&workflowStage(updated)==='pickup_ready'?'모든 상품이 입고됐어요! 자동으로 픽업 대기 처리했어요.':'입고완료 체크했어요.');
   return;
+}
+if(a==='complete-pickup-group'){
+ const ids=String(b.dataset.ids||'').split(',').filter(Boolean);
+ const group=ids.map(orderId=>state.quotes.find(q=>q.id===orderId));
+ if(!ids.length||group.some(q=>!q||q.delivery_method!=='pickup'||workflowStage(q)!=='pickup_ready'||!adminCanReleaseGroup(q)))
+  throw Error('픽업할 주문 상태가 변경됐어요. 새로고침 후 다시 확인해 주세요.');
+ if(!window.confirm('이 구매자의 주문 '+group.length+'건 · 상품 '+group.reduce((n,q)=>n+(q.items||[]).reduce((m,i)=>m+Number(i.quantity||0),0),0)+'개를 모두 실제로 전달했나요? 픽업 완료 처리할까요?'))return;
+ let completed=0;
+ try{
+  for(const q of group){await adminWorkflowStage(q.id,'completed');completed++;}
+ }catch(err){
+  await loadAdmin();
+  throw Error(completed+'건 처리 후 중단됐어요. 완료된 주문을 확인하고 다시 시도해 주세요. '+String(err?.message||err));
+ }
+ await loadAdmin();notif('픽업 주문 '+completed+'건을 모두 완료 처리했어요.');return;
 }
 if(a==='set-workflow'){
  const q=state.quotes.find(x=>x.id===id),stage=b.dataset.stage;if(!q||!stage)return;

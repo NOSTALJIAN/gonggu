@@ -9580,10 +9580,14 @@ function renderShippingMergeButton(group){
    Shipping batches, customer payments and individual order IDs remain untouched. */
 function adminOrderGroupKey(q){
  const name=normKey(q?.buyer_name);
+ const baby=normKey(q?.baby_name);
  const phone=String(normalizeBuyerPhone(q?.contact)||'').replace(/\D/g,'');
+ // Pickup orders belonging to the same named buyer and baby must remain one card,
+ // even if independently created checkouts have different customer_key values.
+ if(q?.delivery_method==='pickup'&&name&&baby)return 'pickup:'+name+'|baby:'+baby;
  if(name&&phone.length>=10)return name+'|phone:'+phone;
  if(name&&q?.customer_key)return name+'|customer:'+String(q.customer_key);
- return name+'|baby:'+normKey(q?.baby_name);
+ return name+'|baby:'+baby;
 }
 // Keep active orders for the same purchaser in one delivery decision.
 // Arrival of only one order never constitutes approval to deliver separately.

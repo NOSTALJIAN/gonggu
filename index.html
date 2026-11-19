@@ -9661,7 +9661,7 @@ function renderAdminViewGroupCard(group){
  const itemLines=rows=>rows.map(({i,quantity})=>'<div><span>'+(i.store_name?'<small class="admin-view-store">'+esc(i.store_name)+' · </small>':'')+esc(i.product_name||'상품')+
   ' · '+esc([i.color,i.size].filter(Boolean).join('/')||'옵션 없음')+'</span><b>×'+quantity+'</b></div>').join('');
  return '<div class="admin-view-group-card">'+
-  '<div class="admin-view-group-head"><strong>확정 주문 '+group.length+'건 · 남은 상품 '+count(split.pending)+'개</strong></div>'+
+  '<div class="admin-view-group-head"><strong>상품 '+split.pending.length+'종 · '+count(split.pending)+'개</strong></div>'+
   '<div class="admin-view-group-items">'+(itemLines(split.pending)||'<p class="smallnote">남은 상품이 없어요.</p>')+'</div>'+
   adminPickupForm(group.filter(q=>q.delivery_method==='pickup'))+
   adminReadyCourierActions(group)+
@@ -9671,7 +9671,7 @@ function renderAdminViewGroupCard(group){
     ' · '+esc([i.color,i.size].filter(Boolean).join('/')||'옵션 없음')+'</span><b>×'+quantity+'</b></div>').join('')+'</div></section>':'')+
   (split.soldout.length?'<details class="admin-view-group-original"><summary>품절 '+count(split.soldout)+'개</summary><div class="admin-view-group-items">'+itemLines(split.soldout)+'</div></details>':'')+
   '<div class="admin-view-group-totals"><span>전체 주문금액 '+due+'</span><span>입금 기록 '+money(paid)+'</span></div>'+
-  '<details class="admin-view-group-original"><summary>원주문 '+group.length+'건 · 개별 수정</summary>'+
+  '<details class="admin-view-group-original"><summary>주문별 수정 (필요할 때만)</summary>'+
    group.map((q,idx)=>'<details><summary>'+(idx+1)+'번째 주문 · '+esc(fmtDate(q.created_at))+' · '+esc(deliveryLabel(q))+'</summary>'+renderAdminQuoteCard(q)+'</details>').join('')+
   '</details></div>';
 }
@@ -10112,7 +10112,7 @@ function renderCollapsibleAdminOrder(group,section){
   <summary class="admin-order-fold-heading">
    <span class="admin-order-fold-left">
     <strong>${esc(root.buyer_name||'주문자 미입력')} ${adminGithubGroupIcon(group)} <span class="admin-order-fold-baby">아기: ${esc(babies.join(' · ')||'미입력')}</span></strong>
-    <span class="admin-order-fold-meta">${group.length>1?(isAdminViewGroup(group)?'확정 주문 '+group.length+'건 자동 합침 · ':group.every(q=>bundleRootId(q)===bundleRootId(group[0]))?'묶음배송 '+group.length+'건 · ':'주문 '+group.length+'건 함께 보기 · '):''}상품 ${count}종 · ${qty}개 · ${fmtDate(root.created_at)}</span>
+    <span class="admin-order-fold-meta">${group.length>1?(isAdminViewGroup(group)?'':group.every(q=>bundleRootId(q)===bundleRootId(group[0]))?'묶음배송 '+group.length+'건 · ':'주문 '+group.length+'건 함께 보기 · '):''}상품 ${count}종 · ${qty}개 · ${fmtDate(root.created_at)}</span>
     ${paymentSummary}
    </span>
    <span class="admin-order-fold-right"><span class="admin-order-fold-next ${urgent?'is-urgent':''}">${esc(nextShort)}</span></span>

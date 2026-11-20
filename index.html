@@ -3023,6 +3023,8 @@ html,pre,code,kbd,samp,option,optgroup{font-family:var(--site-font)}
 .admin-flat-order-list .admin-order-fold-meta{font-size:10px}
 .admin-order-fold-next{font-size:11px;color:#676767;line-height:1.45;font-weight:750}
 .admin-order-fold-next.is-urgent{color:#94452f}
+.admin-order-received-count{display:inline-block;margin-left:6px;color:#53665c;font-size:11px;font-weight:750;white-space:nowrap}
+.admin-order-received-count strong{font-size:12px;font-weight:850;color:#236349}
 .admin-flat-order-list .admin-order-fold-right{display:block}
 @media(max-width:390px){.admin-workflow-step{padding:9px!important}.admin-workflow-step>strong{font-size:12px}.admin-workflow-focus>strong{font-size:15px}.admin-workflow-inline-actions button{font-size:10px}}
 
@@ -10059,6 +10061,16 @@ function renderCollapsibleAdminOrder(group,section){
   group.some(q=>pendingItemOptionRequests(q).length>0):state.orderCardsOpen[key];
  const count=group.reduce((n,q)=>n+(q.items||[]).length,0);
  const qty=group.reduce((n,q)=>n+(q.items||[]).reduce((m,i)=>m+Number(i.quantity||0),0),0);
+ // Show live partial-receipt progress beside each buyer in the receiving queue.
+ // Use the same received_qty and fulfillment fallback as the item-level receipt controls.
+ const receiptProgress=(state.tab==='receipts'||state.filter==='journey_receiving')
+  ?group.flatMap(q=>q.items||[]).filter(i=>i.fulfillment!=='sold_out').reduce((progress,i)=>{
+   const quantity=Math.max(0,Number(i.quantity)||0);
+   const received=Math.min(quantity,Math.max(0,Number(i.received_qty??(['received','delivered'].includes(i.fulfillment)?quantity:0))||0));
+   progress.total+=quantity;
+   progress.received+=received;
+   return progress;
+  },{received:0,total:0}):null;
  const missing=group.reduce((n,q)=>n+(q.status==='cancelled'?0:(q.items||[]).filter(i=>i.unit_price==null&&i.fulfillment!=='sold_out').length),0);
  const cancel=group.some(q=>q.cancel_requested_at&&q.status!=='cancelled');
  const options=group.some(q=>pendingItemOptionRequests(q).length>0);
@@ -10139,7 +10151,7 @@ function renderCollapsibleAdminOrder(group,section){
     <span class="admin-order-fold-meta">${group.length>1?(isAdminViewGroup(group)?'':group.every(q=>bundleRootId(q)===bundleRootId(group[0]))?'묶음배송 '+group.length+'건 · ':'주문 '+group.length+'건 함께 보기 · '):''}상품 ${count}종 · ${qty}개 · ${fmtDate(root.created_at)}</span>
     ${paymentSummary}
    </span>
-   <span class="admin-order-fold-right"><span class="admin-order-fold-next ${urgent?'is-urgent':''}">${esc(nextShort)}</span></span>
+   <span class="admin-order-fold-right"><span class="admin-order-fold-next ${urgent?'is-urgent':''}">${esc(nextShort)}</span>${receiptProgress&&receiptProgress.total?'<span class="admin-order-received-count">입고 <strong>'+receiptProgress.received+'/'+receiptProgress.total+'</strong></span>':''}</span>
    <span class="admin-order-fold-chevron" aria-hidden="true"></span>
   </summary>
   <div class="admin-order-fold-body">
